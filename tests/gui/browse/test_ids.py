@@ -9,6 +9,8 @@ def test_ids_are_unique_nonempty_strings():
         _ids.BROWSE_PREV_BTN,
         _ids.BROWSE_NEXT_BTN,
         _ids.BROWSE_OSD_DIV,
+        _ids.BROWSE_OSD_LOADING,
+        _ids.BROWSE_LOADING_TEXT,
         _ids.BROWSE_CURRENT_IMAGE_STORE,
         _ids.BROWSE_DATASETS_STORE,
         _ids.BROWSE_OSD_SYNC,

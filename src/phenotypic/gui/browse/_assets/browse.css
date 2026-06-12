@@ -7,6 +7,65 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
 }
+/* Positioning context for the loading overlay; the OSD canvas sits inside. */
+.browse-osd-stage {
+    position: relative;
+}
+/* Spinner + caption shown while a source image is normalized + DZI-tiled.
+   browse.js toggles .is-visible (load) and .browse-loading-overlay--error
+   (open-failed). Scrim + track derive from design tokens via color-mix so a
+   palette swap carries through. pointer-events:none means a missed hide can
+   never trap pan/zoom interaction underneath. */
+.browse-loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    background: color-mix(in srgb, var(--color-image-stage-dark) 70%, transparent);
+    border-radius: var(--radius);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--transition), visibility var(--transition);
+    z-index: 5;
+}
+.browse-loading-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+.browse-spinner {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    border: 3px solid color-mix(in srgb, var(--color-surface) 28%, transparent);
+    border-top-color: var(--color-blue);
+    animation: browse-spin 0.8s linear infinite;
+}
+.browse-loading-overlay--error .browse-spinner {
+    display: none;
+}
+.browse-loading-text {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    letter-spacing: 0.04em;
+    color: var(--color-surface);
+}
+.browse-loading-overlay--error .browse-loading-text {
+    color: var(--color-warning);
+}
+@keyframes browse-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .browse-spinner {
+        animation-duration: 1.8s;
+    }
+}
 .browse-meta-panel {
     font-size: var(--font-size-caption);
     color: var(--color-body);

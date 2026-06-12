@@ -64,7 +64,10 @@ def build_browse_layout() -> Any:
         searchable=True,
         style={"flex": "1 1 auto", "minWidth": "12rem"},
     )
-    picker_group = html.Div(
+    # Both steppers sit together on the left (a ‹ › pair via Bootstrap's
+    # btn-group) so the user can toggle prev/next without crossing the wide
+    # image dropdown, which fills the remaining width to its right.
+    stepper_pair = html.Div(
         [
             html.Button(
                 "‹",
@@ -75,7 +78,6 @@ def build_browse_layout() -> Any:
                 type="button",
                 **cast(Any, {"aria-label": "Previous image"}),
             ),
-            html.Div(image_picker, style={"flex": "1 1 auto"}),
             html.Button(
                 "›",
                 id=ids.BROWSE_NEXT_BTN,
@@ -86,8 +88,17 @@ def build_browse_layout() -> Any:
                 **cast(Any, {"aria-label": "Next image"}),
             ),
         ],
+        className="btn-group",
+        role="group",
+        **cast(Any, {"aria-label": "Step through images"}),
+    )
+    picker_group = html.Div(
+        [
+            stepper_pair,
+            html.Div(image_picker, style={"flex": "1 1 auto"}),
+        ],
         className="d-flex align-items-center",
-        style={"gap": "0.35rem", "flex": "1 1 auto"},
+        style={"gap": "0.5rem", "flex": "1 1 auto"},
     )
 
     header = html.Div(
@@ -110,6 +121,29 @@ def build_browse_layout() -> Any:
         style=_OSD_STYLE,
     )
 
+    # Spinner + caption overlay, hidden until browse.js shows it while the
+    # source image is normalized + tiled into DZI, then hides it on OSD's
+    # ``open`` event (or swaps to an error caption on ``open-failed``). It is
+    # a sibling of the OSD div inside a position:relative stage so OSD never
+    # clobbers it when it mounts its canvas into BROWSE_OSD_DIV.
+    loading_overlay = html.Div(
+        [
+            html.Div(className="browse-spinner"),
+            html.Div(
+                "Loading image…",
+                id=ids.BROWSE_LOADING_TEXT,
+                className="browse-loading-text",
+            ),
+        ],
+        id=ids.BROWSE_OSD_LOADING,
+        className="browse-loading-overlay",
+        **cast(Any, {"role": "status", "aria-live": "polite"}),
+    )
+    osd_stage = html.Div(
+        [osd_div, loading_overlay],
+        className="browse-osd-stage",
+    )
+
     metadata_panel = html.Div(
         [
             _meta_chip("Dimensions", ids.BROWSE_META_DIMS),
@@ -125,7 +159,7 @@ def build_browse_layout() -> Any:
         [
             header,
             empty_hint,
-            osd_div,
+            osd_stage,
             metadata_panel,
             dcc.Store(id=ids.BROWSE_DATASETS_STORE, data={}),
             dcc.Store(id=ids.BROWSE_CURRENT_IMAGE_STORE, data=None),
