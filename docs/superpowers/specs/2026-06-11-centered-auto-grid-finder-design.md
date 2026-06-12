@@ -1,4 +1,4 @@
-# LatticeGridFinder — Design
+# CenteredAutoGridFinder — Design
 
 **Date:** 2026-06-11
 **Status:** Draft v2 — adversarial review incorporated (2026-06-11); pre-implementation
@@ -64,16 +64,29 @@ then inherit as an axis misalignment. See §9.
 
 ## 3. Positioning
 
-- New class **`LatticeGridFinder`** in `src/phenotypic/grid/_lattice_grid_finder.py`,
-  subclassing `GridFinder`.
+- New class **`CenteredAutoGridFinder`** in
+  `src/phenotypic/grid/_centered_auto_grid_finder.py`, subclassing `GridFinder`.
 - Exported from `src/phenotypic/grid/__init__.py` (public API) so the GUI/`from_json`
   can discover it.
-- `AutoGridFinder` is **left untouched** — it remains the recommended finder for
-  dense plates. `LatticeGridFinder` is offered alongside; it may be promoted to
-  default later once validated on real plates.
-- Name rationale: "lattice" captures the point-set-registration framing and does
-  not over-claim "sparse only" (the method also handles dense plates, which are the
-  easy case — many correspondences).
+- **New default GridFinder for grid images** (user decision, 2026-06-11). Two wiring
+  sites flip from `AutoGridFinder` to `CenteredAutoGridFinder`:
+  - `_core/_image_parts/_grid_image_handler.py` (~L97) — the `grid_finder is None`
+    default in `GridImageHandler.__init__`.
+  - `_core/_pipeline_parts/_image_pipeline_core.py` (~L1142) — the finder injected
+    into a pipeline when a `GridImage` needs one.
+- `AutoGridFinder` is **retained** (not deleted) and stays importable/serializable —
+  it is simply no longer the default. Existing saved images/pipelines that name
+  `AutoGridFinder` continue to deserialize unchanged.
+- **Blast radius (must be handled in the plan):** flipping the default changes
+  behavior for every `GridImage` constructed without an explicit finder. Expect
+  fallout in (a) tests asserting the default finder *type*, (b) any grid-output
+  golden/snapshot that used `AutoGridFinder`'s placement, (c) serialization
+  round-trip tests that assumed the default class name. The dense-plate regression
+  test (§10) is now a **gate**, not a nicety: as the default, `CenteredAutoGridFinder`
+  must not regress the dense plates `AutoGridFinder` already handles.
+- Name rationale: `CenteredAutoGridFinder` advertises the defining assumption — the
+  grid is anchored at the image center — and mirrors the existing `AutoGridFinder`
+  naming so its role as the automatic default is obvious.
 
 ---
 
@@ -231,7 +244,7 @@ many-to-one assignment (no collision handling).
 ## 6. Fallback ladder (the sparse tail)
 
 Evaluated top-down; first matching rule applies. Every fallback emits a
-`LatticeGridFinderFallbackWarning` when `warn=True`.
+`CenteredAutoGridFinderFallbackWarning` when `warn=True`.
 
 | Condition | Behavior |
 |---|---|
@@ -278,7 +291,7 @@ TuneSpec(...)]`). Every numeric field on a `grid/` op is pulled into
 | `response_floor` | `Annotated[float, TuneSpec(0.5, 0.95)] = 0.8` | relative peak threshold for fundamental selection |
 | `max_iter` | `Annotated[int, TuneSpec(tunable=False)] = 5` | ICP iteration cap |
 | `min_fit_objects` | `Annotated[int, TuneSpec(tunable=False)] = 6` | floor below which we treat the fit as bounded-ambiguous |
-| `warn` | `bool = False` | emit `LatticeGridFinderFallbackWarning` |
+| `warn` | `bool = False` | emit `CenteredAutoGridFinderFallbackWarning` |
 
 **`ClassVar` constants** (not tunable fields — internal algorithm thresholds, à la
 `AutoGridFinder._SPAN_TOLERANCE`):
@@ -355,7 +368,7 @@ recovered `p, cx, cy` within tolerance across:
   unchanged vs the no-collision baseline.
 
 **Integration:** decimate `load_synth_yeast_plate()` to N colonies; run
-`OtsuDetector → LatticeGridFinder`; assert sane edge count/spacing and that known
+`OtsuDetector → CenteredAutoGridFinder`; assert sane edge count/spacing and that known
 colonies map to expected cells.
 
 **Determinism:** identical input → identical edges (fixed, no RNG).
@@ -367,13 +380,20 @@ docstring convention.
 
 ## 11. Implementation sketch (file-level)
 
-- `src/phenotypic/grid/_lattice_grid_finder.py` — `LatticeGridFinder`,
-  `LatticeGridFinderFallbackWarning`, private helpers
+- `src/phenotypic/grid/_centered_auto_grid_finder.py` — `CenteredAutoGridFinder`,
+  `CenteredAutoGridFinderFallbackWarning`, private helpers
   (`_compute_bounds`, `_comb_response`, `_estimate_pitch`,
   `_seed_center_candidates`, `_multi_start_refine` (wraps the closed-form
   `_icp_refine` + residual selection + singularity guard), `_centers_to_edges`).
 - `src/phenotypic/grid/__init__.py` — export both new symbols.
-- `tests/unit/grid/test_lattice_grid_finder.py` — the suite in §10.
+- `src/phenotypic/_core/_image_parts/_grid_image_handler.py` — flip the
+  `grid_finder is None` default to `CenteredAutoGridFinder`.
+- `src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py` — flip the injected
+  default finder to `CenteredAutoGridFinder`.
+- `tests/unit/grid/test_centered_auto_grid_finder.py` — the suite in §10.
+- **Test fallout sweep:** update any test asserting the default finder type, any
+  grid golden/snapshot, and serialization round-trips that assumed `AutoGridFinder`
+  as default (find via `grep -rn "AutoGridFinder" tests` + a full `pytest` run).
 - Docstring follows the `ImageOperation`-subclass pattern (abc_/CLAUDE.md):
   summary → Args → Returns → Raises → detail → two doctests.
 
@@ -383,7 +403,7 @@ docstring convention.
 
 Rotation in-finder; non-square pitch; collision resolution; GUI builder
 registration; bespoke dashboard (the existing `AutoGridFinder.dashboard()` is not
-reused — a viz pass is a separate follow-up if `LatticeGridFinder` is adopted).
+reused — a viz pass is a separate follow-up if `CenteredAutoGridFinder` is adopted).
 
 ---
 
