@@ -17,11 +17,11 @@ from __future__ import annotations
 import importlib
 import inspect
 import os
-import re
 import shutil
 from pathlib import Path
 from typing import Any
 
+from phenotypic.schema._measurement_info import _rst_cell_text
 from sphinx.util import logging as sphinx_logging
 
 logger = sphinx_logging.getLogger(__name__)
@@ -126,8 +126,6 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "Use when organizing outputs across projects, protocols, or datasets.",
     ),
 }
-
-_RST_ROLE_RE = re.compile(r":[a-zA-Z0-9_.:]+:`([^`]+)`")
 
 _ROOT_INTRO = """\
 Measurements
@@ -361,29 +359,6 @@ def _public_measurement_info_classes() -> dict[str, type[Any]]:
     return infos
 
 
-def _full_column_table(info_cls: type[Any]) -> str:
-    """Render a table of full DataFrame column labels for an info enum."""
-    lines = [
-        f".. list-table:: Category: **{info_cls.category()}**",
-        "   :header-rows: 1",
-        "",
-        "   * - Column label",
-        "     - Description",
-    ]
-    for member in info_cls:
-        lines += [
-            f"   * - ``{member.value}``",
-            f"     - {_rst_cell_text(member.desc)}",
-        ]
-    return "\n".join(lines)
-
-
-def _rst_cell_text(text: str) -> str:
-    """Escape text that would otherwise be parsed as RST markup."""
-    normalized = _RST_ROLE_RE.sub(lambda match: f"``{match.group(1)}``", text)
-    return normalized.replace("|", r"\|")
-
-
 def _enum_page(info_cls: type[Any]) -> str:
     """Build a standalone page for one ``MeasurementInfo`` enum."""
     title = info_cls.__name__
@@ -396,7 +371,9 @@ def _enum_page(info_cls: type[Any]) -> str:
         out.append(_rst_cell_text(description))
         out.append("")
 
-    out.append(_full_column_table(info_cls))
+    out.append(
+        info_cls.rst_table(header=("Column label", "Description"), use_headers=True)
+    )
     out.append("")
     return "\n".join(out)
 
