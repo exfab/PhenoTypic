@@ -47,6 +47,7 @@
       MergeFragmentChains
       MaskWhiteTophat
       KeepSectionLargest
+      RemoveByFeature
    
    
 

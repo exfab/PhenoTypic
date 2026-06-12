@@ -17,6 +17,7 @@ Subpackages
    phenotypic.tools_.napari_
    phenotypic.tools_.register
    phenotypic.tools_.slurm
+   phenotypic.tools_.viz
 
 Submodules
 ----------

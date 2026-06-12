@@ -1,0 +1,7 @@
+phenotypic.tools\_.viz.notebook package
+=======================================
+
+.. automodule:: phenotypic.tools_.viz.notebook
+   :members:
+   :show-inheritance:
+   :undoc-members:

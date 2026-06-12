@@ -1,7 +1,0 @@
-phenotypic.viz.figures package
-==============================
-
-.. automodule:: phenotypic.viz.figures
-   :members:
-   :show-inheritance:
-   :undoc-members:
