@@ -4,8 +4,42 @@ This module provides infrastructure for defining measurement types with consiste
 conventions, descriptive metadata, and automatic documentation generation.
 """
 
+from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from textwrap import dedent
+from typing import Final
+
+
+@dataclass(frozen=True, slots=True)
+class Entry:
+    """Declarative value for a :class:`MeasurementInfo` member.
+
+    ``label`` and ``desc`` are positional (matching the old ``(label, desc)``
+    tuple ergonomics). The new fields are keyword-only, so ``bio_desc``/``image``
+    can never be positionally swapped with ``desc``.
+
+    Args:
+        label: Short, unprefixed measurement name (e.g. ``"Area"``).
+        desc: Technical/algorithm description of what is computed.
+        bio_desc: Biological relevance / use-case. Human-authored only.
+        image: Path, relative to ``_assets/measurements/``, of an illustrative
+            figure (e.g. ``"shape/area.png"``); ``None`` for no figure.
+    """
+
+    label: str
+    desc: str = ""
+    _: KW_ONLY
+    bio_desc: str = ""
+    image: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.label, str) or not self.label:
+            raise ValueError("Entry.label must be a non-empty string")
+        for name in ("desc", "bio_desc"):
+            if not isinstance(getattr(self, name), str):
+                raise TypeError(f"Entry.{name} must be a string")
+        if self.image is not None and not isinstance(self.image, str):
+            raise TypeError("Entry.image must be a string path or None")
 
 
 class MeasurementInfo(str, Enum):
