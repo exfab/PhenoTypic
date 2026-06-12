@@ -97,7 +97,7 @@ row i center:  cy + (i - (R-1)/2) * p     for i = 0 .. R-1
 x_span = pct(x, 95) - pct(x, 5)                       # robust span (percentile, not min/max)
 y_span = pct(y, 95) - pct(y, 5)
 p_min  = max( x_span / (C-1),  y_span / (R-1) )       # object-derived FLOOR
-p_max  = min( H / R,  W / C ) * P_MAX_MARGIN          # image-derived CEILING (P_MAX_MARGIN = 1.05)
+p_max  = min( H / (R-1),  W / (C-1) )                 # image-derived CEILING (outermost cell CENTERS fit frame)
 grid_extent_x = (C-1) * p ;  grid_extent_y = (R-1) * p
 center ∈ image_center ± ( (image_extent - grid_extent)/2 + p )   # full in-frame offset, per axis
 ```
@@ -107,11 +107,14 @@ center ∈ image_center ± ( (image_extent - grid_extent)/2 + p )   # full in-fr
   **lower bound**, never a point estimate. Using a **5th–95th percentile** span
   (not raw min/max) stops a single spurious edge detection from inflating the span
   and inverting the bounds (challenger #4).
-- The ceiling carries a small margin `P_MAX_MARGIN = 1.05` (a `ClassVar`). Cell
-  centers are inset ½-pitch from the frame edge, so a plate filling the frame has
-  true pitch ≈ `H/(R-1) > min(H/R, W/C)`. Without the margin, `p_min ≥ p_max` fires
-  on any plate ≥ ~96 % frame-fill and the finder silently mis-fits **dense** plates
-  (challenger #1, Critical). The margin restores a valid range.
+- The ceiling is the pitch at which the **outermost cell centers** reach the frame
+  edge (`(R-1)·p = H`), i.e. `min(H/(R-1), W/(C-1))` — *not* the half-cell-padded
+  `min(H/R, W/C)`. The latter understates the true ceiling: a frame-filling plate
+  has true pitch up to `H/(R-1) > min(H/R, W/C)`, so the naive ceiling silently caps
+  the pitch search **below** the truth (challenger #1, Critical). **Confirmed on
+  real data** (§13): `SaltTolerantSparsePlate` has true pitch 404 px while
+  `min(H/R, W/C) = 394 px < 404`; the centers-fit ceiling `min(H/(R-1), W/(C-1)) =
+  450 px` contains it with headroom and needs no arbitrary margin.
 - **Center search width** spans the full range the plate could be offset while
   remaining in frame: `± ((image_extent − grid_extent)/2 + p)` per axis. This
   covers hand-loaded / asymmetrically-cropped / sub-frame plates whose true center
@@ -280,7 +283,6 @@ TuneSpec(...)]`). Every numeric field on a `grid/` op is pulled into
 **`ClassVar` constants** (not tunable fields — internal algorithm thresholds, à la
 `AutoGridFinder._SPAN_TOLERANCE`):
 
-- `P_MAX_MARGIN = 1.05` — ceiling margin (§4).
 - `SPAN_PCT_LOW = 5`, `SPAN_PCT_HIGH = 95` — robust-span percentiles (§4).
 - `ABSOLUTE_FLOOR` — minimum comb-response peak to treat the response as non-degenerate (§6).
 - `DET_EPS` — singularity threshold for the ICP design matrix (§5 Stage 4).
@@ -296,9 +298,11 @@ a `TuneSpec` field.)
 Updated after the adversarial review (2026-06-11). Items 1–3 are **resolved in this
 spec**; 4–6 are **accepted/documented**; 7–8 remain genuine residual risks.
 
-1. **Dense-plate bound inversion (was Critical) — RESOLVED.** `p_max` now carries a
-   1.05 margin and `p_min` uses a percentile span (§4), so a frame-filling plate no
-   longer trips `p_min ≥ p_max`. Regression-tested by a dense-plate fixture (§10).
+1. **Dense-plate bound inversion (was Critical) — RESOLVED + FIELD-VALIDATED.**
+   `p_max` is now the centers-fit ceiling `min(H/(R-1), W/(C-1))` and `p_min` uses a
+   percentile span (§4), so the true pitch is never capped out of the search range.
+   Confirmed on `SaltTolerantSparsePlate`, whose true pitch (404 px) exceeds the old
+   naive ceiling (394 px) — see §13. Regression-tested by a dense-plate fixture (§10).
 2. **ICP one-cell-shift trap (was High) — RESOLVED.** Replaced the (false)
    convergence guarantee with **multi-start over the integer center candidates +
    residual selection** (§5 Stage 4). The shifted local minima have ~450× the
@@ -380,3 +384,37 @@ docstring convention.
 Rotation in-finder; non-square pitch; collision resolution; GUI builder
 registration; bespoke dashboard (the existing `AutoGridFinder.dashboard()` is not
 reused — a viz pass is a separate follow-up if `LatticeGridFinder` is adopted).
+
+---
+
+## 13. Empirical validation (real plate, 2026-06-11)
+
+The core algorithm was prototyped and run on
+`src/phenotypic/data/snp-imager-samples/SaltTolerantSparsePlate.png` (6016×4012),
+detected with the user's pipeline (crop → blur → SubtractGaussian → Otsu →
+RemoveLowCircularity → RemoveBorderObjects; the `RemoveByFeature` eccentricity
+filter was corrected to `max_value=0.75`, i.e. drop elongated debris — the supplied
+`min_value=0.75` inverted the test and deleted 17 of 18 round colonies). Cropped
+frame `H×W = 3152×5066`; **18 colonies** on an `8×12` grid occupying rows
+`{1,2,3,5,6}` (empty top, bottom, and one interior row) — a genuine empty-edge/
+interior-row sparse case.
+
+**Result (3-parameter fit, R=8, C=12):**
+
+| Quantity | Value |
+|---|---|
+| Comb-response pitch | **403.8 px**, picked as the fundamental over the 202/135/101 px subharmonics, in **both** axes (square confirmed) |
+| Fitted center | (2545, 1575) px ≈ image center (2533, 1576) — center-at-image-center assumption holds |
+| Mean residual | **12.1 px = 3.0 % of pitch**; max 34 px |
+| Assignment | **18 colonies → 18 distinct cells, no collisions**; cells match the visual layout exactly |
+
+**Design claims confirmed:** (a) the comb-response recovers the true pitch from 18
+sparse colonies with whole empty rows, where span-based pitch would fail; (b) the
+"largest-`p` above floor" rule selects the fundamental, not an octave; (c) the
+phase-seeded multi-start ICP locks the center at the image center and converges to
+3 % residual; (d) **challenger #1 is real** — true pitch 404 px > naive ceiling
+`min(H/R,W/C)=394 px`, which would have capped the search below the truth; the
+centers-fit ceiling `min(H/(R-1),W/(C-1))=450 px` (now adopted, §4) contains it.
+
+Prototype scripts archived under `/tmp/grid_exp/` (not committed): `fit_probe.py`
+(comb scan), `full_fit.py` (bounds → pitch → phase → multi-start ICP → overlay).
