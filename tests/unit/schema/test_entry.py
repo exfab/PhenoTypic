@@ -42,3 +42,29 @@ def test_entry_rejects_empty_label():
 def test_entry_rejects_non_string_desc():
     with pytest.raises(TypeError):
         Entry("Area", 123)  # type: ignore[arg-type]
+
+
+def test_member_declared_with_raw_tuple_is_rejected():
+    import pytest
+    from phenotypic.schema import MeasurementInfo
+
+    with pytest.raises(TypeError):
+        class BAD(MeasurementInfo):  # noqa: N801
+            @classmethod
+            def category(cls):
+                return "Bad"
+
+            X = ("X", "raw tuple no longer allowed")
+
+
+def test_member_declared_with_bare_string_is_rejected():
+    import pytest
+    from phenotypic.schema import MeasurementInfo
+
+    with pytest.raises(TypeError):
+        class BAD2(MeasurementInfo):  # noqa: N801
+            @classmethod
+            def category(cls):
+                return "Bad2"
+
+            X = "X"

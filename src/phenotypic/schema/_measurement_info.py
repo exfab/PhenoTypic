@@ -80,19 +80,19 @@ class MeasurementInfo(str, Enum):
     Examples:
         Define a custom measurement enumeration:
 
-        >>> from phenotypic.schema import MeasurementInfo
+        >>> from phenotypic.schema import Entry, MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
         ...     def category(cls):
         ...         return 'Shape'
         ...
-        ...     AREA = ('Area', 'Total number of pixels in the detected object')
-        ...     PERIMETER = ('Perimeter', 'Total length of object boundary in pixels')
+        ...     AREA = Entry('Area', 'Total number of pixels in the detected object')
+        ...     PERIMETER = Entry('Perimeter', 'Total length of object boundary in pixels')
 
         Access measurement information and generate headers:
 
         >>> SHAPE.AREA
-        <Shape_Area: 'Shape_Area'>
+        <SHAPE.AREA: 'Shape_Area'>
         >>> str(SHAPE.AREA)
         'Shape_Area'
         >>> SHAPE.AREA.label
@@ -119,6 +119,7 @@ class MeasurementInfo(str, Enum):
         0    1024
         1     956
         2    1101
+        Name: Shape_Area, dtype: int64
 
         Generate and append RST documentation:
 
@@ -170,25 +171,18 @@ class MeasurementInfo(str, Enum):
         """
         return type(self).category()
 
-    def __new__(cls, *args):
-        """Create a member from an ``Entry`` (preferred) or, transiently, a
-        legacy ``(label, desc)`` tuple / bare ``label`` string.
+    def __new__(cls, entry: "Entry"):
+        """Create a member from an :class:`Entry`.
 
-        The legacy branch is a migration scaffold removed once all members use
-        ``Entry``. The enum value is the category-prefixed header (e.g.
-        ``Shape_Area``); ``label``/``desc``/``bio_desc``/``image`` are stored as
-        instance attributes.
+        The enum value is the category-prefixed header (e.g. ``Shape_Area``);
+        ``label``/``desc``/``bio_desc``/``image`` are stored as instance
+        attributes. Anything other than an ``Entry`` raises ``TypeError`` at
+        class-creation time.
         """
-        if len(args) == 1 and isinstance(args[0], Entry):
-            entry = args[0]
-        elif len(args) == 1 and isinstance(args[0], str):
-            entry = Entry(args[0])
-        elif len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
-            entry = Entry(args[0], args[1])
-        else:
+        if not isinstance(entry, Entry):
             raise TypeError(
                 f"{cls.__name__} members must be declared as Entry(...); "
-                f"got {args!r}."
+                f"got {entry!r}. Raw tuples/strings are not accepted."
             )
         full = f"{cls.category()}_{entry.label}"
         obj = str.__new__(cls, full)
