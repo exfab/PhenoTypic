@@ -1,6 +1,6 @@
 """The label and description of the per-object identifier column."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class OBJECT(MeasurementInfo):
@@ -18,7 +18,7 @@ class OBJECT(MeasurementInfo):
     def category(cls):
         return "Object"
 
-    LABEL = (
+    LABEL = Entry(
         "Label",
         "Integer label uniquely identifying each detected object (colony) within "
         "its source image. Acts as the per-image primary key shared by every "

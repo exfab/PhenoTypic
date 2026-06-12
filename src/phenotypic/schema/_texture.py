@@ -1,6 +1,6 @@
 """Second-order texture features derived from the gray-level co-occurrence matrix."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class TEXTURE(MeasurementInfo):
@@ -15,7 +15,7 @@ class TEXTURE(MeasurementInfo):
     def category(cls) -> str:
         return "Texture"
 
-    ANGULAR_SECOND_MOMENT = (
+    ANGULAR_SECOND_MOMENT = Entry(
         "AngularSecondMoment",
         """Angular second moment (energy / uniformity). Measures the degree of local homogeneity
         (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent
@@ -23,7 +23,7 @@ class TEXTURE(MeasurementInfo):
         sporulation zones). Reflects colony surface regularity rather than brightness.""",
     )
 
-    CONTRAST = (
+    CONTRAST = Entry(
         "Contrast",
         """Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level
         differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values
@@ -31,7 +31,7 @@ class TEXTURE(MeasurementInfo):
         and zonation amplitude.""",
     )
 
-    CORRELATION = (
+    CORRELATION = Entry(
         "Correlation",
         """Linear gray-level correlation between neighboring pixels. Positive, high values suggest
         structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero
@@ -39,7 +39,7 @@ class TEXTURE(MeasurementInfo):
         illumination gradients and directional GLCM computation.""",
     )
 
-    VARIANCE = (
+    VARIANCE = Entry(
         "HaralickVariance",
         """GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct
         from raw intensity variance. High values → complex, multi-zone textures with variable
@@ -47,14 +47,14 @@ class TEXTURE(MeasurementInfo):
         surfaces.""",
     )
 
-    INVERSE_DIFFERENCE_MOMENT = (
+    INVERSE_DIFFERENCE_MOMENT = Entry(
         "InverseDifferenceMoment",
         """Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures
         (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes
         (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.""",
     )
 
-    SUM_AVERAGE = (
+    SUM_AVERAGE = Entry(
         "SumAverage",
         """Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of
         neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when
@@ -62,21 +62,21 @@ class TEXTURE(MeasurementInfo):
         intensity metric.""",
     )
 
-    SUM_VARIANCE = (
+    SUM_VARIANCE = Entry(
         "SumVariance",
         """Variance of gray-level sum distribution. High values → heterogeneous brightness zones
         (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform
         tone across the colony. Often correlated with Contrast; use comparatively within one setup.""",
     )
 
-    SUM_ENTROPY = (
+    SUM_ENTROPY = Entry(
         "SumEntropy",
         """Entropy of the gray-level sum distribution. High values → diverse brightness combinations
         and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly
         spaced rings). Indicates spatial unpredictability of summed intensities.""",
     )
 
-    ENTROPY = (
+    ENTROPY = Entry(
         "Entropy",
         """Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information
         content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).
@@ -84,14 +84,14 @@ class TEXTURE(MeasurementInfo):
         gray-level quantization and image dynamic range.""",
     )
 
-    DIFFERENCE_VARIANCE = (
+    DIFFERENCE_VARIANCE = Entry(
         "DiffVariance",
         """Variance of gray-level difference distribution. High values → mixture of smooth and textured
         regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.
         Highlights heterogeneity in edge magnitude across the colony.""",
     )
 
-    DIFFERENCE_ENTROPY = (
+    DIFFERENCE_ENTROPY = Entry(
         "DiffEntropy",
         """Entropy of gray-level difference distribution. High values → irregular, unpredictable
         intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →
@@ -99,7 +99,7 @@ class TEXTURE(MeasurementInfo):
         rather than its magnitude.""",
     )
 
-    IMC1 = (
+    IMC1 = Entry(
         "InfoCorrelation1",
         """Information measure of correlation 1. Compares joint vs marginal entropies to quantify
         mutual dependence between gray levels. Positive values → structured, predictable textures
@@ -107,7 +107,7 @@ class TEXTURE(MeasurementInfo):
         Direction of sign varies with implementation.""",
     )
 
-    IMC2 = (
+    IMC2 = Entry(
         "InfoCorrelation2",
         """Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.
         Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric

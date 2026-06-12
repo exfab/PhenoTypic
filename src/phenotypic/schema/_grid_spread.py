@@ -1,6 +1,6 @@
 """Grid section spatial spread measurements."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class GRID_SPREAD(MeasurementInfo):
@@ -16,7 +16,7 @@ class GRID_SPREAD(MeasurementInfo):
     def category(cls):
         return "GridSpread"
 
-    OBJECT_SPREAD = (
+    OBJECT_SPREAD = Entry(
         "ObjectSpread",
         "Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.",
     )
