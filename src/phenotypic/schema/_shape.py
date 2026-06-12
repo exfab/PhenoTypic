@@ -20,6 +20,14 @@ class SHAPE(MeasurementInfo):
     AREA = Entry(
         "Area",
         "Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.",
+        bio_desc=(
+            "Projected 2D footprint of the colony in pixels — a common proxy "
+            "for colony size and overall growth in arrayed plate assays. With "
+            "matched imaging and incubation, larger area generally reflects "
+            "greater proliferation or spreading; it captures only the 2D "
+            "footprint, not colony height or cell density."
+        ),
+        image="shape/area.png",
     )
     PERIMETER = Entry(
         "Perimeter",
