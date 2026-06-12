@@ -62,3 +62,15 @@ def test_estimate_pitch_flags_degenerate_on_random_points():
     p_min, p_max = f._compute_bounds(x, y, H, W)
     _, ok = f._estimate_pitch(x, y, p_min, p_max)
     assert ok is False  # no real periodicity -> caller will fall back
+
+
+def test_center_candidates_include_true_center():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    p_true, cx, cy = 404.0, 2545.0, 1575.0   # offset from image center (2533,1576)
+    occ = [(1, 0), (2, 3), (3, 5), (5, 8), (6, 11), (3, 1), (1, 8), (5, 4)]
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    cx_c = f._center_candidates(x, p_true, f.ncols, W)
+    cy_c = f._center_candidates(y, p_true, f.nrows, H)
+    assert min(abs(np.array(cx_c) - cx)) < 0.5 * p_true
+    assert min(abs(np.array(cy_c) - cy)) < 0.5 * p_true

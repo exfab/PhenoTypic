@@ -116,6 +116,25 @@ class CenteredAutoGridFinder(GridFinder):
         p0 = float(ps[max(idx)])
         return p0, True
 
+    @staticmethod
+    def _phase(coords: np.ndarray, p: float) -> float:
+        return float(np.angle(np.exp(1j * 2.0 * np.pi * coords / p).mean()))
+
+    def _center_candidates(self, coords: np.ndarray, p: float,
+                           n_cells: int, axis_len: int) -> list[float]:
+        """Integer placements of the grid center consistent with the comb phase,
+        kept if within the FULL in-frame offset box, ordered nearest-image-center first."""
+        base = (self._phase(coords, p) / (2.0 * np.pi)) * p      # cell-center phase, in (-p/2, p/2]
+        grid_extent = (n_cells - 1) * p
+        half = (axis_len - grid_extent) / 2.0 + p                # full in-frame offset + 1 pitch slack
+        img_c = axis_len / 2.0
+        cands = []
+        for m in range(-n_cells, n_cells + 1):
+            c = base + (n_cells - 1) / 2.0 * p + m * p
+            if abs(c - img_c) <= half:
+                cands.append(float(c))
+        return sorted(cands, key=lambda c: abs(c - img_c))
+
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:
         return self._uniform_edges(self.nrows, image.shape[0])
