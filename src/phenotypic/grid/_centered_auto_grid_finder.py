@@ -52,6 +52,20 @@ class CenteredAutoGridFinder(GridFinder):
         grid silently (no internal guard). For multiple colonies per well use a
         downstream refiner (KeepNearestCenter / KeepSectionLargest /
         MergeWithinSection); this finder assigns faithfully, many-to-one.
+
+    Examples:
+        Default 96-well fit on the bundled synthetic plate:
+
+        >>> from phenotypic.data import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> from phenotypic.grid import CenteredAutoGridFinder
+        >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+        >>> finder = CenteredAutoGridFinder(nrows=8, ncols=12)
+        >>> grid_df = finder.measure(image)
+        >>> len(finder.get_row_edges(image)) == 9
+        True
+        >>> len(finder.get_col_edges(image)) == 13
+        True
     """
 
     SPAN_PCT_LOW: ClassVar[float] = 5.0
