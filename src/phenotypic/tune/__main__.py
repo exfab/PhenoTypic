@@ -122,6 +122,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="SLURM --time wall-clock limit for each worker (--slurm only), e.g. '04:00:00'",
     )
     run_p.add_argument(
+        "--slurm-constraint",
+        default=None,
+        dest="slurm_constraint",
+        help=(
+            "SLURM --constraint feature expression for each worker (--slurm "
+            "only), e.g. 'broadwell|cascade|rome|milan|genoa' to pin the fleet "
+            "to AVX2-capable nodes; when unset the directive is omitted"
+        ),
+    )
+    run_p.add_argument(
+        "--nrows",
+        type=int,
+        default=None,
+        help=(
+            "fixed calibration grid row count; each plate is loaded via "
+            "GridImage.imread(nrows=…, ncols=…) so a known uniform grid is "
+            "assigned (needed for grid-cell-aware scoring, e.g. an "
+            "ExpectedVsDetectedCount grouped by Grid_RowNum/Grid_ColNum). "
+            "Requires --ncols; when unset the imread default grid is used"
+        ),
+    )
+    run_p.add_argument(
+        "--ncols",
+        type=int,
+        default=None,
+        help="fixed calibration grid column count (see --nrows; both required)",
+    )
+    run_p.add_argument(
         "--held-out-fraction",
         type=float,
         default=None,
@@ -171,7 +199,7 @@ def _run_command(args: argparse.Namespace) -> None:
     """Load a spec, scan ``--input``, and run the engine (writes deliverables)."""
     spec = TuningSpec.model_validate_json(Path(args.spec).read_text())
     output_dir = Path(args.output) if args.output else _default_output(args.input)
-    images = _load_images(Path(args.input))
+    images = _load_images(Path(args.input), nrows=args.nrows, ncols=args.ncols)
     if not images:
         raise SystemExit(f"no images found under {args.input!r}")
     # --storage-url falls back to the env var so a SLURM array can export one
@@ -194,6 +222,9 @@ def _run_command(args: argparse.Namespace) -> None:
         slurm_partition=args.slurm_partition,
         slurm_mem=args.slurm_mem,
         slurm_time=args.slurm_time,
+        slurm_constraint=args.slurm_constraint,
+        nrows=args.nrows,
+        ncols=args.ncols,
     )
 
 

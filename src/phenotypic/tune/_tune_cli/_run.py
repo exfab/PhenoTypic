@@ -232,7 +232,12 @@ def _write_run_marker(
         )
 
 
-def _load_images(input_dir: Path) -> list:
+def _load_images(
+    input_dir: Path,
+    *,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
+) -> list:
     """Load every image file under ``input_dir`` as a ``GridImage``.
 
     Mirrors the forward CLI's directory scan; tuning targets arrayed plates, so
@@ -241,6 +246,13 @@ def _load_images(input_dir: Path) -> list:
 
     Args:
         input_dir: The directory to scan (non-recursive).
+        nrows: Optional fixed grid row count passed to ``GridImage.imread`` so
+            every calibration plate carries a known uniform ``nrows × ncols``
+            grid (required for grid-cell-aware scoring, e.g. an
+            ``ExpectedVsDetectedCount`` grouped by ``Grid_RowNum``/``Grid_ColNum``).
+            When ``None`` the imread default grid is used.
+        ncols: Optional fixed grid column count (see ``nrows``). Both must be
+            given together to take effect.
 
     Returns:
         The loaded ``GridImage`` instances, in sorted filename order.
@@ -249,11 +261,14 @@ def _load_images(input_dir: Path) -> list:
         p for p in Path(input_dir).iterdir()
         if p.is_file() and p.suffix.lower() in _IMAGE_SUFFIXES
     )
+    grid_kwargs: dict[str, int] = {}
+    if nrows is not None and ncols is not None:
+        grid_kwargs = {"nrows": nrows, "ncols": ncols}
     images: list = []
     failures: list[tuple[str, str]] = []
     for path in paths:
         try:
-            images.append(GridImage.imread(path))
+            images.append(GridImage.imread(path, **grid_kwargs))
         except Exception as exc:  # skip unreadable / non-grid files, don't abort
             failures.append((path.name, str(exc)))
     if failures:
@@ -483,6 +498,9 @@ def run_tuning(
     slurm_partition: Optional[str] = None,
     slurm_mem: Optional[str] = None,
     slurm_time: Optional[str] = None,
+    slurm_constraint: Optional[str] = None,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
 ) -> Optional[Trial]:
     """Run ``spec`` over ``images`` and write the ``deliverables/`` artifacts.
 
@@ -585,6 +603,9 @@ def run_tuning(
             slurm_partition=slurm_partition,
             slurm_mem=slurm_mem,
             slurm_time=slurm_time,
+            slurm_constraint=slurm_constraint,
+            nrows=nrows,
+            ncols=ncols,
         )
 
     trials_path = io.trials_parquet_path(output_dir)
@@ -712,6 +733,9 @@ def _submit_slurm_fleet(
     slurm_partition: Optional[str] = None,
     slurm_mem: Optional[str] = None,
     slurm_time: Optional[str] = None,
+    slurm_constraint: Optional[str] = None,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
 ) -> Optional[Trial]:
     """Submit a distributed worker fleet via :class:`SlurmExecutor`.
 
@@ -777,6 +801,8 @@ def _submit_slurm_fleet(
         slurm_args["slurm_mem"] = slurm_mem
     if slurm_time is not None:
         slurm_args["slurm_time"] = slurm_time
+    if slurm_constraint is not None:
+        slurm_args["slurm_constraint"] = slurm_constraint
     # Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json
     # (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials
     # / --held-out overrides live only in the resolved spec, so handing the workers
@@ -792,6 +818,8 @@ def _submit_slurm_fleet(
         slurm_args=slurm_args,
         storage_url=url,
         python_command=python_command,
+        nrows=nrows,
+        ncols=ncols,
     )
     executor.run(lambda w: w, list(range(resolved_workers)))
     return None

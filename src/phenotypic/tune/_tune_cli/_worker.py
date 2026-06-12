@@ -59,6 +59,8 @@ def run_worker(
     split_path: Path,
     storage_url: str,
     study_name: str,
+    nrows: Optional[int] = None,
+    ncols: Optional[int] = None,
 ) -> None:
     """Run one worker's ask→evaluate→tell loop against the shared study.
 
@@ -81,7 +83,7 @@ def run_worker(
     from .._evaluation import Split
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text())
-    images = _load_images(Path(images_dir))
+    images = _load_images(Path(images_dir), nrows=nrows, ncols=ncols)
     if not images:
         raise SystemExit(f"no images found under {str(images_dir)!r}")
     split = Split(**json.loads(Path(split_path).read_text()))
@@ -117,6 +119,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--storage-url", required=True, help="the shared Optuna storage URL"
     )
+    parser.add_argument(
+        "--nrows", type=int, default=None,
+        help="fixed grid row count for GridImage.imread (grid-cell scoring)",
+    )
+    parser.add_argument(
+        "--ncols", type=int, default=None,
+        help="fixed grid column count for GridImage.imread (grid-cell scoring)",
+    )
     return parser
 
 
@@ -132,6 +142,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         split_path=Path(args.split),
         storage_url=args.storage_url,
         study_name=args.study_name,
+        nrows=args.nrows,
+        ncols=args.ncols,
     )
 
 

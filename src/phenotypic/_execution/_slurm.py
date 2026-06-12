@@ -103,6 +103,8 @@ class SlurmExecutor:
         slurm_args: dict[str, Any],
         storage_url: str,
         python_command: Optional[Sequence[str]] = None,
+        nrows: Optional[int] = None,
+        ncols: Optional[int] = None,
     ) -> None:
         self.output_dir = Path(output_dir)
         self.spec_path = Path(spec_path)
@@ -113,6 +115,11 @@ class SlurmExecutor:
         self.slurm_args = dict(slurm_args)
         self.python_command = list(python_command) if python_command else ["python"]
         self.storage_url = storage_url
+        #: Optional fixed calibration grid forwarded to each worker's
+        #: ``GridImage.imread`` (``--nrows``/``--ncols``) so grid-cell-aware
+        #: scoring sees a known uniform grid instead of a per-image fitted one.
+        self.nrows = nrows
+        self.ncols = ncols
 
         #: Worker indices already re-enqueued once (bounds the retry to a single
         #: resubmit per worker — no unbounded loop).
@@ -139,6 +146,8 @@ class SlurmExecutor:
             "--storage-url",
             shlex.quote(self.storage_url),
         ]
+        if self.nrows is not None and self.ncols is not None:
+            parts += ["--nrows", str(self.nrows), "--ncols", str(self.ncols)]
         return " ".join(parts)
 
     def generate_worker_array_script(self) -> Path:

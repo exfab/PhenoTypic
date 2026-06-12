@@ -381,7 +381,14 @@ class Evaluator(BaseModel):
             ``False`` on a clean score.
         """
         try:
-            measurements = candidate.measure(image, apply_post=False)
+            # Apply the candidate's processing ops (crop/enhance/detect/refine)
+            # before measuring — ``measure`` alone only runs measurement ops on
+            # whatever object state already exists, so a raw (undetected) image
+            # would yield zero objects. ``inplace=False`` works on a copy so the
+            # shared calibration image stays pristine across trials and rungs.
+            measurements = candidate.apply_and_measure(
+                image, inplace=False, apply_post=False
+            )
             for term, value in scorer.score_image(image, measurements).items():
                 per_term.setdefault(term, []).append(float(value))
         except Exception:

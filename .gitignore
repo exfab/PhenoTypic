@@ -1,5 +1,6 @@
 # Worktrees
 .worktrees/
+.claude/worktrees
 
 # Local environment / per-user secrets (e.g. PHENOTYPIC_TEST_PG_URL for the
 # gated Postgres tests). Never committed — see .env.example. Keeps the suite
@@ -85,6 +86,7 @@ tmp/
 .git.backup/
 .playwright-mcp/
 .superpowers
+.claude/scheduled_tasks.lock
 
 # pytest-testmon database (local only, not for version control)
 .testmondata*
