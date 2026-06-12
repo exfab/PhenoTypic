@@ -830,7 +830,12 @@
         <span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_load_images</span><span class="p">(</span><span class="n">input_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_images</span><span class="p">(</span>
+    <span class="n">input_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load every image file under ``input_dir`` as a ``GridImage``.</span>
 
 <span class="sd">    Mirrors the forward CLI&#39;s directory scan; tuning targets arrayed plates, so</span>
@@ -839,6 +844,13 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        input_dir: The directory to scan (non-recursive).</span>
+<span class="sd">        nrows: Optional fixed grid row count passed to ``GridImage.imread`` so</span>
+<span class="sd">            every calibration plate carries a known uniform ``nrows × ncols``</span>
+<span class="sd">            grid (required for grid-cell-aware scoring, e.g. an</span>
+<span class="sd">            ``ExpectedVsDetectedCount`` grouped by ``Grid_RowNum``/``Grid_ColNum``).</span>
+<span class="sd">            When ``None`` the imread default grid is used.</span>
+<span class="sd">        ncols: Optional fixed grid column count (see ``nrows``). Both must be</span>
+<span class="sd">            given together to take effect.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        The loaded ``GridImage`` instances, in sorted filename order.</span>
@@ -847,11 +859,14 @@
         <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">input_dir</span><span class="p">)</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_IMAGE_SUFFIXES</span>
     <span class="p">)</span>
+    <span class="n">grid_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">nrows</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ncols</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">grid_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;nrows&quot;</span><span class="p">:</span> <span class="n">nrows</span><span class="p">,</span> <span class="s2">&quot;ncols&quot;</span><span class="p">:</span> <span class="n">ncols</span><span class="p">}</span>
     <span class="n">images</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">failures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+            <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">GridImage</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">grid_kwargs</span><span class="p">))</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># skip unreadable / non-grid files, don&#39;t abort</span>
             <span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)))</span>
     <span class="k">if</span> <span class="n">failures</span><span class="p">:</span>
@@ -1083,6 +1098,9 @@
     <span class="n">slurm_partition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_mem</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slurm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run ``spec`` over ``images`` and write the ``deliverables/`` artifacts.</span>
 
@@ -1185,6 +1203,9 @@
             <span class="n">slurm_partition</span><span class="o">=</span><span class="n">slurm_partition</span><span class="p">,</span>
             <span class="n">slurm_mem</span><span class="o">=</span><span class="n">slurm_mem</span><span class="p">,</span>
             <span class="n">slurm_time</span><span class="o">=</span><span class="n">slurm_time</span><span class="p">,</span>
+            <span class="n">slurm_constraint</span><span class="o">=</span><span class="n">slurm_constraint</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="n">trials_path</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">trials_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
@@ -1313,6 +1334,9 @@
     <span class="n">slurm_partition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_mem</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">slurm_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">slurm_constraint</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Submit a distributed worker fleet via :class:`SlurmExecutor`.</span>
 
@@ -1378,6 +1402,8 @@
         <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_mem&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_mem</span>
     <span class="k">if</span> <span class="n">slurm_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_time</span>
+    <span class="k">if</span> <span class="n">slurm_constraint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">slurm_args</span><span class="p">[</span><span class="s2">&quot;slurm_constraint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slurm_constraint</span>
     <span class="c1"># Workers reload the RESOLVED spec persisted to deliverables/tuning_spec.json</span>
     <span class="c1"># (written above), NOT the raw input ``spec_path``: the --strategy / --n-trials</span>
     <span class="c1"># / --held-out overrides live only in the resolved spec, so handing the workers</span>
@@ -1393,6 +1419,8 @@
         <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
         <span class="n">storage_url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
         <span class="n">python_command</span><span class="o">=</span><span class="n">python_command</span><span class="p">,</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">executor</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">resolved_workers</span><span class="p">)))</span>
     <span class="k">return</span> <span class="kc">None</span>
