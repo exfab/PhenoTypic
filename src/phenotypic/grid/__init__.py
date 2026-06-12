@@ -6,7 +6,17 @@ automatic grid inference and manual specification for challenging imaging condit
 """
 
 from ._auto_grid_finder import AutoGridFinder
+from ._centered_auto_grid_finder import (
+    CenteredAutoGridFinder,
+    CenteredAutoGridFinderFallbackWarning,
+)
 from ._manual_grid_finder import ManualGridFinder
 from ._grid_apply import GridApply
 
-__all__ = ["GridApply", "AutoGridFinder", "ManualGridFinder"]
+__all__ = [
+    "GridApply",
+    "AutoGridFinder",
+    "CenteredAutoGridFinder",
+    "CenteredAutoGridFinderFallbackWarning",
+    "ManualGridFinder",
+]
