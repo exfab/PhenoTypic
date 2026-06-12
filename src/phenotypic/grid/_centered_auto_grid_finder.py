@@ -193,14 +193,48 @@ class CenteredAutoGridFinder(GridFinder):
                     best = out
         return best
 
+    # ---- centers -> edges ----
+    def _axis_edges(self, center: float, p: float, n_cells: int, image_dim: int) -> np.ndarray:
+        """n+1 edges = cell-center midlines with outer edges at +/- p/2, clipped to [0, image_dim]."""
+        first_center = center - (n_cells - 1) / 2.0 * p
+        edges = first_center - p / 2.0 + np.arange(n_cells + 1) * p
+        return np.clip(edges, 0, image_dim)
+
+    @staticmethod
+    def _extract_centers(image: "Image"):
+        info = image.objects.info(include_metadata=False)
+        x = info[str(BBOX.DIST_WEIGHTED_CENTER_CC)].to_numpy(dtype=float)
+        y = info[str(BBOX.DIST_WEIGHTED_CENTER_RR)].to_numpy(dtype=float)
+        return x, y, info
+
+    def _fit_grid_from_centers(self, x: np.ndarray, y: np.ndarray, H: int, W: int):
+        """Full pipeline on raw center arrays -> (row_edges, col_edges).
+        Fallback ladder lives in Task 7; here assume the happy path (>= 2 colonies,
+        valid bounds, periodic). Returns axis-aligned edge arrays."""
+        p_min, p_max = self._compute_bounds(x, y, H, W)
+        p0, ok = self._estimate_pitch(x, y, p_min, p_max)
+        cx_c = self._center_candidates(x, p0, self.ncols, W)
+        cy_c = self._center_candidates(y, p0, self.nrows, H)
+        best = self._multi_start_refine(x, y, p0, cx_c, cy_c)
+        cx, cy, p, _res = best
+        row_edges = self._axis_edges(cy, p, self.nrows, H)
+        col_edges = self._axis_edges(cx, p, self.ncols, W)
+        return row_edges, col_edges
+
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:
-        return self._uniform_edges(self.nrows, image.shape[0])
+        return self._fit_grid(image)[0]
 
     def get_col_edges(self, image: "Image") -> np.ndarray:
-        return self._uniform_edges(self.ncols, image.shape[1])
+        return self._fit_grid(image)[1]
+
+    def _fit_grid(self, image: "Image"):
+        """(row_edges, col_edges) for *image*, applying the fallback ladder (Task 7)."""
+        x, y, _ = self._extract_centers(image)
+        return self._fit_grid_from_centers(x, y, image.shape[0], image.shape[1])
 
     def _operate(self, image: "Image") -> pd.DataFrame:
-        row_edges = self.get_row_edges(image)
-        col_edges = self.get_col_edges(image)
-        return super()._get_grid_info(image=image, row_edges=row_edges, col_edges=col_edges)
+        x, y, info = self._extract_centers(image)
+        row_edges, col_edges = self._fit_grid_from_centers(x, y, image.shape[0], image.shape[1])
+        return super()._get_grid_info(image=image, row_edges=row_edges,
+                                      col_edges=col_edges, info_table=info)

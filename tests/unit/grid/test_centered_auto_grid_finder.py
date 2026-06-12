@@ -3,6 +3,7 @@ import pytest
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.grid import CenteredAutoGridFinder, CenteredAutoGridFinderFallbackWarning
+from phenotypic.schema import GRID
 
 
 def test_is_gridfinder_and_constructs_keyword_only():
@@ -109,3 +110,26 @@ def test_icp_singular_returns_none_all_one_cell():
     x = np.array([2500.0, 2503.0, 2498.0]); y = np.array([1570.0, 1572.0, 1569.0])
     out = f._icp_refine(x, y, 2533.0, 1576.0, 404.0)
     assert out is None
+
+
+def test_axis_edges_length_sorted_clipped():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    edges = f._axis_edges(center=1575.0, p=404.0, n_cells=8, image_dim=3152)
+    assert len(edges) == 9                  # n+1
+    assert np.all(np.diff(edges) > 0)       # sorted ascending
+    assert edges[0] >= 0 and edges[-1] <= 3152
+
+
+def test_fit_grid_returns_edges_and_lands_on_lattice():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    p_true, cx, cy = 404.0, 2545.0, 1575.0
+    occ = [(1, 0), (1, 4), (1, 8), (2, 3), (2, 7), (2, 11), (3, 1), (3, 5),
+           (3, 9), (5, 0), (5, 4), (5, 8), (6, 0), (6, 6), (6, 11)]
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    row_edges, col_edges = f._fit_grid_from_centers(x, y, H, W)
+    assert len(row_edges) == 9 and len(col_edges) == 13
+    # every colony falls strictly inside the bin of its true cell
+    for (i, j), xi, yi in zip(occ, x, y):
+        assert row_edges[i] <= yi <= row_edges[i + 1]
+        assert col_edges[j] <= xi <= col_edges[j + 1]
