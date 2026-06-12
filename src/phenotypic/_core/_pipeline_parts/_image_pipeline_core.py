@@ -1128,18 +1128,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # Lazy imports to avoid circular dependency with phenotypic.grid.
         from phenotypic.abc_ import GridFinder
-        from phenotypic.grid import AutoGridFinder
+        from phenotypic.grid import CenteredAutoGridFinder
 
         if any(isinstance(m, GridFinder) for m in self._meas.values()):
             return self._meas
 
         injected_key = (
-            "AutoGridFinder"
-            if "AutoGridFinder" not in self._meas
-            else "_AutoGridFinder_preset"
+            "CenteredAutoGridFinder"
+            if "CenteredAutoGridFinder" not in self._meas
+            else "_CenteredAutoGridFinder_preset"
         )
         run_order: Dict[str, MeasureFeatures] = {
-            injected_key: AutoGridFinder(nrows=self._nrows, ncols=self._ncols),
+            injected_key: CenteredAutoGridFinder(nrows=self._nrows, ncols=self._ncols),
         }
         run_order.update(self._meas)
         return run_order

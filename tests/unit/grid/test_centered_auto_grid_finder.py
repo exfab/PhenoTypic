@@ -158,3 +158,9 @@ def test_degenerate_response_falls_back_without_exception():
     with pytest.warns(CenteredAutoGridFinderFallbackWarning):
         re, ce = f._fit_grid_from_centers(x, y, H, W)
     assert _edges_ok(re, ce, 8, 12, H, W)
+
+
+def test_grid_image_default_finder_is_centered():
+    from phenotypic import GridImage
+    img = GridImage(arr=np.zeros((400, 600, 3), dtype=np.uint8), nrows=8, ncols=12)
+    assert isinstance(img.grid_finder, CenteredAutoGridFinder)

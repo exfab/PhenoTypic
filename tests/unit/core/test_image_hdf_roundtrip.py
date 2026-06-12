@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, GridImage
-from phenotypic.grid import AutoGridFinder
+from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 from phenotypic.schema import METADATA
 from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
 
@@ -168,14 +168,14 @@ def test_grid_image_roundtrip_custom_grid_finder(tmp_path):
 
 def test_gridimage_roundtrip_default_auto_grid_finder(tmp_path):
     """A GridImage built without an explicit finder round-trips cleanly."""
-    grid_img = GridImage(arr=_make_small_rgb(64, 96))  # default AutoGridFinder
+    grid_img = GridImage(arr=_make_small_rgb(64, 96))  # default CenteredAutoGridFinder
 
     path = tmp_path / "grid_default.h5"
     grid_img.save2hdf5(path)
     loaded = GridImage.load_hdf5(path)
 
     assert isinstance(loaded, GridImage)
-    assert isinstance(loaded.grid_finder, AutoGridFinder)
+    assert isinstance(loaded.grid_finder, CenteredAutoGridFinder)
     assert loaded.nrows == grid_img.nrows
     assert loaded.ncols == grid_img.ncols
 
@@ -387,9 +387,9 @@ def test_gridimage_corrupt_grid_finder_json_falls_back(tmp_path):
     joined = " ".join(str(w.message) for w in user_warnings).lower()
     assert "gridfinder" in joined or "deserialization" in joined
 
-    # Still a usable GridImage with the default AutoGridFinder.
+    # Still a usable GridImage with the default CenteredAutoGridFinder.
     assert isinstance(loaded, GridImage)
-    assert isinstance(loaded.grid_finder, AutoGridFinder)
+    assert isinstance(loaded.grid_finder, CenteredAutoGridFinder)
 
 
 def test_gridimage_missing_grid_subgroup_via_gridimage_loader(tmp_path):
@@ -408,7 +408,7 @@ def test_gridimage_missing_grid_subgroup_via_gridimage_loader(tmp_path):
         loaded = GridImage.load_hdf5(path)
 
     assert isinstance(loaded, GridImage)
-    assert isinstance(loaded.grid_finder, AutoGridFinder)
+    assert isinstance(loaded.grid_finder, CenteredAutoGridFinder)
 
 
 def test_unknown_gamma_name_falls_back_to_string(tmp_path):
