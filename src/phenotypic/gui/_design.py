@@ -3,9 +3,10 @@
 Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
 ``<style>`` blocks into every Dash app's ``index_string``:
 
-* :data:`FONT_TOKENS_CSS` -- ``@import``s the three role fonts (IBM Plex
-  Serif display, IBM Plex Sans body, JetBrains Mono mono) and declares the
-  ``--font-display`` / ``--font-body`` / ``--font-mono`` custom properties.
+* :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Comfortaa for
+  display + body, JetBrains Mono for mono, IBM Plex Serif kept only for
+  italic species names) and declares the ``--font-display`` / ``--font-body``
+  / ``--font-mono`` / ``--font-species`` custom properties.
 * :data:`DESIGN_TOKENS_CSS` -- the brand + Okabe-Ito palettes, type scale,
   semantic ``--font-size-*`` aliases, line-height / tracking, spacing,
   radius, shadow, and ease/transition tokens.
@@ -15,8 +16,9 @@ Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
   ``.text-*`` style classes (DESIGN.md "02.5 / 02.6").
 
 To swap a role font: change ``_DISPLAY_PRIMARY`` / ``_BODY_PRIMARY`` /
-``_MONO_PRIMARY`` and update ``_GOOGLE_FONTS_URL``. Every mounted Dash app
-picks up the change on next reload -- no CSS file edits required.
+``_MONO_PRIMARY`` / ``_SPECIES_PRIMARY`` and update ``_GOOGLE_FONTS_URL``.
+Every mounted Dash app picks up the change on next reload -- no CSS file
+edits required.
 
 To swap a design color or sizing token: edit the matching ``COLOR_*``,
 ``TEXT_*``, ``FONT_SIZE_*``, ``RADIUS_*``, ``SHADOW_*``, or ``EASE_*``
@@ -96,6 +98,7 @@ __all__ = [
     "FONT_FAMILY_DISPLAY",
     "FONT_FAMILY_BODY",
     "FONT_FAMILY_MONO",
+    "FONT_FAMILY_SPECIES",
     "SPACING_1",
     "SPACING_2",
     "SPACING_3",
@@ -144,26 +147,40 @@ __all__ = [
 # Role fonts (Google Fonts) -- DESIGN.md "02.1 Font Families"
 # ---------------------------------------------------------------------------
 #
-# Three distinct role families (NOT one family across all roles):
+# Four role families (NOT one family across all roles):
 #
-#   display -- IBM Plex Serif : content headings, large stat values,
-#              italic species names.
-#   body    -- IBM Plex Sans  : prose, UI/component titles, button + tab labels.
-#   mono    -- JetBrains Mono  : ALL numeric data, axis labels, badge / label /
+#   display -- Comfortaa     : content headings, large stat values.
+#   body    -- Comfortaa     : prose, UI/component titles, button + tab labels.
+#   mono    -- JetBrains Mono : ALL numeric data, axis labels, badge / label /
 #              caption text, and code tokens.
+#   species -- IBM Plex Serif : ITALIC binomial species names ONLY. Comfortaa
+#              ships no true italic face, so italic *Genus species* is set in a
+#              real serif italic instead of a browser-synthesized oblique.
 #
-# IBM Plex Serif + IBM Plex Sans is a cohesive family pairing; JetBrains Mono
-# carries the data voice. To swap a role, change its ``_*_PRIMARY`` below and
-# update ``_GOOGLE_FONTS_URL`` to load the new family -- every call site
-# inherits via the ``--font-*`` custom properties / ``FONT_FAMILY_*`` constants.
+# Comfortaa carries both the display and body voice (one rounded geometric
+# sans across chrome); JetBrains Mono carries the data voice; IBM Plex Serif
+# is retained solely for italic species names. To swap a role, change its
+# ``_*_PRIMARY`` below and update ``_GOOGLE_FONTS_URL`` to load the new family
+# -- every call site inherits via the ``--font-*`` custom properties /
+# ``FONT_FAMILY_*`` constants.
 
-_DISPLAY_PRIMARY = "IBM Plex Serif"
-_BODY_PRIMARY = "IBM Plex Sans"
+_DISPLAY_PRIMARY = "Comfortaa"
+_BODY_PRIMARY = "Comfortaa"
 _MONO_PRIMARY = "JetBrains Mono"
+_SPECIES_PRIMARY = "IBM Plex Serif"
 
+# The @import loads more than the four chrome roles: the chart subsystem
+# (``phenotypic.tools_.viz.figures._theme``) is intentionally NOT migrated to
+# Comfortaa -- it keeps IBM Plex Sans for plot titles / legend names and IBM
+# Plex Serif for donut center values (DESIGN.md "06 -- Charts"). Those plots
+# render inside GUI Dash pages, so the IBM Plex families must stay loaded here
+# even though no ``--font-*`` chrome token references IBM Plex Sans. Comfortaa
+# carries display + body; JetBrains Mono carries data; IBM Plex Serif (italic)
+# also backs ``--font-species`` for binomial names.
 _GOOGLE_FONTS_URL = (
     "https://fonts.googleapis.com/css2?"
-    "family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500"
+    "family=Comfortaa:wght@400;500;600;700"
+    "&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500"
     "&family=IBM+Plex+Sans:wght@400;500;600;700"
     "&family=JetBrains+Mono:wght@400;500;600"
     "&display=swap"
@@ -171,16 +188,20 @@ _GOOGLE_FONTS_URL = (
 
 # Cross-platform fallbacks: kick in if the Google Font is blocked or slow to
 # load. The stacks cover macOS / iOS, Windows, Linux, and Android in turn
-# before bottoming out on the generic CSS family.
-_FALLBACK_DISPLAY = 'Georgia, "Times New Roman", Times, serif'
-_FALLBACK_BODY = (
+# before bottoming out on the generic CSS family. Display + body share the
+# sans stack (Comfortaa is a rounded sans); species falls back to a serif so
+# italic binomials stay serif even offline.
+_FALLBACK_SANS = (
     '-apple-system, BlinkMacSystemFont, "Segoe UI", '
     '"Helvetica Neue", Arial, sans-serif'
 )
+_FALLBACK_DISPLAY = _FALLBACK_SANS
+_FALLBACK_BODY = _FALLBACK_SANS
 _FALLBACK_MONO = (
     'ui-monospace, "SFMono-Regular", Menlo, Consolas, '
     '"Liberation Mono", "Courier New", monospace'
 )
+_FALLBACK_SPECIES = 'Georgia, "Times New Roman", Times, serif'
 
 # Python-side font-family strings -- mirror the CSS custom properties
 # below. Use these from Python inline ``style={...}`` dicts and from
@@ -190,6 +211,7 @@ _FALLBACK_MONO = (
 FONT_FAMILY_DISPLAY: str = f"'{_DISPLAY_PRIMARY}', {_FALLBACK_DISPLAY}"
 FONT_FAMILY_BODY: str = f"'{_BODY_PRIMARY}', {_FALLBACK_BODY}"
 FONT_FAMILY_MONO: str = f"'{_MONO_PRIMARY}', {_FALLBACK_MONO}"
+FONT_FAMILY_SPECIES: str = f"'{_SPECIES_PRIMARY}', {_FALLBACK_SPECIES}"
 
 FONT_TOKENS_CSS = f"""\
 @import url("{_GOOGLE_FONTS_URL}");
@@ -198,6 +220,7 @@ FONT_TOKENS_CSS = f"""\
   --font-display: {FONT_FAMILY_DISPLAY};
   --font-body:    {FONT_FAMILY_BODY};
   --font-mono:    {FONT_FAMILY_MONO};
+  --font-species: {FONT_FAMILY_SPECIES};
 }}
 """
 
@@ -671,7 +694,7 @@ code:not(pre code), kbd {
 .text-data--muted{ font-family: var(--font-mono); font-size: var(--font-size-body);    font-weight: 400; line-height: var(--leading-normal); color: var(--color-muted); }
 .text-data-micro { font-family: var(--font-mono); font-size: var(--font-size-micro);   font-weight: 400; line-height: var(--leading-tight); letter-spacing: 0.02em; color: var(--color-muted); }
 
-.is-species      { font-style: italic; }
+.is-species      { font-family: var(--font-species); font-style: italic; }
 """
 
 # ---------------------------------------------------------------------------

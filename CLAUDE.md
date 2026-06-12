@@ -199,6 +199,22 @@ and expose a typed render function whose parameters are the public API.
 Never accept bare `str` for closed sets, never propagate raw strings past the boundary,
 never derive `Literal` from runtime expressions.
 
+A new numeric (`int`/`float`) field on any `detect/`, `enhance/`, `refine/`, `grid/`, or
+`correction/` operation is pulled into the annotation-coverage gate
+(`tests/unit/tune/test_annotation_coverage.py`) and **must be covered** — by a `TuneSpec`
+or a pydantic `Field` bound — or CI fails. Pick the annotation by intent, not just to pass
+the gate:
+
+- **Has a fixed, sensible search window** → `Annotated[float, TuneSpec(low, high, log=...)]`.
+- **Should never be tuned** (scene-derived, structural) → `TuneSpec(tunable=False)`.
+- **Worth tuning but the range depends on runtime context** (e.g. a filter cutoff on a
+  measured value whose scale varies by feature) → a **bare `TuneSpec()`** (tunable, no
+  `low`/`high`). It satisfies the gate and declares intent-to-tune, while auto-search
+  deliberately surfaces it as range-less (`_resolve_tune_spec` → `Excluded("non_numeric")`)
+  instead of fabricating a window; the concrete range is supplied per-run in the tune spec.
+  Don't reach for `tunable=False` just to silence the gate when the field is genuinely a
+  knob. Canonical: `refine/_remove_by_value.py` (`min_value`/`max_value`).
+
 ## Gotchas
 
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except.

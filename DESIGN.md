@@ -4,8 +4,9 @@
 > research & bioanalysis applications (PhenoTypic).
 >
 > **Single source of truth** for all dashboard UI and data-visualization work. Audience:
-> human designers, frontend developers, and agentic coding assistants. Fonts: IBM Plex
-> Serif (display), IBM Plex Sans (body), JetBrains Mono (mono). Canvas: #FBFEF8.
+> human designers, frontend developers, and agentic coding assistants. Fonts: Comfortaa
+> (display + body), JetBrains Mono (mono), IBM Plex Serif (italic species names only).
+> Canvas: #FBFEF8.
 
 ---
 
@@ -40,9 +41,12 @@ chart;
 the gold accent never becomes a data series. This three-way closure is the single most
 important characteristic of the system.
 
-Type carries the second voice. IBM Plex Serif carries content headings and large stat
-values at weight 400, with an italic cut for Latin species names (e.g.
-*Rhodotorula toruloides*). IBM Plex Sans carries body copy and UI chrome titles. JetBrains
+Type carries the second voice. Comfortaa -- a rounded geometric sans -- carries both
+content headings / large stat values (display) and body copy / UI chrome titles (body) at
+weights 400-700, giving the chrome one warm, approachable voice. Latin species names
+(e.g. *Rhodotorula toruloides*) are the one exception: because Comfortaa ships no true
+italic, they are set in IBM Plex Serif's italic cut so the binomial reads as a real
+italic, not a synthesized slant. JetBrains
 Mono
 carries every number, axis label, badge, caption, and code token. Mono-for-all-data is a
 signature: it preserves optical column alignment and gives the surface a data-forward
@@ -75,9 +79,10 @@ construction.
 - **Mono for all data.** Every number, axis label, badge, caption, and code token
   renders
   in JetBrains Mono, for optical column alignment and a data-forward voice.
-- **Serif content headings, sans UI chrome.** IBM Plex Serif (weight 400) for content
-  headings and stat values; IBM Plex Sans (500 / 600) for body and component titles. The
-  serif-to-sans shift between content and chrome is intentional.
+- **Comfortaa across chrome.** A single rounded geometric sans (Comfortaa) carries both
+  content headings / stat values (weight 400) and body / component titles (500 / 600).
+  Italic species names are the lone serif exception (IBM Plex Serif italic), since
+  Comfortaa has no true italic face.
 - **Colorblind-safe by construction.** Fixed Okabe-Ito six-series order, no red-green
   colormaps, vermilion reserved for error / alert, six categorical series maximum before
   an
@@ -365,54 +370,19 @@ Call-site discipline (carried over from the original spec, unchanged):
 
 ### 02.1 -- Font Families
 
-Three role tokens. Nothing else may declare a `font-family`.
+Four role tokens. Nothing else may declare a `font-family`.
 
 ```css
---font-display:
-
-'IBM Plex Serif'
-,
-Georgia,
-
-"Times New Roman"
-,
-Times, serif
-
-;
---font-body:
-
-'IBM Plex Sans'
-,
--apple-system,
-
-"Segoe UI"
-,
-"Helvetica Neue"
-,
-Arial, sans-serif
-
-;
---font-mono:
-
-'JetBrains Mono'
-,
-ui-monospace,
-
-"SFMono-Regular"
-,
-Menlo,
-
-"Liberation Mono"
-,
-monospace
-
-;
+--font-display: 'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-body:    'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, "Liberation Mono", monospace;
+--font-species: 'IBM Plex Serif', Georgia, "Times New Roman", Times, serif;
 ```
 
 ```html
 
 <link
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet"
 />
 ```
@@ -420,31 +390,45 @@ monospace
 `gui/_design.py` constants (the Python call-site source of truth):
 
 ```python
-FONT_FAMILY_DISPLAY = "'IBM Plex Serif', Georgia, 'Times New Roman', Times, serif"
-FONT_FAMILY_BODY = "'IBM Plex Sans', -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_DISPLAY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_BODY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, 'Liberation Mono', monospace"
+FONT_FAMILY_SPECIES = "'IBM Plex Serif', Georgia, 'Times New Roman', Times, serif"
 ```
 
 Role intent:
 
 | Token            | Role    | Carries                                                                      |
 |------------------|---------|------------------------------------------------------------------------------|
-| `--font-display` | Display | Content headings, large stat values, italic species names                    |
+| `--font-display` | Display | Content headings, large stat values                                          |
 | `--font-body`    | Body    | Prose, button / tab labels, component titles                                 |
 | `--font-mono`    | Mono    | All numeric data, axis labels, badge / overline / label text, captions, code |
+| `--font-species` | Species | **Italic** binomial species names only (the one non-Comfortaa text surface)  |
 
-> **This is the swap the original spec anticipated.** The role tokens always existed so
-> a
-> move off the single-family Roboto surface would be mechanical: change the three
-> families in `gui/_design.py` and every call site inherits them with no edits. This
-> spec
-> performs that swap (IBM Plex Serif display, IBM Plex Sans body, JetBrains Mono mono).
+> **The chrome runs on one family.** Comfortaa carries both the display and body roles,
+> so headings, stat values, prose, and UI titles all share a single rounded geometric
+> sans. The role tokens still exist independently, so a future split back into two
+> families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
+> `gui/_design.py` and every call site inherits it with no edits.
 
-> **Weights.** IBM Plex Serif ships 400 / 500 / 600 (plus italics); JetBrains Mono ships
-> 400 / 500 / 600; IBM Plex Sans 400 / 500 / 600 / 700. Display styles default to 400 to keep
-> headings light; you may raise Header / Title to 500 or 600 for heavier hierarchy. Only
-> those families and weights are loaded; do not reference a weight outside the imported
-> set.
+> **Italics need a serif.** Comfortaa ships no true italic face, so `font-style: italic`
+> on a Comfortaa run would render a browser-synthesized oblique. Italic species names
+> (`.is-species`) therefore switch to `--font-species` (IBM Plex Serif italic) for a real
+> italic cut. Do not apply `--font-species` to anything but italic binomials.
+
+> **Charts keep IBM Plex.** The `@import` also loads **IBM Plex Sans** and **IBM Plex
+> Serif** (regular + italic) even though no chrome `--font-*` token references IBM Plex
+> Sans. The chart subsystem (`viz/figures/_theme.py`, §06) is deliberately *not* migrated
+> to Comfortaa -- plot titles / legend names stay IBM Plex Sans and donut center values
+> stay IBM Plex Serif -- and those plots render inside GUI pages, so the families must
+> stay loaded. Chrome chooses Comfortaa; charts keep IBM Plex; the two intentionally
+> differ.
+
+> **Weights.** Comfortaa ships 400 / 500 / 600 / 700; JetBrains Mono ships 400 / 500 / 600;
+> IBM Plex Sans 400 / 500 / 600 / 700 and IBM Plex Serif 400 / 500 / 600 (+ italics) are
+> loaded for the chart subsystem. Display styles default to 400 to keep headings light;
+> you may raise Header / Title to 500 / 600 / 700 for heavier hierarchy. Only those
+> families and weights are loaded; do not reference a weight outside the imported set.
 
 ---
 
@@ -653,10 +637,11 @@ Notes:
   fixed
   parts are mono family, weight 500, heading color. The **muted** variant (weight 400,
   `--color-muted`) is for secondary table cells.
-- **Species names** are an italic modifier on any display-family style, not a separate
-  style. Apply `font-style: italic` to Title / Header / H2 / H3 as needed (IBM Plex
-  Serif
-  italics are loaded).
+- **Species names** add the `.is-species` class (italic), which also switches the run to
+  `--font-species` (IBM Plex Serif italic) -- Comfortaa has no true italic, so the
+  family swap is what makes the binomial a real italic rather than a synthesized oblique.
+  Apply it to Title / Header / H2 / H3 species runs as needed; only IBM Plex Serif italic
+  400 / 500 are loaded.
 
 ---
 
@@ -868,20 +853,16 @@ Confirm before treating this as final.
    references in `gui/_design.py` and CSS to `--font-size-body-sm`, or keep a deprecated
    alias `--font-size-label: var(--font-size-body-sm)` during migration.
 
-2. **Heading family at small sizes.** Content headings (Title, Header, H2, H3) stay in
-   the
-   display serif (IBM Plex Serif, 400). Component titles use the **UI Title** style
-   (IBM Plex Sans, 600), matching the component specs. The serif-to-sans shift is intentional.
-   To
-   unify, point UI Title at `--font-display`.
+2. **Heading vs. component-title weight.** Content headings (Title, Header, H2, H3) and
+   component titles (**UI Title**) now share one family -- Comfortaa -- distinguished by
+   weight (headings 400, UI Title 600) rather than the old serif-to-sans shift. Both map
+   to Comfortaa via `--font-display` / `--font-body`, which carry the same stack.
 
-3. **Body family (optional).** Body stays IBM Plex Sans. You use IBM Plex Sans + IBM Plex Mono
-   in
-   the timeline artifact; for full IBM Plex cohesion, switch `--font-body` to
-   `'IBM Plex Sans'`
-   and update the import. IBM Plex Serif + IBM Plex Sans is also a fine pairing. Preference,
-   not
-   correctness.
+3. **Body family.** Body is Comfortaa (same family as display). The chrome runs on a
+   single rounded geometric sans; only italic species names (`--font-species`, IBM Plex
+   Serif) and mono data (`--font-mono`, JetBrains Mono) step outside it. To split display
+   and body back into two families, change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
+   `gui/_design.py` and update the import.
 
 ---
 
@@ -1375,7 +1356,7 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 +-- 3px accent bar (color by category) -------------------------+
 |  LABEL -- JetBrains Mono -- 11px -- uppercase -- --color-muted       |
 |                                                               |
-|  Value -- IBM Plex Serif -- 2.5rem                          |
+|  Value -- Comfortaa -- 2.5rem                               |
 |  Delta -- JetBrains Mono -- 11px -- #009E73 (up) / #D55E00 (down)   |
 +---------------------------------------------------------------+
 ```
@@ -1433,7 +1414,7 @@ Use Okabe-Ito series order for multi-fill progress. Track background is always
 
 Reserve `#D55E00` for error-state fills only.
 
-**Label layout:** progress name (IBM Plex Sans 500) left, value (JetBrains Mono) right,
+**Label layout:** progress name (Comfortaa 500) left, value (JetBrains Mono) right,
 `justify-content: space-between`. Stack items with `gap: 16px`.
 
 **CSS:**
@@ -1482,7 +1463,7 @@ reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
 | lg      | 15px      | `0.7rem 1.5rem`                   |
 | icon    | --        | `width/height 2.25rem, padding 0` |
 
-**Shared styles:** IBM Plex Sans, `font-weight: 500`, `letter-spacing: 0.01em`,
+**Shared styles:** Comfortaa, `font-weight: 500`, `letter-spacing: 0.01em`,
 `border-radius: var(--radius)`, `border-width: 1.5px`,
 `transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1)`.
 
@@ -1536,7 +1517,7 @@ card surfaces.
 `border-radius: var(--radius)`, `border-left: 4px solid`.
 
 **Icon:** `1rem`, `flex-shrink: 0`, `margin-top: 1px`.
-**Title:** IBM Plex Sans, `font-weight: 600`, `font-size: 13px`.
+**Title:** Comfortaa, `font-weight: 600`, `font-size: 13px`.
 **Body:** `opacity: 0.85`, `line-height: 1.5`.
 
 | Type    | Border    | Background              | Text      |
@@ -1569,7 +1550,7 @@ quality metrics, status badge.
 ### Form Inputs
 
 **Base styles:** `background: #ffffff`, `border: 1.5px solid --color-border`,
-`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, IBM Plex Sans 13px,
+`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, Comfortaa 13px,
 `color: --color-body`, `transition: border-color 180ms, box-shadow 180ms`.
 
 | State   | Border                       | Focus Ring                        |
@@ -1849,9 +1830,10 @@ Include this `:root` block in all generated CSS files:
     --color-danger: var(--oi-vermilion);
 
     /* Typography */
-    --font-display: 'IBM Plex Serif', Georgia, serif;
-    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-display: 'Comfortaa', system-ui, sans-serif;
+    --font-body: 'Comfortaa', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    --font-species: 'IBM Plex Serif', Georgia, serif; /* italic binomials only */
 
     /* Type scale */
     --text-xs: 0.6875rem; /*  11px */
@@ -1939,8 +1921,9 @@ Include this `:root` block in all generated CSS files:
   warning / error), in the fixed order navy, orange, sky, green, blue, purple.
 - **Render every number, axis label, badge, caption, and code token in the mono family**
   (JetBrains Mono), to keep optical column alignment and a data-forward voice.
-- **Use IBM Plex Serif for content headings and large stat values; IBM Plex Sans for body and
-  component titles.** Serif for content, sans for chrome.
+- **Use Comfortaa for content headings, large stat values, body, and component titles**
+  -- one rounded geometric sans across all chrome. Italic species names are the lone
+  exception (IBM Plex Serif italic, via `.is-species` / `--font-species`).
 - **Pair color with a second signal on every status.** A dot, an icon, or a text word,
   so
   meaning survives for colorblind readers.
@@ -2000,7 +1983,7 @@ composites, and overlays that never destroy the underlying signal.
 
 ```
 +-- chart-card surface (radius-md, shadow-sm, 1px --color-border) -----+
-|  TITLE -- IBM Plex Sans 13 600 --color-heading      [toolbar: icons right] |
+|  TITLE -- Comfortaa 13 600 --color-heading          [toolbar: icons right] |
 |  subtitle -- JetBrains Mono 11 --color-muted                                |
 |  +-- image stage (background #0e1620 for fluor, #FBFEF8 for bright)+ |
 |  |                                                                  | |
@@ -2412,7 +2395,7 @@ Never build a sequential colorbar from categorical series colors.
   not place a logo asset (a light-background lockup on the navy bar would violate the
   section 00 "no light lockup on a dark surface" rule; a dark-background logo variant
   would be required first).
-- **Sidebar nav item:** IBM Plex Sans 13, `--color-muted` default; active gets
+- **Sidebar nav item:** Comfortaa 13, `--color-muted` default; active gets
   `--color-navy` text + 3px left accent bar in `--color-navy` + `rgba(0,54,96,0.05)`
   background. Reuses the active-tab logic. The sidebar itself is `--color-white`.
 
@@ -2497,7 +2480,7 @@ Never build a sequential colorbar from categorical series colors.
 
 ### Empty States
 
-- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), IBM Plex Sans 13
+- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), Comfortaa 13
   title, JetBrains Mono 11 sub-line, optional primary button to act.
 - Voice: state what is missing and the next step, not just "no data".
 
@@ -2506,7 +2489,7 @@ Never build a sequential colorbar from categorical series colors.
 - Bottom-right stack, `--color-white`, `--radius-md`, `--shadow-md`, 4px left accent in
   the semantic color (success / info / warning / error from section 01).
 - Auto-dismiss 4-6s; errors persist until dismissed.
-- Title IBM Plex Sans 13 600; body IBM Plex Sans 13; any code/IDs JetBrains Mono.
+- Title Comfortaa 13 600; body Comfortaa 13; any code/IDs JetBrains Mono.
 
 ### Modal / Dialog
 

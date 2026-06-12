@@ -363,14 +363,17 @@ class TestDesignTokens:
 
     def test_font_family_constants_carry_role_fonts(self) -> None:
         """Each Python-side ``FONT_FAMILY_*`` string leads with its role font
-        (IBM Plex Serif display / IBM Plex Sans body / JetBrains Mono mono) and
-        ends with the matching generic CSS family fallback (DESIGN.md "02.1")."""
-        assert _design.FONT_FAMILY_DISPLAY.startswith("'IBM Plex Serif'")
-        assert _design.FONT_FAMILY_BODY.startswith("'IBM Plex Sans'")
+        (Comfortaa display + body / JetBrains Mono mono / IBM Plex Serif italic
+        species) and ends with the matching generic CSS family fallback
+        (DESIGN.md "02.1")."""
+        assert _design.FONT_FAMILY_DISPLAY.startswith("'Comfortaa'")
+        assert _design.FONT_FAMILY_BODY.startswith("'Comfortaa'")
         assert _design.FONT_FAMILY_MONO.startswith("'JetBrains Mono'")
-        assert _design.FONT_FAMILY_DISPLAY.rstrip().endswith("serif")
+        assert _design.FONT_FAMILY_SPECIES.startswith("'IBM Plex Serif'")
+        assert _design.FONT_FAMILY_DISPLAY.rstrip().endswith("sans-serif")
         assert _design.FONT_FAMILY_BODY.rstrip().endswith("sans-serif")
         assert _design.FONT_FAMILY_MONO.rstrip().endswith("monospace")
+        assert _design.FONT_FAMILY_SPECIES.rstrip().endswith("serif")
 
     def test_spacing_grid_matches_8pt_system(self) -> None:
         """``SPACING_*`` constants line up with the 8 pt grid."""

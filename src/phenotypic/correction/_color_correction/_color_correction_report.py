@@ -36,7 +36,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from phenotypic.abc_ import FigureProvider, figure
-from phenotypic.viz.figures._theme import GOLD, NAVY, OKABE_ITO
+from phenotypic.tools_.viz.figures._theme import GOLD, NAVY, OKABE_ITO
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -273,7 +273,7 @@ class ColorCorrectionReport(FigureProvider):
         Returns:
             A single themed ``plotly.graph_objects.Figure``.
         """
-        from phenotypic.viz.figures._theme import apply_theme
+        from phenotypic.tools_.viz.figures._theme import apply_theme
 
         specs = self.iter_figures()
         if len(specs) == 1:

@@ -20,7 +20,7 @@
 - Commit per task, scoped `git add <paths>`. Worktree: `/Users/alex/Projects/PhenoTypic/.claude/worktrees/error-triage-cutoffs`.
 - ⚠️ **NEVER** `git stash` / `git checkout <ref>` / branch-switch — four unrelated user stashes live in this worktree. Be the sole committer; scope every `git add`.
 - Google-style docstrings everywhere. Pure-data doctests are fine with tiny inline frames (the engine + data layer take raw frames).
-- **Palette rule (DESIGN.md):** category fills use `category_color(token, custom_index)` (OI data palette); the **good** series uses a neutral data tone (`COLOR_INFO` = OI_SKY). Never a `COLOR_*` chrome hue as a data series. Call `apply_theme(fig)` (from `phenotypic.viz.figures`) before returning any figure.
+- **Palette rule (DESIGN.md):** category fills use `category_color(token, custom_index)` (OI data palette); the **good** series uses a neutral data tone (`COLOR_INFO` = OI_SKY). Never a `COLOR_*` chrome hue as a data series. Call `apply_theme(fig)` (from `phenotypic.tools_.viz.figures`) before returning any figure.
 - **FEATURES.md is CI-gated:** any touch under `src/phenotypic/gui/` requires a `FEATURES.md` row; `✅ shipping` rows need a resolvable `Test ref`. Add rows in Task 7.
 - Import shared constants, never re-spell: `category_color` (`gui/_design.py`); `CFG_FILTERED_STATE`, `CFG_OUTPUT_ROOT` (`gui/_config.py`); io path helpers from `phenotypic.tools_`.
 
