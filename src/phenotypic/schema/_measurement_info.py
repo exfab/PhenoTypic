@@ -136,6 +136,8 @@ class MeasurementInfo(str, Enum):
     # annotations that have no value.
     label: str
     desc: str
+    bio_desc: str
+    image: str | None
     pair: tuple[str, str]
 
     @classmethod
@@ -169,38 +171,34 @@ class MeasurementInfo(str, Enum):
         """
         return type(self).category()
 
-    def __new__(cls, label: str, desc: str | None = None):
-        """Create a new measurement enumeration member with prefixed name.
+    def __new__(cls, *args):
+        """Create a member from an ``Entry`` (preferred) or, transiently, a
+        legacy ``(label, desc)`` tuple / bare ``label`` string.
 
-        Converts the input label and description into an enumeration member whose string
-        value is automatically prefixed with the category name. The label and description
-        are stored as instance attributes for convenient access.
-
-        This method is called automatically by Python's Enum machinery when defining enum
-        members. The enum member's value becomes the full prefixed name (e.g.,
-        'Shape_Area'), while the label and description are stored separately as instance
-        attributes.
-
-        Args:
-            label (str): The short label for the measurement without category prefix
-                (e.g., 'Area'). This will be combined with the category name to create
-                the full enumeration value.
-            desc (str, optional): The description of what the measurement represents. If
-                not provided, defaults to an empty string. This should briefly explain
-                what the measurement measures.
-
-        Returns:
-            MeasurementInfo: An enumeration member that behaves as a string with the value
-                '{category}_{label}' (e.g., 'Shape_Area'). The instance also has label,
-                desc, and pair attributes set.
+        The legacy branch is a migration scaffold removed once all members use
+        ``Entry``. The enum value is the category-prefixed header (e.g.
+        ``Shape_Area``); ``label``/``desc``/``bio_desc``/``image`` are stored as
+        instance attributes.
         """
-        cat = cls.category()  # use classmethod here
-        full = f"{cat}_{label}"
+        if len(args) == 1 and isinstance(args[0], Entry):
+            entry = args[0]
+        elif len(args) == 1 and isinstance(args[0], str):
+            entry = Entry(args[0])
+        elif len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+            entry = Entry(args[0], args[1])
+        else:
+            raise TypeError(
+                f"{cls.__name__} members must be declared as Entry(...); "
+                f"got {args!r}."
+            )
+        full = f"{cls.category()}_{entry.label}"
         obj = str.__new__(cls, full)
         obj._value_ = full
-        obj.label = label
-        obj.desc = desc if desc else ""
-        obj.pair = (label, obj.desc)
+        obj.label = entry.label
+        obj.desc = entry.desc
+        obj.bio_desc = entry.bio_desc
+        obj.image = entry.image
+        obj.pair = (entry.label, entry.desc)
         return obj
 
     def __str__(self) -> str:
