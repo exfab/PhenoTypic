@@ -73,6 +73,15 @@ class CenteredAutoGridFinder(GridFinder):
         """Evenly spaced edges spanning the full axis (length n+1)."""
         return np.linspace(0, image_dim, n + 1)
 
+    def _compute_bounds(self, x: np.ndarray, y: np.ndarray, H: int, W: int) -> tuple[float, float]:
+        """Object-derived pitch floor (percentile span) + image-derived ceiling
+        (outermost cell centers fit the frame). NEVER uses image_dim/n as a floor."""
+        x_span = np.percentile(x, self.SPAN_PCT_HIGH) - np.percentile(x, self.SPAN_PCT_LOW)
+        y_span = np.percentile(y, self.SPAN_PCT_HIGH) - np.percentile(y, self.SPAN_PCT_LOW)
+        p_min = max(x_span / max(self.ncols - 1, 1), y_span / max(self.nrows - 1, 1))
+        p_max = min(H / max(self.nrows - 1, 1), W / max(self.ncols - 1, 1))
+        return float(p_min), float(p_max)
+
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:
         return self._uniform_edges(self.nrows, image.shape[0])
