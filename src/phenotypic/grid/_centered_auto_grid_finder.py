@@ -82,6 +82,40 @@ class CenteredAutoGridFinder(GridFinder):
         p_max = min(H / max(self.nrows - 1, 1), W / max(self.ncols - 1, 1))
         return float(p_min), float(p_max)
 
+    @staticmethod
+    def _comb_mag(coords: np.ndarray, p: float) -> float:
+        return float(np.abs(np.exp(1j * 2.0 * np.pi * coords / p).mean()))
+
+    def _estimate_pitch(self, x: np.ndarray, y: np.ndarray,
+                        p_min: float, p_max: float) -> tuple[float, bool]:
+        """Pooled comb-response over [p_min, p_max]; pick the FUNDAMENTAL (largest p
+        among strict local maxima >= response_floor*peak). Returns (pitch, ok)."""
+        if not (p_max > p_min > 0):
+            return float(p_max), False
+        ps = np.linspace(p_min, p_max, self.n_pitch_samples)
+        Rr = np.array([self._comb_mag(x, p) + self._comb_mag(y, p) for p in ps])
+        peak = float(Rr.max())
+        if peak < self.ABSOLUTE_FLOOR:
+            return float(ps[int(np.argmax(Rr))]), False
+        # Local maxima above the relative floor; choose the largest p (fundamental).
+        # Boundary samples count as candidates so a true pitch landing exactly on the
+        # p_min floor (e.g. the outermost columns fully span the frame, making the
+        # percentile span == (C-1)*p) is recoverable — otherwise the peak at index 0
+        # would be excluded by a strict-interior-only check. The ABSOLUTE_FLOOR guard
+        # above still rejects genuinely non-periodic layouts.
+        n = len(ps)
+        floor_val = self.response_floor * peak
+        idx = []
+        for i in range(n):
+            left = Rr[i] > Rr[i - 1] if i > 0 else True
+            right = Rr[i] > Rr[i + 1] if i < n - 1 else True
+            if left and right and Rr[i] >= floor_val:
+                idx.append(i)
+        if not idx:
+            return float(ps[int(np.argmax(Rr))]), False
+        p0 = float(ps[max(idx)])
+        return p0, True
+
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:
         return self._uniform_edges(self.nrows, image.shape[0])
