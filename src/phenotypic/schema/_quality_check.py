@@ -1,8 +1,6 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
-from textwrap import dedent
-
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo, _render_info_table
 
 
 class QUALITY_CHECK(MeasurementInfo):
@@ -57,24 +55,9 @@ class QUALITY_CHECK(MeasurementInfo):
             Docstring with an appended RST table of output columns.
         """
         slug = check_name if check_name is not None else "<name>"
-        title = f"QC_{slug}"
-        lines = [
-            f".. list-table:: Category: **{title}**",
-            "   :header-rows: 1",
-            "",
-            "   * - Name",
-            "     - Description",
+        rows = [
+            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image) for m in cls
         ]
-        for m in cls:
-            label: str = m.label  # type: ignore[attr-defined]
-            desc: str = m.desc  # type: ignore[attr-defined]
-            lines += [
-                f"   * - ``QC_{slug}_{label}``",
-                f"     - {desc}",
-            ]
-        table = dedent("\n".join(lines))
-        if isinstance(doc, str):
-            base = doc
-        else:
-            base = doc.__doc__ or ""
+        table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
+        base = doc if isinstance(doc, str) else (doc.__doc__ or "")
         return base + "\n\n" + table

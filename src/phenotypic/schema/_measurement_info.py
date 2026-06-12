@@ -4,9 +4,11 @@ This module provides infrastructure for defining measurement types with consiste
 conventions, descriptive metadata, and automatic documentation generation.
 """
 
+import re
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from textwrap import dedent
+from typing import Final
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,62 @@ class Entry:
                 raise TypeError(f"Entry.{name} must be a string")
         if self.image is not None and not isinstance(self.image, str):
             raise TypeError("Entry.image must be a string path or None")
+
+
+#: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
+#: the same table resolves whether embedded in autodoc pages or measurements_ref
+#: pages. The docs build copies _assets/measurements/** into <srcdir>/_static/.
+_ASSET_URL_PREFIX: Final = "/_static/measurements"
+
+_RST_ROLE_RE: Final = re.compile(r":[a-zA-Z0-9_.:]+:`([^`]+)`")
+
+
+def _rst_cell_text(text: str) -> str:
+    """Escape text that would otherwise be parsed as RST markup in a cell."""
+    normalized = _RST_ROLE_RE.sub(lambda m: f"``{m.group(1)}``", text)
+    return normalized.replace("|", r"\|")
+
+
+def _render_info_table(
+    rows: list[tuple[str, str, str, str | None]],
+    *,
+    title: str,
+    name_header: str = "Name",
+) -> str:
+    """Render a list-table; Biology/Image columns appear only when populated.
+
+    Args:
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None)`` per member.
+        title: Bold table caption (rendered ``Category: **{title}**``).
+        name_header: Header for the first (name) column.
+    """
+    has_bio = any(bio for (_n, _d, bio, _i) in rows)
+    has_img = any(img for (_n, _d, _b, img) in rows)
+
+    lines = [
+        f".. list-table:: Category: **{title}**",
+        "   :header-rows: 1",
+        "",
+        f"   * - {name_header}",
+        "     - Description",
+    ]
+    if has_bio:
+        lines.append("     - Biology")
+    if has_img:
+        lines.append("     - Image")
+
+    for name, desc, bio, img in rows:
+        lines.append(f"   * - ``{name}``")
+        lines.append(f"     - {_rst_cell_text(desc)}")
+        if has_bio:
+            lines.append(f"     - {_rst_cell_text(bio)}")
+        if has_img:
+            if img:
+                lines.append(f"     - .. image:: {_ASSET_URL_PREFIX}/{img}")
+                lines.append("          :width: 110px")
+            else:
+                lines.append("     -")
+    return dedent("\n".join(lines))
 
 
 class MeasurementInfo(str, Enum):
@@ -240,49 +298,36 @@ class MeasurementInfo(str, Enum):
 
     @classmethod
     def rst_table(
-            cls,
-            *,
-            title: str | None = None,
-            header: tuple[str, str] = ("Name", "Description"),
+        cls,
+        *,
+        title: str | None = None,
+        header: tuple[str, str] = ("Name", "Description"),
+        use_headers: bool = False,
     ) -> str:
-        """Generate an RST (reStructuredText) table documenting the measurements.
+        """Render an RST list-table of this enum's members.
 
-        Creates a formatted list-table in reStructuredText format that documents all
-        measurements in this enumeration, including their labels and descriptions. This
-        is useful for generating API documentation, parameter guides, or measurement
-        reference tables that will be rendered in Sphinx documentation.
+        Adds a Biology column when any member sets ``bio_desc`` and an Image
+        column when any sets ``image`` (each suppressed otherwise).
 
         Args:
-            title (str, optional): The title for the RST table. Defaults to the class name
-                (e.g., 'SHAPE'). The title is formatted as "Category: **{title}**" in the
-                output.
-            header (tuple[str, str], optional): A tuple of (left_column, right_column)
-                header names. Defaults to ("Name", "Description"). The left column typically
-                contains measurement labels and the right column contains their descriptions.
-
-        Returns:
-            str: A formatted reStructuredText list-table string. The output includes:
-                - RST list-table directive with the title
-                - Column headers (Name and Description by default)
-                - One row per measurement with label and description
-                The returned string is ready to be embedded in Sphinx documentation files
-                or appended to docstrings.
+            title: Table caption; defaults to the category name.
+            header: ``(name_column_header, _description_header)``; only the name
+                header is used (the description header is fixed to "Description").
+            use_headers: Name cell shows the prefixed value (``Shape_Area``)
+                instead of the bare label (``Area``).
         """
         title = title or cls.category()
-        left, right = header
-        lines = [
-            f".. list-table:: Category: **{title}**",
-            "   :header-rows: 1",
-            "",
-            f"   * - {left}",
-            f"     - {right}",
+        name_header = header[0]
+        rows = [
+            (
+                m.value if use_headers else m.label,
+                m.desc,
+                m.bio_desc,
+                m.image,
+            )
+            for m in cls
         ]
-        for m in cls:
-            lines += [
-                f"   * - ``{m.label}``",
-                f"     - {m.desc}",
-            ]
-        return dedent("\n".join(lines))
+        return _render_info_table(rows, title=title, name_header=name_header)
 
     @classmethod
     def append_rst_to_doc(cls, module: str | object) -> str:
