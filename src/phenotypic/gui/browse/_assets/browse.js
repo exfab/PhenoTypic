@@ -15,6 +15,27 @@
 
     const ns = window.__phenotypicBrowse = window.__phenotypicBrowse || {};
     ns.viewer = ns.viewer || null;
+    // Tokens whose DZI conversion has already been warmed this session, so a
+    // rapid prev/next sweep never re-fetches the same neighbour. The browse
+    // cache is never evicted mid-run, so "warmed once" stays warm.
+    ns.prefetched = ns.prefetched || new Set();
+
+    // Background-fetch each neighbour's .dzi to pre-warm the server-side
+    // normalize + DZI-tile cache. The body is discarded — the point is the
+    // disk cache the next ‹/› step will hit. A failed warm is dropped from the
+    // set so a real navigation can retry it. Fired after the active image
+    // opens so it never competes with the visible image's first paint.
+    function prefetchNeighbors(tokens) {
+        if (!Array.isArray(tokens)) { return; }
+        tokens.forEach(function (tok) {
+            if (!tok || ns.prefetched.has(tok)) { return; }
+            ns.prefetched.add(tok);
+            const url = appPrefix + "tiles/" + encodeURIComponent(tok) + ".dzi";
+            fetch(url, { credentials: "same-origin" }).then(function (resp) {
+                if (!resp.ok) { ns.prefetched.delete(tok); }
+            }).catch(function () { ns.prefetched.delete(tok); });
+        });
+    }
 
     function basename(p) {
         if (!p) { return ""; }
@@ -80,7 +101,10 @@
             immediateRender: false,
         });
         viewer._phenotypicDziUrl = dziUrl;
-        viewer.addHandler("open", function () { setLoading("hidden"); });
+        viewer.addHandler("open", function () {
+            setLoading("hidden");
+            prefetchNeighbors(payload.prefetch);
+        });
         viewer.addHandler("open-failed", function () {
             setLoading("error", name ? ("Could not load " + name) : "Could not load image");
         });
