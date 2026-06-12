@@ -144,9 +144,24 @@ center ∈ image_center ± ( (image_extent - grid_extent)/2 + p )   # full in-fr
 
 ### Stage 0 — Extract centers
 
-- Pull per-object centers from the objects table. **Fit** on the distance-weighted
-  center (`BBOX.DIST_WEIGHTED_CENTER_RR/CC`, the DT-maximum anchored in the colony
-  body, robust to filamentous extensions) — matching `AutoGridFinder`'s choice.
+- Pull per-object centers from the objects table. **Fit** on
+  `BBOX.DIST_WEIGHTED_CENTER_RR/CC` — matching `AutoGridFinder`'s choice.
+- **Center-column upgrade (in scope, folded in 2026-06-11).** That column is
+  currently computed as `ndi.maximum_position(dt)` — the single deepest DT pixel
+  (argmax), which makes its name a misnomer. On a **budding/dumbbell yeast colony**
+  the DT has two peaks and argmax snaps the center onto *one lobe*. Fix: compute the
+  true **DT-weighted centroid** `ndi.center_of_mass(dt, labels=objmap, index=labels)`
+  instead. One statistic, robust to *both* failure modes: thin filament hyphae carry
+  tiny DT weight so the center stays on the body (the original reason for using DT),
+  and a doublet's two lobes balance to the neck ≈ the true pin position. No detection
+  is needed — and note the tempting "DT-far-from-centroid ⇒ fall back" detector is
+  *unusable* because filaments also have DT≠centroid, so distance cannot tell
+  "trust-DT (filament)" from "trust-centroid (doublet)" apart; the weighted centroid
+  sidesteps the discrimination entirely. Blast radius is narrow — only the grid
+  finders + `grid/_grid_fit_report.py` read this column and no migration goldens
+  reference it — so the change is **in-place** in `measure/_measure_bounds.py` (no
+  new column, no schema surface). `AutoGridFinder` inherits the improvement.
+  Implemented as plan **Task 0**.
 - **Assign** (final output) via the standard `GridFinder` helper, which bins the
   geometric `BBOX.CENTER_RR/CC` through `pd.cut`. (Fit-center vs assign-center
   divergence is intentional and matches existing behavior.)
