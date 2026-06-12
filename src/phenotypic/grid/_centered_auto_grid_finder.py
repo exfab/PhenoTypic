@@ -58,6 +58,11 @@ class CenteredAutoGridFinder(GridFinder):
     SPAN_PCT_HIGH: ClassVar[float] = 95.0
     ABSOLUTE_FLOOR: ClassVar[float] = 0.6   # pooled comb response (max 2.0) below which "no periodicity"
     DET_EPS: ClassVar[float] = 1e-6
+    # Sub-pixel residual tie tolerance: a later multi-start candidate must beat the
+    # incumbent by more than this (px) to replace it, so translation-invariant ties
+    # resolve to the nearest-image-center candidate (tried first) rather than to
+    # floating-point noise.
+    _RESIDUAL_TIE_TOL: ClassVar[float] = 1e-6
 
     nrows: Annotated[int, TuneSpec(tunable=False)] = 8
     ncols: Annotated[int, TuneSpec(tunable=False)] = 12
@@ -134,6 +139,59 @@ class CenteredAutoGridFinder(GridFinder):
             if abs(c - img_c) <= half:
                 cands.append(float(c))
         return sorted(cands, key=lambda c: abs(c - img_c))
+
+    def _icp_refine(self, x: np.ndarray, y: np.ndarray,
+                    cx: float, cy: float, p: float):
+        """Closed-form assign->solve ICP from one seed. Returns (cx,cy,p,mean_residual)
+        or None if the design matrix is singular (cannot constrain pitch)."""
+        R, C, N = self.nrows, self.ncols, len(x)
+        a = b = None
+        for _ in range(self.max_iter):
+            jx = np.clip(np.round((x - cx) / p + (C - 1) / 2.0), 0, C - 1)
+            iy = np.clip(np.round((y - cy) / p + (R - 1) / 2.0), 0, R - 1)
+            a = jx - (C - 1) / 2.0
+            b = iy - (R - 1) / 2.0
+            A = np.array([[N, 0.0, a.sum()],
+                          [0.0, N, b.sum()],
+                          [a.sum(), b.sum(), (a * a + b * b).sum()]])
+            if abs(np.linalg.det(A)) < self.DET_EPS:
+                return None
+            rhs = np.array([x.sum(), y.sum(), (a * x + b * y).sum()])
+            cx, cy, p = np.linalg.solve(A, rhs)
+            # one-pass robust trim then re-solve on inliers
+            res = np.hypot(x - (cx + a * p), y - (cy + b * p))
+            inl = res <= self.residual_fraction * p
+            if 3 <= inl.sum() < N:
+                ai, bi, xi, yi, ni = a[inl], b[inl], x[inl], y[inl], int(inl.sum())
+                A2 = np.array([[ni, 0.0, ai.sum()],
+                               [0.0, ni, bi.sum()],
+                               [ai.sum(), bi.sum(), (ai * ai + bi * bi).sum()]])
+                if abs(np.linalg.det(A2)) >= self.DET_EPS:
+                    cx, cy, p = np.linalg.solve(A2, np.array([xi.sum(), yi.sum(),
+                                                              (ai * xi + bi * yi).sum()]))
+        res = np.hypot(x - (cx + a * p), y - (cy + b * p))
+        return float(cx), float(cy), float(p), float(res.mean())
+
+    def _multi_start_refine(self, x: np.ndarray, y: np.ndarray, p0: float,
+                            cx_cands: list[float], cy_cands: list[float]):
+        """Run ICP from every (cx,cy) candidate; keep the lowest-residual result.
+
+        Candidates are supplied nearest-image-center first (the ordering prior). A
+        later candidate replaces the current best only if it is *meaningfully* lower
+        (by ``_RESIDUAL_TIE_TOL`` px), so a row/column-translation-invariant sparse
+        layout — where several integer placements all fit with ~0 residual and differ
+        only by floating-point noise — resolves to the placement nearest the image
+        center rather than to whichever tie computed a marginally smaller float.
+        """
+        best = None
+        for cx0 in cx_cands:
+            for cy0 in cy_cands:
+                out = self._icp_refine(x, y, cx0, cy0, p0)
+                if out is None:
+                    continue
+                if best is None or out[3] < best[3] - self._RESIDUAL_TIE_TOL:
+                    best = out
+        return best
 
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:

@@ -74,3 +74,38 @@ def test_center_candidates_include_true_center():
     cy_c = f._center_candidates(y, p_true, f.nrows, H)
     assert min(abs(np.array(cx_c) - cx)) < 0.5 * p_true
     assert min(abs(np.array(cy_c) - cy)) < 0.5 * p_true
+
+
+def test_icp_recovers_params_from_good_seed():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    p_true, cx, cy = 404.0, 2545.0, 1575.0
+    occ = [(1, 0), (1, 4), (2, 3), (3, 5), (5, 8), (6, 11), (3, 1), (5, 4), (2, 7), (6, 0)]
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    out = f._icp_refine(x, y, cx + 30, cy - 25, p_true + 6)  # seed within ~0.1 cell
+    assert out is not None
+    rcx, rcy, rp, res = out
+    assert rp == pytest.approx(p_true, abs=1.0)
+    assert rcx == pytest.approx(cx, abs=2.0) and rcy == pytest.approx(cy, abs=2.0)
+    assert res < 0.05 * p_true
+
+
+def test_multistart_rejects_one_cell_shift():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    p_true, cx, cy = 404.0, 2545.0, 1575.0
+    occ = [(1, 0), (1, 4), (2, 3), (3, 5), (5, 8), (6, 11), (3, 1), (5, 4), (2, 7), (6, 0)]
+    x, y = _lattice_points(p_true, cx, cy, 8, 12, occ)
+    cx_c = f._center_candidates(x, p_true, f.ncols, W)
+    cy_c = f._center_candidates(y, p_true, f.nrows, H)
+    best = f._multi_start_refine(x, y, p_true, cx_c, cy_c)
+    assert best is not None
+    bcx, bcy, bp, res = best
+    assert bcx == pytest.approx(cx, abs=2.0) and bcy == pytest.approx(cy, abs=2.0)
+
+
+def test_icp_singular_returns_none_all_one_cell():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    # all points in a tiny cluster -> every assignment rounds to one cell -> det ~ 0
+    x = np.array([2500.0, 2503.0, 2498.0]); y = np.array([1570.0, 1572.0, 1569.0])
+    out = f._icp_refine(x, y, 2533.0, 1576.0, 404.0)
+    assert out is None
