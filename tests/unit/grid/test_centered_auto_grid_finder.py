@@ -133,3 +133,28 @@ def test_fit_grid_returns_edges_and_lands_on_lattice():
     for (i, j), xi, yi in zip(occ, x, y):
         assert row_edges[i] <= yi <= row_edges[i + 1]
         assert col_edges[j] <= xi <= col_edges[j + 1]
+
+
+def _edges_ok(row_edges, col_edges, R, C, H, W):
+    return (len(row_edges) == R + 1 and len(col_edges) == C + 1
+            and np.all(np.diff(row_edges) > 0) and np.all(np.diff(col_edges) > 0)
+            and row_edges[0] >= 0 and row_edges[-1] <= H
+            and col_edges[0] >= 0 and col_edges[-1] <= W)
+
+
+def test_zero_and_one_colony_uniform_no_crash():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12)
+    H, W = 3152, 5066
+    for x, y in [(np.array([]), np.array([])), (np.array([2500.0]), np.array([1570.0]))]:
+        re, ce = f._fit_grid_from_centers(x, y, H, W)
+        assert _edges_ok(re, ce, 8, 12, H, W)
+
+
+def test_degenerate_response_falls_back_without_exception():
+    f = CenteredAutoGridFinder(nrows=8, ncols=12, warn=True)
+    rng = np.random.default_rng(1)
+    H, W = 3152, 5066
+    x = rng.uniform(0, W, 30); y = rng.uniform(0, H, 30)
+    with pytest.warns(CenteredAutoGridFinderFallbackWarning):
+        re, ce = f._fit_grid_from_centers(x, y, H, W)
+    assert _edges_ok(re, ce, 8, 12, H, W)

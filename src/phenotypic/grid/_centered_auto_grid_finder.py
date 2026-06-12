@@ -207,19 +207,49 @@ class CenteredAutoGridFinder(GridFinder):
         y = info[str(BBOX.DIST_WEIGHTED_CENTER_RR)].to_numpy(dtype=float)
         return x, y, info
 
+    def _warn(self, msg: str) -> None:
+        if self.warn:
+            warnings.warn(f"CenteredAutoGridFinder {msg}",
+                          CenteredAutoGridFinderFallbackWarning, stacklevel=2)
+
+    def _centered_uniform(self, p: float, H: int, W: int):
+        """Centered uniform grid at pitch p (image-centered)."""
+        re = self._axis_edges(H / 2.0, p, self.nrows, H)
+        ce = self._axis_edges(W / 2.0, p, self.ncols, W)
+        return re, ce
+
     def _fit_grid_from_centers(self, x: np.ndarray, y: np.ndarray, H: int, W: int):
-        """Full pipeline on raw center arrays -> (row_edges, col_edges).
-        Fallback ladder lives in Task 7; here assume the happy path (>= 2 colonies,
-        valid bounds, periodic). Returns axis-aligned edge arrays."""
+        """Full pipeline on raw center arrays -> (row_edges, col_edges), with the
+        sparse-tail fallback ladder. Returns axis-aligned edge arrays."""
+        N = len(x)
+        # N in {0,1}: no inferable pitch -> centered grid at the max-fitting pitch
+        if N < 2:
+            self._warn(f"[few-objects] N={N}; centered uniform grid at max pitch.")
+            p_max = min(H / max(self.nrows - 1, 1), W / max(self.ncols - 1, 1))
+            return self._centered_uniform(p_max, H, W)
+
         p_min, p_max = self._compute_bounds(x, y, H, W)
+        if p_min >= p_max:
+            self._warn(f"[bound-inversion] p_min={p_min:.1f} >= p_max={p_max:.1f}; "
+                       "centered uniform grid at p_max.")
+            return self._centered_uniform(p_max, H, W)
+
         p0, ok = self._estimate_pitch(x, y, p_min, p_max)
+        if not ok:
+            self._warn("[degenerate-response] no clear periodicity; centered uniform at p_min.")
+            return self._centered_uniform(p_min, H, W)
+        if N <= self.min_fit_objects:
+            self._warn(f"[few-objects] N={N}: bounded-ambiguous fit (best-effort, not confident).")
+
         cx_c = self._center_candidates(x, p0, self.ncols, W)
         cy_c = self._center_candidates(y, p0, self.nrows, H)
         best = self._multi_start_refine(x, y, p0, cx_c, cy_c)
+        if best is None or best[3] > self.residual_fraction * best[2]:
+            self._warn("[icp-failed] no acceptable registration; centered uniform at comb pitch.")
+            return self._centered_uniform(p0, H, W)
+
         cx, cy, p, _res = best
-        row_edges = self._axis_edges(cy, p, self.nrows, H)
-        col_edges = self._axis_edges(cx, p, self.ncols, W)
-        return row_edges, col_edges
+        return self._axis_edges(cy, p, self.nrows, H), self._axis_edges(cx, p, self.ncols, W)
 
     # ---- GridFinder overrides ----
     def get_row_edges(self, image: "Image") -> np.ndarray:
