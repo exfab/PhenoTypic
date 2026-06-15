@@ -52,7 +52,11 @@ def test_bare_spec_positional_defaults_to_run(tmp_path, monkeypatch):
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
     out = tmp_path / "out"
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
 
     cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(out)])
 
@@ -66,7 +70,11 @@ def test_explicit_run_subcommand_runs_the_engine(tmp_path, monkeypatch):
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
     out = tmp_path / "out"
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
 
     cli.main(["run", str(spec_path), "-i", str(tmp_path), "-o", str(out)])
 
@@ -99,7 +107,11 @@ def test_held_out_flags_override_spec(tmp_path, monkeypatch):
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
     out = tmp_path / "out"
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
 
     captured: dict = {}
     original = run_mod.run_tuning

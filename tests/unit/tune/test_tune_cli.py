@@ -73,7 +73,11 @@ def test_cli_main_invokes_run(tmp_path, monkeypatch):
     out = tmp_path / "out"
 
     # patch image loading (no PNG fixtures needed)
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
     cli.main([str(spec_path), "-i", str(tmp_path), "-o", str(out)])
 
     assert io.best_pipeline_path(out).exists()
@@ -154,7 +158,11 @@ def test_cli_storage_url_env_fallback(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(cli, "run_tuning", _fake_run_tuning)
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
     monkeypatch.setenv(PHENOTYPIC_TUNE_STORAGE_URL_ENV, "sqlite:///env.db")
 
     spec_path = tmp_path / "spec.json"
@@ -383,7 +391,11 @@ def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(cli, "run_tuning", _fake_run_tuning)
-    monkeypatch.setattr(cli, "_load_images", lambda _p: [load_synth_yeast_plate()])
+    monkeypatch.setattr(
+        cli,
+        "_load_images",
+        lambda _p, *, nrows=None, ncols=None: [load_synth_yeast_plate()],
+    )
 
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
