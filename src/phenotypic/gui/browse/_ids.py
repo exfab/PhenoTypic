@@ -7,6 +7,8 @@ BROWSE_IMAGE_PICKER = "browse-image-picker"
 BROWSE_PREV_BTN = "browse-prev-btn"
 BROWSE_NEXT_BTN = "browse-next-btn"
 BROWSE_OSD_DIV = "browse-osd-div"                  # OSD mounts here by id (.browse-osd-canvas)
+BROWSE_OSD_LOADING = "browse-osd-loading"          # spinner overlay, toggled by browse.js on OSD open/open-failed
+BROWSE_LOADING_TEXT = "browse-loading-text"        # loading/error caption inside the overlay
 BROWSE_CURRENT_IMAGE_STORE = "browse-current-image-store"  # {token, label}
 BROWSE_DATASETS_STORE = "browse-datasets-store"    # {dataset_rel: [filename,...]}
 BROWSE_OSD_SYNC = "browse-osd-sync"                # dummy clientside-callback sink
@@ -23,6 +25,8 @@ __all__ = [
     "BROWSE_PREV_BTN",
     "BROWSE_NEXT_BTN",
     "BROWSE_OSD_DIV",
+    "BROWSE_OSD_LOADING",
+    "BROWSE_LOADING_TEXT",
     "BROWSE_CURRENT_IMAGE_STORE",
     "BROWSE_DATASETS_STORE",
     "BROWSE_OSD_SYNC",

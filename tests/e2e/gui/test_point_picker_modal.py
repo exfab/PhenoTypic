@@ -68,8 +68,11 @@ def _open_picker_modal_for_manual_point_detector(
 
     # The "Pick on image…" button is rendered in the param form once the
     # newly added node becomes the inspector selection.
-    page.wait_for_selector("text=Pick on image…", timeout=10_000)
-    page.click("text=Pick on image…")
+    page.locator("#btn-inspector-slideover-toggle").click(timeout=10_000)
+    picker_button = page.locator("button[id*='param-point-picker-btn']").first
+    picker_button.wait_for(state="visible", timeout=10_000)
+    picker_button.scroll_into_view_if_needed(timeout=10_000)
+    picker_button.click(timeout=10_000)
 
     # ``dbc.Modal`` flips ``display: block`` when ``is_open`` becomes True.
     page.wait_for_function(

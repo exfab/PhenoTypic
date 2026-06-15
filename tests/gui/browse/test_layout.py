@@ -23,6 +23,8 @@ def test_layout_contains_core_ids():
         ids.BROWSE_PREV_BTN,
         ids.BROWSE_NEXT_BTN,
         ids.BROWSE_OSD_DIV,
+        ids.BROWSE_OSD_LOADING,
+        ids.BROWSE_LOADING_TEXT,
         ids.BROWSE_CURRENT_IMAGE_STORE,
         ids.BROWSE_DATASETS_STORE,
         ids.BROWSE_OSD_SYNC,

@@ -216,7 +216,12 @@ def test_worker_filters_held_out_images_from_split(tmp_path, monkeypatch):
             seen["names"] = [im.name for im in images]
 
     monkeypatch.setattr(
-        _worker, "_load_images", lambda _path: [_NamedImage("cal"), _NamedImage("hold")]
+        _worker,
+        "_load_images",
+        lambda _path, *, nrows=None, ncols=None: [
+            _NamedImage("cal"),
+            _NamedImage("hold"),
+        ],
     )
     monkeypatch.setattr(_worker, "build_worker_store", lambda **_kw: _FakeStore())
     monkeypatch.setattr("phenotypic.tune._engine.TuningEngine", _FakeEngine)

@@ -8,6 +8,7 @@ a browser smoke check.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -30,6 +31,12 @@ logger = logging.getLogger(__name__)
 __all__ = ["register_callbacks"]
 
 _ROOT_LABEL = "(root)"
+
+#: How many images on each side of the active one to pre-warm. The Browse
+#: client background-fetches these neighbours' ``.dzi`` so a ‹/› step lands on
+#: an already-converted image (instant) instead of paying the multi-second
+#: normalize + DZI-tile on click.
+_PREFETCH_RADIUS = 3
 
 
 # --------------------------------------------------------------------------
@@ -61,12 +68,47 @@ def sandbox_rel(src_root_rel: str, dataset_rel: str, filename: str) -> str:
     return PurePosixPath(*parts, filename).as_posix() if parts else filename
 
 
+def neighbor_filenames(
+    option_values: Sequence[str], current: str, radius: int = _PREFETCH_RADIUS
+) -> list[str]:
+    """The up-to-``radius`` filenames on each side of ``current`` in nav order.
+
+    Returns the immediate neighbours within the dataset's ordered file list,
+    excluding ``current`` and clamping at the list bounds — exactly the images
+    a ‹/› step can reach next, so the client can pre-warm their conversion.
+    Returns ``[]`` when ``current`` is not in the list.
+    """
+    values = list(option_values)
+    try:
+        idx = values.index(current)
+    except ValueError:
+        return []
+    return values[max(0, idx - radius):idx] + values[idx + 1: idx + 1 + radius]
+
+
 def current_image_payload(
-    src_root_rel: str, dataset_rel: str, filename: str
-) -> dict[str, str]:
-    """Build the ``{token, label}`` current-image store payload."""
+    src_root_rel: str,
+    dataset_rel: str,
+    filename: str,
+    neighbor_files: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Build the ``{token, label[, prefetch]}`` current-image store payload.
+
+    When ``neighbor_files`` is given, ``prefetch`` carries their tokens (same
+    dataset, nav order) so the Browse client background-fetches each ``.dzi``
+    to pre-warm the server-side normalize + DZI-tile cache.
+    """
     rel = sandbox_rel(src_root_rel, dataset_rel, filename)
-    return {"token": _source_render.encode_token(rel), "label": rel}
+    payload: dict[str, Any] = {
+        "token": _source_render.encode_token(rel),
+        "label": rel,
+    }
+    if neighbor_files:
+        payload["prefetch"] = [
+            _source_render.encode_token(sandbox_rel(src_root_rel, dataset_rel, name))
+            for name in neighbor_files
+        ]
+    return payload
 
 
 def _src_root_rel(sandbox: SandboxRoot, payload: Any) -> str | None:
@@ -142,16 +184,21 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     @app.callback(
         Output(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
         Input(ids.BROWSE_IMAGE_PICKER, "value"),
+        State(ids.BROWSE_IMAGE_PICKER, "options"),
         State(ids.BROWSE_DATASET_PICKER, "value"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
     )
-    def _current_image(filename, dataset, payload):
+    def _current_image(filename, options, dataset, payload):
         if not filename:
             return None
         src_root_rel = _src_root_rel(sandbox, payload)
         if src_root_rel is None:
             return None
-        return current_image_payload(src_root_rel, dataset or ".", filename)
+        option_values = [opt["value"] for opt in (options or [])]
+        neighbors = neighbor_filenames(option_values, filename)
+        return current_image_payload(
+            src_root_rel, dataset or ".", filename, neighbors
+        )
 
     @app.callback(
         Output(ids.BROWSE_META_DIMS, "children"),
