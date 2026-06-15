@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 import pytest
 
@@ -10,22 +12,31 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.tune import Evaluator, QCScorer
 
 
-def _layout_csv(tmp_path, n: int):
+def _layout_csv(tmp_path, n: int, image_name: str = "Synthetic96PlateWithObjects"):
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
         {
-            "Metadata_ImageName": ["Synthetic96PlateWithObjects"] * n,
+            "Metadata_ImageName": [image_name] * n,
             "Object_Label": list(range(n)),
         }
     ).to_csv(csv, index=False)
     return str(csv)
 
 
+def _measured_count(pipeline: ImagePipeline) -> int:
+    measured = pipeline.apply_and_measure(
+        load_synth_yeast_plate(), inplace=False, apply_post=False
+    )
+    return len(measured)
+
+
 def test_perfect_count_scores_one(tmp_path):
     base = ImagePipeline(ops=[OtsuDetector()])
+    expected_count = _measured_count(base)
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
-            metadata=_layout_csv(tmp_path, 96), groupby=["Metadata_ImageName"]
+            metadata=_layout_csv(tmp_path, expected_count),
+            groupby=["Metadata_ImageName"],
         )
     )
     result = Evaluator().evaluate(base, scorer, {}, [load_synth_yeast_plate()])
@@ -35,12 +46,17 @@ def test_perfect_count_scores_one(tmp_path):
 
 
 def test_count_mismatch_scores_below_one(tmp_path):
-    # layout expects 120, detector finds 96 → metric 24/120 = 0.2 → goodness = exp(-ln2*2) = 0.25 → cost = 0.75
     base = ImagePipeline(ops=[OtsuDetector()])
+    detected_count = _measured_count(base)
+    expected_count = max(detected_count + 1, round(detected_count * 1.25))
+    metric = abs(detected_count - expected_count) / expected_count
+    check = ExpectedVsDetectedCount(
+        metadata=_layout_csv(tmp_path, expected_count),
+        groupby=["Metadata_ImageName"],
+    )
+    expected_cost = 1.0 - math.exp(-math.log(2.0) * metric / check.fail_threshold)
     scorer = QCScorer(
-        check=ExpectedVsDetectedCount(
-            metadata=_layout_csv(tmp_path, 120), groupby=["Metadata_ImageName"]
-        )
+        check=check
     )
     result = Evaluator().evaluate(base, scorer, {}, [load_synth_yeast_plate()])
-    assert result.score == pytest.approx(0.75, abs=1e-6)
+    assert result.score == pytest.approx(expected_cost, abs=1e-6)

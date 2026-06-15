@@ -190,7 +190,11 @@ def test_worker_startup_does_not_fail_live_running_trials(tmp_path, monkeypatch)
         def optimize(self, images):
             pass
 
-    monkeypatch.setattr(_worker, "_load_images", lambda _path: [_FakeImage()])
+    monkeypatch.setattr(
+        _worker,
+        "_load_images",
+        lambda _path, *, nrows=None, ncols=None: [_FakeImage()],
+    )
     monkeypatch.setattr(_worker, "build_worker_store", lambda **_kw: _FakeStore())
     monkeypatch.setattr("phenotypic.tune._engine.TuningEngine", _FakeEngine)
 
