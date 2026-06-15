@@ -48,13 +48,29 @@ class Entry:
 #: pages. The docs build copies _assets/measurements/** into <srcdir>/_static/.
 _ASSET_URL_PREFIX: Final = "/_static/measurements"
 
-_RST_ROLE_RE: Final = re.compile(r":[a-zA-Z0-9_.:]+:`([^`]+)`")
+#: RST roles whose rendered output is meaningful content (LaTeX math, sub/super-
+#: script) rather than a cross-reference. These are left intact in table cells;
+#: only cross-reference roles (``:class:``/``:meth:``/``:mod:``/…) are flattened,
+#: because those resolve poorly inside a list-table cell. Without this, formula
+#: descriptions (e.g. ``Shape_Circularity``) would render as literal text.
+_SAFE_RST_ROLES: Final = frozenset({"math", "sub", "sup"})
+
+_RST_ROLE_RE: Final = re.compile(r":([a-zA-Z0-9_.:]+):`([^`]+)`")
 
 
 def _rst_cell_text(text: str) -> str:
-    """Escape text that would otherwise be parsed as RST markup in a cell."""
-    normalized = _RST_ROLE_RE.sub(lambda m: f"``{m.group(1)}``", text)
-    return normalized.replace("|", r"\|")
+    """Escape RST that parses poorly in a list-table cell.
+
+    Cross-reference roles are flattened to inline literals; content roles in
+    :data:`_SAFE_RST_ROLES` (``:math:`` and friends) are preserved so formulas
+    still render. Literal pipe characters are escaped.
+    """
+
+    def _flatten(match: "re.Match[str]") -> str:
+        role, content = match.group(1), match.group(2)
+        return match.group(0) if role in _SAFE_RST_ROLES else f"``{content}``"
+
+    return _RST_ROLE_RE.sub(_flatten, text).replace("|", r"\|")
 
 
 def _render_info_table(
@@ -62,6 +78,7 @@ def _render_info_table(
     *,
     title: str,
     name_header: str = "Name",
+    desc_header: str = "Description",
 ) -> str:
     """Render a list-table; Biology/Image columns appear only when populated.
 
@@ -69,16 +86,17 @@ def _render_info_table(
         rows: ``(name_cell, desc, bio_desc, image_relpath_or_None)`` per member.
         title: Bold table caption (rendered ``Category: **{title}**``).
         name_header: Header for the first (name) column.
+        desc_header: Header for the description column.
     """
-    has_bio = any(bio for (_n, _d, bio, _i) in rows)
-    has_img = any(img for (_n, _d, _b, img) in rows)
+    has_bio = any(row[2] for row in rows)
+    has_img = any(row[3] for row in rows)
 
     lines = [
         f".. list-table:: Category: **{title}**",
         "   :header-rows: 1",
         "",
         f"   * - {name_header}",
-        "     - Description",
+        f"     - {desc_header}",
     ]
     if has_bio:
         lines.append("     - Biology")
@@ -311,13 +329,12 @@ class MeasurementInfo(str, Enum):
 
         Args:
             title: Table caption; defaults to the category name.
-            header: ``(name_column_header, _description_header)``; only the name
-                header is used (the description header is fixed to "Description").
+            header: ``(name_column_header, description_column_header)``.
             use_headers: Name cell shows the prefixed value (``Shape_Area``)
                 instead of the bare label (``Area``).
         """
         title = title or cls.category()
-        name_header = header[0]
+        name_header, desc_header = header
         rows = [
             (
                 m.value if use_headers else m.label,
@@ -327,7 +344,9 @@ class MeasurementInfo(str, Enum):
             )
             for m in cls
         ]
-        return _render_info_table(rows, title=title, name_header=name_header)
+        return _render_info_table(
+            rows, title=title, name_header=name_header, desc_header=desc_header
+        )
 
     @classmethod
     def append_rst_to_doc(cls, module: str | object) -> str:

@@ -29,6 +29,15 @@ class _WithImage(MeasurementInfo):
     A = Entry("A", "alpha", image="shape/area.png")
 
 
+class _WithRoles(MeasurementInfo):
+    @classmethod
+    def category(cls):
+        return "WithRoles"
+
+    M = Entry("M", r"Ratio :math:`\frac{a}{b}` of two things.")
+    X = Entry("X", "See :class:`Foo` for details.")
+
+
 def test_desc_only_has_no_biology_or_image_columns():
     table = _DescOnly.rst_table()
     assert "Description" in table
@@ -53,3 +62,24 @@ def test_image_column_emits_directive_with_root_absolute_path():
 def test_use_headers_renders_prefixed_value():
     assert "``DescOnly_A``" in _DescOnly.rst_table(use_headers=True)
     assert "``A``" in _DescOnly.rst_table(use_headers=False)
+
+
+def test_math_role_preserved_in_cells():
+    # content roles (LaTeX) must survive — otherwise formula descriptions render
+    # as literal text in the rendered docs.
+    table = _WithRoles.rst_table()
+    assert r":math:`\frac{a}{b}`" in table
+
+
+def test_xref_role_flattened_in_cells():
+    # cross-reference roles resolve poorly in a list-table cell, so they are
+    # flattened to inline literals.
+    table = _WithRoles.rst_table()
+    assert "``Foo``" in table
+    assert ":class:`Foo`" not in table
+
+
+def test_custom_description_header_is_honored():
+    table = _DescOnly.rst_table(header=("Col", "Meaning"))
+    assert "- Col" in table
+    assert "- Meaning" in table

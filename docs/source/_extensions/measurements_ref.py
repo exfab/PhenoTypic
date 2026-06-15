@@ -298,8 +298,15 @@ def _build_group_index(caption, names, public_infos) -> str:
         f"   :caption: {caption}",
         "",
     ]
+    # Label toctree entries by category when those are unique within the group
+    # (e.g. Measurements: "Size", "Shape"); fall back to the enum name when a
+    # group shares one category across members (Metadata and Quality Control
+    # both collapse to a single category()), so the entries stay distinct.
+    categories = [public_infos[name].category() for name in names]
+    unique_categories = len(set(categories)) == len(categories)
     for name in names:
-        out.append(f"   {public_infos[name].category()} <{_doc_stem(name)}>")
+        label = public_infos[name].category() if unique_categories else name
+        out.append(f"   {label} <{_doc_stem(name)}>")
     out.append("")
     block = _metadata_overview_block(names) if caption == "Metadata" else ""
     if block:
