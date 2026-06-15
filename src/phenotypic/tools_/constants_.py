@@ -22,7 +22,7 @@ from enum import Enum
 from packaging.version import Version
 from pathlib import Path
 
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import Entry, MeasurementInfo
 
 
 class ConstantLabels(MeasurementInfo):
@@ -78,8 +78,8 @@ class GAMMA_ENCODINGS(ConstantLabels):
     def category(cls) -> str:
         return "GammaEncoding"
 
-    SRGB = "sRGB", "Standard sRGB gamma correction for display"
-    LINEAR = "Linear", "Linear RGB with no gamma correction"
+    SRGB = Entry("sRGB", "Standard sRGB gamma correction for display")
+    LINEAR = Entry("Linear", "Linear RGB with no gamma correction")
 
 
 class IO:
@@ -145,5 +145,5 @@ class PIPE_STATUS(MeasurementInfo):
     def category(cls) -> str:
         return "Status"
 
-    PROCESSED = "Processed", "Whether the image has been processed successfully."
-    MEASURED = "Measured", "Whether the image has been measured successfully."
+    PROCESSED = Entry("Processed", "Whether the image has been processed successfully.")
+    MEASURED = Entry("Measured", "Whether the image has been measured successfully.")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class CURATION(MeasurementInfo):
@@ -19,7 +19,7 @@ class CURATION(MeasurementInfo):
 
     # Member name avoids ``CATEGORY`` (a reserved ``MeasurementInfo`` property);
     # the label stays "Category" so the column is ``Curation_Category``.
-    ERROR_CATEGORY = (
+    ERROR_CATEGORY = Entry(
         "Category",
         "Error-category token assigned to a removed/triaged object.",
     )

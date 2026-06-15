@@ -4,8 +4,116 @@ This module provides infrastructure for defining measurement types with consiste
 conventions, descriptive metadata, and automatic documentation generation.
 """
 
+import re
+from dataclasses import KW_ONLY, dataclass
 from enum import Enum
-from textwrap import dedent
+from typing import Final
+
+
+@dataclass(frozen=True, slots=True)
+class Entry:
+    """Declarative value for a :class:`MeasurementInfo` member.
+
+    ``label`` and ``desc`` are positional (matching the old ``(label, desc)``
+    tuple ergonomics). The new fields are keyword-only, so ``bio_desc``/``image``
+    can never be positionally swapped with ``desc``.
+
+    Args:
+        label: Short, unprefixed measurement name (e.g. ``"Area"``).
+        desc: Technical/algorithm description of what is computed.
+        bio_desc: Biological relevance / use-case. Human-authored only.
+        image: Path, relative to ``_assets/measurements/``, of an illustrative
+            figure (e.g. ``"shape/area.png"``); ``None`` for no figure.
+    """
+
+    label: str
+    desc: str = ""
+    _: KW_ONLY
+    bio_desc: str = ""
+    image: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.label, str) or not self.label:
+            raise ValueError("Entry.label must be a non-empty string")
+        for name in ("desc", "bio_desc"):
+            if not isinstance(getattr(self, name), str):
+                raise TypeError(f"Entry.{name} must be a string")
+        if self.image is not None and not isinstance(self.image, str):
+            raise TypeError("Entry.image must be a string path or None")
+
+
+#: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
+#: the same table resolves whether embedded in autodoc pages or measurements_ref
+#: pages. The docs build copies _assets/measurements/** into <srcdir>/_static/.
+_ASSET_URL_PREFIX: Final = "/_static/measurements"
+
+#: RST roles whose rendered output is meaningful content (LaTeX math, sub/super-
+#: script) rather than a cross-reference. These are left intact in table cells;
+#: only cross-reference roles (``:class:``/``:meth:``/``:mod:``/…) are flattened,
+#: because those resolve poorly inside a list-table cell. Without this, formula
+#: descriptions (e.g. ``Shape_Circularity``) would render as literal text.
+_SAFE_RST_ROLES: Final = frozenset({"math", "sub", "sup"})
+
+_RST_ROLE_RE: Final = re.compile(r":([a-zA-Z0-9_.:]+):`([^`]+)`")
+
+
+def _rst_cell_text(text: str) -> str:
+    """Escape RST that parses poorly in a list-table cell.
+
+    Cross-reference roles are flattened to inline literals; content roles in
+    :data:`_SAFE_RST_ROLES` (``:math:`` and friends) are preserved so formulas
+    still render. Literal pipe characters are escaped.
+    """
+
+    def _flatten(match: "re.Match[str]") -> str:
+        role, content = match.group(1), match.group(2)
+        return match.group(0) if role in _SAFE_RST_ROLES else f"``{content}``"
+
+    return _RST_ROLE_RE.sub(_flatten, text).replace("|", r"\|")
+
+
+def _render_info_table(
+    rows: list[tuple[str, str, str, str | None]],
+    *,
+    title: str,
+    name_header: str = "Name",
+    desc_header: str = "Description",
+) -> str:
+    """Render a list-table; Biology/Image columns appear only when populated.
+
+    Args:
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None)`` per member.
+        title: Bold table caption (rendered ``Category: **{title}**``).
+        name_header: Header for the first (name) column.
+        desc_header: Header for the description column.
+    """
+    has_bio = any(row[2] for row in rows)
+    has_img = any(row[3] for row in rows)
+
+    lines = [
+        f".. list-table:: Category: **{title}**",
+        "   :header-rows: 1",
+        "",
+        f"   * - {name_header}",
+        f"     - {desc_header}",
+    ]
+    if has_bio:
+        lines.append("     - Biology")
+    if has_img:
+        lines.append("     - Image")
+
+    for name, desc, bio, img in rows:
+        lines.append(f"   * - ``{name}``")
+        lines.append(f"     - {_rst_cell_text(desc)}")
+        if has_bio:
+            lines.append(f"     - {_rst_cell_text(bio)}")
+        if has_img:
+            if img:
+                lines.append(f"     - .. image:: {_ASSET_URL_PREFIX}/{img}")
+                lines.append("          :width: 110px")
+            else:
+                lines.append("     -")
+    return "\n".join(lines)
 
 
 class MeasurementInfo(str, Enum):
@@ -35,10 +143,14 @@ class MeasurementInfo(str, Enum):
 
     Attributes:
         label (str): The short label for the measurement (without category prefix). Set
-            automatically by __new__ from the first element of the enum value tuple.
-        desc (str): The description of what the measurement represents. Set automatically
-            by __new__ from the second element of the enum value tuple. Defaults to empty
+            automatically by __new__ from the ``Entry.label`` field.
+        desc (str): The technical description of what the measurement represents. Set
+            automatically by __new__ from the ``Entry.desc`` field. Defaults to empty
             string if not provided.
+        bio_desc (str): The human-authored biological relevance. Set automatically by
+            __new__ from the ``Entry.bio_desc`` field. Defaults to empty string.
+        image (str | None): Path (relative to ``_assets/measurements/``) of an
+            illustrative figure, or ``None``. Set automatically from ``Entry.image``.
         pair (tuple[str, str]): A tuple of (label, description) for convenient access to
             both pieces of information together.
         CATEGORY (property): The category name returned by the category() classmethod.
@@ -47,19 +159,19 @@ class MeasurementInfo(str, Enum):
     Examples:
         Define a custom measurement enumeration:
 
-        >>> from phenotypic.schema import MeasurementInfo
+        >>> from phenotypic.schema import Entry, MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
         ...     def category(cls):
         ...         return 'Shape'
         ...
-        ...     AREA = ('Area', 'Total number of pixels in the detected object')
-        ...     PERIMETER = ('Perimeter', 'Total length of object boundary in pixels')
+        ...     AREA = Entry('Area', 'Total number of pixels in the detected object')
+        ...     PERIMETER = Entry('Perimeter', 'Total length of object boundary in pixels')
 
         Access measurement information and generate headers:
 
         >>> SHAPE.AREA
-        <Shape_Area: 'Shape_Area'>
+        <SHAPE.AREA: 'Shape_Area'>
         >>> str(SHAPE.AREA)
         'Shape_Area'
         >>> SHAPE.AREA.label
@@ -86,6 +198,7 @@ class MeasurementInfo(str, Enum):
         0    1024
         1     956
         2    1101
+        Name: Shape_Area, dtype: int64
 
         Generate and append RST documentation:
 
@@ -102,6 +215,8 @@ class MeasurementInfo(str, Enum):
     # annotations that have no value.
     label: str
     desc: str
+    bio_desc: str
+    image: str | None
     pair: tuple[str, str]
 
     @classmethod
@@ -135,38 +250,27 @@ class MeasurementInfo(str, Enum):
         """
         return type(self).category()
 
-    def __new__(cls, label: str, desc: str | None = None):
-        """Create a new measurement enumeration member with prefixed name.
+    def __new__(cls, entry: "Entry"):
+        """Create a member from an :class:`Entry`.
 
-        Converts the input label and description into an enumeration member whose string
-        value is automatically prefixed with the category name. The label and description
-        are stored as instance attributes for convenient access.
-
-        This method is called automatically by Python's Enum machinery when defining enum
-        members. The enum member's value becomes the full prefixed name (e.g.,
-        'Shape_Area'), while the label and description are stored separately as instance
-        attributes.
-
-        Args:
-            label (str): The short label for the measurement without category prefix
-                (e.g., 'Area'). This will be combined with the category name to create
-                the full enumeration value.
-            desc (str, optional): The description of what the measurement represents. If
-                not provided, defaults to an empty string. This should briefly explain
-                what the measurement measures.
-
-        Returns:
-            MeasurementInfo: An enumeration member that behaves as a string with the value
-                '{category}_{label}' (e.g., 'Shape_Area'). The instance also has label,
-                desc, and pair attributes set.
+        The enum value is the category-prefixed header (e.g. ``Shape_Area``);
+        ``label``/``desc``/``bio_desc``/``image`` are stored as instance
+        attributes. Anything other than an ``Entry`` raises ``TypeError`` at
+        class-creation time.
         """
-        cat = cls.category()  # use classmethod here
-        full = f"{cat}_{label}"
+        if not isinstance(entry, Entry):
+            raise TypeError(
+                f"{cls.__name__} members must be declared as Entry(...); "
+                f"got {entry!r}. Raw tuples/strings are not accepted."
+            )
+        full = f"{cls.category()}_{entry.label}"
         obj = str.__new__(cls, full)
         obj._value_ = full
-        obj.label = label
-        obj.desc = desc if desc else ""
-        obj.pair = (label, obj.desc)
+        obj.label = entry.label
+        obj.desc = entry.desc
+        obj.bio_desc = entry.bio_desc
+        obj.image = entry.image
+        obj.pair = (entry.label, entry.desc)
         return obj
 
     def __str__(self) -> str:
@@ -186,7 +290,7 @@ class MeasurementInfo(str, Enum):
         """Get all measurement labels without category prefix.
 
         Returns a list of the short labels (without category prefix) for all measurements
-        defined in this enumeration. These are the first element of each enum value tuple.
+        defined in this enumeration. These come from each member's ``Entry.label`` field.
         Useful for creating human-readable lists or column names when the category context
         is already established.
 
@@ -215,49 +319,37 @@ class MeasurementInfo(str, Enum):
 
     @classmethod
     def rst_table(
-            cls,
-            *,
-            title: str | None = None,
-            header: tuple[str, str] = ("Name", "Description"),
+        cls,
+        *,
+        title: str | None = None,
+        header: tuple[str, str] = ("Name", "Description"),
+        use_headers: bool = False,
     ) -> str:
-        """Generate an RST (reStructuredText) table documenting the measurements.
+        """Render an RST list-table of this enum's members.
 
-        Creates a formatted list-table in reStructuredText format that documents all
-        measurements in this enumeration, including their labels and descriptions. This
-        is useful for generating API documentation, parameter guides, or measurement
-        reference tables that will be rendered in Sphinx documentation.
+        Adds a Biology column when any member sets ``bio_desc`` and an Image
+        column when any sets ``image`` (each suppressed otherwise).
 
         Args:
-            title (str, optional): The title for the RST table. Defaults to the class name
-                (e.g., 'SHAPE'). The title is formatted as "Category: **{title}**" in the
-                output.
-            header (tuple[str, str], optional): A tuple of (left_column, right_column)
-                header names. Defaults to ("Name", "Description"). The left column typically
-                contains measurement labels and the right column contains their descriptions.
-
-        Returns:
-            str: A formatted reStructuredText list-table string. The output includes:
-                - RST list-table directive with the title
-                - Column headers (Name and Description by default)
-                - One row per measurement with label and description
-                The returned string is ready to be embedded in Sphinx documentation files
-                or appended to docstrings.
+            title: Table caption; defaults to the category name.
+            header: ``(name_column_header, description_column_header)``.
+            use_headers: Name cell shows the prefixed value (``Shape_Area``)
+                instead of the bare label (``Area``).
         """
         title = title or cls.category()
-        left, right = header
-        lines = [
-            f".. list-table:: Category: **{title}**",
-            "   :header-rows: 1",
-            "",
-            f"   * - {left}",
-            f"     - {right}",
+        name_header, desc_header = header
+        rows = [
+            (
+                m.value if use_headers else m.label,
+                m.desc,
+                m.bio_desc,
+                m.image,
+            )
+            for m in cls
         ]
-        for m in cls:
-            lines += [
-                f"   * - ``{m.label}``",
-                f"     - {m.desc}",
-            ]
-        return dedent("\n".join(lines))
+        return _render_info_table(
+            rows, title=title, name_header=name_header, desc_header=desc_header
+        )
 
     @classmethod
     def append_rst_to_doc(cls, module: str | object) -> str:

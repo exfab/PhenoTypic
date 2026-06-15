@@ -1,6 +1,6 @@
 """Radial expansion measurements for filamentous fungal colonies."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class RADIAL_EXPANSION(MeasurementInfo):
@@ -16,44 +16,44 @@ class RADIAL_EXPANSION(MeasurementInfo):
     def category(cls) -> str:
         return "RadialExpansion"
 
-    ROBUST_MEAN_RADIUS = (
+    ROBUST_MEAN_RADIUS = Entry(
         "RobustMeanRadius",
         "Trimmed mean of branch path lengths, excluding detected runner. "
         "Represents the typical radial expansion distance of hyphae from the "
         "core boundary, robust to single-runner outliers.",
     )
-    MEAN_RADIUS = (
+    MEAN_RADIUS = Entry(
         "MeanRadius",
         "Arithmetic mean of all branch path lengths from core boundary to "
         "branch tips. Includes runner if present. Reflects overall average "
         "colony reach.",
     )
-    MEDIAN_RADIUS = (
+    MEDIAN_RADIUS = Entry(
         "MedianRadius",
         "Median branch path length. Robust to outliers and provides a "
         "typical expansion distance.",
     )
-    NUM_BRANCHES = (
+    NUM_BRANCHES = Entry(
         "NumBranches",
         "Number of skeleton branches extending from the core boundary to "
         "peripheral tips. Higher counts indicate denser branching morphology.",
     )
-    MAX_BRANCH_LENGTH = (
+    MAX_BRANCH_LENGTH = Entry(
         "MaxBranchLength",
         "Length of the longest branch path in pixels. When a runner is "
         "detected, this equals RunnerLength.",
     )
-    RUNNER_LENGTH = (
+    RUNNER_LENGTH = Entry(
         "RunnerLength",
         "Path length of the detected runner branch (the single longest "
         "outlier). NaN if no runner detected.",
     )
-    RUNNER_DETECTED = (
+    RUNNER_DETECTED = Entry(
         "RunnerDetected",
         "Boolean flag (0 or 1) indicating whether an outlier runner branch "
         "was detected for this colony.",
     )
-    CORE_RADIUS = (
+    CORE_RADIUS = Entry(
         "CoreRadius",
         "Radius of the dense colony core as determined by PELT changepoint "
         "detection on the radial density profile. Pixels within this radius "

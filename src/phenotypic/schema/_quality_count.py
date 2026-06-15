@@ -1,6 +1,6 @@
 """Measurement info container for expected-vs-detected colony count QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_COUNT(MeasurementInfo):
@@ -17,6 +17,6 @@ class QUALITY_COUNT(MeasurementInfo):
     def category(cls) -> str:
         return "QC_Count"
 
-    DETECTED = ("Detected", "Detected colony count in the group.")
-    EXPECTED = ("Expected", "Expected colony count from the metadata frame.")
-    DELTA = ("Delta", "Detected − Expected (signed; negative = missing).")
+    DETECTED = Entry("Detected", "Detected colony count in the group.")
+    EXPECTED = Entry("Expected", "Expected colony count from the metadata frame.")
+    DELTA = Entry("Delta", "Detected − Expected (signed; negative = missing).")

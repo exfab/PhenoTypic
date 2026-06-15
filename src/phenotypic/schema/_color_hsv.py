@@ -1,6 +1,6 @@
 """Per-object robust summary in the HSV color space (cone-embedded)."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class ColorHSV(MeasurementInfo):
@@ -16,10 +16,10 @@ class ColorHSV(MeasurementInfo):
     def category(cls):
         return "ColorHSV"
 
-    HUE_ROBUST_MEAN = ("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)")
-    SATURATION_ROBUST_MEAN = ("SaturationRobustMean", "Saturation of the cone-embedded geometric-median robust center")
-    VALUE_ROBUST_MEAN = ("ValueRobustMean", "Value (brightness) of the cone-embedded geometric-median robust center")
-    HSV_CONE_VARIANCE = ("HSVConeVariance", "Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)")
+    HUE_ROBUST_MEAN = Entry("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)")
+    SATURATION_ROBUST_MEAN = Entry("SaturationRobustMean", "Saturation of the cone-embedded geometric-median robust center")
+    VALUE_ROBUST_MEAN = Entry("ValueRobustMean", "Value (brightness) of the cone-embedded geometric-median robust center")
+    HSV_CONE_VARIANCE = Entry("HSVConeVariance", "Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)")
 
     @classmethod
     def robust_headers(cls):

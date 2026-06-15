@@ -1,6 +1,6 @@
 """Measurement info for spatial information for grid pinned colonies."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class GRID_SPATIAL(MeasurementInfo):
@@ -19,29 +19,29 @@ class GRID_SPATIAL(MeasurementInfo):
     def category(cls) -> str:
         return "GridSpatial"
 
-    LEFT_NEIGHBOR_OBJ_LABEL = "LeftNeighborObjLabel", ("The object label of the left"
-                                                       " neighbor colony")
-    LEFT_DISTANCE = "LeftDistance", ("The minimum pixel-to-pixel distance to the left"
+    LEFT_NEIGHBOR_OBJ_LABEL = Entry("LeftNeighborObjLabel", ("The object label of the left"
+                                                       " neighbor colony"))
+    LEFT_DISTANCE = Entry("LeftDistance", ("The minimum pixel-to-pixel distance to the left"
                                      " neighbor colony, computed via a Euclidean"
-                                     " distance transform of object pixel masks")
+                                     " distance transform of object pixel masks"))
 
-    RIGHT_NEIGHBOR_OBJ_LABEL = "RightNeighborObjLabel", ("The object label of"
-                                                         " the right neighbor colony")
-    RIGHT_DISTANCE = (
+    RIGHT_NEIGHBOR_OBJ_LABEL = Entry("RightNeighborObjLabel", ("The object label of"
+                                                         " the right neighbor colony"))
+    RIGHT_DISTANCE = Entry(
         "RightDistance",
         "The minimum pixel-to-pixel distance to the right neighbor colony, computed"
         " via a Euclidean distance transform of object pixel masks"
     )
-    ABOVE_NEIGHBOR_OBJ_LABEL = "AboveNeighborObjLabel", ("The object label of"
-                                                         " the above neighbor colony")
-    ABOVE_DISTANCE = (
+    ABOVE_NEIGHBOR_OBJ_LABEL = Entry("AboveNeighborObjLabel", ("The object label of"
+                                                         " the above neighbor colony"))
+    ABOVE_DISTANCE = Entry(
         "AboveDistance",
         "The minimum pixel-to-pixel distance to the above neighbor colony, computed"
         " via a Euclidean distance transform of object pixel masks"
     )
-    UNDER_NEIGHBOR_OBJ_LABEL = ("UnderNeighborObjLabel",
+    UNDER_NEIGHBOR_OBJ_LABEL = Entry("UnderNeighborObjLabel",
                                 "The object label of the under neighbor colony")
-    UNDER_DISTANCE = (
+    UNDER_DISTANCE = Entry(
         "UnderDistance",
         "The minimum pixel-to-pixel distance to the under neighbor colony, computed"
         " via a Euclidean distance transform of object pixel masks"

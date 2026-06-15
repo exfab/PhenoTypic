@@ -1,6 +1,6 @@
 """Generic fit-quality metrics shared by all ModelFitter subclasses."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class MODEL_METRICS(MeasurementInfo):
@@ -17,12 +17,12 @@ class MODEL_METRICS(MeasurementInfo):
         return "ModelMetrics"
 
     # fit-quality metrics
-    MAE = "MAE", "The mean absolute error"
-    MSE = "MSE", "The mean squared error"
-    RMSE = "RMSE", "The root mean squared error"
-    R2 = "R2", "The coefficient of determination"
+    MAE = Entry("MAE", "The mean absolute error")
+    MSE = Entry("MSE", "The mean squared error")
+    RMSE = Entry("RMSE", "The root mean squared error")
+    R2 = Entry("R2", "The coefficient of determination")
 
     # fit diagnostics
-    NUM_SAMPLES = "NumSamples", "The number of samples used for model fitting"
-    LOSS = "OptimizerLoss", "The loss of model fitting"
-    STATUS = "OptimizerStatus", "The output of the optimizer status"
+    NUM_SAMPLES = Entry("NumSamples", "The number of samples used for model fitting")
+    LOSS = Entry("OptimizerLoss", "The loss of model fitting")
+    STATUS = Entry("OptimizerStatus", "The output of the optimizer status")

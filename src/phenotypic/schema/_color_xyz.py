@@ -1,6 +1,6 @@
 """Per-object summary statistics in the CIE XYZ color space."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class ColorXYZ(MeasurementInfo):
@@ -19,23 +19,23 @@ class ColorXYZ(MeasurementInfo):
     def category(cls):
         return "ColorXYZ"
 
-    X_MINIMUM = ("CieXMin", "The minimum X value of the object in CIE XYZ color space")
-    X_Q1 = (
+    X_MINIMUM = Entry("CieXMin", "The minimum X value of the object in CIE XYZ color space")
+    X_Q1 = Entry(
         "CieXQ1",
         "The lower quartile (Q1) X value of the object in CIE XYZ color space",
     )
-    X_MEAN = ("CieXMean", "The mean X value of the object in CIE XYZ color space")
-    X_MEDIAN = ("CieXMedian", "The median X value of the object in CIE XYZ color space")
-    X_Q3 = (
+    X_MEAN = Entry("CieXMean", "The mean X value of the object in CIE XYZ color space")
+    X_MEDIAN = Entry("CieXMedian", "The median X value of the object in CIE XYZ color space")
+    X_Q3 = Entry(
         "CieXQ3",
         "The upper quartile (Q3) X value of the object in CIE XYZ color space",
     )
-    X_MAXIMUM = ("CieXMax", "The maximum X value of the object in CIE XYZ color space")
-    X_STDDEV = (
+    X_MAXIMUM = Entry("CieXMax", "The maximum X value of the object in CIE XYZ color space")
+    X_STDDEV = Entry(
         "CieXStdDev",
         "The standard deviation of the X value of the object in CIE XYZ color space",
     )
-    X_COEFF_VARIANCE = (
+    X_COEFF_VARIANCE = Entry(
         "CieXCoeffVar",
         "The coefficient of variation of the X value of the object in CIE XYZ color space",
     )
@@ -53,23 +53,23 @@ class ColorXYZ(MeasurementInfo):
             str(cls.X_COEFF_VARIANCE),
         ]
 
-    Y_MINIMUM = ("CieYMin", "The minimum Y value of the object in CIE XYZ color space")
-    Y_Q1 = (
+    Y_MINIMUM = Entry("CieYMin", "The minimum Y value of the object in CIE XYZ color space")
+    Y_Q1 = Entry(
         "CieYQ1",
         "The lower quartile (Q1) Y value of the object in CIE XYZ color space",
     )
-    Y_MEAN = ("CieYMean", "The mean Y value of the object in CIE XYZ color space")
-    Y_MEDIAN = ("CieYMedian", "The median Y value of the object in CIE XYZ color space")
-    Y_Q3 = (
+    Y_MEAN = Entry("CieYMean", "The mean Y value of the object in CIE XYZ color space")
+    Y_MEDIAN = Entry("CieYMedian", "The median Y value of the object in CIE XYZ color space")
+    Y_Q3 = Entry(
         "CieYQ3",
         "The upper quartile (Q3) Y value of the object in CIE XYZ color space",
     )
-    Y_MAXIMUM = ("CieYMax", "The maximum Y value of the object in CIE XYZ color space")
-    Y_STDDEV = (
+    Y_MAXIMUM = Entry("CieYMax", "The maximum Y value of the object in CIE XYZ color space")
+    Y_STDDEV = Entry(
         "CieYStdDev",
         "The standard deviation of the Y value of the object in CIE XYZ color space",
     )
-    Y_COEFF_VARIANCE = (
+    Y_COEFF_VARIANCE = Entry(
         "CieYCoeffVar",
         "The coefficient of variation of the Y value of the object in CIE XYZ color space",
     )
@@ -87,23 +87,23 @@ class ColorXYZ(MeasurementInfo):
             str(cls.Y_COEFF_VARIANCE),
         ]
 
-    Z_MINIMUM = ("CieZMin", "The minimum Z value of the object in CIE XYZ color space")
-    Z_Q1 = (
+    Z_MINIMUM = Entry("CieZMin", "The minimum Z value of the object in CIE XYZ color space")
+    Z_Q1 = Entry(
         "CieZQ1",
         "The lower quartile (Q1) Z value of the object in CIE XYZ color space",
     )
-    Z_MEAN = ("CieZMean", "The mean Z value of the object in CIE XYZ color space")
-    Z_MEDIAN = ("CieZMedian", "The median Z value of the object in CIE XYZ color space")
-    Z_Q3 = (
+    Z_MEAN = Entry("CieZMean", "The mean Z value of the object in CIE XYZ color space")
+    Z_MEDIAN = Entry("CieZMedian", "The median Z value of the object in CIE XYZ color space")
+    Z_Q3 = Entry(
         "CieZQ3",
         "The upper quartile (Q3) Z value of the object in CIE XYZ color space",
     )
-    Z_MAXIMUM = ("CieZMax", "The maximum Z value of the object in CIE XYZ color space")
-    Z_STDDEV = (
+    Z_MAXIMUM = Entry("CieZMax", "The maximum Z value of the object in CIE XYZ color space")
+    Z_STDDEV = Entry(
         "CieZStdDev",
         "The standard deviation of the Z value of the object in CIE XYZ color space",
     )
-    Z_COEFF_VARIANCE = (
+    Z_COEFF_VARIANCE = Entry(
         "CieZCoeffVar",
         "The coefficient of variation of the Z value of the object in CIE XYZ color space",
     )

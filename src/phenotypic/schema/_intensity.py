@@ -1,6 +1,6 @@
 """Per-object grayscale intensity summary statistics."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class INTENSITY(MeasurementInfo):
@@ -17,32 +17,32 @@ class INTENSITY(MeasurementInfo):
     def category(cls):
         return "Intensity"
 
-    INTEGRATED_INTENSITY = ("IntegratedIntensity", "The sum of the object's pixels")
-    DENSITY = ("Density", "The ratio of the object's intensity to the max possible "
+    INTEGRATED_INTENSITY = Entry("IntegratedIntensity", "The sum of the object's pixels")
+    DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
                           "intensity of the object")
-    CONVEX_DENSITY = ("ConvexDensity", "The ratio of the objects intensity to the max "
+    CONVEX_DENSITY = Entry("ConvexDensity", "The ratio of the objects intensity to the max "
                                        "possible intensity of the object's convex hull")
-    MINIMUM_INTENSITY = ("MinimumIntensity", "The minimum intensity of the object")
-    MAXIMUM_INTENSITY = ("MaximumIntensity", "The maximum intensity of the object")
-    MEAN_INTENSITY = ("MeanIntensity", "The mean intensity of the object")
-    MEDIAN_INTENSITY = ("MedianIntensity", "The median intensity of the object")
-    STANDARD_DEVIATION_INTENSITY = (
+    MINIMUM_INTENSITY = Entry("MinimumIntensity", "The minimum intensity of the object")
+    MAXIMUM_INTENSITY = Entry("MaximumIntensity", "The maximum intensity of the object")
+    MEAN_INTENSITY = Entry("MeanIntensity", "The mean intensity of the object")
+    MEDIAN_INTENSITY = Entry("MedianIntensity", "The median intensity of the object")
+    STANDARD_DEVIATION_INTENSITY = Entry(
         "StandardDeviationIntensity",
         "The standard deviation of the object",
     )
-    COEFFICIENT_VARIANCE_INTENSITY = (
+    COEFFICIENT_VARIANCE_INTENSITY = Entry(
         "CoefficientVarianceIntensity",
         "The coefficient of variation of the object",
     )
-    Q1_INTENSITY = (
+    Q1_INTENSITY = Entry(
         "LowerQuartileIntensity",
         "The lower quartile intensity of the object",
     )
-    Q3_INTENSITY = (
+    Q3_INTENSITY = Entry(
         "UpperQuartileIntensity",
         "The upper quartile intensity of the object",
     )
-    IQR_INTENSITY = (
+    IQR_INTENSITY = Entry(
         "InterquartileRangeIntensity",
         "The interquartile range of the object",
     )

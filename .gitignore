@@ -60,8 +60,11 @@ docs/source/api_reference/api/
 # reconstructs them.
 #   - downloads.rst <- generate_downloadables_rst (docs/source/conf.py)
 #   - measurements_ref/ <- _generate (docs/source/_extensions/measurements_ref.py)
+#   - _static/measurements/ <- _copy_measurement_assets (mirrors packaged
+#     phenotypic/_assets/measurements/ so /_static/measurements/* image refs resolve)
 docs/source/downloads.rst
 docs/source/measurements_ref/
+docs/source/_static/measurements/
 
 # Project-specific
 deprecated/

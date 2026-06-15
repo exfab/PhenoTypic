@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement modified Z-score QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_ZMAX(MeasurementInfo):
@@ -18,6 +18,6 @@ class QUALITY_ZMAX(MeasurementInfo):
     def category(cls) -> str:
         return "QC_ZMax"
 
-    MEDIAN = ("Median", "Group median of the measurement.")
-    MAD = ("MAD", "Median absolute deviation used to scale the modified Z-score.")
-    NUM_MEMBERS = ("NumMembers", "Members contributing to the statistic.")
+    MEDIAN = Entry("Median", "Group median of the measurement.")
+    MAD = Entry("MAD", "Median absolute deviation used to scale the modified Z-score.")
+    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.")

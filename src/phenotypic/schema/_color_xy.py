@@ -1,6 +1,6 @@
 """Per-object summary statistics in CIE chromaticity xy coordinates."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class Colorxy(MeasurementInfo):
@@ -19,17 +19,17 @@ class Colorxy(MeasurementInfo):
     def category(cls):
         return "Colorxy"
 
-    x_MINIMUM = ("xMin", "The minimum chromaticity x coordinate of the object")
-    x_Q1 = ("xQ1", "The lower quartile (Q1) chromaticity x coordinate of the object")
-    x_MEAN = ("xMean", "The mean chromaticity x coordinate of the object")
-    x_MEDIAN = ("xMedian", "The median chromaticity x coordinate of the object")
-    x_Q3 = ("xQ3", "The upper quartile (Q3) chromaticity x coordinate of the object")
-    x_MAXIMUM = ("xMax", "The maximum chromaticity x coordinate of the object")
-    x_STDDEV = (
+    x_MINIMUM = Entry("xMin", "The minimum chromaticity x coordinate of the object")
+    x_Q1 = Entry("xQ1", "The lower quartile (Q1) chromaticity x coordinate of the object")
+    x_MEAN = Entry("xMean", "The mean chromaticity x coordinate of the object")
+    x_MEDIAN = Entry("xMedian", "The median chromaticity x coordinate of the object")
+    x_Q3 = Entry("xQ3", "The upper quartile (Q3) chromaticity x coordinate of the object")
+    x_MAXIMUM = Entry("xMax", "The maximum chromaticity x coordinate of the object")
+    x_STDDEV = Entry(
         "xStdDev",
         "The standard deviation of the chromaticity x coordinate of the object",
     )
-    x_COEFF_VARIANCE = (
+    x_COEFF_VARIANCE = Entry(
         "xCoeffVar",
         "The coefficient of variation of the chromaticity x coordinate of the object",
     )
@@ -47,17 +47,17 @@ class Colorxy(MeasurementInfo):
             str(cls.x_COEFF_VARIANCE),
         ]
 
-    y_MINIMUM = ("yMin", "The minimum chromaticity y coordinate of the object")
-    y_Q1 = ("yQ1", "The lower quartile (Q1) chromaticity y coordinate of the object")
-    y_MEAN = ("yMean", "The mean chromaticity y coordinate of the object")
-    y_MEDIAN = ("yMedian", "The median chromaticity y coordinate of the object")
-    y_Q3 = ("yQ3", "The upper quartile (Q3) chromaticity y coordinate of the object")
-    y_MAXIMUM = ("yMax", "The maximum chromaticity y coordinate of the object")
-    y_STDDEV = (
+    y_MINIMUM = Entry("yMin", "The minimum chromaticity y coordinate of the object")
+    y_Q1 = Entry("yQ1", "The lower quartile (Q1) chromaticity y coordinate of the object")
+    y_MEAN = Entry("yMean", "The mean chromaticity y coordinate of the object")
+    y_MEDIAN = Entry("yMedian", "The median chromaticity y coordinate of the object")
+    y_Q3 = Entry("yQ3", "The upper quartile (Q3) chromaticity y coordinate of the object")
+    y_MAXIMUM = Entry("yMax", "The maximum chromaticity y coordinate of the object")
+    y_STDDEV = Entry(
         "yStdDev",
         "The standard deviation of the chromaticity y coordinate of the object",
     )
-    y_COEFF_VARIANCE = (
+    y_COEFF_VARIANCE = Entry(
         "yCoeffVar",
         "The coefficient of variation of the chromaticity y coordinate of the object",
     )
