@@ -34,6 +34,15 @@ SHELL_TOP_BAR = "shell-top-bar"
 #: Read-only label echoing the resolved sandbox root.
 SHELL_ROOT_LABEL = "shell-root-label"
 
+#: Top-bar settings button and popover.
+SHELL_SETTINGS_BUTTON = "shell-settings-button"
+SHELL_SETTINGS_POPOVER = "shell-settings-popover"
+SHELL_SETTINGS_INPUT_FOLDER_PICK = "shell-settings-input-folder-pick"
+SHELL_SETTINGS_INPUT_FOLDER_CLEAR = "shell-settings-input-folder-clear"
+SHELL_SETTINGS_METADATA_CSV_LABEL = "shell-settings-metadata-csv-label"
+SHELL_SETTINGS_METADATA_CSV_PICK = "shell-settings-metadata-csv-pick"
+SHELL_SETTINGS_METADATA_CSV_CLEAR = "shell-settings-metadata-csv-clear"
+
 #: Browser-local store holding the shared source-image-root payload.
 SHELL_SOURCE_IMAGE_ROOT_STORE = "shell-source-image-root-store"
 
@@ -60,6 +69,17 @@ SHELL_SOURCE_IMAGE_ROOT_CONFIRM = "shell-source-image-root-confirm"
 
 #: Pattern-matching ``type`` for source picker tree entries.
 SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE = "shell-source-image-root-entry"
+
+#: Browser-local store holding the shared metadata CSV payload.
+SHELL_METADATA_CSV_STORE = "shell-metadata-csv-store"
+
+#: Metadata CSV picker modal opened from the settings popover.
+SHELL_METADATA_CSV_MODAL = "shell-metadata-csv-modal"
+SHELL_METADATA_CSV_MODAL_BODY = "shell-metadata-csv-modal-body"
+SHELL_METADATA_CSV_BROWSE_STORE = "shell-metadata-csv-browse-store"
+SHELL_METADATA_CSV_CANCEL = "shell-metadata-csv-cancel"
+SHELL_METADATA_CSV_CONFIRM = "shell-metadata-csv-confirm"
+SHELL_METADATA_CSV_ENTRY_TYPE = "shell-metadata-csv-entry"
 
 #: Memory readout (``psutil.Process().memory_info().rss``); refreshed by
 #: ``SHELL_RSS_INTERVAL``.
@@ -187,6 +207,13 @@ __all__ = [
     "ToolName",
     "SHELL_TOP_BAR",
     "SHELL_ROOT_LABEL",
+    "SHELL_SETTINGS_BUTTON",
+    "SHELL_SETTINGS_POPOVER",
+    "SHELL_SETTINGS_INPUT_FOLDER_PICK",
+    "SHELL_SETTINGS_INPUT_FOLDER_CLEAR",
+    "SHELL_SETTINGS_METADATA_CSV_LABEL",
+    "SHELL_SETTINGS_METADATA_CSV_PICK",
+    "SHELL_SETTINGS_METADATA_CSV_CLEAR",
     "SHELL_SOURCE_IMAGE_ROOT_STORE",
     "SHELL_SOURCE_IMAGE_ROOT_LABEL",
     "SHELL_SOURCE_IMAGE_ROOT_CLEAR",
@@ -196,6 +223,13 @@ __all__ = [
     "SHELL_SOURCE_IMAGE_ROOT_CANCEL",
     "SHELL_SOURCE_IMAGE_ROOT_CONFIRM",
     "SHELL_SOURCE_IMAGE_ROOT_ENTRY_TYPE",
+    "SHELL_METADATA_CSV_STORE",
+    "SHELL_METADATA_CSV_MODAL",
+    "SHELL_METADATA_CSV_MODAL_BODY",
+    "SHELL_METADATA_CSV_BROWSE_STORE",
+    "SHELL_METADATA_CSV_CANCEL",
+    "SHELL_METADATA_CSV_CONFIRM",
+    "SHELL_METADATA_CSV_ENTRY_TYPE",
     "SHELL_RSS_LABEL",
     "SHELL_RSS_INTERVAL",
     "SHELL_HELP_BUTTON",

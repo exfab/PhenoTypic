@@ -213,7 +213,7 @@ the gate:
   deliberately surfaces it as range-less (`_resolve_tune_spec` → `Excluded("non_numeric")`)
   instead of fabricating a window; the concrete range is supplied per-run in the tune spec.
   Don't reach for `tunable=False` just to silence the gate when the field is genuinely a
-  knob. Canonical: `refine/_remove_by_value.py` (`min_value`/`max_value`).
+  knob. Canonical: `refine/_remove_by_feature.py` (`RemoveByFeature`, `min_value`/`max_value`).
 
 ## Gotchas
 

@@ -81,3 +81,27 @@ def test_current_image_payload_prefetch_tokens_round_trip():
         "plates/b7/day3/A1.png",
         "plates/b7/day3/A3.png",
     ]
+
+
+def test_csv_metadata_panel_message_for_unset_metadata():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(state="unset", image_stem="plate_a", values={})
+    )
+
+    assert "No metadata CSV selected" in str(panel)
+
+
+def test_csv_metadata_panel_renders_matched_values_without_image_name():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="matched",
+            image_stem="plate_a",
+            values={"Treatment": "control", "Replicate": "1"},
+        )
+    )
+
+    text = str(panel)
+    assert "Treatment" in text
+    assert "control" in text
+    assert "Replicate" in text
+    assert "Metadata_ImageName" not in text

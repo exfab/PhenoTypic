@@ -100,6 +100,58 @@
   letter-spacing: 0.02em;
 }
 
+.shell-settings-button,
+.shell-settings-button:focus,
+.shell-settings-button:active {
+  height: 28px;
+  border-radius: var(--radius);
+  font-size: var(--text-xs);
+  line-height: 1;
+  box-shadow: none !important;
+}
+
+.shell-settings-body {
+  min-width: 320px;
+}
+
+.shell-settings-row {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: start;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid rgba(13, 42, 67, 0.10);
+}
+
+.shell-settings-row:last-child {
+  border-bottom: 0;
+}
+
+.shell-settings-key {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.shell-settings-value {
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.shell-settings-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.shell-settings-actions {
+  display: flex;
+  gap: var(--sp-2);
+  grid-column: 2;
+}
+
 .shell-path-divider {
   flex: 0 0 auto;
   width: 1px;
