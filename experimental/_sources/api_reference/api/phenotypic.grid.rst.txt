@@ -23,11 +23,19 @@
    
       GridApply
       AutoGridFinder
+      CenteredAutoGridFinder
       ManualGridFinder
    
    
 
    
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      CenteredAutoGridFinderFallbackWarning
    
    
 

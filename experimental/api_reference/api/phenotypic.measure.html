@@ -65,7 +65,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="phenotypic.measure.MeasureBounds" href="phenotypic.measure.MeasureBounds.html" />
-    <link rel="prev" title="phenotypic.grid.ManualGridFinder" href="phenotypic.grid.ManualGridFinder.html" />
+    <link rel="prev" title="phenotypic.grid.CenteredAutoGridFinderFallbackWarning" href="phenotypic.grid.CenteredAutoGridFinderFallbackWarning.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.17.0b1" />
@@ -748,7 +748,9 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.grid.html">phenotypic.grid</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.GridApply.html">phenotypic.grid.GridApply</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.AutoGridFinder.html">phenotypic.grid.AutoGridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.CenteredAutoGridFinder.html">phenotypic.grid.CenteredAutoGridFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.ManualGridFinder.html">phenotypic.grid.ManualGridFinder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.grid.CenteredAutoGridFinderFallbackWarning.html">phenotypic.grid.CenteredAutoGridFinderFallbackWarning</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.measure</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1191,9 +1193,10 @@ grid alignment assessment, and neighbor-distance calculations.</p>
 <li><p>IntensityWeightedCenterRR, IntensityWeightedCenterCC:
 intensity-weighted centroid coordinates (skimage
 <code class="docutils literal notranslate"><span class="pre">centroid_weighted</span></code>).</p></li>
-<li><p>DistWeightedCenterRR, DistWeightedCenterCC: row/column of
-the per-object distance-transform maximum (deepest interior
-point — robust to thin filamentous extensions).</p></li>
+<li><p>DistWeightedCenterRR, DistWeightedCenterCC: per-object
+DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to thin
+filamentous extensions (low DT weight) and to budding doublets
+(the two lobes balance to the neck).</p></li>
 <li><p>MinRR, MinCC: top-left corner of bounding box.</p></li>
 <li><p>MaxRR, MaxCC: bottom-right corner of bounding box.</p></li>
 </ul>

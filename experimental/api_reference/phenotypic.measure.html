@@ -625,9 +625,10 @@ grid alignment assessment, and neighbor-distance calculations.</p>
 <li><p>IntensityWeightedCenterRR, IntensityWeightedCenterCC:
 intensity-weighted centroid coordinates (skimage
 <code class="docutils literal notranslate"><span class="pre">centroid_weighted</span></code>).</p></li>
-<li><p>DistWeightedCenterRR, DistWeightedCenterCC: row/column of
-the per-object distance-transform maximum (deepest interior
-point — robust to thin filamentous extensions).</p></li>
+<li><p>DistWeightedCenterRR, DistWeightedCenterCC: per-object
+DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to thin
+filamentous extensions (low DT weight) and to budding doublets
+(the two lobes balance to the neck).</p></li>
 <li><p>MinRR, MinCC: top-left corner of bounding box.</p></li>
 <li><p>MaxRR, MaxCC: bottom-right corner of bounding box.</p></li>
 </ul>

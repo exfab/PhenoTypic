@@ -631,9 +631,10 @@
 <span class="sd">            - IntensityWeightedCenterRR, IntensityWeightedCenterCC:</span>
 <span class="sd">              intensity-weighted centroid coordinates (skimage</span>
 <span class="sd">              ``centroid_weighted``).</span>
-<span class="sd">            - DistWeightedCenterRR, DistWeightedCenterCC: row/column of</span>
-<span class="sd">              the per-object distance-transform maximum (deepest interior</span>
-<span class="sd">              point — robust to thin filamentous extensions).</span>
+<span class="sd">            - DistWeightedCenterRR, DistWeightedCenterCC: per-object</span>
+<span class="sd">              DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to thin</span>
+<span class="sd">              filamentous extensions (low DT weight) and to budding doublets</span>
+<span class="sd">              (the two lobes balance to the neck).</span>
 <span class="sd">            - MinRR, MinCC: top-left corner of bounding box.</span>
 <span class="sd">            - MaxRR, MaxCC: bottom-right corner of bounding box.</span>
 
@@ -686,11 +687,12 @@
                 <span class="p">}</span>
         <span class="p">)</span>
 
-        <span class="c1"># Per-object distance-transform maximum (deepest interior point).</span>
-        <span class="c1"># Robust to thin filamentous extensions that pull intensity-weighted</span>
-        <span class="c1"># centroids off-body.</span>
+        <span class="c1"># Per-object DT-weighted centroid (Sum(dt*pos)/Sum(dt)). Robust to thin</span>
+        <span class="c1"># filamentous extensions (low DT weight keeps the center on-body) and to</span>
+        <span class="c1"># budding doublets (the two lobes&#39; DT mass balances to the neck), unlike a</span>
+        <span class="c1"># DT-argmax which would snap onto a single lobe.</span>
         <span class="c1">#</span>
-        <span class="c1"># Vectorized via global EDT + ndi.maximum_position. Inter-object</span>
+        <span class="c1"># Vectorized via global EDT + ndi.center_of_mass. Inter-object</span>
         <span class="c1"># boundaries are zeroed before the EDT so touching colonies don&#39;t</span>
         <span class="c1"># bleed into each other.</span>
         <span class="c1">#</span>
@@ -713,8 +715,22 @@
             <span class="n">dt</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">distance_transform_edt</span><span class="p">(</span><span class="n">binary</span><span class="p">)</span>
 
             <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">objmap</span><span class="p">[</span><span class="n">nonzero</span><span class="p">])</span>
-            <span class="n">positions</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">maximum_position</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
-            <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="c1"># DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to filament hyphae</span>
+            <span class="c1"># (low DT weight) AND budding doublets (two lobes balance to the neck),</span>
+            <span class="c1"># replacing the former DT-argmax which snapped onto a single lobe.</span>
+            <span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+                <span class="n">ndi</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">labels</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span>
+            <span class="p">)</span>
+            <span class="c1"># Degenerate guard: objects whose pixels were all zeroed as inter-object</span>
+            <span class="c1"># boundary have zero DT mass -&gt; center_of_mass returns NaN. Fall back to</span>
+            <span class="c1"># the unweighted (geometric) mask centroid for those labels.</span>
+            <span class="n">nan_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nan_rows</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">geom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+                    <span class="n">ndi</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">nonzero</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">labels</span><span class="o">=</span><span class="n">objmap</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">labels</span><span class="p">),</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">positions</span><span class="p">[</span><span class="n">nan_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">geom</span><span class="p">[</span><span class="n">nan_rows</span><span class="p">]</span>
 
             <span class="n">dist_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
                 <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span>                      <span class="p">:</span> <span class="n">labels</span><span class="p">,</span>
