@@ -14,7 +14,7 @@ import pandas as pd
 
 from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
-from phenotypic.grid import AutoGridFinder
+from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.schema import METADATA
 from phenotypic.tools_.constants_ import IMAGE_TYPES
@@ -94,7 +94,7 @@ class ImageGridHandler(Image):
         if hasattr(arr, "grid_finder"):
             grid_finder = arr.grid_finder
         elif grid_finder is None:
-            grid_finder = AutoGridFinder(nrows=nrows, ncols=ncols)
+            grid_finder = CenteredAutoGridFinder(nrows=nrows, ncols=ncols)
 
         self._grid_finder: Optional[GridFinder] = grid_finder
         self._accessors.grid = GridAccessor(self)

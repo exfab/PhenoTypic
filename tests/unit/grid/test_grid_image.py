@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from phenotypic import Image, GridImage
-from phenotypic.grid import AutoGridFinder
+from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 from phenotypic.detect import OtsuDetector
 from phenotypic.tools_.exceptions_ import IllegalAssignmentError
 
@@ -13,7 +13,7 @@ def test_blank_gridimage_initialization():
     # Test default initialization
     grid_image = GridImage()
     assert grid_image is not None
-    assert isinstance(grid_image.grid_finder, AutoGridFinder)
+    assert isinstance(grid_image.grid_finder, CenteredAutoGridFinder)
 
 
 @timeit
@@ -63,7 +63,7 @@ def test_grid_plot_overlay(plate_grid_images_with_detection):
 def test_optimal_grid_setter_defaults():
     grid_image = GridImage()
     grid_setter = grid_image.grid_finder
-    assert isinstance(grid_setter, AutoGridFinder)
+    assert isinstance(grid_setter, CenteredAutoGridFinder)
     assert grid_setter.nrows == 8
     assert grid_setter.ncols == 12
 

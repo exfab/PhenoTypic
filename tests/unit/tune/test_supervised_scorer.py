@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
+from phenotypic.grid import AutoGridFinder
 from phenotypic.tune._scoring._gt_loader import GroundTruthMasks
 from phenotypic.tune._scoring._supervised import SupervisedScorer
 
@@ -334,6 +335,13 @@ def test_binary_gt_missed_cell_pulls_score_below_all_detected(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
 
     image = load_synth_yeast_plate()
+    # Pin the per-axis AutoGridFinder so the (anisotropic) synth plate yields a
+    # clean 1:1 colony->cell grid. The default CenteredAutoGridFinder fits a single
+    # isotropic pitch (non-square pitch is an explicit non-goal), which shares 8
+    # cells on this fixture and would break the perfect-score baseline this scorer
+    # test depends on. This test exercises the scorer's geometric cell map, not the
+    # default finder choice.
+    image.grid_finder = AutoGridFinder(nrows=image.nrows, ncols=image.ncols)
     true_objmap = np.asarray(image.objmap[:]).copy()
     gt_dir = _binary_gt_dir_for_plate(tmp_path, image)
     scorer = SupervisedScorer(
@@ -374,6 +382,9 @@ def test_binary_gt_under_segmentation_is_visible_not_clipped(tmp_path):
     from phenotypic.data import load_synth_yeast_plate
 
     image = load_synth_yeast_plate()
+    # Pin the per-axis AutoGridFinder so the (anisotropic) synth plate yields a
+    # clean 1:1 colony->cell grid (see the companion test for the rationale).
+    image.grid_finder = AutoGridFinder(nrows=image.nrows, ncols=image.ncols)
     true_objmap = np.asarray(image.objmap[:]).copy()
     gt_dir = _binary_gt_dir_for_plate(tmp_path, image)
     scorer = SupervisedScorer(

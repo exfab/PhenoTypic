@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 from phenotypic import Image, GridImage
-from phenotypic.grid import AutoGridFinder
+from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 
 
 class TestImagePickle:
@@ -128,7 +128,7 @@ class TestGridImagePickle:
     """Test suite for GridImage pickle save/load functionality."""
 
     def test_save_and_load_grid_image_with_default_finder(self):
-        """Test saving and loading a GridImage with default AutoGridFinder."""
+        """Test saving and loading a GridImage with default CenteredAutoGridFinder."""
         rgb_array = np.random.randint(0, 256, (400, 600, 3), dtype=np.uint8)
         grid_img = GridImage(rgb_array, nrows=8, ncols=12)
 
@@ -146,7 +146,7 @@ class TestGridImagePickle:
             assert loaded.nrows == 8
             assert loaded.ncols == 12
             assert loaded.grid_finder is not None
-            assert isinstance(loaded.grid_finder, AutoGridFinder)
+            assert isinstance(loaded.grid_finder, CenteredAutoGridFinder)
 
             # Verify image data is preserved
             assert np.array_equal(loaded.rgb[:], grid_img.rgb[:])

@@ -91,3 +91,18 @@ class TestMeasureBounds:
             cc = row[str(BBOX.DIST_WEIGHTED_CENTER_CC)]
             assert row[str(BBOX.MIN_RR)] <= rr <= row[str(BBOX.MAX_RR)]
             assert row[str(BBOX.MIN_CC)] <= cc <= row[str(BBOX.MAX_CC)]
+
+    def test_dist_center_is_weighted_centroid_not_argmax_on_dumbbell(self, sample_image, measurer):
+        """A two-lobe (budding) colony: the DT-weighted centroid sits at the neck
+        (~midway), NOT on one lobe as DT-argmax (maximum_position) would."""
+        image = sample_image.copy()
+        objmap = np.zeros_like(image.objmap[:])
+        objmap[100:140, 100:140] = 1     # lobe A, center cc=120
+        objmap[100:140, 200:240] = 1     # lobe B, center cc=220
+        objmap[118:122, 140:200] = 1     # thin neck joining them
+        image.objmap[:] = objmap
+        df = measurer.measure(image)
+        cc = float(df[str(BBOX.DIST_WEIGHTED_CENTER_CC)].iloc[0])
+        rr = float(df[str(BBOX.DIST_WEIGHTED_CENTER_RR)].iloc[0])
+        assert 155 < cc < 185      # between the lobes (~170), not ~120 or ~220
+        assert 110 < rr < 130

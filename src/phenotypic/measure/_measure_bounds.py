@@ -31,9 +31,10 @@ class MeasureBounds(MeasureFeatures):
             - IntensityWeightedCenterRR, IntensityWeightedCenterCC:
               intensity-weighted centroid coordinates (skimage
               ``centroid_weighted``).
-            - DistWeightedCenterRR, DistWeightedCenterCC: row/column of
-              the per-object distance-transform maximum (deepest interior
-              point — robust to thin filamentous extensions).
+            - DistWeightedCenterRR, DistWeightedCenterCC: per-object
+              DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to thin
+              filamentous extensions (low DT weight) and to budding doublets
+              (the two lobes balance to the neck).
             - MinRR, MinCC: top-left corner of bounding box.
             - MaxRR, MaxCC: bottom-right corner of bounding box.
 
@@ -86,11 +87,12 @@ class MeasureBounds(MeasureFeatures):
                 }
         )
 
-        # Per-object distance-transform maximum (deepest interior point).
-        # Robust to thin filamentous extensions that pull intensity-weighted
-        # centroids off-body.
+        # Per-object DT-weighted centroid (Sum(dt*pos)/Sum(dt)). Robust to thin
+        # filamentous extensions (low DT weight keeps the center on-body) and to
+        # budding doublets (the two lobes' DT mass balances to the neck), unlike a
+        # DT-argmax which would snap onto a single lobe.
         #
-        # Vectorized via global EDT + ndi.maximum_position. Inter-object
+        # Vectorized via global EDT + ndi.center_of_mass. Inter-object
         # boundaries are zeroed before the EDT so touching colonies don't
         # bleed into each other.
         #
@@ -113,8 +115,22 @@ class MeasureBounds(MeasureFeatures):
             dt = ndi.distance_transform_edt(binary)
 
             labels = np.unique(objmap[nonzero])
-            positions = ndi.maximum_position(dt, labels=objmap, index=labels)
-            positions = np.asarray(positions, dtype=float)
+            # DT-weighted centroid (Sum(dt*pos)/Sum(dt)) — robust to filament hyphae
+            # (low DT weight) AND budding doublets (two lobes balance to the neck),
+            # replacing the former DT-argmax which snapped onto a single lobe.
+            positions = np.asarray(
+                ndi.center_of_mass(dt, labels=objmap, index=labels), dtype=float
+            )
+            # Degenerate guard: objects whose pixels were all zeroed as inter-object
+            # boundary have zero DT mass -> center_of_mass returns NaN. Fall back to
+            # the unweighted (geometric) mask centroid for those labels.
+            nan_rows = np.isnan(positions).any(axis=1)
+            if nan_rows.any():
+                geom = np.asarray(
+                    ndi.center_of_mass(nonzero.astype(float), labels=objmap, index=labels),
+                    dtype=float,
+                )
+                positions[nan_rows] = geom[nan_rows]
 
             dist_df = pd.DataFrame({
                 OBJECT.LABEL                      : labels,

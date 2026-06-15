@@ -350,25 +350,25 @@ def test_benchmark_no_memory_when_disabled(plate_12hr_grid_image):
 
 @timeit
 def test_grid_preset_auto_injects_grid_finder(synth_plate_detected):
-    """measure() auto-injects AutoGridFinder when preset set and none configured."""
-    from phenotypic.grid import AutoGridFinder
+    """measure() auto-injects CenteredAutoGridFinder when preset set and none configured."""
+    from phenotypic.grid import CenteredAutoGridFinder
 
     pipe = ImagePipeline(meas=[MeasureShape()], nrows=8, ncols=12)
-    assert "AutoGridFinder" not in pipe._meas  # not persisted
+    assert "CenteredAutoGridFinder" not in pipe._meas  # not persisted
 
     df = pipe.measure(synth_plate_detected.copy())
 
-    # AutoGridFinder ran first, so the result has grid columns.
+    # CenteredAutoGridFinder ran first, so the result has grid columns.
     assert "Grid_RowNum" in df.columns and "Grid_ColNum" in df.columns
     # _meas itself was not mutated.
-    assert "AutoGridFinder" not in pipe._meas
+    assert "CenteredAutoGridFinder" not in pipe._meas
     # Sanity: the preset is reachable on the pipeline instance.
     assert pipe.nrows == 8 and pipe.ncols == 12
     # Auto-injected step uses the preset values: build a fresh run order and
     # confirm the injected instance carries them.
     run_order = pipe._build_measurement_run_order()
-    injected = run_order["AutoGridFinder"]
-    assert isinstance(injected, AutoGridFinder)
+    injected = run_order["CenteredAutoGridFinder"]
+    assert isinstance(injected, CenteredAutoGridFinder)
     assert injected.nrows == 8 and injected.ncols == 12
 
 
