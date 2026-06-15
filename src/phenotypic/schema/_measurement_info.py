@@ -7,7 +7,6 @@ conventions, descriptive metadata, and automatic documentation generation.
 import re
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
-from textwrap import dedent
 from typing import Final
 
 
@@ -114,7 +113,7 @@ def _render_info_table(
                 lines.append("          :width: 110px")
             else:
                 lines.append("     -")
-    return dedent("\n".join(lines))
+    return "\n".join(lines)
 
 
 class MeasurementInfo(str, Enum):
@@ -144,10 +143,14 @@ class MeasurementInfo(str, Enum):
 
     Attributes:
         label (str): The short label for the measurement (without category prefix). Set
-            automatically by __new__ from the first element of the enum value tuple.
-        desc (str): The description of what the measurement represents. Set automatically
-            by __new__ from the second element of the enum value tuple. Defaults to empty
+            automatically by __new__ from the ``Entry.label`` field.
+        desc (str): The technical description of what the measurement represents. Set
+            automatically by __new__ from the ``Entry.desc`` field. Defaults to empty
             string if not provided.
+        bio_desc (str): The human-authored biological relevance. Set automatically by
+            __new__ from the ``Entry.bio_desc`` field. Defaults to empty string.
+        image (str | None): Path (relative to ``_assets/measurements/``) of an
+            illustrative figure, or ``None``. Set automatically from ``Entry.image``.
         pair (tuple[str, str]): A tuple of (label, description) for convenient access to
             both pieces of information together.
         CATEGORY (property): The category name returned by the category() classmethod.
@@ -287,7 +290,7 @@ class MeasurementInfo(str, Enum):
         """Get all measurement labels without category prefix.
 
         Returns a list of the short labels (without category prefix) for all measurements
-        defined in this enumeration. These are the first element of each enum value tuple.
+        defined in this enumeration. These come from each member's ``Entry.label`` field.
         Useful for creating human-readable lists or column names when the category context
         is already established.
 

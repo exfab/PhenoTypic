@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import sys
-import types
 from pathlib import Path
 
 import phenotypic.schema as schema
@@ -35,15 +33,9 @@ _EXPERIMENTAL_TAG_NAMES = _METADATA_ENUM_NAMES - {"METADATA"}
 
 
 def _load_extension(monkeypatch: MonkeyPatch):
-    logging_module = types.ModuleType("sphinx.util.logging")
-    logging_module.getLogger = lambda _name: types.SimpleNamespace(warning=lambda *a: None)
-    sphinx_module = types.ModuleType("sphinx")
-    sphinx_util_module = types.ModuleType("sphinx.util")
-    sphinx_util_module.logging = logging_module
-    monkeypatch.setitem(sys.modules, "sphinx", sphinx_module)
-    monkeypatch.setitem(sys.modules, "sphinx.util", sphinx_util_module)
-    monkeypatch.setitem(sys.modules, "sphinx.util.logging", logging_module)
-
+    # The extension imports nothing from sphinx at module load (its only sphinx
+    # touchpoints are the ``app`` argument to ``_generate``/``setup``, neither of
+    # which these tests exercise), so it loads without a sphinx install.
     spec = importlib.util.spec_from_file_location(
         "measurements_ref_extension_under_test",
         _EXTENSION_PATH,

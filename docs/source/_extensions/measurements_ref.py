@@ -15,7 +15,6 @@ extension instead.
 
 from __future__ import annotations
 
-import importlib
 import inspect
 import os
 import shutil
@@ -23,21 +22,6 @@ from pathlib import Path
 from typing import Any
 
 from phenotypic.schema._measurement_info import _rst_cell_text
-from sphinx.util import logging as sphinx_logging
-
-logger = sphinx_logging.getLogger(__name__)
-
-
-_METADATA_INFO_NAMES: set[str] = {
-    "METADATA",
-    "ACQUISITION_METADATA",
-    "CONDITION_METADATA",
-    "EXPERIMENT_METADATA",
-    "GENETIC_METADATA",
-    "INCUBATION_METADATA",
-    "PLATE_METADATA",
-    "SAMPLE_METADATA",
-}
 
 #: Toctree groups (caption -> ordered enum names). Single source of truth; a test
 #: asserts every public schema enum lands in exactly one group.
@@ -110,13 +94,6 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "Use when organizing outputs across projects, protocols, or datasets.",
     ),
 }
-
-def _import(path: str) -> Any:
-    """Import ``module.attr`` and return the attribute."""
-    module_name, attr = path.rsplit(".", 1)
-    module = importlib.import_module(module_name)
-    return getattr(module, attr)
-
 
 def _strip_appended_table(doc: str) -> str:
     """Drop the auto-appended ``MeasurementInfo`` table from a docstring."""
