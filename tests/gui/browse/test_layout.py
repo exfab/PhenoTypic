@@ -29,6 +29,7 @@ def test_layout_contains_core_ids():
         ids.BROWSE_DATASETS_STORE,
         ids.BROWSE_OSD_SYNC,
         ids.BROWSE_META_DIMS,
+        ids.BROWSE_CSV_METADATA_PANEL,
         ids.BROWSE_EMPTY_HINT,
     ):
         assert required in found

@@ -16,6 +16,7 @@ BROWSE_META_DIMS = "browse-meta-dims"
 BROWSE_META_SIZE = "browse-meta-size"
 BROWSE_META_CAPTURED = "browse-meta-captured"
 BROWSE_META_CAMERA = "browse-meta-camera"
+BROWSE_CSV_METADATA_PANEL = "browse-csv-metadata-panel"
 BROWSE_EMPTY_HINT = "browse-empty-hint"            # shown when no source root
 
 __all__ = [
@@ -34,5 +35,6 @@ __all__ = [
     "BROWSE_META_SIZE",
     "BROWSE_META_CAPTURED",
     "BROWSE_META_CAMERA",
+    "BROWSE_CSV_METADATA_PANEL",
     "BROWSE_EMPTY_HINT",
 ]

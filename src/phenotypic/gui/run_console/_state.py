@@ -73,6 +73,8 @@ class RunConsoleState:
             ``None`` means unset.
         output_dir: Absolute path (string) to the desired output directory.
             ``None`` means unset.
+        metadata_csv: Absolute path (string) to the optional metadata CSV
+            selected in the global GUI settings. ``None`` means unset.
         mode: Either ``"local"`` (spawn a subprocess in the GUI process)
             or ``"slurm"`` (shell-out to ``python -m phenotypic ... --slurm
             ...`` and let SLURM take over).
@@ -98,6 +100,7 @@ class RunConsoleState:
     pipeline_path: str | None = None
     input_dir: str | None = None
     output_dir: str | None = None
+    metadata_csv: str | None = None
     mode: ExecutionMode = "local"
     dry_run: bool = False
     resume: bool = False
@@ -130,6 +133,7 @@ def run_state_to_json(state: RunConsoleState) -> dict[str, Any]:
         "pipeline_path": state.pipeline_path,
         "input_dir": state.input_dir,
         "output_dir": state.output_dir,
+        "metadata_csv": state.metadata_csv,
         "mode": state.mode,
         "dry_run": bool(state.dry_run),
         "resume": bool(state.resume),
@@ -172,6 +176,7 @@ def run_state_from_json(payload: dict[str, Any]) -> RunConsoleState:
         pipeline_path=_coerce_optional_str(payload.get("pipeline_path")),
         input_dir=_coerce_optional_str(payload.get("input_dir")),
         output_dir=_coerce_optional_str(payload.get("output_dir")),
+        metadata_csv=_coerce_optional_str(payload.get("metadata_csv")),
         mode=mode,
         dry_run=bool(payload.get("dry_run", False)),
         resume=bool(payload.get("resume", False)),
@@ -281,6 +286,9 @@ def to_argv(state: RunConsoleState) -> list[str]:
         "-o",
         output_dir,
     ]
+
+    if state.metadata_csv:
+        argv.extend(["--metadata", str(state.metadata_csv)])
 
     if state.dry_run:
         argv.append("--dry-run")

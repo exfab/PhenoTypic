@@ -241,3 +241,40 @@ def test_shared_source_does_not_overwrite_non_empty_run_input(
         _input_dir_from_shared_source(sandbox, payload, str(existing))
         is None
     )
+
+
+def test_form_state_includes_resolved_global_metadata_csv(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.run_console._callbacks import _form_inputs_to_state
+    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic.schema import METADATA
+
+    csv_path = tmp_path / "layout.csv"
+    csv_path.write_text(f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\n")
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    state = _form_inputs_to_state(
+        "/p.json",
+        "/in",
+        "/out",
+        "local",
+        [],
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        metadata_payload=payload,
+        sandbox=sandbox,
+    )
+
+    assert state["metadata_csv"] == str(csv_path.resolve())

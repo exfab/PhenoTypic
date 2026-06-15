@@ -101,6 +101,7 @@ def test_help_modal_opens_and_contains_copy(page: Page, hub_url: str) -> None:
 
 def test_sandbox_label_renders_root(page: Page, hub_url: str, fake_sandbox) -> None:
     page.goto(hub_url + "/")
-    page.wait_for_selector("#shell-root-label")
+    page.click("#shell-settings-button")
+    page.wait_for_selector("#shell-root-label", state="visible")
     text = page.locator("#shell-root-label").text_content() or ""
     assert str(fake_sandbox) in text

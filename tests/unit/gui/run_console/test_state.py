@@ -32,6 +32,7 @@ def test_full_state_round_trips_cleanly() -> None:
         pipeline_path="/p/pipeline.json",
         input_dir="/p/in",
         output_dir="/p/out",
+        metadata_csv="/p/layout.csv",
         mode="slurm",
         dry_run=True,
         resume=True,
@@ -97,6 +98,27 @@ def test_to_argv_emits_required_explicit_path_options() -> None:
         "-o",
         "/out",
     ]
+
+
+def test_to_argv_includes_metadata_when_selected() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+        metadata_csv="/layout.csv",
+    )
+    argv = to_argv(state)
+    assert argv[argv.index("--metadata") + 1] == "/layout.csv"
+
+
+def test_to_argv_omits_metadata_when_unset() -> None:
+    state = RunConsoleState(
+        pipeline_path="/p.json",
+        input_dir="/in",
+        output_dir="/out",
+    )
+    argv = to_argv(state)
+    assert "--metadata" not in argv
 
 
 def test_to_argv_includes_dry_run_flag() -> None:
