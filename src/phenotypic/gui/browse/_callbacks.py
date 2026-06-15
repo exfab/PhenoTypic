@@ -52,7 +52,6 @@ CsvMetadataPanelState = Literal[
     "unavailable",
     "missing_image_name",
     "no_match",
-    "duplicate",
     "matched",
 ]
 
@@ -63,7 +62,7 @@ class CsvMetadataPanelModel:
 
     state: CsvMetadataPanelState
     image_stem: str
-    values: dict[str, str]
+    rows: list[dict[str, str]]
 
 
 # --------------------------------------------------------------------------
@@ -154,24 +153,23 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
             f"No metadata row for {model.image_stem}",
             className="text-muted",
         )
-    if model.state == "duplicate":
-        return html.Div(
-            f"Multiple metadata rows for {model.image_stem}",
-            className="text-warning",
-        )
-
+    columns = list(dict.fromkeys(key for row in model.rows for key in row))
     rows = [
-        html.Tr([html.Th(str(key)), html.Td(value or "-")])
-        for key, value in model.values.items()
+        html.Tr([html.Td(row.get(column, "-") or "-") for column in columns])
+        for row in model.rows
     ]
     return html.Div(
         [
             html.Div(
-                f"CSV metadata for {model.image_stem}",
+                f"{len(model.rows)} metadata row"
+                f"{'' if len(model.rows) == 1 else 's'} for {model.image_stem}",
                 className="browse-csv-metadata-title",
             ),
             html.Table(
-                html.Tbody(rows),
+                [
+                    html.Thead(html.Tr([html.Th(column) for column in columns])),
+                    html.Tbody(rows),
+                ],
                 className="table table-sm mb-0 browse-csv-metadata-table",
             ),
         ]
@@ -182,7 +180,7 @@ def _csv_panel_model(result: MetadataLookupResult) -> CsvMetadataPanelModel:
     return CsvMetadataPanelModel(
         state=result.state,
         image_stem=result.image_stem,
-        values=result.values,
+        rows=result.rows,
     )
 
 
@@ -313,14 +311,14 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
     ) -> Any:
         if not image_payload or not image_payload.get("token"):
             return render_csv_metadata_panel(
-                CsvMetadataPanelModel("unset", "", {})
+                CsvMetadataPanelModel("unset", "", [])
             )
         try:
             rel = _source_render.decode_token(image_payload["token"])
             original = sandbox.resolve(rel)
         except Exception:  # noqa: BLE001 - metadata display is best-effort
             return render_csv_metadata_panel(
-                CsvMetadataPanelModel("unavailable", "", {})
+                CsvMetadataPanelModel("unavailable", "", [])
             )
         result = read_metadata_row_for_image_stem(
             sandbox,

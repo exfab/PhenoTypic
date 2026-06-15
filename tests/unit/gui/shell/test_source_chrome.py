@@ -43,6 +43,10 @@ def test_top_bar_renders_settings_button_not_inline_source_controls(
     top_bar = build_top_bar(active_tab=SHELL_TAB_HOME, sandbox=sandbox)
 
     assert _component_with_id(top_bar, SHELL_SETTINGS_BUTTON) is not None
+    settings_button = _component_with_id(top_bar, SHELL_SETTINGS_BUTTON)
+    children = getattr(settings_button, "children", None)
+    assert type(children).__name__ == "Img"
+    assert "lucide-settings" in getattr(children, "src", "")
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_LABEL) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_CLEAR) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_MODAL) is None

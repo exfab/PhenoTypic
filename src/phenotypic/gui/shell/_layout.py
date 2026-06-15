@@ -21,9 +21,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import quote
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
+from lucide import lucide_icon  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
     MOUNT_ANALYSIS,
@@ -90,6 +92,22 @@ __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 _SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
     encoding="utf-8"
 )
+
+
+def _lucide_img(icon_name: str, *, class_name: str) -> html.Img:
+    """Return a lucide icon as a Dash image component."""
+    svg = lucide_icon(
+        icon_name,
+        cls=class_name,
+        width=18,
+        height=18,
+        stroke_width=2,
+    )
+    return html.Img(
+        src=f"data:image/svg+xml;utf8,{quote(svg)}",
+        alt="",
+        className=class_name,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +229,7 @@ def build_top_bar(
                         className="shell-rss-readout",
                     ),
                     dbc.Button(
-                        "Settings",
+                        _lucide_img("settings", class_name="shell-settings-icon"),
                         id=SHELL_SETTINGS_BUTTON,
                         size="sm",
                         color="secondary",

@@ -85,7 +85,7 @@ def test_current_image_payload_prefetch_tokens_round_trip():
 
 def test_csv_metadata_panel_message_for_unset_metadata():
     panel = cb.render_csv_metadata_panel(
-        cb.CsvMetadataPanelModel(state="unset", image_stem="plate_a", values={})
+        cb.CsvMetadataPanelModel(state="unset", image_stem="plate_a", rows=[])
     )
 
     assert "No metadata CSV selected" in str(panel)
@@ -96,7 +96,7 @@ def test_csv_metadata_panel_renders_matched_values_without_image_name():
         cb.CsvMetadataPanelModel(
             state="matched",
             image_stem="plate_a",
-            values={"Treatment": "control", "Replicate": "1"},
+            rows=[{"Treatment": "control", "Replicate": "1"}],
         )
     )
 
@@ -105,3 +105,21 @@ def test_csv_metadata_panel_renders_matched_values_without_image_name():
     assert "control" in text
     assert "Replicate" in text
     assert "Metadata_ImageName" not in text
+
+
+def test_csv_metadata_panel_renders_multiple_rows_with_count():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="matched",
+            image_stem="plate_a",
+            rows=[
+                {"Colony": "A01", "Treatment": "control"},
+                {"Colony": "A02", "Treatment": "stress"},
+            ],
+        )
+    )
+
+    text = str(panel)
+    assert "2 metadata rows for plate_a" in text
+    assert "A01" in text
+    assert "A02" in text
