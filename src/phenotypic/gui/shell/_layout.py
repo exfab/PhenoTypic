@@ -92,6 +92,7 @@ __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 _SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
     encoding="utf-8"
 )
+_SHELL_ICON_STROKE = "#f8fafc"
 
 
 def _lucide_img(icon_name: str, *, class_name: str) -> html.Img:
@@ -103,6 +104,7 @@ def _lucide_img(icon_name: str, *, class_name: str) -> html.Img:
         height=18,
         stroke_width=2,
     )
+    svg = svg.replace('stroke="currentColor"', f'stroke="{_SHELL_ICON_STROKE}"')
     return html.Img(
         src=f"data:image/svg+xml;utf8,{quote(svg)}",
         alt="",

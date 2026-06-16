@@ -44,6 +44,23 @@ def _find_by_id(component: object, target: object) -> object:
     raise AssertionError(f"missing component id {target!r}")
 
 
+def _find_plate_card_stepper_group(component: object) -> object:
+    expected_ids = [
+        ids.card_picker_prev_id("card-1"),
+        ids.card_picker_next_id("card-1"),
+    ]
+    for node in _walk(component):
+        if "btn-group" not in str(getattr(node, "className", "")):
+            continue
+        children = getattr(node, "children", None)
+        if not isinstance(children, (list, tuple)):
+            continue
+        child_ids = [getattr(child, "id", None) for child in children]
+        if child_ids == expected_ids:
+            return node
+    raise AssertionError("missing plate-card image stepper button group")
+
+
 def test_plate_card_renders_icon_image_navigation_buttons() -> None:
     card = _viewer_card.layout("card-1", object())  # type: ignore[arg-type]
     prev = _find_by_id(card, ids.card_picker_prev_id("card-1"))
@@ -53,6 +70,26 @@ def test_plate_card_renders_icon_image_navigation_buttons() -> None:
     assert getattr(next_, "children") == "›"
     assert _props(prev)["aria-label"] == "Previous image"
     assert _props(next_)["aria-label"] == "Next image"
+
+
+def test_plate_card_uses_browse_stepper_button_schema() -> None:
+    card = _viewer_card.layout("card-1", object())  # type: ignore[arg-type]
+    group = _find_plate_card_stepper_group(card)
+    prev = _find_by_id(card, ids.card_picker_prev_id("card-1"))
+    next_ = _find_by_id(card, ids.card_picker_next_id("card-1"))
+
+    assert getattr(group, "className") == "btn-group"
+    assert _props(group)["role"] == "group"
+    assert _props(group)["aria-label"] == "Step through images"
+    assert "browse-step-button" in getattr(prev, "className", "")
+    assert "browse-step-button" in getattr(next_, "className", "")
+    assert "card-picker-nav-btn" in getattr(prev, "className", "")
+    assert "card-picker-nav-btn" in getattr(next_, "className", "")
+
+    css = Path("src/phenotypic/gui/results_viewer/_assets/results_viewer.css")
+    css_text = css.read_text(encoding="utf-8")
+    assert ".browse-step-button" in css_text
+    assert "min-width: 3rem;" in css_text
 
 
 def test_heatmap_picker_strip_renders_icon_image_navigation_buttons() -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import unquote
 
 from dash import dcc
 
@@ -46,7 +47,9 @@ def test_top_bar_renders_settings_button_not_inline_source_controls(
     settings_button = _component_with_id(top_bar, SHELL_SETTINGS_BUTTON)
     children = getattr(settings_button, "children", None)
     assert type(children).__name__ == "Img"
-    assert "lucide-settings" in getattr(children, "src", "")
+    settings_icon_src = getattr(children, "src", "")
+    assert "lucide-settings" in settings_icon_src
+    assert 'stroke="#f8fafc"' in unquote(settings_icon_src)
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_LABEL) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_CLEAR) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_MODAL) is None

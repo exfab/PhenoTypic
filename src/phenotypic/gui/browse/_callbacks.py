@@ -165,12 +165,15 @@ def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
                 f"{'' if len(model.rows) == 1 else 's'} for {model.image_stem}",
                 className="browse-csv-metadata-title",
             ),
-            html.Table(
-                [
-                    html.Thead(html.Tr([html.Th(column) for column in columns])),
-                    html.Tbody(rows),
-                ],
-                className="table table-sm mb-0 browse-csv-metadata-table",
+            html.Div(
+                html.Table(
+                    [
+                        html.Thead(html.Tr([html.Th(column) for column in columns])),
+                        html.Tbody(rows),
+                    ],
+                    className="table table-sm mb-0 browse-csv-metadata-table",
+                ),
+                className="browse-csv-metadata-scroll",
             ),
         ]
     )
