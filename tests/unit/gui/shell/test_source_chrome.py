@@ -43,6 +43,10 @@ def test_top_bar_renders_settings_button_not_inline_source_controls(
     top_bar = build_top_bar(active_tab=SHELL_TAB_HOME, sandbox=sandbox)
 
     assert _component_with_id(top_bar, SHELL_SETTINGS_BUTTON) is not None
+    settings_button = _component_with_id(top_bar, SHELL_SETTINGS_BUTTON)
+    children = getattr(settings_button, "children", None)
+    assert type(children).__name__ == "Img"
+    assert "lucide-settings" in getattr(children, "src", "")
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_LABEL) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_CLEAR) is None
     assert _component_with_id(top_bar, SHELL_SOURCE_IMAGE_ROOT_MODAL) is None
@@ -142,6 +146,7 @@ def test_wrap_in_chrome_mounts_settings_popover_and_metadata_picker(
 ) -> None:
     import dash
 
+    from phenotypic.gui.shell import _layout as shell_layout
     from phenotypic.gui.shell._ids import (
         SHELL_METADATA_CSV_BROWSE_STORE,
         SHELL_METADATA_CSV_CONFIRM,
@@ -157,7 +162,16 @@ def test_wrap_in_chrome_mounts_settings_popover_and_metadata_picker(
 
     wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
 
-    assert _component_with_id(app.layout, SHELL_SETTINGS_POPOVER) is not None
+    popover = _component_with_id(app.layout, SHELL_SETTINGS_POPOVER)
+    assert popover is not None
+    assert getattr(popover, "className", "") == "shell-settings-popover"
+    assert ".shell-settings-popover" in shell_layout._SHELL_CSS
+    assert "max-width: min(420px, calc(100vw - 32px));" in shell_layout._SHELL_CSS
+    assert "grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);" in (
+        shell_layout._SHELL_CSS
+    )
+    assert "word-break: break-word;" in shell_layout._SHELL_CSS
+    assert "white-space: normal;" in shell_layout._SHELL_CSS
     assert _component_with_id(app.layout, SHELL_METADATA_CSV_MODAL) is not None
     assert _component_with_id(app.layout, SHELL_METADATA_CSV_MODAL_BODY) is not None
     assert _component_with_id(app.layout, SHELL_METADATA_CSV_CONFIRM) is not None

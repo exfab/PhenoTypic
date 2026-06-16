@@ -24,7 +24,6 @@ MetadataLookupState: TypeAlias = Literal[
     "unavailable",
     "missing_image_name",
     "no_match",
-    "duplicate",
     "matched",
 ]
 
@@ -48,7 +47,12 @@ class MetadataLookupResult:
 
     state: MetadataLookupState
     image_stem: str
-    values: dict[str, str]
+    rows: list[dict[str, str]]
+
+    @property
+    def row_count(self) -> int:
+        """Number of metadata rows included in this lookup result."""
+        return len(self.rows)
 
 
 def metadata_payload_from_path(
@@ -149,28 +153,29 @@ def read_metadata_row_for_image_stem(
 ) -> MetadataLookupResult:
     """Look up metadata values for ``image_stem`` in the selected CSV."""
     if payload is None:
-        return MetadataLookupResult("unset", image_stem, {})
+        return MetadataLookupResult("unset", image_stem, [])
     path = resolve_metadata_csv(sandbox, payload)
     if path is None:
-        return MetadataLookupResult("unavailable", image_stem, {})
+        return MetadataLookupResult("unavailable", image_stem, [])
     try:
         rows = _read_rows(path)
     except OSError:
-        return MetadataLookupResult("unavailable", image_stem, {})
+        return MetadataLookupResult("unavailable", image_stem, [])
     if not rows or METADATA.IMAGE_NAME not in rows[0]:
-        return MetadataLookupResult("missing_image_name", image_stem, {})
+        return MetadataLookupResult("missing_image_name", image_stem, [])
 
     matches = [row for row in rows if row.get(METADATA.IMAGE_NAME, "") == image_stem]
     if not matches:
-        return MetadataLookupResult("no_match", image_stem, {})
-    if len(matches) > 1:
-        return MetadataLookupResult("duplicate", image_stem, {})
-    values = {
-        str(key): str(value)
-        for key, value in matches[0].items()
-        if key != METADATA.IMAGE_NAME
-    }
-    return MetadataLookupResult("matched", image_stem, values)
+        return MetadataLookupResult("no_match", image_stem, [])
+    display_rows = [
+        {
+            str(key): str(value)
+            for key, value in row.items()
+            if key != METADATA.IMAGE_NAME
+        }
+        for row in matches
+    ]
+    return MetadataLookupResult("matched", image_stem, display_rows)
 
 
 def _resolve_candidate_csv(sandbox: SandboxRoot, path: Path | str) -> Path | None:

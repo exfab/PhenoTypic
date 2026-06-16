@@ -123,7 +123,8 @@ def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
 
     assert result.state == "matched"
     assert result.image_stem == "plate_a"
-    assert result.values == {"Treatment": "control", "Replicate": "1"}
+    assert result.row_count == 1
+    assert result.rows == [{"Treatment": "control", "Replicate": "1"}]
 
 
 def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
@@ -133,10 +134,6 @@ def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
     )
 
     no_key = _write_csv(tmp_path / "no-key.csv", "Treatment\ncontrol\n")
-    duplicate = _write_csv(
-        tmp_path / "duplicate.csv",
-        f"{METADATA.IMAGE_NAME},Treatment\nplate_a,control\nplate_a,stress\n",
-    )
     unique = _write_csv(
         tmp_path / "unique.csv",
         f"{METADATA.IMAGE_NAME},Treatment\nplate_b,control\n",
@@ -152,13 +149,37 @@ def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
     )
     assert (
         read_metadata_row_for_image_stem(
-            sandbox, metadata_payload_from_path(sandbox, duplicate), "plate_a"
-        ).state
-        == "duplicate"
-    )
-    assert (
-        read_metadata_row_for_image_stem(
             sandbox, metadata_payload_from_path(sandbox, unique), "plate_a"
         ).state
         == "no_match"
     )
+
+
+def test_read_metadata_row_returns_all_matching_colony_rows(
+    tmp_path: Path,
+) -> None:
+    from phenotypic.gui.shell._metadata_context import (
+        metadata_payload_from_path,
+        read_metadata_row_for_image_stem,
+    )
+
+    csv_path = _write_csv(
+        tmp_path / "layout.csv",
+        (
+            f"{METADATA.IMAGE_NAME},Colony,Treatment\n"
+            "plate_a,A01,control\n"
+            "plate_a,A02,stress\n"
+            "plate_b,B01,control\n"
+        ),
+    )
+    sandbox = SandboxRoot.from_path(tmp_path)
+    payload = metadata_payload_from_path(sandbox, csv_path)
+
+    result = read_metadata_row_for_image_stem(sandbox, payload, "plate_a")
+
+    assert result.state == "matched"
+    assert result.row_count == 2
+    assert result.rows == [
+        {"Colony": "A01", "Treatment": "control"},
+        {"Colony": "A02", "Treatment": "stress"},
+    ]
