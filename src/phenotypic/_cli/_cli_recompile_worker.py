@@ -230,7 +230,7 @@ def _run_overlay_task(
         # any measurer. MeasureFeatures.inspect() relies on a per-instance
         # diagnostic cache populated during _operate(), which would be
         # empty here and silently fall through to a slow full recompute.
-        # Use the CLI's --measure mode if you need to regenerate inspect
+        # Use the CLI's measure mode if you need to regenerate inspect
         # figures alongside fresh measurements.
         output_manager = OutputManager.from_config(
             base_dir=output_dir,

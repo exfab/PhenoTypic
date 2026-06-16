@@ -17,7 +17,7 @@ This module provides:
 - mtime-staleness detection mirroring the pattern in
   :mod:`phenotypic.gui.results_viewer._filtered_state`. When the on-disk
   mtime no longer matches what we observed at load time (typical cause:
-  a CLI ``--recompile`` ran while the viewer session was open), we
+  a CLI recompile-mode run happened while the viewer session was open), we
   refuse to clobber the fresh seed and surface a "reload required"
   banner instead.
 """
@@ -188,7 +188,7 @@ class RecipeState:
             if self.is_stale():
                 logger.warning(
                     "Refusing to overwrite %s — mtime changed since "
-                    "load (likely a CLI --recompile re-run). Reload "
+                    "load (likely a CLI recompile-mode run). Reload "
                     "before saving again.",
                     self.path,
                 )

@@ -264,7 +264,7 @@ class QcRecipe:
     (operations/post/filters/model are preserved exactly as written by the
     CLI), and atomically swaps the file in. An mtime guard refuses the
     write when the file changed since load (typical cause: a CLI
-    ``--recompile`` ran while the viewer was open), mirroring
+    recompile-mode run happened while the viewer was open), mirroring
     :class:`phenotypic.gui.analysis._recipe_state.RecipeState`.
 
     Unlike the legacy sidecar :class:`QcRecipe`, the recipe is *not* the
@@ -481,7 +481,7 @@ class QcRecipe:
             if self.is_stale():
                 logger.warning(
                     "Refusing to write qc array to %s — mtime changed since "
-                    "load (likely a CLI --recompile re-run). Reload before "
+                    "load (likely a CLI recompile-mode run). Reload before "
                     "saving again.",
                     self.path,
                 )

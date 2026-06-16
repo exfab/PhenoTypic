@@ -468,7 +468,8 @@ def _default_empty_state() -> Component:
             html.Div("No QC review queue yet.", className="fw-semibold"),
             html.Div(
                 "Configure a quality check, then re-run "
-                "`python -m phenotypic --recompile <output>` (or pick a "
+                "`python -m phenotypic --mode recompile --output <output>` "
+                "(or pick a "
                 "module above if a qc/ artifact already exists).",
                 style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
             ),

@@ -105,7 +105,7 @@ against:
   `deliverables/error_analysis.{parquet,csv}` (focused category) and
   `deliverables/errors/<category>.parquet` **live** as you curate; the
   HTML report is written only on `Save analysis report`. The next CLI
-  finalize / `--recompile` re-emits `errors/*` and `error_analysis.*`
+  finalize / recompile-mode run re-emits `errors/*` and `error_analysis.*`
   (all categories) from the durable labels store, so headless output
   matches the GUI. `deliverables/verified.parquet` is **GUI-only** — the
   CLI never writes it.

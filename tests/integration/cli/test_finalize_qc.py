@@ -1,7 +1,7 @@
 """Integration tests for QC compute inside ``finalize_post_master_outputs``.
 
 Exercises the Phase B finalize seam directly (the canonical entry point the
-forward CLI, ``--measure``, and ``--recompile`` all funnel through):
+forward CLI, measure mode, and recompile mode all funnel through):
 
 * a non-empty ``pipeline.qc`` causes ``finalize`` to write the ``qc/``
   artifact from the post-applied frame;

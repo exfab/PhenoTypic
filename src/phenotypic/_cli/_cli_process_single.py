@@ -13,7 +13,7 @@ import logging
 import click
 import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 
 import h5py  # type: ignore[import-untyped]
 import matplotlib
@@ -27,7 +27,7 @@ from ._cli_update_state import append_event, append_completion_event
 from ._cli_failure_tracker import append_failure
 from ._cli_utils import normalize_extension
 from phenotypic.tools_ import EnvVar, HdfAttr, progress_dir
-from phenotypic.tools_.typing_ import ImageTypeName
+from phenotypic.tools_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 logger = logging.getLogger(__name__)
 
@@ -274,16 +274,16 @@ def process_single_hdf_measure_core(
     help="Path to event log file (for status updates)",
 )
 @click.option(
-    "--measure",
-    "measure_only",
-    is_flag=True,
-    default=False,
-    help="Rerun pipeline.measure() on the input HDF; skip detection.",
+    "--mode",
+    type=click.Choice(["full", "measure", "process"]),
+    default="full",
+    show_default=True,
+    help="Per-image worker mode.",
 )
 @click.option(
     "--save-overlays/--no-save-overlays",
     default=True,
-    help="Save a PNG overlay per image (default: on). Ignored in --measure mode.",
+    help="Save a PNG overlay per image (default: on). Ignored in measure mode.",
 )
 @click.option(
     "--save-inspect",
@@ -293,23 +293,22 @@ def process_single_hdf_measure_core(
         "Save MeasureFeatures.inspect() figures as PNGs under "
         "results/<dataset>/inspect/<measurer>/<image-stem>.png. "
         "Off by default; opt in when debugging or verifying measurements. "
-        "Honored on both forward runs and --measure HDF reruns."
+        "Honored on both forward runs and measure-mode HDF reruns."
     ),
 )
 @click.option(
-    "--process-only",
-    "process_only_layer",
+    "--layer",
+    "layer",
     type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
     default=None,
-    help="Apply-only mode: run pipeline.apply() and save this single layer "
-    "(no measurement). Requires --input-root for mirrored output paths.",
+    help="Layer exported by --mode process.",
 )
 @click.option(
     "--input-root",
     type=click.Path(path_type=Path),
     default=None,
     help="Root of the input tree, used to compute the mirrored output path "
-    "in --process-only mode.",
+    "in process mode.",
 )
 def main(
     pipeline: Path,
@@ -325,10 +324,10 @@ def main(
     overlay_alpha: float,
     include_dataset_column: bool,
     event_log: Optional[Path],
-    measure_only: bool,
+    mode: str,
     save_overlays: bool,
     save_inspect: bool,
-    process_only_layer: Optional[str],
+    layer: Optional[str],
     input_root: Optional[Path],
 ):
     """
@@ -338,11 +337,21 @@ def main(
     execution. It processes one image and logs completion to event log.
     """
     try:
+        cli_mode = cast(CliMode, mode)
+        measure_only = cli_mode == "measure"
+        process_only_layer: Optional[ProcessOnlyLayer] = None
+        if cli_mode == "process":
+            if layer is None:
+                raise click.UsageError("--mode process requires --layer")
+            process_only_layer = cast(ProcessOnlyLayer, layer)
+        elif layer is not None:
+            raise click.UsageError("--layer can only be used with --mode process")
+
         # Process-only (apply-only) mode: run pipeline.apply() and export one
         # layer, mirroring the input tree. No measurement / aggregation output.
         if process_only_layer is not None:
             if input_root is None:
-                raise click.UsageError("--process-only requires --input-root")
+                raise click.UsageError("--mode process requires --input-root")
             process_only_read_kwargs: Dict[str, Any] = {}
             if bit_depth is not None:
                 process_only_read_kwargs["bit_depth"] = bit_depth

@@ -340,7 +340,7 @@ STDOUT_LOG: Final[str] = "stdout.log"
 #: Generated standalone analysis HTML emitted alongside the dashboard.
 ANALYSIS_HTML: Final[str] = "analysis.html"
 
-#: Top-level processing report HTML emitted by ``--recompile``.
+#: Top-level processing report HTML emitted by recompile mode.
 PROCESSING_REPORT_HTML: Final[str] = "processing_report.html"
 
 #: Mid-run combined Parquet that the chunk writer rewrites incrementally
@@ -556,9 +556,7 @@ _DEFAULT_OUTPUT_TIMESTAMP_FORMAT: Final[str] = "%Y%m%d_%H%M%S"
 def default_output_dir_name(now: Optional[datetime] = None) -> str:
     """Default name for an auto-generated output directory.
 
-    Used when the user runs the CLI without ``--output-dir`` and we
-    need to fabricate a timestamped fallback in the current working
-    directory.
+    Legacy helper for timestamped output-directory names.
 
     Args:
         now: Override clock for tests; defaults to ``datetime.now()``.

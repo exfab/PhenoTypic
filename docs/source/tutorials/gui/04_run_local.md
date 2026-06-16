@@ -14,7 +14,7 @@ Click the `Run` tab (or navigate to `/run/`):
 The form has three pickers (Pipeline JSON, Input directory, Output
 directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run,
 Resume), an `Advanced` collapse for the long-tail flags (`--sample`,
-`--nrows`, `--ncols`, `--image-type`, `Workers` → `--n-jobs`), and a
+`--nrows`, `--ncols`, `--image-type`, `Workers` → `--njobs`), and a
 `SLURM config` collapse covered on the [next page](05_run_slurm.md).
 The `Log level` field in `Advanced` is reserved — the GUI accepts a
 value but the CLI does not currently expose `--log-level`, so the field
@@ -40,7 +40,7 @@ respects the same hidden-files / external-symlinks toggles as the sidebar.
 
 ## Validate before running
 
-`Validate (dry-run)` spawns `python -m phenotypic <args> --dry-run`. The
+`Validate (dry-run)` spawns `python -m phenotypic --mode full <args> --dry-run`. The
 CLI parses the pipeline JSON, lists the images it would process, then
 exits without writing any output. The log tail shows the dry-run output.
 Use this whenever you're not sure the form values match what the CLI
@@ -48,7 +48,7 @@ expects — the dry-run takes seconds, a bad real run can waste minutes.
 
 ## Run
 
-Clicking `Run` spawns `python -m phenotypic <args>` (no `--dry-run`).
+Clicking `Run` spawns `python -m phenotypic --mode full <args>` (no `--dry-run`).
 While the subprocess is alive:
 
 - The log tail polls the ring buffer on a short interval. Lines arrive in

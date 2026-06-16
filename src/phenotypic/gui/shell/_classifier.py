@@ -84,7 +84,7 @@ class Capabilities:
         has_dashboard: Directory contains ``deliverables/dashboard.html``.
             Used by the Run console's Recent Runs panel to enable the
             iframe link.
-        is_process_only_output: Directory is a ``--process-only`` run — it
+        is_process_only_output: Directory is a process-mode run — it
             carries a ``.phenotypic/progress/manifest.json`` (machine-state
             under the hidden cache) but lacks the full forward-run
             ``results/`` + ``deliverables/master_measurements.parquet``

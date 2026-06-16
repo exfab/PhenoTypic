@@ -121,10 +121,10 @@ here: https://pypi.org/project/PyExifTool/#pyexiftool-dependencies
 Process a directory of plate images through a saved pipeline:
 
 ```bash
-uv run python -m phenotypic --pipeline pipeline.json --input ./images --output-dir ./out
+uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images --output ./out
 ```
 
-Add `--process-only {rgb|gray|detect_mat|objmap}` for an apply-only export run that
+Use `--mode process --layer {rgb|gray|detect_mat|objmap}` for an apply-only export run that
 writes a single image layer per input (mirroring the input tree) and skips the
 measurement/analysis suite — handy for previewing detection or enhanced layers.
 

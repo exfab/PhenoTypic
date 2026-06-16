@@ -25,6 +25,12 @@ _MANIFEST_SENTINEL = "__PHENOTYPIC_MANIFEST__"
 _FINALIZER_SENTINEL = "__PHENOTYPIC_FINALIZER__"
 
 
+def _set_worker_mode(cmd_parts: List[str], mode: str) -> None:
+    """Set the worker mode token in a command-argument list."""
+    mode_value_index = cmd_parts.index("--mode") + 1
+    cmd_parts[mode_value_index] = mode
+
+
 def _build_entry_list(
     chunk_images: List[Path],
     checkpoint_interval: Optional[int],
@@ -241,6 +247,8 @@ def generate_array_job_script(
         shlex.quote(dataset.name),
         "--image-type",
         config.image_type,
+        "--mode",
+        "full",
     ]
 
     # Omit when unset so the worker falls back to the pipeline's preset.
@@ -274,9 +282,10 @@ def generate_array_job_script(
     # tree, and skip overlays/measurement entirely. Mutually exclusive with the
     # measure / forward overlay flags.
     if config.process_only_layer:
+        _set_worker_mode(cmd_parts, "process")
         cmd_parts.extend(
             [
-                "--process-only",
+                "--layer",
                 config.process_only_layer,
                 "--input-root",
                 shlex.quote(str(config.input_path.absolute())),
@@ -284,11 +293,11 @@ def generate_array_job_script(
         )
     elif config.measure_only:
         # Measure-only mode supersedes overlay generation; mutually exclusive.
-        cmd_parts.append("--measure")
+        _set_worker_mode(cmd_parts, "measure")
     else:
         cmd_parts.append("--save-overlays")
 
-    # --save-inspect is honored in BOTH forward and --measure modes,
+    # --save-inspect is honored in BOTH forward and measure modes,
     # since re-measurement repopulates the diagnostic cache that
     # MeasureFeatures.inspect() depends on. Never relevant in process-only mode.
     if config.save_inspects and not config.process_only_layer:

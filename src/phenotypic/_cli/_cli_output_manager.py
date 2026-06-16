@@ -481,7 +481,7 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     """Atomically write ``measurements.{csv,parquet}`` as a fresh master copy.
 
     The GUI's results viewer mutates these mirrors in place when users curate
-    colonies; re-runs of the CLI (forward, ``--measure``, ``--recompile``)
+    colonies; re-runs of the CLI (forward, measure mode, recompile mode)
     intentionally reset them by calling this helper after the master is
     written. Failures of either write are logged at WARNING and do not raise
     — the master output is preserved as the authoritative source.
@@ -943,7 +943,7 @@ class OutputManager:
             save_overlays: If True, ``create_structure`` provisions an
                 ``overlays/`` directory per dataset and workers will save
                 a PNG overlay per image. Defaults to True; set False only
-                for ``--measure`` reruns that should not regenerate overlays.
+                for measure-mode reruns that should not regenerate overlays.
             save_inspects: If True, ``create_structure`` provisions an
                 ``inspect/`` directory per dataset and workers will call
                 :meth:`save_inspect` for every measurer with a ``.inspect()``
@@ -989,7 +989,7 @@ class OutputManager:
             overlay_alpha: Alpha for overlay compositing.
             save_overlays: If True (default), provision ``overlays/`` per
                 dataset and save an overlay per image. Pass False only
-                for ``--measure`` reruns that should not regenerate
+                for measure-mode reruns that should not regenerate
                 overlays.
             save_inspects: If True, provision ``inspect/`` per dataset
                 and call :meth:`save_inspect` for every measurer that
@@ -1013,7 +1013,7 @@ class OutputManager:
         Always creates dataset-first structure with each dataset in its own
         folder.  Forward runs provision ``measurements/``, ``hdf/``, and
         ``overlays/`` for every dataset; ``overlays/`` is skipped only
-        when :attr:`save_overlays` is False (e.g. ``--measure`` reruns).
+        when :attr:`save_overlays` is False (e.g. measure-mode reruns).
 
         Args:
             datasets: List of datasets to create directories for

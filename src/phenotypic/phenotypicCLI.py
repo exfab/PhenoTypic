@@ -7,7 +7,6 @@ directories of images with support for local parallel processing and autonomous
 SLURM cluster execution.
 
 Features:
-    - Automatic timestamped output directories
     - Recursive directory support (1 level deep)
     - Dry-run mode for previewing processing plans
     - Sample processing mode for testing pipelines
@@ -18,58 +17,58 @@ Features:
     - Progress monitoring tools
 
 Usage:
-    python -m phenotypic --pipeline pipeline.json --input ./images [OPTIONS]
+    python -m phenotypic --mode full --pipeline pipeline.json --input ./images --output ./out [OPTIONS]
 
 Examples:
-    # Basic usage with auto-generated output directory
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images
-
-    # Specify output directory
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results
+    # Basic usage
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results
 
     # Dry-run to preview processing plan
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images --dry-run
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --dry-run
 
     # Sample 5 images per dataset for testing
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images --sample 5
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --sample 5
 
     # Resume interrupted processing
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --resume
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --resume
 
     # Restart processing from beginning (clears previous state)
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --restart
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --restart
 
     # SLURM execution (autonomous)
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images \
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \
+        -o ./results \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --slurm mem_gb=16
 
     # SLURM with progress monitoring
-    uv run python -m phenotypic --pipeline pipeline.json --input ./images \
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \
+        -o ./results \
         --slurm slurm_partition=compute \
         --slurm slurm_account=proj \
         --wait
 
     # GridImage with custom dimensions
-    uv run python -m phenotypic --pipeline pipeline.json --input ./plates \
+    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./plates \
+        -o ./results \
         --image-type GridImage --nrows 16 --ncols 24
 
     # Rerun measurements on a previous forward run without re-detecting
     # (reads HDFs from <previous-output-dir>/results/*/hdf/, rewrites
     # parquet measurements + master CSV, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
-    uv run python -m phenotypic --pipeline pipeline.json --measure \
-        -o <previous-output-dir>
+    uv run python -m phenotypic --mode measure --pipeline pipeline.json \
+        --output <previous-output-dir>
 
     # Recompile a previous output directory: re-aggregate the master
     # measurements CSV, fill in any overlay PNGs missing under
     # results/<ds>/overlays/ by reloading their HDFs (threaded across
-    # --n-jobs workers, alpha from --overlay-alpha), rerun analysis
+    # --njobs workers, alpha from --overlay-alpha), rerun analysis
     # plugins, rebuild the manifest, and regenerate the HTML dashboard.
     # Existing overlays are left untouched.  Pipeline JSON is NOT
     # required:
-    uv run python -m phenotypic --recompile <previous-output-dir>
+    uv run python -m phenotypic --mode recompile --output <previous-output-dir>
 
 Outputs:
     Forward runs write a single HDF5 per input image under
@@ -77,8 +76,8 @@ Outputs:
     state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
     Overlay PNGs are always written under
     `<output>/results/<dataset>/overlays/<stem>.png` for forward runs;
-    `--measure` reruns reuse existing overlays and do not regenerate them.
-    `--recompile` fills in only-missing overlay PNGs from HDFs but
+    `--mode measure` reruns reuse existing overlays and do not regenerate them.
+    `--mode recompile` fills in only-missing overlay PNGs from HDFs but
     leaves existing ones untouched.
 
 SLURM Execution (Autonomous HPC Cluster Processing):
@@ -111,7 +110,8 @@ SLURM Execution (Autonomous HPC Cluster Processing):
         - Valid range: 1-10080 minutes (1 minute to 7 days)
 
     Example: Submit with account, partition, memory, and time limits
-        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\
+        uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\
+            --output ./results \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --slurm mem_gb=32 \\
@@ -121,7 +121,8 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --wait
 
     Example: Dry-run to preview SLURM submission plan
-        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\
+        uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\
+            --output ./results \\
             --slurm slurm_partition=compute \\
             --slurm slurm_account=lab_proj \\
             --dry-run
@@ -131,14 +132,13 @@ import logging
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, cast
 
 import click
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
-    generate_timestamped_output_dir,
     organize_by_dataset,
     scan_directory_structure,
     scan_hdf_outputs,
@@ -195,7 +195,7 @@ from phenotypic.tools_ import (
     recompile_dir,
     resolve_processing_state_path,
 )
-from phenotypic.tools_.typing_ import ImageTypeName
+from phenotypic.tools_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -476,10 +476,10 @@ def _format_explicit_cli_usage_hint() -> str:
     """Return the canonical explicit-path CLI usage hint."""
     return (
         "Use explicit path options instead:\n"
-        "  python -m phenotypic --pipeline pipeline.json --input ./images "
-        "-o ./results\n"
+        "  python -m phenotypic --mode full --pipeline pipeline.json "
+        "--input ./images --output ./results\n"
         "Short form:\n"
-        "  python -m phenotypic -p pipeline.json -i ./images -o ./results"
+        "  python -m phenotypic -m full -p pipeline.json -i ./images -o ./results"
     )
 
 
@@ -506,7 +506,7 @@ def _reject_unexpected_positional_args(extra_args: Sequence[str]) -> None:
 def _print_process_only_dry_run_plan(
     config: ExecutionConfig, datasets: List[Dataset], output_dir: Path
 ) -> None:
-    """Print the resolved plan for a ``--process-only`` dry run (no processing).
+    """Print the resolved plan for a process-mode dry run (no processing).
 
     Shows the mode + layer, per-dataset image counts, a sample of mirrored
     output paths, the execution backend, and the ``.phenotypic`` machine-state
@@ -519,9 +519,9 @@ def _print_process_only_dry_run_plan(
     backend = "slurm" if config.is_slurm_mode() else "local"
 
     click.echo("\n" + "=" * 80)
-    click.echo("DRY-RUN MODE: process-only (No Jobs Will Be Executed)")
+    click.echo("DRY-RUN MODE: process (No Jobs Will Be Executed)")
     click.echo("=" * 80)
-    click.echo(f"\n  Mode:        process-only ({layer})")
+    click.echo(f"\n  Mode:        process ({layer})")
     click.echo(f"  Pipeline:    {config.pipeline_json}")
     click.echo(f"  Input root:  {config.input_path}")
     click.echo(f"  Output dir:  {output_dir}")
@@ -556,7 +556,12 @@ def _print_process_only_dry_run_plan(
     )
 
 
-@click.command(context_settings={"allow_extra_args": True})
+@click.command(
+    context_settings={
+        "allow_extra_args": True,
+        "help_option_names": ["-h", "--help"],
+    }
+)
 @click.option(
     "-p",
     "--pipeline",
@@ -578,10 +583,24 @@ def _print_process_only_dry_run_plan(
 )
 @click.option(
     "-o",
-    "--output-dir",
+    "--output",
+    "output_dir",
     type=click.Path(path_type=Path),
-    default=None,
-    help="Output directory (auto-generated if not specified)",
+    required=True,
+    help="Output directory.",
+)
+@click.option(
+    "-m",
+    "--mode",
+    type=click.Choice(["full", "measure", "recompile", "process"]),
+    default="full",
+    show_default=True,
+    help=(
+        "Execution mode: full applies the pipeline and measures images; "
+        "measure reruns measurement from an existing output root; recompile "
+        "refreshes aggregate outputs from an existing output root; process "
+        "exports a single layer selected with --layer."
+    ),
 )
 @click.option(
     "--image-type",
@@ -618,7 +637,8 @@ def _print_process_only_dry_run_plan(
     help="Source channel for the detection matrix",
 )
 @click.option(
-    "--n-jobs",
+    "--njobs",
+    "n_jobs",
     type=int,
     default=-1,
     show_default=True,
@@ -651,15 +671,6 @@ def _print_process_only_dry_run_plan(
     "File extension for legacy per-layer outputs. Forward runs now "
     "write a single .h5 per image; only overlay PNG rendering still "
     "consults this value.",
-)
-@click.option(
-    "--measure",
-    "measure_only",
-    is_flag=True,
-    default=False,
-    help="Rerun pipeline.measure() on HDFs under "
-    "<output-dir>/results/*/hdf/. Skips detection. Does not regenerate "
-    "overlays.",
 )
 @click.option(
     "--overlay-alpha",
@@ -704,7 +715,7 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--restart",
     is_flag=True,
-    help="Restart processing from beginning, clearing previous state (requires --output-dir)",
+    help="Restart processing from beginning, clearing previous state (requires --output)",
 )
 @click.option(
     "--overwrite",
@@ -730,16 +741,6 @@ def _print_process_only_dry_run_plan(
     help="Skip pipeline validation (for advanced users)",
 )
 @click.option(
-    "--recompile",
-    type=click.Path(exists=True, path_type=Path),
-    default=None,
-    help="Recompile master measurements from existing output directory. "
-         "Skips pipeline execution — re-aggregates parquets, regenerates "
-         "any overlay PNGs missing under results/<ds>/overlays/ from "
-         "their HDFs (threaded by --n-jobs, alpha from --overlay-alpha), "
-         "runs analysis, rebuilds manifest, and regenerates dashboard.",
-)
-@click.option(
     "--no-qc",
     "no_qc",
     is_flag=True,
@@ -748,20 +749,22 @@ def _print_process_only_dry_run_plan(
          "qc/ artifact and resetting GUI review progress).",
 )
 @click.option(
-    "--process-only",
-    "process_only_layer",
+    "--layer",
+    "layer",
     type=click.Choice(["rgb", "gray", "detect_mat", "objmap"]),
     default=None,
-    help="Apply-only mode: run pipeline.apply() and export this single layer "
-         "(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), "
-         "mirroring the input tree. Skips measurement, deliverables, QC, dashboard.",
+    help=(
+        "Layer exported by --mode process. TIFF for rgb/gray/detect_mat; "
+        "16-bit raw-label PNG for objmap."
+    ),
 )
 @click.pass_context
 def phenotypic_cli(
     ctx: click.Context,
     pipeline_json: Optional[Path],
     input_path: Optional[Path],
-    output_dir: Optional[Path],
+    output_dir: Path,
+    mode: str,
     image_type: str,
     nrows: Optional[int],
     ncols: Optional[int],
@@ -772,7 +775,6 @@ def phenotypic_cli(
     force_local: bool,
     wait: bool,
     ext: str,
-    measure_only: bool,
     overlay_alpha: float,
     no_dataset_column: bool,
     dry_run: bool,
@@ -785,9 +787,8 @@ def phenotypic_cli(
     metadata_csv: Optional[Path],
     checkpoint_interval: Optional[int],
     skip_validation: bool,
-    recompile: Optional[Path],
     no_qc: bool,
-    process_only_layer: Optional[str],
+    layer: Optional[str],
 ):
     """
     Execute a PhenoTypic pipeline on images.
@@ -796,41 +797,56 @@ def phenotypic_cli(
 
     --input: Image file or directory to process
 
-    --process-only {rgb|gray|detect_mat|objmap}: apply-only export mode. Runs
-    pipeline.apply() and writes a single image layer per input via the layer
-    accessor's imsave (rgb integer TIFF at the source bit depth; gray/detect_mat
-    float TIFF preserving full precision; objmap 16-bit raw-label PNG; PhenoTypic
-    metadata embedded), mirroring the input tree under --output-dir. Skips
-    measurement, deliverables, QC, and the dashboard; machine-state (progress
-    manifest, event log, pipeline copy) lives under <output>/.phenotypic/. Full
-    local + SLURM + resume reuse. Example::
+    --mode process --layer {rgb|gray|detect_mat|objmap}: apply-only export
+    mode. Runs pipeline.apply() and writes a single image layer per input via
+    the layer accessor's imsave (rgb integer TIFF at the source bit depth;
+    gray/detect_mat float TIFF preserving full precision; objmap 16-bit
+    raw-label PNG; PhenoTypic metadata embedded), mirroring the input tree
+    under --output. Skips measurement, deliverables, QC, and the dashboard;
+    machine-state (progress manifest, event log, pipeline copy) lives under
+    <output>/.phenotypic/. Full local + SLURM + resume reuse. Example::
 
-        uv run python -m phenotypic --pipeline pipe.json --input ./plates \\
-            --output-dir ./out --process-only detect_mat --force-local
+        uv run python -m phenotypic --mode process --pipeline pipe.json \\
+            --input ./plates --output ./out --layer detect_mat --force-local
     """
     try:
         _reject_unexpected_positional_args(ctx.args)
 
         include_dataset_column = not no_dataset_column
+        cli_mode = cast(CliMode, mode)  # Click's Choice has already validated this.
+        measure_only = cli_mode == "measure"
+        recompile_only = cli_mode == "recompile"
+        process_only_layer: Optional[ProcessOnlyLayer] = None
+        if cli_mode == "process":
+            if layer is None:
+                raise click.UsageError("--mode process requires --layer.")
+            process_only_layer = cast(ProcessOnlyLayer, layer)
+        elif layer is not None:
+            raise click.UsageError("--layer can only be used with --mode process.")
 
-        # ---- Early validation for --process-only -----------------------
-        # Process-only is an apply-only export run (one image layer per
-        # input, mirrored input tree, no measurement / deliverables / QC /
-        # dashboard). Validate it before the --measure / --recompile branches
-        # so conflicting run modes are rejected with a clear message.
+        if measure_only or recompile_only:
+            if input_path is not None:
+                raise click.UsageError(
+                    f"--mode {cli_mode} does not accept --input; it discovers "
+                    "inputs from the existing output directory."
+                )
+            if dry_run:
+                raise click.UsageError(
+                    f"--dry-run cannot be combined with --mode {cli_mode}."
+                )
+        if recompile_only and pipeline_json is not None:
+            raise click.UsageError(
+                "--mode recompile does not accept --pipeline; it reloads the "
+                "pipeline from the existing output directory."
+            )
+
+        # ---- Early validation for --mode process -----------------------
+        # Process mode is an apply-only export run (one image layer per input,
+        # mirrored input tree, no measurement / deliverables / QC / dashboard).
         if process_only_layer is not None:
-            for bad, name in (
-                (measure_only, "--measure"),
-                (recompile is not None, "--recompile"),
-            ):
-                if bad:
-                    raise click.UsageError(
-                        f"--process-only cannot be combined with {name} "
-                        "(conflicting run modes)."
-                    )
             if pipeline_json is None or input_path is None:
                 raise click.UsageError(
-                    "--process-only requires --pipeline and --input."
+                    "--mode process requires --pipeline and --input."
                 )
             for val, name in (
                 (metadata_csv, "--metadata"),
@@ -839,12 +855,12 @@ def phenotypic_cli(
             ):
                 if val:
                     click.echo(
-                        f"Warning: {name} is ignored in --process-only mode "
+                        f"Warning: {name} is ignored in --mode process "
                         "(no measurement/aggregation output).",
                         err=True,
                     )
 
-        # Parse SLURM args before the recompile branch so --recompile can
+        # Parse SLURM args before the recompile branch so --mode recompile can
         # explicitly choose between local and SLURM recompile dispatch.
         slurm_args_dict = {}
         if slurm_args:
@@ -895,10 +911,14 @@ def phenotypic_cli(
                             err=True,
                         )
 
-        if recompile is not None:
+        if recompile_only:
+            if not output_dir.exists():
+                raise click.UsageError(
+                    f"--mode recompile output directory does not exist: {output_dir}."
+                )
             if slurm_args_dict and not force_local:
                 _handle_recompile_slurm(
-                    output_dir=recompile,
+                    output_dir=output_dir,
                     metadata_csv=metadata_csv,
                     include_dataset_column=include_dataset_column,
                     overlay_alpha=overlay_alpha,
@@ -909,7 +929,7 @@ def phenotypic_cli(
                 )
             else:
                 _handle_recompile(
-                    recompile,
+                    output_dir,
                     metadata_csv,
                     include_dataset_column,
                     overlay_alpha,
@@ -918,68 +938,55 @@ def phenotypic_cli(
                 )
             sys.exit(0)
 
-        # ---- Early validation for --measure (measure_only) -------------
-        # --measure is a one-shot re-measurement run over HDFs already
+        # ---- Early validation for --mode measure (measure_only) --------
+        # Measure mode is a one-shot re-measurement run over HDFs already
         # written by a previous forward run.  It is incompatible with any
         # flag that implies a fresh detection pass or state mutation, and
-        # it uses <output-dir>/results/*/hdf/ as its image source, so
-        # --input is optional.
+        # it uses <output>/results/*/hdf/ as its image source.
         if measure_only:
             # Reject incompatible flags first so the user gets a pointed
-            # rejection ("--measure cannot be combined with --X") regardless
-            # of whether --output-dir / --pipeline are also wrong.
+            # rejection ("--mode measure cannot be combined with --X")
+            # regardless of whether --output / --pipeline are also wrong.
             if resume:
                 raise click.UsageError(
-                    "--measure cannot be combined with --resume; "
-                    "--measure is a one-shot re-measurement run that does "
+                    "--mode measure cannot be combined with --resume; "
+                    "--mode measure is a one-shot re-measurement run that does "
                     "not touch processing state."
                 )
             if restart:
                 raise click.UsageError(
-                    "--measure cannot be combined with --restart; "
-                    "--measure reuses existing HDFs and does not clear state."
+                    "--mode measure cannot be combined with --restart; "
+                    "--mode measure reuses existing HDFs and does not clear state."
                 )
             if retry_failures:
                 raise click.UsageError(
-                    "--measure cannot be combined with --retry-failures; "
+                    "--mode measure cannot be combined with --retry-failures; "
                     "--retry-failures only applies to resume runs, and "
-                    "--measure does not touch state."
+                    "--mode measure does not touch state."
                 )
             if overwrite:
                 raise click.UsageError(
-                    "--measure cannot be combined with --overwrite; "
-                    "--measure reruns measurements on existing HDFs and "
+                    "--mode measure cannot be combined with --overwrite; "
+                    "--mode measure reruns measurements on existing HDFs and "
                     "must not delete output directory contents."
                 )
             if sample is not None:
                 raise click.UsageError(
-                    "--measure cannot be combined with --sample; "
-                    "--measure operates on every HDF discovered under "
-                    "<output-dir>/results/*/hdf/."
+                    "--mode measure cannot be combined with --sample; "
+                    "--mode measure operates on every HDF discovered under "
+                    "<output>/results/*/hdf/."
                 )
 
             if pipeline_json is None:
                 raise click.UsageError(
-                    "--measure requires --pipeline to be specified."
-                )
-            if output_dir is None:
-                raise click.UsageError(
-                    "--measure requires --output-dir to be specified "
-                    "(it reads HDFs from <output-dir>/results/*/hdf/)."
+                    "--mode measure requires --pipeline to be specified."
                 )
             if not Path(output_dir).exists():
                 raise click.UsageError(
-                    f"--measure output directory does not exist: {output_dir}. "
-                    "--measure is a rerun over an existing forward-run output; "
+                    f"--mode measure output directory does not exist: {output_dir}. "
+                    "--mode measure is a rerun over an existing forward-run output; "
                     "point it at a directory produced by a previous "
                     "`python -m phenotypic ...` invocation."
-                )
-            if input_path is not None:
-                click.echo(
-                    f"Warning: --input ({input_path}) is ignored in "
-                    "--measure mode; images are discovered under "
-                    f"{output_dir}/results/*/hdf/.",
-                    err=True,
                 )
 
         if not measure_only and (pipeline_json is None or input_path is None):
@@ -989,7 +996,7 @@ def phenotypic_cli(
             if input_path is None:
                 missing.append("--input")
             raise click.UsageError(
-                f"{' and '.join(missing)} required unless --recompile is set.\n"
+                f"{' and '.join(missing)} required unless --mode recompile is set.\n"
                 f"{_format_explicit_cli_usage_hint()}"
             )
 
@@ -1017,24 +1024,6 @@ def phenotypic_cli(
             )
             sys.exit(1)
 
-        if restart and output_dir is None:
-            click.echo(
-                "Error: --restart requires --output-dir to be specified", err=True
-            )
-            click.echo(
-                "\nRestart mode clears previous processing state and starts fresh. "
-                "You must specify the output directory to restart.",
-                err=True,
-            )
-            click.echo(
-                "\nExample:\n"
-                "  python -m phenotypic --pipeline pipeline.json --input ./images \\\n"
-                "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
-                "    --restart",
-                err=True,
-            )
-            sys.exit(1)
-
         # Validate metadata CSV early
         if metadata_csv is not None:
             import pandas as pd
@@ -1048,15 +1037,14 @@ def phenotypic_cli(
             except Exception as e:
                 error_exit(f"Cannot read metadata CSV: {e}")
 
-        # Create ExecutionConfig.  By this point either measure_only's
-        # early validation or the non-measure check above has guaranteed
-        # pipeline_json is non-None; input_path may only be None in
-        # --measure mode, where we substitute output_dir to satisfy the
-        # dataclass's non-optional ``input_path`` (the measure path
-        # never consults it for image discovery).
+        # Create ExecutionConfig.  By this point either measure_only's early
+        # validation or the non-measure check above has guaranteed pipeline_json
+        # is non-None; input_path may only be None in measure mode, where we
+        # substitute output_dir to satisfy the dataclass's non-optional
+        # ``input_path`` (the measure path never consults it for image
+        # discovery).
         assert pipeline_json is not None  # narrowed by earlier UsageError branches
         effective_input_path = input_path if input_path is not None else output_dir
-        assert effective_input_path is not None  # narrowed by earlier --output-dir checks
         # Click's Choice() validated image_type against {"Image", "GridImage"};
         # narrow to the typed alias for ExecutionConfig's Literal-typed field.
         narrowed_image_type: ImageTypeName = "GridImage" if image_type == "GridImage" else "Image"
@@ -1089,25 +1077,6 @@ def phenotypic_cli(
 
         # Handle resume mode BEFORE creating output directory
         if config.resume:
-            # For resume, output_dir must be specified
-            if output_dir is None:
-                click.echo(
-                    "Error: --resume requires --output-dir to be specified", err=True
-                )
-                click.echo(
-                    "\nResume mode continues processing from a previous run. "
-                    "You must specify the same output directory that was used before.",
-                    err=True,
-                )
-                click.echo(
-                    "\nExample:\n"
-                    "  python -m phenotypic --pipeline pipeline.json --input ./images \\\n"
-                    "    --output-dir ./results_2024-01-12_10-30-45 \\\n"
-                    "    --resume",
-                    err=True,
-                )
-                sys.exit(1)
-
             # Check if output directory exists
             if not output_dir.exists():
                 click.echo(
@@ -1151,7 +1120,6 @@ def phenotypic_cli(
         # appending to, and rebuilding its manifest/failure records from, the
         # prior run's events.
         if restart:
-            assert output_dir is not None  # narrowed by the --restart guard above
             if output_dir.exists():
                 if clear_machine_state(output_dir):
                     click.echo(
@@ -1165,11 +1133,6 @@ def phenotypic_cli(
                 click.echo(
                     f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
                 )
-
-        # Generate or validate output directory
-        if output_dir is None:
-            output_dir = generate_timestamped_output_dir()
-            click.echo(f"Auto-generated output directory: {output_dir}")
 
         config.output_dir = output_dir
 
@@ -1195,7 +1158,7 @@ def phenotypic_cli(
                     )
                     sys.exit(1)
 
-        # Scan directory structure (or discover HDFs if in --measure mode)
+        # Scan directory structure (or discover HDFs in measure mode)
         if measure_only:
             click.echo(f"Discovering HDF outputs under {output_dir}/results/...")
             try:
@@ -1334,7 +1297,7 @@ def phenotypic_cli(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create initial state (or update if resuming) — skipped in
-        # --measure mode, which never mutates processing state.
+        # measure mode, which never mutates processing state.
         if not measure_only:
             if config.resume:
                 assert resume_state is not None
@@ -1375,7 +1338,7 @@ def phenotypic_cli(
         if not config.process_only_layer:
             output_manager.create_structure(datasets)
 
-        # Copy pipeline config for reproducibility (skip in --measure mode — the
+        # Copy pipeline config for reproducibility (skip in measure mode — the
         # forward run already copied it). Process-only writes its copy under
         # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
         if config.process_only_layer:
@@ -1517,7 +1480,7 @@ def _regenerate_missing_overlays(
     """Re-render overlay PNGs that are missing under ``results/<ds>/overlays/``.
 
     HDF-driven: walks ``results/<ds>/hdf/*.h5`` (the same discovery
-    used by ``--measure``) and, for each HDF whose corresponding
+    used by measure mode) and, for each HDF whose corresponding
     overlay PNG is absent, loads the HDF as the right ``Image`` /
     ``GridImage`` subclass and writes the overlay using the same
     :class:`OutputManager` writer the forward run uses.  Existing
@@ -1536,7 +1499,7 @@ def _regenerate_missing_overlays(
             ``--overlay-alpha`` flag used by forward runs.
         n_jobs: Number of worker threads.  ``-1`` means allocated CPUs
             under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
-            Mirrors the ``--n-jobs`` flag used by forward runs.
+            Mirrors the ``--njobs`` flag used by forward runs.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1905,7 +1868,7 @@ def _handle_recompile(
             PNGs from HDFs.  Forwarded from the ``--overlay-alpha``
             CLI flag.
         n_jobs: Worker thread count for overlay regeneration.
-            Forwarded from the ``--n-jobs`` CLI flag (``-1`` = all
+            Forwarded from the ``--njobs`` CLI flag (``-1`` = all
             cores, ``1`` = single-threaded).
         no_qc: Forwarded from ``--no-qc`` to skip the QC compute step
             in finalize.

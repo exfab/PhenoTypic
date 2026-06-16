@@ -5,7 +5,7 @@ Covers the three entry points added alongside the splitter:
 
 - :func:`_collect_feature_headers` — driven by pipeline ``_meas``.
 - :func:`_load_pipeline_from_output_dir` — fallback used by SLURM sentinel
-  and ``--recompile`` paths.
+  and recompile-mode paths.
 - :func:`split_master_by_feature` — writes per-feature CSV + Parquet.
 - :func:`aggregate_measurements` — end-to-end glue that auto-loads the
   pipeline from the output directory when none is passed in.
