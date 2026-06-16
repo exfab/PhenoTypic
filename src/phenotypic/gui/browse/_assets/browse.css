@@ -66,10 +66,31 @@
         animation-duration: 1.8s;
     }
 }
+.browse-step-button {
+    min-width: 3rem;
+}
 .browse-meta-panel {
     font-size: var(--font-size-caption);
     color: var(--color-body);
 }
 .browse-meta-chip span:last-child {
     font-family: var(--font-mono);
+}
+.browse-csv-metadata-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+.browse-csv-metadata-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+.browse-csv-metadata-table {
+    width: max-content;
+    min-width: 100%;
+}
+.browse-csv-metadata-table th,
+.browse-csv-metadata-table td {
+    white-space: nowrap;
 }
