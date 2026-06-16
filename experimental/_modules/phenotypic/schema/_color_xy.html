@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._color_xy</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object summary statistics in CIE chromaticity xy coordinates.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="Colorxy">
@@ -622,17 +622,17 @@
         <span class="k">return</span> <span class="s2">&quot;Colorxy&quot;</span></div>
 
 
-    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">x_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">x_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;xMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity x coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">x_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;xStdDev&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">x_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">x_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;xCoeffVar&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the chromaticity x coordinate of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -653,17 +653,17 @@
         <span class="p">]</span></div>
 
 
-    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_Q1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_Q3</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;yMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
-    <span class="n">y_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">y_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yQ1&quot;</span><span class="p">,</span> <span class="s2">&quot;The lower quartile (Q1) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yQ3&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper quartile (Q3) chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;yMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum chromaticity y coordinate of the object&quot;</span><span class="p">)</span>
+    <span class="n">y_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;yStdDev&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;yCoeffVar&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the chromaticity y coordinate of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>

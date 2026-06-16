@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._experimental_tags._genetic</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Organism and genetics metadata tags for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="GENETIC_METADATA">
@@ -621,18 +621,18 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">ORGANISM</span> <span class="o">=</span> <span class="s2">&quot;Organism&quot;</span><span class="p">,</span> <span class="s2">&quot;Species or organism name (e.g. Saccharomyces cerevisiae).&quot;</span>
-    <span class="n">STRAIN</span> <span class="o">=</span> <span class="s2">&quot;Strain&quot;</span><span class="p">,</span> <span class="s2">&quot;Strain name or identifier (e.g. BY4741).&quot;</span>
-    <span class="n">GENOTYPE</span> <span class="o">=</span> <span class="s2">&quot;Genotype&quot;</span><span class="p">,</span> <span class="s2">&quot;Genotype description of the strain.&quot;</span>
-    <span class="n">BACKGROUND</span> <span class="o">=</span> <span class="s2">&quot;Background&quot;</span><span class="p">,</span> <span class="s2">&quot;Genetic background or parent strain.&quot;</span>
-    <span class="n">ALLELE</span> <span class="o">=</span> <span class="s2">&quot;Allele&quot;</span><span class="p">,</span> <span class="s2">&quot;Specific allele or mutation under study.&quot;</span>
-    <span class="n">PLASMID</span> <span class="o">=</span> <span class="s2">&quot;Plasmid&quot;</span><span class="p">,</span> <span class="s2">&quot;Plasmid carried by the sample.&quot;</span>
-    <span class="n">SELECTION_MARKER</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ORGANISM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Organism&quot;</span><span class="p">,</span> <span class="s2">&quot;Species or organism name (e.g. Saccharomyces cerevisiae).&quot;</span><span class="p">)</span>
+    <span class="n">STRAIN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Strain&quot;</span><span class="p">,</span> <span class="s2">&quot;Strain name or identifier (e.g. BY4741).&quot;</span><span class="p">)</span>
+    <span class="n">GENOTYPE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Genotype&quot;</span><span class="p">,</span> <span class="s2">&quot;Genotype description of the strain.&quot;</span><span class="p">)</span>
+    <span class="n">BACKGROUND</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Background&quot;</span><span class="p">,</span> <span class="s2">&quot;Genetic background or parent strain.&quot;</span><span class="p">)</span>
+    <span class="n">ALLELE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Allele&quot;</span><span class="p">,</span> <span class="s2">&quot;Specific allele or mutation under study.&quot;</span><span class="p">)</span>
+    <span class="n">PLASMID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Plasmid&quot;</span><span class="p">,</span> <span class="s2">&quot;Plasmid carried by the sample.&quot;</span><span class="p">)</span>
+    <span class="n">SELECTION_MARKER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SelectionMarker&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Selectable marker gene (e.g. URA3, KanMX).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MATING_TYPE</span> <span class="o">=</span> <span class="s2">&quot;MatingType&quot;</span><span class="p">,</span> <span class="s2">&quot;Mating type for yeast (e.g. MATa, MATalpha).&quot;</span>
-    <span class="n">PLOIDY</span> <span class="o">=</span> <span class="s2">&quot;Ploidy&quot;</span><span class="p">,</span> <span class="s2">&quot;Ploidy of the organism (e.g. haploid, diploid).&quot;</span></div>
+    <span class="n">MATING_TYPE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MatingType&quot;</span><span class="p">,</span> <span class="s2">&quot;Mating type for yeast (e.g. MATa, MATalpha).&quot;</span><span class="p">)</span>
+    <span class="n">PLOIDY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Ploidy&quot;</span><span class="p">,</span> <span class="s2">&quot;Ploidy of the organism (e.g. haploid, diploid).&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

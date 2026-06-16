@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._color_composition</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info for perceptual color composition using 11-color model.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ColorComposition">
@@ -620,33 +620,33 @@
 
 
     <span class="c1"># Define the 11 color categories with descriptions</span>
-    <span class="n">BLACK_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BlackPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as black (Value &lt; 20)&quot;</span><span class="p">)</span>
-    <span class="n">WHITE_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">BLACK_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;BlackPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as black (Value &lt; 20)&quot;</span><span class="p">)</span>
+    <span class="n">WHITE_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;WhitePct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as white (Saturation &lt; 15, Value &gt; 85)&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">GRAY_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">GRAY_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;GrayPct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as gray (Saturation &lt; 15, Value 20-85)&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">PINK_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">PINK_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;PinkPct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value &gt; 80)&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">BROWN_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">BROWN_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;BrownPct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RED_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">RED_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RedPct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as red (Hue 0-15° or 345-360°)&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">ORANGE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;OrangePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as orange (Hue 15-45°)&quot;</span><span class="p">)</span>
-    <span class="n">YELLOW_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;YellowPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as yellow (Hue 45-75°)&quot;</span><span class="p">)</span>
-    <span class="n">GREEN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;GreenPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as green (Hue 75-150°)&quot;</span><span class="p">)</span>
-    <span class="n">CYAN_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CyanPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as cyan (Hue 150-180°)&quot;</span><span class="p">)</span>
-    <span class="n">BLUE_PCT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;BluePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as blue (Hue 180-250°)&quot;</span><span class="p">)</span>
-    <span class="n">PURPLE_PCT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ORANGE_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;OrangePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as orange (Hue 15-45°)&quot;</span><span class="p">)</span>
+    <span class="n">YELLOW_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;YellowPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as yellow (Hue 45-75°)&quot;</span><span class="p">)</span>
+    <span class="n">GREEN_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;GreenPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as green (Hue 75-150°)&quot;</span><span class="p">)</span>
+    <span class="n">CYAN_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CyanPct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as cyan (Hue 150-180°)&quot;</span><span class="p">)</span>
+    <span class="n">BLUE_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;BluePct&quot;</span><span class="p">,</span> <span class="s2">&quot;Percentage of pixels classified as blue (Hue 180-250°)&quot;</span><span class="p">)</span>
+    <span class="n">PURPLE_PCT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;PurplePct&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Percentage of pixels classified as purple/magenta (Hue 250-345°)&quot;</span><span class="p">,</span>
     <span class="p">)</span>

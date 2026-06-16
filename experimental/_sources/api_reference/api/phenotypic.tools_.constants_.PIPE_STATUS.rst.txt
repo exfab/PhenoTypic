@@ -83,6 +83,8 @@ phenotypic.tools\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.MEASURED
       ~PIPE_STATUS.label
       ~PIPE_STATUS.desc
+      ~PIPE_STATUS.bio_desc
+      ~PIPE_STATUS.image
       ~PIPE_STATUS.pair
    
    

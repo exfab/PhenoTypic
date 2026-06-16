@@ -81,6 +81,8 @@ phenotypic.tools\_.constants\_.ConstantLabels
       ~ConstantLabels.CATEGORY
       ~ConstantLabels.label
       ~ConstantLabels.desc
+      ~ConstantLabels.bio_desc
+      ~ConstantLabels.image
       ~ConstantLabels.pair
    
    

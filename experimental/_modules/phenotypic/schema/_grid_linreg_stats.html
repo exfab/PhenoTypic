@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._grid_linreg_stats</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Grid linear regression statistics and residual errors.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="GRID_LINREG_STATS">
@@ -620,31 +620,31 @@
         <span class="k">return</span> <span class="s2">&quot;GridLinReg&quot;</span></div>
 
 
-    <span class="n">ROW_LINREG_M</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ROW_LINREG_M</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowM&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Slope of row-wise linear regression fit across column positions. Measures systematic drift in row alignment. Values near 0 indicate horizontal rows; non-zero values suggest rotational misalignment or systematic row curvature across the plate.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">ROW_LINREG_B</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ROW_LINREG_B</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowB&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Intercept of row-wise linear regression fit. Represents the expected row coordinate when column position is 0. Combined with slope, defines the expected row trend line for quality assessment and position prediction.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">COL_LINREG_M</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">COL_LINREG_M</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColM&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Slope of column-wise linear regression fit across row positions. Measures systematic drift in column alignment. Values near 0 indicate vertical columns; non-zero values suggest rotational misalignment or systematic column curvature across the plate.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">COL_LINREG_B</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">COL_LINREG_B</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColB&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Intercept of column-wise linear regression fit. Represents the expected column coordinate when row position is 0. Combined with slope, defines the expected column trend line for quality assessment and position prediction.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">PRED_RR</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">PRED_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;PredRR&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Predicted row coordinate from column-wise linear regression. Uses the column position and column regression parameters (ColM, ColB) to estimate where the row coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">PRED_CC</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">PRED_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;PredCC&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Predicted column coordinate from row-wise linear regression. Uses the row position and row regression parameters (RowM, RowB) to estimate where the column coordinate should be if the grid were perfectly aligned. Used for calculating residual errors and detecting misaligned colonies.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RESIDUAL_ERR</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">RESIDUAL_ERR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ResidualError&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Euclidean distance between the actual colony centroid and the predicted position from linear regression. Quantifies how far each colony deviates from the expected grid pattern. High values indicate misdetections, off-grid growth, or local plate warping. Used by refinement operations to filter outliers and select the most plausible colony per grid cell.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

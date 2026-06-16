@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._intensity</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object grayscale intensity summary statistics.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="INTENSITY">
@@ -620,32 +620,32 @@
         <span class="k">return</span> <span class="s2">&quot;Intensity&quot;</span></div>
 
 
-    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">)</span>
-    <span class="n">DENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the object&#39;s intensity to the max possible &quot;</span>
+    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The sum of the object&#39;s pixels&quot;</span><span class="p">)</span>
+    <span class="n">DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Density&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the object&#39;s intensity to the max possible &quot;</span>
                           <span class="s2">&quot;intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the objects intensity to the max &quot;</span>
+    <span class="n">CONVEX_DENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ConvexDensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The ratio of the objects intensity to the max &quot;</span>
                                        <span class="s2">&quot;possible intensity of the object&#39;s convex hull&quot;</span><span class="p">)</span>
-    <span class="n">MINIMUM_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MinimumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MAXIMUM_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MaximumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MEAN_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MeanIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">MEDIAN_INTENSITY</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MedianIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The median intensity of the object&quot;</span><span class="p">)</span>
-    <span class="n">STANDARD_DEVIATION_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MINIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinimumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MAXIMUM_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaximumIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MEAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MeanIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">MEDIAN_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MedianIntensity&quot;</span><span class="p">,</span> <span class="s2">&quot;The median intensity of the object&quot;</span><span class="p">)</span>
+    <span class="n">STANDARD_DEVIATION_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;StandardDeviationIntensity&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">COEFFICIENT_VARIANCE_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">COEFFICIENT_VARIANCE_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoefficientVarianceIntensity&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Q1_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Q1_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LowerQuartileIntensity&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The lower quartile intensity of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Q3_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Q3_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;UpperQuartileIntensity&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The upper quartile intensity of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">IQR_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">IQR_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InterquartileRangeIntensity&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The interquartile range of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

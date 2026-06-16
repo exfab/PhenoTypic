@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._bbox</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Bounding-box and centroid coordinate measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="BBOX">
@@ -619,30 +619,30 @@
         <span class="k">return</span> <span class="s2">&quot;Bbox&quot;</span></div>
 
 
-    <span class="n">CENTER_RR</span> <span class="o">=</span> <span class="s2">&quot;CenterRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The row coordinate of the center of the bounding box.&quot;</span>
-    <span class="n">MIN_RR</span> <span class="o">=</span> <span class="s2">&quot;MinRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The smallest row coordinate of the bounding box.&quot;</span>
-    <span class="n">MAX_RR</span> <span class="o">=</span> <span class="s2">&quot;MaxRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The largest row coordinate of the bounding box.&quot;</span>
-    <span class="n">CENTER_CC</span> <span class="o">=</span> <span class="s2">&quot;CenterCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The column coordinate of the center of the bounding box.&quot;</span>
-    <span class="n">MIN_CC</span> <span class="o">=</span> <span class="s2">&quot;MinCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The smallest column coordinate of the bounding box.&quot;</span>
-    <span class="n">MAX_CC</span> <span class="o">=</span> <span class="s2">&quot;MaxCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The largest column coordinate of the bounding box.&quot;</span>
-    <span class="n">INTENSITY_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CenterRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The row coordinate of the center of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">MIN_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The smallest row coordinate of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">MAX_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaxRR&quot;</span><span class="p">,</span> <span class="s2">&quot;The largest row coordinate of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CenterCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The column coordinate of the center of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">MIN_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MinCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The smallest column coordinate of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">MAX_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MaxCC&quot;</span><span class="p">,</span> <span class="s2">&quot; The largest column coordinate of the bounding box.&quot;</span><span class="p">)</span>
+    <span class="n">INTENSITY_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntensityWeightedCenterRR&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The intensity-weighted center row coordinate of the object &quot;</span>
         <span class="s2">&quot;(skimage ``centroid_weighted``).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">INTENSITY_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">INTENSITY_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntensityWeightedCenterCC&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The intensity-weighted center column coordinate of the object &quot;</span>
         <span class="s2">&quot;(skimage ``centroid_weighted``).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DIST_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DIST_WEIGHTED_CENTER_RR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DistWeightedCenterRR&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Row coordinate of the per-object Euclidean-distance-transform &quot;</span>
         <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>
         <span class="s2">&quot;filamentous extensions that pull intensity-weighted centroids &quot;</span>
         <span class="s2">&quot;off-body.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DIST_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DIST_WEIGHTED_CENTER_CC</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DistWeightedCenterCC&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Column coordinate of the per-object Euclidean-distance-transform &quot;</span>
         <span class="s2">&quot;maximum (deepest interior point of the object mask). Robust to thin &quot;</span>

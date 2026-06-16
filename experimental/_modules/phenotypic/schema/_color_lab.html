@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._color_lab</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object robust colorimetric statistics in the CIE L*a*b* color space.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ColorLab">
@@ -620,25 +620,25 @@
 
 
     <span class="c1"># -- ΔE76 geometric-median center (continuous, 0.5 breakdown) --</span>
-    <span class="n">L_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;L*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;a*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_GEOMEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;b*GeoMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE76 (Euclidean) geometric-median center color of the object&quot;</span><span class="p">)</span>
 
     <span class="c1"># -- ΔE2000 medoid center (real pixel, perceptually-corrected) --</span>
-    <span class="n">L_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;L*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
-    <span class="n">A_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;a*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
-    <span class="n">B_STAR_MEDOID</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;b*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+    <span class="n">L_STAR_MEDOID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;L*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+    <span class="n">A_STAR_MEDOID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;a*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
+    <span class="n">B_STAR_MEDOID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;b*Medoid&quot;</span><span class="p">,</span> <span class="s2">&quot;b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)&quot;</span><span class="p">)</span>
 
     <span class="c1"># -- ΔE2000 within-colony consistency, measured from the medoid --</span>
-    <span class="n">DELTA_E2000_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000MedianFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)&quot;</span><span class="p">)</span>
-    <span class="n">DELTA_E2000_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000MeanFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)&quot;</span><span class="p">)</span>
-    <span class="n">DELTA_E2000_P95</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;DeltaE2000P95FromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)&quot;</span><span class="p">)</span>
+    <span class="n">DELTA_E2000_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;DeltaE2000MedianFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)&quot;</span><span class="p">)</span>
+    <span class="n">DELTA_E2000_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;DeltaE2000MeanFromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)&quot;</span><span class="p">)</span>
+    <span class="n">DELTA_E2000_P95</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;DeltaE2000P95FromMedoid&quot;</span><span class="p">,</span> <span class="s2">&quot;95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)&quot;</span><span class="p">)</span>
 
     <span class="c1"># -- classical Euclidean spread --</span>
-    <span class="n">LAB_TOTAL_VARIANCE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;LabTotalVariance&quot;</span><span class="p">,</span> <span class="s2">&quot;Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)&quot;</span><span class="p">)</span>
+    <span class="n">LAB_TOTAL_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;LabTotalVariance&quot;</span><span class="p">,</span> <span class="s2">&quot;Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)&quot;</span><span class="p">)</span>
 
     <span class="c1"># -- plot-only swatch --</span>
-    <span class="n">MEDOID_COLOR_HEX</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;MedoidColorHex&quot;</span><span class="p">,</span> <span class="s2">&quot;sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)&quot;</span><span class="p">)</span>
+    <span class="n">MEDOID_COLOR_HEX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;MedoidColorHex&quot;</span><span class="p">,</span> <span class="s2">&quot;sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ColorLab.robust_headers">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab.robust_headers">[docs]</a>

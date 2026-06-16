@@ -620,7 +620,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">packaging.version</span><span class="w"> </span><span class="kn">import</span> <span class="n">Version</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ConstantLabels">
@@ -699,8 +699,8 @@
         <span class="k">return</span> <span class="s2">&quot;GammaEncoding&quot;</span></div>
 
 
-    <span class="n">SRGB</span> <span class="o">=</span> <span class="s2">&quot;sRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;Standard sRGB gamma correction for display&quot;</span>
-    <span class="n">LINEAR</span> <span class="o">=</span> <span class="s2">&quot;Linear&quot;</span><span class="p">,</span> <span class="s2">&quot;Linear RGB with no gamma correction&quot;</span></div>
+    <span class="n">SRGB</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;sRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;Standard sRGB gamma correction for display&quot;</span><span class="p">)</span>
+    <span class="n">LINEAR</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Linear&quot;</span><span class="p">,</span> <span class="s2">&quot;Linear RGB with no gamma correction&quot;</span><span class="p">)</span></div>
 
 
 
@@ -781,8 +781,8 @@
         <span class="k">return</span> <span class="s2">&quot;Status&quot;</span></div>
 
 
-    <span class="n">PROCESSED</span> <span class="o">=</span> <span class="s2">&quot;Processed&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been processed successfully.&quot;</span>
-    <span class="n">MEASURED</span> <span class="o">=</span> <span class="s2">&quot;Measured&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been measured successfully.&quot;</span></div>
+    <span class="n">PROCESSED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Processed&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been processed successfully.&quot;</span><span class="p">)</span>
+    <span class="n">MEASURED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Measured&quot;</span><span class="p">,</span> <span class="s2">&quot;Whether the image has been measured successfully.&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

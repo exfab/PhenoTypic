@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._grid</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Constants for grid structure in the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="GRID">
@@ -613,28 +613,28 @@
         <span class="k">return</span> <span class="s2">&quot;Grid&quot;</span></div>
 
 
-    <span class="n">ROW_NUM</span> <span class="o">=</span> <span class="s2">&quot;RowNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The row idx of the object&quot;</span>
-    <span class="n">ROW_INTERVAL_START</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ROW_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RowNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The row idx of the object&quot;</span><span class="p">)</span>
+    <span class="n">ROW_INTERVAL_START</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowIntervalStart&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The start of the row interval of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">ROW_INTERVAL_END</span> <span class="o">=</span> <span class="s2">&quot;RowIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the row interval of the object&quot;</span>
+    <span class="n">ROW_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RowIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the row interval of the object&quot;</span><span class="p">)</span>
 
-    <span class="n">COL_NUM</span> <span class="o">=</span> <span class="s2">&quot;ColNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The column idx of the object&quot;</span>
-    <span class="n">COL_INTERVAL_START</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">COL_NUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ColNum&quot;</span><span class="p">,</span> <span class="s2">&quot;The column idx of the object&quot;</span><span class="p">)</span>
+    <span class="n">COL_INTERVAL_START</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColIntervalStart&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The start of the column interval of the object&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">COL_INTERVAL_END</span> <span class="o">=</span> <span class="s2">&quot;ColIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the column interval of the object&quot;</span>
+    <span class="n">COL_INTERVAL_END</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ColIntervalEnd&quot;</span><span class="p">,</span> <span class="s2">&quot;The end of the column interval of the object&quot;</span><span class="p">)</span>
 
-    <span class="n">ROW_MAJOR_IDX</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ROW_MAJOR_IDX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RowMajorIdx&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The row-major index of the object. Row major is the standard in most&quot;</span>
         <span class="s2">&quot; programming and data science array libraries. Used for indexing into&quot;</span>
         <span class="s2">&quot; 2D arrays.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">COL_MAJOR_IDX</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">COL_MAJOR_IDX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ColMajorIdx&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The col-major index of the object in an array. Lab automation logic uses&quot;</span>
         <span class="s2">&quot; column-major (column-wise) indexing for well plate operations because&quot;</span>

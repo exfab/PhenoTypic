@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._grid_spread</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Grid section spatial spread measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="GRID_SPREAD">
@@ -619,7 +619,7 @@
         <span class="k">return</span> <span class="s2">&quot;GridSpread&quot;</span></div>
 
 
-    <span class="n">OBJECT_SPREAD</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">OBJECT_SPREAD</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ObjectSpread&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Sum of squared pairwise Euclidean distances between all unique colony pairs within a grid section. Quantifies spatial dispersion of colonies in a grid cell. Higher values indicate greater spread from the section center, suggesting over-segmentation, multi-detections, or colonies growing beyond expected boundaries. Used to identify problematic grid sections requiring refinement or quality review.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

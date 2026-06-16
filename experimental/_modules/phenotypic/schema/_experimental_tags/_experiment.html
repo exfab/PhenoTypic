@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._experimental_tags._experiment</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Experiment-level and bookkeeping metadata tags for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="EXPERIMENT_METADATA">
@@ -620,14 +620,14 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">EXPERIMENT_ID</span> <span class="o">=</span> <span class="s2">&quot;ExperimentID&quot;</span><span class="p">,</span> <span class="s2">&quot;Unique identifier for the experiment.&quot;</span>
-    <span class="n">PROJECT</span> <span class="o">=</span> <span class="s2">&quot;Project&quot;</span><span class="p">,</span> <span class="s2">&quot;Project name or identifier.&quot;</span>
-    <span class="n">DATASET</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">EXPERIMENT_ID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ExperimentID&quot;</span><span class="p">,</span> <span class="s2">&quot;Unique identifier for the experiment.&quot;</span><span class="p">)</span>
+    <span class="n">PROJECT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Project&quot;</span><span class="p">,</span> <span class="s2">&quot;Project name or identifier.&quot;</span><span class="p">)</span>
+    <span class="n">DATASET</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Dataset&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Dataset name (matches the CLI-emitted Metadata_Dataset column).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">PROTOCOL</span> <span class="o">=</span> <span class="s2">&quot;Protocol&quot;</span><span class="p">,</span> <span class="s2">&quot;Protocol name or version followed.&quot;</span>
-    <span class="n">NOTES</span> <span class="o">=</span> <span class="s2">&quot;Notes&quot;</span><span class="p">,</span> <span class="s2">&quot;Free-text notes or comments.&quot;</span></div>
+    <span class="n">PROTOCOL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Protocol&quot;</span><span class="p">,</span> <span class="s2">&quot;Protocol name or version followed.&quot;</span><span class="p">)</span>
+    <span class="n">NOTES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Notes&quot;</span><span class="p">,</span> <span class="s2">&quot;Free-text notes or comments.&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

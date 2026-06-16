@@ -600,7 +600,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="CURATION">
@@ -622,7 +622,7 @@
 
     <span class="c1"># Member name avoids ``CATEGORY`` (a reserved ``MeasurementInfo`` property);</span>
     <span class="c1"># the label stays &quot;Category&quot; so the column is ``Curation_Category``.</span>
-    <span class="n">ERROR_CATEGORY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ERROR_CATEGORY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Category&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Error-category token assigned to a removed/triaged object.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

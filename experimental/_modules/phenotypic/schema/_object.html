@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._object</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The label and description of the per-object identifier column.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="OBJECT">
@@ -621,7 +621,7 @@
         <span class="k">return</span> <span class="s2">&quot;Object&quot;</span></div>
 
 
-    <span class="n">LABEL</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">LABEL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Label&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Integer label uniquely identifying each detected object (colony) within &quot;</span>
         <span class="s2">&quot;its source image. Acts as the per-image primary key shared by every &quot;</span>

@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._size</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the size measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="SIZE">
@@ -620,12 +620,12 @@
         <span class="k">return</span> <span class="s2">&quot;Size&quot;</span></div>
 
 
-    <span class="n">AREA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Area&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Total number of pixels occupied by the microbial colony.&quot;</span>
         <span class="s2">&quot;Larger areas typically indicate more robust growth or longer incubation times.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">INTEGRATED_INTENSITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;IntegratedIntensity&quot;</span><span class="p">,</span>
         <span class="sa">r</span><span class="s2">&quot;The sum of the object&#39;s grayscale pixels. Calculated as &quot;</span>
         <span class="sa">r</span><span class="s2">&quot;:math:`\sum{\text{pixel values}} \times \text</span><span class="si">{area}</span><span class="s2">`.&quot;</span><span class="p">,</span>

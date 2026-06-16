@@ -1,25 +1,23 @@
 Measurements
 ============
 
-PhenoTypic uses ``MeasurementInfo`` enums to define stable column names for
-measurement outputs and metadata joins. Use this section to look up the columns
-that appear in exported DataFrames and to reuse the same names in downstream
-analysis code.
+PhenoTypic uses ``MeasurementInfo`` enums to define stable column names
+for measurement outputs and metadata joins. Browse by group:
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
    measurements/index
+   models-and-analysis/index
+   quality-control/index
+   curation-and-errors/index
    metadata/index
 
 .. grid:: 1 2 2 2
    :gutter: 3
 
    .. grid-item-card:: Measurements
-
-      Per-object measurements, analysis outputs, model metrics, quality-control
-      labels, and other non-metadata columns.
 
       +++
 
@@ -29,13 +27,45 @@ analysis code.
          :color: secondary
          :expand:
 
-         Browse measurements
+         Browse Measurements
+
+   .. grid-item-card:: Models & Analysis
+
+      +++
+
+      .. button-ref:: models-and-analysis/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Models & Analysis
+
+   .. grid-item-card:: Quality Control
+
+      +++
+
+      .. button-ref:: quality-control/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Quality Control
+
+   .. grid-item-card:: Curation & Errors
+
+      +++
+
+      .. button-ref:: curation-and-errors/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Curation & Errors
 
    .. grid-item-card:: Metadata
-
-      Framework metadata and recommended experimental ``Metadata_*`` tags for
-      sample, plate, condition, incubation, acquisition, genetic, and experiment
-      annotations.
 
       +++
 
@@ -45,5 +75,4 @@ analysis code.
          :color: secondary
          :expand:
 
-         Browse metadata
-
+         Browse Metadata

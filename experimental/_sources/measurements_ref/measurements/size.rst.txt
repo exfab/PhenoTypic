@@ -19,4 +19,4 @@ statistical analysis.
    * - ``Size_Area``
      - Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.
    * - ``Size_IntegratedIntensity``
-     - The sum of the object's grayscale pixels. Calculated as ``\sum{\text{pixel values}} \times \text{area}``.
+     - The sum of the object's grayscale pixels. Calculated as :math:`\sum{\text{pixel values}} \times \text{area}`.

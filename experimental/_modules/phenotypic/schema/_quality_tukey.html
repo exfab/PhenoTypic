@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._quality_tukey</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for replicate-agreement Tukey-fence QC.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="QUALITY_TUKEY">
@@ -621,10 +621,10 @@
         <span class="k">return</span> <span class="s2">&quot;QC_Tukey&quot;</span></div>
 
 
-    <span class="n">LOWER_FENCE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;LowerFence&quot;</span><span class="p">,</span> <span class="s2">&quot;Lower Tukey fence, Q1 - k*IQR.&quot;</span><span class="p">)</span>
-    <span class="n">UPPER_FENCE</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;UpperFence&quot;</span><span class="p">,</span> <span class="s2">&quot;Upper Tukey fence, Q3 + k*IQR.&quot;</span><span class="p">)</span>
-    <span class="n">NUM_OUTLIERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;NumOutliers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members falling outside the fences.&quot;</span><span class="p">)</span>
-    <span class="n">NUM_MEMBERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;NumMembers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members contributing to the statistic.&quot;</span><span class="p">)</span></div>
+    <span class="n">LOWER_FENCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;LowerFence&quot;</span><span class="p">,</span> <span class="s2">&quot;Lower Tukey fence, Q1 - k*IQR.&quot;</span><span class="p">)</span>
+    <span class="n">UPPER_FENCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;UpperFence&quot;</span><span class="p">,</span> <span class="s2">&quot;Upper Tukey fence, Q3 + k*IQR.&quot;</span><span class="p">)</span>
+    <span class="n">NUM_OUTLIERS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumOutliers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members falling outside the fences.&quot;</span><span class="p">)</span>
+    <span class="n">NUM_MEMBERS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;NumMembers&quot;</span><span class="p">,</span> <span class="s2">&quot;Members contributing to the statistic.&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

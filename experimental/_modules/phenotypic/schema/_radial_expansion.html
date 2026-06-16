@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._radial_expansion</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Radial expansion measurements for filamentous fungal colonies.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="RADIAL_EXPANSION">
@@ -619,44 +619,44 @@
         <span class="k">return</span> <span class="s2">&quot;RadialExpansion&quot;</span></div>
 
 
-    <span class="n">ROBUST_MEAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ROBUST_MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RobustMeanRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Trimmed mean of branch path lengths, excluding detected runner. &quot;</span>
         <span class="s2">&quot;Represents the typical radial expansion distance of hyphae from the &quot;</span>
         <span class="s2">&quot;core boundary, robust to single-runner outliers.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MeanRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Arithmetic mean of all branch path lengths from core boundary to &quot;</span>
         <span class="s2">&quot;branch tips. Includes runner if present. Reflects overall average &quot;</span>
         <span class="s2">&quot;colony reach.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MedianRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median branch path length. Robust to outliers and provides a &quot;</span>
         <span class="s2">&quot;typical expansion distance.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">NUM_BRANCHES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">NUM_BRANCHES</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;NumBranches&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Number of skeleton branches extending from the core boundary to &quot;</span>
         <span class="s2">&quot;peripheral tips. Higher counts indicate denser branching morphology.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MAX_BRANCH_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MAX_BRANCH_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxBranchLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Length of the longest branch path in pixels. When a runner is &quot;</span>
         <span class="s2">&quot;detected, this equals RunnerLength.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RUNNER_LENGTH</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">RUNNER_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RunnerLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Path length of the detected runner branch (the single longest &quot;</span>
         <span class="s2">&quot;outlier). NaN if no runner detected.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RUNNER_DETECTED</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">RUNNER_DETECTED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RunnerDetected&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Boolean flag (0 or 1) indicating whether an outlier runner branch &quot;</span>
         <span class="s2">&quot;was detected for this colony.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radius of the dense colony core as determined by PELT changepoint &quot;</span>
         <span class="s2">&quot;detection on the radial density profile. Pixels within this radius &quot;</span>

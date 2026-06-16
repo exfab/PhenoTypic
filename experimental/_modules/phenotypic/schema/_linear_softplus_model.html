@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._linear_softplus_model</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Fitted parameters for the linear-softplus growth model (no saturation).&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="LINEAR_SOFTPLUS_MODEL">
@@ -611,10 +611,10 @@
         <span class="k">return</span> <span class="s2">&quot;LinearSoftplus&quot;</span></div>
 
 
-    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;The post-lag phase growth rate.&quot;</span><span class="p">)</span>
-    <span class="n">s0</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial size&quot;</span><span class="p">)</span>
-    <span class="n">lam</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="s2">&quot;The duration of the lag phase&quot;</span><span class="p">)</span>
-    <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;lag phase transition sharpness&quot;</span><span class="p">)</span></div>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;The post-lag phase growth rate.&quot;</span><span class="p">)</span>
+    <span class="n">s0</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial size&quot;</span><span class="p">)</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="s2">&quot;The duration of the lag phase&quot;</span><span class="p">)</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;lag phase transition sharpness&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

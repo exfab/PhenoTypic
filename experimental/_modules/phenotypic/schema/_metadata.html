@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._metadata</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Framework metadata bookkeeping labels for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="METADATA">
@@ -623,14 +623,14 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">UUID</span> <span class="o">=</span> <span class="s2">&quot;UUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The unique identifier of the image.&quot;</span>
-    <span class="n">IMAGE_NAME</span> <span class="o">=</span> <span class="s2">&quot;ImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the image.&quot;</span>
-    <span class="n">PARENT_IMAGE_NAME</span> <span class="o">=</span> <span class="s2">&quot;ParentImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the parent image.&quot;</span>
-    <span class="n">PARENT_UUID</span> <span class="o">=</span> <span class="s2">&quot;ParentUUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The UUID of the parent image.&quot;</span>
-    <span class="n">IMFORMAT</span> <span class="o">=</span> <span class="s2">&quot;ImageFormat&quot;</span><span class="p">,</span> <span class="s2">&quot;The format of the image.&quot;</span>
-    <span class="n">IMAGE_TYPE</span> <span class="o">=</span> <span class="s2">&quot;ImageType&quot;</span><span class="p">,</span> <span class="s2">&quot;The type of the image.&quot;</span>
-    <span class="n">BIT_DEPTH</span> <span class="o">=</span> <span class="s2">&quot;BitDepth&quot;</span><span class="p">,</span> <span class="s2">&quot;The bit depth of the image.&quot;</span>
-    <span class="n">SUFFIX</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;UUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The unique identifier of the image.&quot;</span><span class="p">)</span>
+    <span class="n">IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the image.&quot;</span><span class="p">)</span>
+    <span class="n">PARENT_IMAGE_NAME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ParentImageName&quot;</span><span class="p">,</span> <span class="s2">&quot;The name of the parent image.&quot;</span><span class="p">)</span>
+    <span class="n">PARENT_UUID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ParentUUID&quot;</span><span class="p">,</span> <span class="s2">&quot;The UUID of the parent image.&quot;</span><span class="p">)</span>
+    <span class="n">IMFORMAT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageFormat&quot;</span><span class="p">,</span> <span class="s2">&quot;The format of the image.&quot;</span><span class="p">)</span>
+    <span class="n">IMAGE_TYPE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImageType&quot;</span><span class="p">,</span> <span class="s2">&quot;The type of the image.&quot;</span><span class="p">)</span>
+    <span class="n">BIT_DEPTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;BitDepth&quot;</span><span class="p">,</span> <span class="s2">&quot;The bit depth of the image.&quot;</span><span class="p">)</span>
+    <span class="n">SUFFIX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;FileSuffix&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The file suffix of the original file the image was imported from&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

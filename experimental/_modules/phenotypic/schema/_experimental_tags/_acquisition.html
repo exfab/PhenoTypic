@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._experimental_tags._acquisition</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Imaging and acquisition metadata tags for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ACQUISITION_METADATA">
@@ -620,14 +620,14 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">IMAGING_DATE</span> <span class="o">=</span> <span class="s2">&quot;ImagingDate&quot;</span><span class="p">,</span> <span class="s2">&quot;Date the image was acquired.&quot;</span>
-    <span class="n">INSTRUMENT</span> <span class="o">=</span> <span class="s2">&quot;Instrument&quot;</span><span class="p">,</span> <span class="s2">&quot;Imaging instrument or scanner model.&quot;</span>
-    <span class="n">EXPERIMENTER</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">IMAGING_DATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ImagingDate&quot;</span><span class="p">,</span> <span class="s2">&quot;Date the image was acquired.&quot;</span><span class="p">)</span>
+    <span class="n">INSTRUMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Instrument&quot;</span><span class="p">,</span> <span class="s2">&quot;Imaging instrument or scanner model.&quot;</span><span class="p">)</span>
+    <span class="n">EXPERIMENTER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Experimenter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Person who acquired the image or ran the experiment.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">RESOLUTION</span> <span class="o">=</span> <span class="s2">&quot;Resolution&quot;</span><span class="p">,</span> <span class="s2">&quot;Image resolution (e.g. DPI or pixels per mm).&quot;</span>
-    <span class="n">EXPOSURE_TIME</span> <span class="o">=</span> <span class="s2">&quot;ExposureTime&quot;</span><span class="p">,</span> <span class="s2">&quot;Camera exposure time.&quot;</span></div>
+    <span class="n">RESOLUTION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Resolution&quot;</span><span class="p">,</span> <span class="s2">&quot;Image resolution (e.g. DPI or pixels per mm).&quot;</span><span class="p">)</span>
+    <span class="n">EXPOSURE_TIME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;ExposureTime&quot;</span><span class="p">,</span> <span class="s2">&quot;Camera exposure time.&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

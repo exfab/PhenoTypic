@@ -83,6 +83,8 @@ phenotypic.tools\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.LINEAR
       ~GAMMA_ENCODINGS.label
       ~GAMMA_ENCODINGS.desc
+      ~GAMMA_ENCODINGS.bio_desc
+      ~GAMMA_ENCODINGS.image
       ~GAMMA_ENCODINGS.pair
    
    

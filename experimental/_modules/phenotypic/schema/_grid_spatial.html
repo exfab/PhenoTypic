@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._grid_spatial</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info for spatial information for grid pinned colonies.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="GRID_SPATIAL">
@@ -622,29 +622,29 @@
         <span class="k">return</span> <span class="s2">&quot;GridSpatial&quot;</span></div>
 
 
-    <span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;LeftNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of the left&quot;</span>
-                                                       <span class="s2">&quot; neighbor colony&quot;</span><span class="p">)</span>
-    <span class="n">LEFT_DISTANCE</span> <span class="o">=</span> <span class="s2">&quot;LeftDistance&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The minimum pixel-to-pixel distance to the left&quot;</span>
+    <span class="n">LEFT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;LeftNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of the left&quot;</span>
+                                                       <span class="s2">&quot; neighbor colony&quot;</span><span class="p">))</span>
+    <span class="n">LEFT_DISTANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;LeftDistance&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The minimum pixel-to-pixel distance to the left&quot;</span>
                                      <span class="s2">&quot; neighbor colony, computed via a Euclidean&quot;</span>
-                                     <span class="s2">&quot; distance transform of object pixel masks&quot;</span><span class="p">)</span>
+                                     <span class="s2">&quot; distance transform of object pixel masks&quot;</span><span class="p">))</span>
 
-    <span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;RightNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
-                                                         <span class="s2">&quot; the right neighbor colony&quot;</span><span class="p">)</span>
-    <span class="n">RIGHT_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">RIGHT_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;RightNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
+                                                         <span class="s2">&quot; the right neighbor colony&quot;</span><span class="p">))</span>
+    <span class="n">RIGHT_DISTANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RightDistance&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The minimum pixel-to-pixel distance to the right neighbor colony, computed&quot;</span>
         <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>
     <span class="p">)</span>
-    <span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="s2">&quot;AboveNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
-                                                         <span class="s2">&quot; the above neighbor colony&quot;</span><span class="p">)</span>
-    <span class="n">ABOVE_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ABOVE_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;AboveNeighborObjLabel&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;The object label of&quot;</span>
+                                                         <span class="s2">&quot; the above neighbor colony&quot;</span><span class="p">))</span>
+    <span class="n">ABOVE_DISTANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;AboveDistance&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The minimum pixel-to-pixel distance to the above neighbor colony, computed&quot;</span>
         <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>
     <span class="p">)</span>
-    <span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;UnderNeighborObjLabel&quot;</span><span class="p">,</span>
+    <span class="n">UNDER_NEIGHBOR_OBJ_LABEL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;UnderNeighborObjLabel&quot;</span><span class="p">,</span>
                                 <span class="s2">&quot;The object label of the under neighbor colony&quot;</span><span class="p">)</span>
-    <span class="n">UNDER_DISTANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">UNDER_DISTANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;UnderDistance&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The minimum pixel-to-pixel distance to the under neighbor colony, computed&quot;</span>
         <span class="s2">&quot; via a Euclidean distance transform of object pixel masks&quot;</span>

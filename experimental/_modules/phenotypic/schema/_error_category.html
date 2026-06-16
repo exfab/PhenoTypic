@@ -613,7 +613,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ErrorCategory">
@@ -666,28 +666,28 @@
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
-    <span class="n">OVERSEGMENTED</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">OVERSEGMENTED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;oversegmented&quot;</span><span class="p">,</span>
         <span class="s2">&quot;One colony split into multiple detections.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">UNDERSEGMENTED</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">UNDERSEGMENTED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;undersegmented&quot;</span><span class="p">,</span>
         <span class="s2">&quot;A single colony under-detected — its mask captured too small or &quot;</span>
         <span class="s2">&quot;only partially covering the colony.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MERGED</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MERGED</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;merged&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Multiple touching colonies detected as one object.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">BACKGROUND_NOISE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">BACKGROUND_NOISE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;background_noise&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Not a colony — agar texture, reflection, or vignette.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DEBRIS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DEBRIS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;debris&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Dust, scratch, bubble, or other plate artifact.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">OTHER</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">OTHER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;other&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Removed without a specified reason (the catch-all bucket).&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>

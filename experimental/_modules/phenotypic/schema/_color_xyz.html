@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._color_xyz</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object summary statistics in the CIE XYZ color space.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="ColorXYZ">
@@ -622,23 +622,23 @@
         <span class="k">return</span> <span class="s2">&quot;ColorXYZ&quot;</span></div>
 
 
-    <span class="n">X_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">X_Q1</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">X_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieXMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieXQ1&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The lower quartile (Q1) X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">X_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">X_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">X_Q3</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">X_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieXMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieXMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieXQ3&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The upper quartile (Q3) X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">X_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieXMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">X_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">X_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieXMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum X value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">X_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieXStdDev&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">X_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">X_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieXCoeffVar&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the X value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -659,23 +659,23 @@
         <span class="p">]</span></div>
 
 
-    <span class="n">Y_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Y_Q1</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Y_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieYMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieYQ1&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The lower quartile (Q1) Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Y_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Y_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Y_Q3</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Y_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieYMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieYMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieYQ3&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The upper quartile (Q3) Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Y_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieYMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Y_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Y_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieYMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Y value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Y_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieYStdDev&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Y_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieYCoeffVar&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the Y value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -696,23 +696,23 @@
         <span class="p">]</span></div>
 
 
-    <span class="n">Z_MINIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Z_Q1</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Z_MINIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieZMin&quot;</span><span class="p">,</span> <span class="s2">&quot;The minimum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_Q1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieZQ1&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The lower quartile (Q1) Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Z_MEAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Z_MEDIAN</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Z_Q3</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Z_MEAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieZMean&quot;</span><span class="p">,</span> <span class="s2">&quot;The mean Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_MEDIAN</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieZMedian&quot;</span><span class="p">,</span> <span class="s2">&quot;The median Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_Q3</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieZQ3&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The upper quartile (Q3) Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Z_MAXIMUM</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;CieZMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
-    <span class="n">Z_STDDEV</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Z_MAXIMUM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;CieZMax&quot;</span><span class="p">,</span> <span class="s2">&quot;The maximum Z value of the object in CIE XYZ color space&quot;</span><span class="p">)</span>
+    <span class="n">Z_STDDEV</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieZStdDev&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The standard deviation of the Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">Z_COEFF_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">Z_COEFF_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CieZCoeffVar&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The coefficient of variation of the Z value of the object in CIE XYZ color space&quot;</span><span class="p">,</span>
     <span class="p">)</span>

@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._experimental_tags._incubation</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Incubation and time-course metadata tags for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="INCUBATION_METADATA">
@@ -621,14 +621,14 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">TEMPERATURE</span> <span class="o">=</span> <span class="s2">&quot;Temperature&quot;</span><span class="p">,</span> <span class="s2">&quot;Incubation temperature in degrees Celsius.&quot;</span>
-    <span class="n">TIME</span> <span class="o">=</span> <span class="s2">&quot;Time&quot;</span><span class="p">,</span> <span class="s2">&quot;Elapsed growth time.&quot;</span>
-    <span class="n">TIME_UNIT</span> <span class="o">=</span> <span class="s2">&quot;TimeUnit&quot;</span><span class="p">,</span> <span class="s2">&quot;Unit for the Time value (e.g. hours, days).&quot;</span>
-    <span class="n">TIMEPOINT</span> <span class="o">=</span> <span class="s2">&quot;Timepoint&quot;</span><span class="p">,</span> <span class="s2">&quot;Discrete timepoint label in a time series.&quot;</span>
-    <span class="n">DAY</span> <span class="o">=</span> <span class="s2">&quot;Day&quot;</span><span class="p">,</span> <span class="s2">&quot;Day index of the experiment.&quot;</span>
-    <span class="n">GENERATION</span> <span class="o">=</span> <span class="s2">&quot;Generation&quot;</span><span class="p">,</span> <span class="s2">&quot;Generation or passage number.&quot;</span>
-    <span class="n">HUMIDITY</span> <span class="o">=</span> <span class="s2">&quot;Humidity&quot;</span><span class="p">,</span> <span class="s2">&quot;Relative humidity during incubation.&quot;</span>
-    <span class="n">ATMOSPHERE</span> <span class="o">=</span> <span class="s2">&quot;Atmosphere&quot;</span><span class="p">,</span> <span class="s2">&quot;Atmospheric condition (e.g. aerobic, anaerobic).&quot;</span></div>
+    <span class="n">TEMPERATURE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Temperature&quot;</span><span class="p">,</span> <span class="s2">&quot;Incubation temperature in degrees Celsius.&quot;</span><span class="p">)</span>
+    <span class="n">TIME</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">,</span> <span class="s2">&quot;Elapsed growth time.&quot;</span><span class="p">)</span>
+    <span class="n">TIME_UNIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;TimeUnit&quot;</span><span class="p">,</span> <span class="s2">&quot;Unit for the Time value (e.g. hours, days).&quot;</span><span class="p">)</span>
+    <span class="n">TIMEPOINT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Timepoint&quot;</span><span class="p">,</span> <span class="s2">&quot;Discrete timepoint label in a time series.&quot;</span><span class="p">)</span>
+    <span class="n">DAY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Day&quot;</span><span class="p">,</span> <span class="s2">&quot;Day index of the experiment.&quot;</span><span class="p">)</span>
+    <span class="n">GENERATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Generation&quot;</span><span class="p">,</span> <span class="s2">&quot;Generation or passage number.&quot;</span><span class="p">)</span>
+    <span class="n">HUMIDITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Humidity&quot;</span><span class="p">,</span> <span class="s2">&quot;Relative humidity during incubation.&quot;</span><span class="p">)</span>
+    <span class="n">ATMOSPHERE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Atmosphere&quot;</span><span class="p">,</span> <span class="s2">&quot;Atmospheric condition (e.g. aerobic, anaerobic).&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

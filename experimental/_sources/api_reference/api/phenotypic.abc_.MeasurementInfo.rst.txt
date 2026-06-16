@@ -81,6 +81,8 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.CATEGORY
       ~MeasurementInfo.label
       ~MeasurementInfo.desc
+      ~MeasurementInfo.bio_desc
+      ~MeasurementInfo.image
       ~MeasurementInfo.pair
    
    

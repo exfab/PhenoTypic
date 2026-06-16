@@ -1155,7 +1155,7 @@
 <td><p>Get all measurement headers with category prefix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.rst_table" title="phenotypic.tools_.constants_.PIPE_STATUS.rst_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rst_table</span></code></a></p></td>
-<td><p>Generate an RST (reStructuredText) table documenting the measurements.</p></td>
+<td><p>Render an RST list-table of this enum's members.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.append_rst_to_doc" title="phenotypic.tools_.constants_.PIPE_STATUS.append_rst_to_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append_rst_to_doc</span></code></a></p></td>
 <td><p>Append the measurement documentation table to a module or class docstring.</p></td>
@@ -1325,6 +1325,12 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.desc" title="phenotypic.tools_.constants_.PIPE_STATUS.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.bio_desc" title="phenotypic.tools_.constants_.PIPE_STATUS.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.image" title="phenotypic.tools_.constants_.PIPE_STATUS.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
+<td><p></p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tools_.constants_.html#phenotypic.tools_.constants_.PIPE_STATUS.pair" title="phenotypic.tools_.constants_.PIPE_STATUS.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
 <td><p></p></td>
 </tr>
@@ -1400,7 +1406,7 @@ or used in string formatting.</p>
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_labels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.get_labels" title="Link to this definition">#</a></dt>
 <dd><p>Get all measurement labels without category prefix.</p>
 <p>Returns a list of the short labels (without category prefix) for all measurements
-defined in this enumeration. These are the first element of each enum value tuple.
+defined in this enumeration. These come from each member’s <code class="docutils literal notranslate"><span class="pre">Entry.label</span></code> field.
 Useful for creating human-readable lists or column names when the category context
 is already established.</p>
 <dl class="field-list simple">
@@ -1443,38 +1449,21 @@ category prefix separated by an underscore.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.rst_table">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.rst_table" title="Link to this definition">#</a></dt>
-<dd><p>Generate an RST (reStructuredText) table documenting the measurements.</p>
-<p>Creates a formatted list-table in reStructuredText format that documents all
-measurements in this enumeration, including their labels and descriptions. This
-is useful for generating API documentation, parameter guides, or measurement
-reference tables that will be rendered in Sphinx documentation.</p>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.rst_table" title="Link to this definition">#</a></dt>
+<dd><p>Render an RST list-table of this enum’s members.</p>
+<p>Adds a Biology column when any member sets <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> and an Image
+column when any sets <code class="docutils literal notranslate"><span class="pre">image</span></code> (each suppressed otherwise).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The title for the RST table. Defaults to the class name
-(e.g., ‘SHAPE’). The title is formatted as “Category: <strong>{title}</strong>” in the
-output.</p></li>
-<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – A tuple of (left_column, right_column)
-header names. Defaults to (“Name”, “Description”). The left column typically
-contains measurement labels and the right column contains their descriptions.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the category name.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(name_column_header,</span> <span class="pre">description_column_header)</span></code>.</p></li>
+<li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>)
+instead of the bare label (<code class="docutils literal notranslate"><span class="pre">Area</span></code>).</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl>
-<dt>A formatted reStructuredText list-table string. The output includes:</dt><dd><ul class="simple">
-<li><p>RST list-table directive with the title</p></li>
-<li><p>Column headers (Name and Description by default)</p></li>
-<li><p>One row per measurement with label and description</p></li>
-</ul>
-<p>The returned string is ready to be embedded in Sphinx documentation files
-or appended to docstrings.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1511,36 +1500,15 @@ to the target’s __doc__ attribute.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.__new_member__">
-<span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.__new_member__" title="Link to this definition">#</a></dt>
-<dd><p>Create a new measurement enumeration member with prefixed name.</p>
-<p>Converts the input label and description into an enumeration member whose string
-value is automatically prefixed with the category name. The label and description
-are stored as instance attributes for convenient access.</p>
-<p>This method is called automatically by Python’s Enum machinery when defining enum
-members. The enum member’s value becomes the full prefixed name (e.g.,
-‘Shape_Area’), while the label and description are stored separately as instance
-attributes.</p>
+<span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.schema.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><span class="pre">Entry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.__new_member__" title="Link to this definition">#</a></dt>
+<dd><p>Create a member from an <code class="xref py py-class docutils literal notranslate"><span class="pre">Entry</span></code>.</p>
+<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>);
+<code class="docutils literal notranslate"><span class="pre">label</span></code>/<code class="docutils literal notranslate"><span class="pre">desc</span></code>/<code class="docutils literal notranslate"><span class="pre">bio_desc</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> are stored as instance
+attributes. Anything other than an <code class="docutils literal notranslate"><span class="pre">Entry</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at
+class-creation time.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The short label for the measurement without category prefix
-(e.g., ‘Area’). This will be combined with the category name to create
-the full enumeration value.</p></li>
-<li><p><strong>desc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – The description of what the measurement represents. If
-not provided, defaults to an empty string. This should briefly explain
-what the measurement measures.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>An enumeration member that behaves as a string with the value</dt><dd><p>’{category}_{label}’ (e.g., ‘Shape_Area’). The instance also has label,
-desc, and pair attributes set.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo" title="phenotypic.abc_.MeasurementInfo">MeasurementInfo</a></p>
+<dd class="field-odd"><p><strong>entry</strong> (<a class="reference internal" href="../phenotypic.schema.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><em>Entry</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1991,6 +1959,16 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.bio_desc">
+<span class="sig-name descname"><span class="pre">bio_desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.bio_desc" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.image">
+<span class="sig-name descname"><span class="pre">image</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.image" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tools_.constants_.PIPE_STATUS.pair">
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.tools_.constants_.PIPE_STATUS.pair" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -2083,6 +2061,8 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.__dir__"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.label"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.desc"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.bio_desc"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.bio_desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.image"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.image</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.constants_.PIPE_STATUS.pair"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.pair</span></code></a></li>
 </ul>
 </li>

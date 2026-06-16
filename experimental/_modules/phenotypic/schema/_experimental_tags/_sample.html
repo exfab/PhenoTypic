@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._experimental_tags._sample</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Sample identity and provenance metadata tags for the PhenoTypic module.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="SAMPLE_METADATA">
@@ -620,21 +620,21 @@
         <span class="k">return</span> <span class="s2">&quot;Metadata&quot;</span></div>
 
 
-    <span class="n">SAMPLE_ID</span> <span class="o">=</span> <span class="s2">&quot;SampleID&quot;</span><span class="p">,</span> <span class="s2">&quot;Unique identifier for the biological sample.&quot;</span>
-    <span class="n">REPLICATE</span> <span class="o">=</span> <span class="s2">&quot;Replicate&quot;</span><span class="p">,</span> <span class="s2">&quot;Biological replicate identifier.&quot;</span>
-    <span class="n">TECHNICAL_REPLICATE</span> <span class="o">=</span> <span class="s2">&quot;TechnicalReplicate&quot;</span><span class="p">,</span> <span class="s2">&quot;Technical replicate identifier.&quot;</span>
-    <span class="n">CLONE</span> <span class="o">=</span> <span class="s2">&quot;Clone&quot;</span><span class="p">,</span> <span class="s2">&quot;Clone or isolate identifier.&quot;</span>
-    <span class="n">LIBRARY_ID</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SAMPLE_ID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;SampleID&quot;</span><span class="p">,</span> <span class="s2">&quot;Unique identifier for the biological sample.&quot;</span><span class="p">)</span>
+    <span class="n">REPLICATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Replicate&quot;</span><span class="p">,</span> <span class="s2">&quot;Biological replicate identifier.&quot;</span><span class="p">)</span>
+    <span class="n">TECHNICAL_REPLICATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;TechnicalReplicate&quot;</span><span class="p">,</span> <span class="s2">&quot;Technical replicate identifier.&quot;</span><span class="p">)</span>
+    <span class="n">CLONE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Clone&quot;</span><span class="p">,</span> <span class="s2">&quot;Clone or isolate identifier.&quot;</span><span class="p">)</span>
+    <span class="n">LIBRARY_ID</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LibraryID&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Source library or collection identifier (e.g. a deletion collection).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">SOURCE_PLATE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SOURCE_PLATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SourcePlate&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Identifier of the source plate the sample was pinned from.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">SOURCE_WELL</span> <span class="o">=</span> <span class="s2">&quot;SourceWell&quot;</span><span class="p">,</span> <span class="s2">&quot;Well position on the source plate (e.g. A1).&quot;</span>
-    <span class="n">BARCODE</span> <span class="o">=</span> <span class="s2">&quot;Barcode&quot;</span><span class="p">,</span> <span class="s2">&quot;Molecular or sample barcode.&quot;</span>
-    <span class="n">CONTROL</span> <span class="o">=</span> <span class="s2">&quot;Control&quot;</span><span class="p">,</span> <span class="s2">&quot;Control designation (e.g. positive, negative, blank).&quot;</span></div>
+    <span class="n">SOURCE_WELL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;SourceWell&quot;</span><span class="p">,</span> <span class="s2">&quot;Well position on the source plate (e.g. A1).&quot;</span><span class="p">)</span>
+    <span class="n">BARCODE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Barcode&quot;</span><span class="p">,</span> <span class="s2">&quot;Molecular or sample barcode.&quot;</span><span class="p">)</span>
+    <span class="n">CONTROL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Control&quot;</span><span class="p">,</span> <span class="s2">&quot;Control designation (e.g. positive, negative, blank).&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

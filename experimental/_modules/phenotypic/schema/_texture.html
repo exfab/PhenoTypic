@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._texture</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Second-order texture features derived from the gray-level co-occurrence matrix.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="TEXTURE">
@@ -618,7 +618,7 @@
         <span class="k">return</span> <span class="s2">&quot;Texture&quot;</span></div>
 
 
-    <span class="n">ANGULAR_SECOND_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ANGULAR_SECOND_MOMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;AngularSecondMoment&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Angular second moment (energy / uniformity). Measures the degree of local homogeneity</span>
 <span class="sd">        (Σ p(i,j)²). High values → uniform texture (e.g., smooth, yeast-like colonies with consistent</span>
@@ -626,7 +626,7 @@
 <span class="sd">        sporulation zones). Reflects colony surface regularity rather than brightness.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">CONTRAST</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CONTRAST</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Contrast&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Contrast (local intensity variation; Σ (i–j)² p(i,j)). High values indicate strong gray-level</span>
 <span class="sd">        differences (e.g., sharply defined rings, radial sectors, raised or folded regions). Low values</span>
@@ -634,7 +634,7 @@
 <span class="sd">        and zonation amplitude.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">CORRELATION</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CORRELATION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Correlation&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Linear gray-level correlation between neighboring pixels. Positive, high values suggest</span>
 <span class="sd">        structured spatial dependence (e.g., oriented radial hyphae or concentric patterns); near-zero</span>
@@ -642,7 +642,7 @@
 <span class="sd">        illumination gradients and directional GLCM computation.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;HaralickVariance&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;GLCM variance (Σ (i–μ)² p(i,j)). Captures spread of co-occurring gray-level pairs, distinct</span>
 <span class="sd">        from raw intensity variance. High values → complex, multi-zone textures with variable</span>
@@ -650,14 +650,14 @@
 <span class="sd">        surfaces.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">INVERSE_DIFFERENCE_MOMENT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">INVERSE_DIFFERENCE_MOMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InverseDifferenceMoment&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Homogeneity (Σ p(i,j) / (1 + (i–j)²)). High values → smooth, locally uniform textures</span>
 <span class="sd">        (e.g., glabrous colonies, uniform aerial mycelium). Low values → abrupt gray-level changes</span>
 <span class="sd">        (e.g., granular sporulation, wrinkled surfaces). Typically inversely correlated with Contrast.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">SUM_AVERAGE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SUM_AVERAGE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SumAverage&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean of gray-level sums (Σ k·p_{x+y}(k)). Reflects the average intensity combination of</span>
 <span class="sd">        neighboring pixels. In fungal colonies, can loosely parallel mean colony brightness when</span>
@@ -665,21 +665,21 @@
 <span class="sd">        intensity metric.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">SUM_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SUM_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SumVariance&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level sum distribution. High values → heterogeneous brightness zones</span>
 <span class="sd">        (e.g., alternating dense/sparse or pigmented/non-pigmented regions). Low values → uniform</span>
 <span class="sd">        tone across the colony. Often correlated with Contrast; use comparatively within one setup.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">SUM_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SUM_ENTROPY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SumEntropy&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of the gray-level sum distribution. High values → diverse brightness combinations</span>
 <span class="sd">        and irregular zonation. Low values → repetitive or periodic brightness patterns (e.g., evenly</span>
 <span class="sd">        spaced rings). Indicates spatial unpredictability of summed intensities.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">ENTROPY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Entropy&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Global GLCM entropy (–Σ p(i,j)·log p(i,j)). Measures total texture disorder and information</span>
 <span class="sd">        content. High values → complex, irregular colony surfaces (powdery, fuzzy, or sectored growth).</span>
@@ -687,14 +687,14 @@
 <span class="sd">        gray-level quantization and image dynamic range.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">DIFFERENCE_VARIANCE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DIFFERENCE_VARIANCE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DiffVariance&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Variance of gray-level difference distribution. High values → mixture of smooth and textured</span>
 <span class="sd">        regions (e.g., smooth margins with wrinkled centers). Low values → consistent edge content.</span>
 <span class="sd">        Highlights heterogeneity in edge magnitude across the colony.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">DIFFERENCE_ENTROPY</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DIFFERENCE_ENTROPY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DiffEntropy&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Entropy of gray-level difference distribution. High values → irregular, unpredictable</span>
 <span class="sd">        intensity transitions (e.g., random sporulation or uneven mycelial networks). Low values →</span>
@@ -702,7 +702,7 @@
 <span class="sd">        rather than its magnitude.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">IMC1</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">IMC1</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InfoCorrelation1&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 1. Compares joint vs marginal entropies to quantify</span>
 <span class="sd">        mutual dependence between gray levels. Positive values → structured, predictable textures</span>
@@ -710,7 +710,7 @@
 <span class="sd">        Direction of sign varies with implementation.&quot;&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">IMC2</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">IMC2</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;InfoCorrelation2&quot;</span><span class="p">,</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.</span>
 <span class="sd">        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric</span>

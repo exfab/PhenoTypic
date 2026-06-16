@@ -598,7 +598,7 @@
   <h1>Source code for phenotypic.schema._symmetric_zones</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Mask-based radial expansion measurements for colonies on solid media.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
 
 
 <div class="viewcode-block" id="SYMMETRIC_ZONES">
@@ -625,13 +625,13 @@
         <span class="k">return</span> <span class="s2">&quot;SymZones&quot;</span></div>
 
 
-    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CORE_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radius of the dense inoculum core, determined by PELT changepoint &quot;</span>
         <span class="s2">&quot;detection on the radial mask-density profile centered on the &quot;</span>
         <span class="s2">&quot;inoculum. Growth measurements are reported relative to this boundary.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">SYMMETRIC_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SYMMETRIC_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SymmetricRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radial distance from the inoculum centroid at which colony growth &quot;</span>
         <span class="s2">&quot;ceases to be angularly uniform. Computed as the first radius past &quot;</span>
@@ -640,20 +640,20 @@
         <span class="s2">&quot;Equals the colony outer envelope when growth remains symmetric &quot;</span>
         <span class="s2">&quot;throughout.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MEAN_EXPANSION</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MEAN_EXPANSION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MeanExpansion&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Mean distance of mask-boundary pixels from the inoculum centroid, &quot;</span>
         <span class="s2">&quot;measured from the core boundary outward. Captures the typical &quot;</span>
         <span class="s2">&quot;radial extent of growth past the inoculum, averaged over all &quot;</span>
         <span class="s2">&quot;angular directions.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">MAX_EXPANSION</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">MAX_EXPANSION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxExpansion&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Maximum distance of any mask pixel from the inoculum centroid, &quot;</span>
         <span class="s2">&quot;measured from the core boundary outward. Captures the farthest &quot;</span>
         <span class="s2">&quot;extent of growth past the inoculum.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">CORE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CORE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreEndRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Mean radius of the inoculum core boundary derived from the per-angle &quot;</span>
         <span class="s2">&quot;bright/background ratio walk. Each of 360 1° angular sectors finds the &quot;</span>
@@ -661,29 +661,29 @@
         <span class="s2">&quot;reported value is the mean across sectors. Compare with CoreRadius (the &quot;</span>
         <span class="s2">&quot;global PELT changepoint) — close agreement indicates a well-formed core.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DENSE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DENSE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DenseEndRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Mean outer radius of the dense branching zone, where mask-bright pixels &quot;</span>
         <span class="s2">&quot;dominate (bright fraction &gt;= tau_sparse). Per-angle radii are capped at &quot;</span>
         <span class="s2">&quot;the SymmetricRadius and angularly median-smoothed before averaging.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">SPARSE_END_RADIUS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SPARSE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SparseEndRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Mean outer radius of the sparse branching zone (= colony envelope inside &quot;</span>
         <span class="s2">&quot;the symmetric growth front). Equals min(objmask outer envelope, &quot;</span>
         <span class="s2">&quot;SymmetricRadius) per angle, averaged across 360 sectors.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">CORE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">CORE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreArea&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Pixel^2 area of the inoculum core zone, integrated across the 360-sector &quot;</span>
         <span class="s2">&quot;polar polygon defined by the per-angle core radii.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">DENSE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">DENSE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DenseArea&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Pixel^2 area of the dense branching zone, the annular region between the &quot;</span>
         <span class="s2">&quot;per-angle core boundary and dense-branching boundary.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">SPARSE_AREA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SPARSE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SparseArea&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Pixel^2 area of the sparse branching zone, the annular region between the &quot;</span>
         <span class="s2">&quot;per-angle dense boundary and the symmetric-envelope outer boundary.&quot;</span><span class="p">,</span>

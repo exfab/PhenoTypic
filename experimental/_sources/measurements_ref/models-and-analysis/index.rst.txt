@@ -1,0 +1,15 @@
+Models & Analysis
+=================
+
+Schema enums in the **Models & Analysis** group. Each page documents an enum's
+DataFrame column labels and descriptions.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Models & Analysis
+
+   LogGrowthModel <log_growth_model>
+   LinearSoftplus <linear_softplus_model>
+   DoubleSoftplus <double_softplus_model>
+   EdgeCorrection <edge_correction>
+   ModelMetrics <model_metrics>
