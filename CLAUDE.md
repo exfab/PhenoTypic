@@ -20,7 +20,7 @@
 
 - `uv run python -m phenotypic` — single pipeline on images/directories (parallel,
   SLURM, resume)
-- `uv run python -m phenotypic --process-only {rgb|gray|detect_mat|objmap}` —
+- `uv run python -m phenotypic --mode process --layer {rgb|gray|detect_mat|objmap}` —
   apply-only export: runs `pipeline.apply()` and writes ONE image layer per input
   (via the accessor `imsave` — `rgb` integer TIFF, `gray`/`detect_mat` float TIFF,
   `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
