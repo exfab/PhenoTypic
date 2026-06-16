@@ -1,6 +1,6 @@
 """Experiment-level and bookkeeping metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class EXPERIMENT_METADATA(MeasurementInfo):
@@ -17,11 +17,11 @@ class EXPERIMENT_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    EXPERIMENT_ID = "ExperimentID", "Unique identifier for the experiment."
-    PROJECT = "Project", "Project name or identifier."
-    DATASET = (
+    EXPERIMENT_ID = Entry("ExperimentID", "Unique identifier for the experiment.")
+    PROJECT = Entry("Project", "Project name or identifier.")
+    DATASET = Entry(
         "Dataset",
         "Dataset name (matches the CLI-emitted Metadata_Dataset column).",
     )
-    PROTOCOL = "Protocol", "Protocol name or version followed."
-    NOTES = "Notes", "Free-text notes or comments."
+    PROTOCOL = Entry("Protocol", "Protocol name or version followed.")
+    NOTES = Entry("Notes", "Free-text notes or comments.")

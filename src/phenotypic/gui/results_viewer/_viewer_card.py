@@ -222,27 +222,41 @@ def layout(idx: str, output_root: OutputRoot) -> Any:
         searchable=True,
         style={"flex": "1 1 auto", "minWidth": "12rem"},
     )
-    picker_group = html.Div(
+    stepper_pair = html.Div(
         [
             html.Button(
                 "‹",
                 id=card_picker_prev_id(idx),
                 n_clicks=0,
                 title="Previous image",
-                className="btn btn-outline-secondary btn-sm card-picker-nav-btn",
+                className=(
+                    "btn btn-outline-secondary btn-sm "
+                    "browse-step-button card-picker-nav-btn"
+                ),
                 type="button",
                 **cast(Any, {"aria-label": "Previous image"}),
             ),
-            html.Div(picker, style={"flex": "1 1 auto", "minWidth": "10rem"}),
             html.Button(
                 "›",
                 id=card_picker_next_id(idx),
                 n_clicks=0,
                 title="Next image",
-                className="btn btn-outline-secondary btn-sm card-picker-nav-btn",
+                className=(
+                    "btn btn-outline-secondary btn-sm "
+                    "browse-step-button card-picker-nav-btn"
+                ),
                 type="button",
                 **cast(Any, {"aria-label": "Next image"}),
             ),
+        ],
+        className="btn-group",
+        role="group",
+        **cast(Any, {"aria-label": "Step through images"}),
+    )
+    picker_group = html.Div(
+        [
+            stepper_pair,
+            html.Div(picker, style={"flex": "1 1 auto", "minWidth": "10rem"}),
         ],
         className="d-flex align-items-center",
         style={"gap": "0.35rem", "flex": "1 1 auto", "minWidth": "12rem"},

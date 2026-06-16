@@ -1,6 +1,6 @@
 """The labels and descriptions of the size measurements."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class SIZE(MeasurementInfo):
@@ -17,12 +17,12 @@ class SIZE(MeasurementInfo):
     def category(cls):
         return "Size"
 
-    AREA = (
+    AREA = Entry(
         "Area",
         "Total number of pixels occupied by the microbial colony."
         "Larger areas typically indicate more robust growth or longer incubation times.",
     )
-    INTEGRATED_INTENSITY = (
+    INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
         r"The sum of the object's grayscale pixels. Calculated as "
         r":math:`\sum{\text{pixel values}} \times \text{area}`.",

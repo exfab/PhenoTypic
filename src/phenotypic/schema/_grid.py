@@ -1,6 +1,6 @@
 """Constants for grid structure in the PhenoTypic module."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class GRID(MeasurementInfo):
@@ -10,28 +10,28 @@ class GRID(MeasurementInfo):
     def category(cls) -> str:
         return "Grid"
 
-    ROW_NUM = "RowNum", "The row idx of the object"
-    ROW_INTERVAL_START = (
+    ROW_NUM = Entry("RowNum", "The row idx of the object")
+    ROW_INTERVAL_START = Entry(
         "RowIntervalStart",
         "The start of the row interval of the object",
     )
-    ROW_INTERVAL_END = "RowIntervalEnd", "The end of the row interval of the object"
+    ROW_INTERVAL_END = Entry("RowIntervalEnd", "The end of the row interval of the object")
 
-    COL_NUM = "ColNum", "The column idx of the object"
-    COL_INTERVAL_START = (
+    COL_NUM = Entry("ColNum", "The column idx of the object")
+    COL_INTERVAL_START = Entry(
         "ColIntervalStart",
         "The start of the column interval of the object",
     )
-    COL_INTERVAL_END = "ColIntervalEnd", "The end of the column interval of the object"
+    COL_INTERVAL_END = Entry("ColIntervalEnd", "The end of the column interval of the object")
 
-    ROW_MAJOR_IDX = (
+    ROW_MAJOR_IDX = Entry(
         "RowMajorIdx",
         "The row-major index of the object. Row major is the standard in most"
         " programming and data science array libraries. Used for indexing into"
         " 2D arrays.",
     )
 
-    COL_MAJOR_IDX = (
+    COL_MAJOR_IDX = Entry(
         "ColMajorIdx",
         "The col-major index of the object in an array. Lab automation logic uses"
         " column-major (column-wise) indexing for well plate operations because"

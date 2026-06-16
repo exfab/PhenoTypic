@@ -74,7 +74,7 @@ def build_browse_layout() -> Any:
                 id=ids.BROWSE_PREV_BTN,
                 n_clicks=0,
                 title="Previous image",
-                className="btn btn-outline-secondary btn-sm",
+                className="btn btn-outline-secondary btn-sm browse-step-button",
                 type="button",
                 **cast(Any, {"aria-label": "Previous image"}),
             ),
@@ -83,7 +83,7 @@ def build_browse_layout() -> Any:
                 id=ids.BROWSE_NEXT_BTN,
                 n_clicks=0,
                 title="Next image",
-                className="btn btn-outline-secondary btn-sm",
+                className="btn btn-outline-secondary btn-sm browse-step-button",
                 type="button",
                 **cast(Any, {"aria-label": "Next image"}),
             ),
@@ -108,8 +108,8 @@ def build_browse_layout() -> Any:
     )
 
     empty_hint = html.Div(
-        "No source image root selected. Pick one from the top bar "
-        "(“source:”) to browse its images.",
+        "No source image root selected. Pick an input folder from Settings "
+        "to browse its images.",
         id=ids.BROWSE_EMPTY_HINT,
         className="text-muted",
         style={"display": "none", "padding": "2rem 0"},
@@ -154,6 +154,12 @@ def build_browse_layout() -> Any:
         className="browse-meta-panel d-flex flex-wrap",
         style={"marginTop": "0.75rem"},
     )
+    csv_metadata_panel = html.Div(
+        "No metadata CSV selected",
+        id=ids.BROWSE_CSV_METADATA_PANEL,
+        className="browse-csv-metadata-panel",
+        style={"marginTop": "0.5rem"},
+    )
 
     return html.Div(
         [
@@ -161,6 +167,7 @@ def build_browse_layout() -> Any:
             empty_hint,
             osd_stage,
             metadata_panel,
+            csv_metadata_panel,
             dcc.Store(id=ids.BROWSE_DATASETS_STORE, data={}),
             dcc.Store(id=ids.BROWSE_CURRENT_IMAGE_STORE, data=None),
             dcc.Store(id=ids.BROWSE_OSD_SYNC, data=None),

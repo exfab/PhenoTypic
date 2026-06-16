@@ -1,6 +1,6 @@
 """Imaging and acquisition metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class ACQUISITION_METADATA(MeasurementInfo):
@@ -17,11 +17,11 @@ class ACQUISITION_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    IMAGING_DATE = "ImagingDate", "Date the image was acquired."
-    INSTRUMENT = "Instrument", "Imaging instrument or scanner model."
-    EXPERIMENTER = (
+    IMAGING_DATE = Entry("ImagingDate", "Date the image was acquired.")
+    INSTRUMENT = Entry("Instrument", "Imaging instrument or scanner model.")
+    EXPERIMENTER = Entry(
         "Experimenter",
         "Person who acquired the image or ran the experiment.",
     )
-    RESOLUTION = "Resolution", "Image resolution (e.g. DPI or pixels per mm)."
-    EXPOSURE_TIME = "ExposureTime", "Camera exposure time."
+    RESOLUTION = Entry("Resolution", "Image resolution (e.g. DPI or pixels per mm).")
+    EXPOSURE_TIME = Entry("ExposureTime", "Camera exposure time.")

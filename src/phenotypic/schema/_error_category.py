@@ -15,7 +15,7 @@ user-defined custom categories, registered at runtime (not enum members).
 
 from __future__ import annotations
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class ErrorCategory(MeasurementInfo):
@@ -57,28 +57,28 @@ class ErrorCategory(MeasurementInfo):
                 return member
         return None
 
-    OVERSEGMENTED = (
+    OVERSEGMENTED = Entry(
         "oversegmented",
         "One colony split into multiple detections.",
     )
-    UNDERSEGMENTED = (
+    UNDERSEGMENTED = Entry(
         "undersegmented",
         "A single colony under-detected — its mask captured too small or "
         "only partially covering the colony.",
     )
-    MERGED = (
+    MERGED = Entry(
         "merged",
         "Multiple touching colonies detected as one object.",
     )
-    BACKGROUND_NOISE = (
+    BACKGROUND_NOISE = Entry(
         "background_noise",
         "Not a colony — agar texture, reflection, or vignette.",
     )
-    DEBRIS = (
+    DEBRIS = Entry(
         "debris",
         "Dust, scratch, bubble, or other plate artifact.",
     )
-    OTHER = (
+    OTHER = Entry(
         "other",
         "Removed without a specified reason (the catch-all bucket).",
     )

@@ -21,9 +21,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import quote
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
+from lucide import lucide_icon  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
     MOUNT_ANALYSIS,
@@ -40,15 +42,22 @@ from phenotypic.gui._config import (
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.shell._callbacks import register_chrome_callbacks
 from phenotypic.gui.shell._ids import (
+    SHELL_METADATA_CSV_STORE,
     SHELL_HELP_BUTTON,
     SHELL_HELP_MODAL,
     SHELL_MAIN_PANE,
     SHELL_ROOT_LABEL,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_SETTINGS_BUTTON,
+    SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+    SHELL_SETTINGS_INPUT_FOLDER_PICK,
+    SHELL_SETTINGS_METADATA_CSV_CLEAR,
+    SHELL_SETTINGS_METADATA_CSV_LABEL,
+    SHELL_SETTINGS_METADATA_CSV_PICK,
+    SHELL_SETTINGS_POPOVER,
     SHELL_SIDEBAR_COLLAPSE_BUTTON,
     SHELL_SIDEBAR_COLLAPSE_STORE,
-    SHELL_SOURCE_IMAGE_ROOT_CLEAR,
     SHELL_SOURCE_IMAGE_ROOT_LABEL,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
     SHELL_TAB_ANALYSIS,
@@ -65,7 +74,10 @@ from phenotypic.gui.shell._ids import (
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._sidebar import build_sidebar
-from phenotypic.gui.shell._source_picker import build_source_picker_modal
+from phenotypic.gui.shell._source_picker import (
+    build_metadata_csv_picker_modal,
+    build_source_picker_modal,
+)
 
 __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 
@@ -80,6 +92,24 @@ __all__ = ["build_top_bar", "build_help_modal", "wrap_in_chrome"]
 _SHELL_CSS = (Path(__file__).parent / "_assets" / "shell.css").read_text(
     encoding="utf-8"
 )
+_SHELL_ICON_STROKE = "#f8fafc"
+
+
+def _lucide_img(icon_name: str, *, class_name: str) -> html.Img:
+    """Return a lucide icon as a Dash image component."""
+    svg = lucide_icon(
+        icon_name,
+        cls=class_name,
+        width=18,
+        height=18,
+        stroke_width=2,
+    )
+    svg = svg.replace('stroke="currentColor"', f'stroke="{_SHELL_ICON_STROKE}"')
+    return html.Img(
+        src=f"data:image/svg+xml;utf8,{quote(svg)}",
+        alt="",
+        className=class_name,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -183,34 +213,6 @@ def build_top_bar(
                         className="shell-sidebar-collapse-button",
                     ),
                     html.Strong(TITLE_HUB, className="shell-title"),
-                    html.Span(
-                        f"root: {sandbox.root}",
-                        id=SHELL_ROOT_LABEL,
-                        className="shell-root-label",
-                        title=str(sandbox.root),
-                    ),
-                    html.Span(
-                        "",
-                        className="shell-path-divider",
-                        role="separator",
-                    ),
-                    dbc.Button(
-                        "source: unset",
-                        id=SHELL_SOURCE_IMAGE_ROOT_LABEL,
-                        color="link",
-                        n_clicks=0,
-                        className="shell-source-label",
-                        title="Select source image root",
-                    ),
-                    dbc.Button(
-                        "x",
-                        id=SHELL_SOURCE_IMAGE_ROOT_CLEAR,
-                        size="sm",
-                        color="link",
-                        n_clicks=0,
-                        title="Clear source image root",
-                        className="shell-source-clear-button",
-                    ),
                 ],
                 className="shell-top-bar-left",
             ),
@@ -229,6 +231,16 @@ def build_top_bar(
                         className="shell-rss-readout",
                     ),
                     dbc.Button(
+                        _lucide_img("settings", class_name="shell-settings-icon"),
+                        id=SHELL_SETTINGS_BUTTON,
+                        size="sm",
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                        title="GUI settings",
+                        className="shell-settings-button",
+                    ),
+                    dbc.Button(
                         "?",
                         id=SHELL_HELP_BUTTON,
                         size="sm",
@@ -243,6 +255,103 @@ def build_top_bar(
         ],
         id=SHELL_TOP_BAR,
         className="shell-top-bar",
+    )
+
+
+def build_settings_popover(sandbox: SandboxRoot) -> dbc.Popover:
+    """Build the global GUI settings popover."""
+    return dbc.Popover(
+        [
+            dbc.PopoverHeader("GUI settings"),
+            dbc.PopoverBody(
+                [
+                    html.Div(
+                        [
+                            html.Div("Sandbox root", className="shell-settings-key"),
+                            html.Div(
+                                str(sandbox.root),
+                                id=SHELL_ROOT_LABEL,
+                                className="shell-settings-value shell-settings-path",
+                                title=str(sandbox.root),
+                            ),
+                        ],
+                        className="shell-settings-row",
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Input folder", className="shell-settings-key"),
+                            html.Div(
+                                "source: unset",
+                                id=SHELL_SOURCE_IMAGE_ROOT_LABEL,
+                                className="shell-settings-value shell-settings-path",
+                                title="No source image root selected",
+                            ),
+                            html.Div(
+                                [
+                                    dbc.Button(
+                                        "Pick",
+                                        id=SHELL_SETTINGS_INPUT_FOLDER_PICK,
+                                        size="sm",
+                                        color="primary",
+                                        outline=True,
+                                        n_clicks=0,
+                                    ),
+                                    dbc.Button(
+                                        "Clear",
+                                        id=SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+                                        size="sm",
+                                        color="secondary",
+                                        outline=True,
+                                        n_clicks=0,
+                                    ),
+                                ],
+                                className="shell-settings-actions",
+                            ),
+                        ],
+                        className="shell-settings-row",
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Metadata CSV", className="shell-settings-key"),
+                            html.Div(
+                                "metadata: unset",
+                                id=SHELL_SETTINGS_METADATA_CSV_LABEL,
+                                className="shell-settings-value shell-settings-path",
+                                title="No metadata CSV selected",
+                            ),
+                            html.Div(
+                                [
+                                    dbc.Button(
+                                        "Pick",
+                                        id=SHELL_SETTINGS_METADATA_CSV_PICK,
+                                        size="sm",
+                                        color="primary",
+                                        outline=True,
+                                        n_clicks=0,
+                                    ),
+                                    dbc.Button(
+                                        "Clear",
+                                        id=SHELL_SETTINGS_METADATA_CSV_CLEAR,
+                                        size="sm",
+                                        color="secondary",
+                                        outline=True,
+                                        n_clicks=0,
+                                    ),
+                                ],
+                                className="shell-settings-actions",
+                            ),
+                        ],
+                        className="shell-settings-row",
+                    ),
+                ],
+                className="shell-settings-body",
+            ),
+        ],
+        id=SHELL_SETTINGS_POPOVER,
+        target=SHELL_SETTINGS_BUTTON,
+        is_open=False,
+        placement="bottom-end",
+        className="shell-settings-popover",
     )
 
 
@@ -351,7 +460,9 @@ def wrap_in_chrome(
                 className="shell-body",
             ),
             build_help_modal(),
+            build_settings_popover(sandbox),
             build_source_picker_modal(sandbox),
+            build_metadata_csv_picker_modal(sandbox),
             dcc.Interval(id=SHELL_RSS_INTERVAL, interval=RSS_INTERVAL_MS, n_intervals=0),
             # Persists across mounts: each Dash instance reads the same
             # localStorage key and the clientside callback toggles the
@@ -363,6 +474,11 @@ def wrap_in_chrome(
             ),
             dcc.Store(
                 id=SHELL_SOURCE_IMAGE_ROOT_STORE,
+                storage_type="local",
+                data=None,
+            ),
+            dcc.Store(
+                id=SHELL_METADATA_CSV_STORE,
                 storage_type="local",
                 data=None,
             ),

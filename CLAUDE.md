@@ -213,7 +213,7 @@ the gate:
   deliberately surfaces it as range-less (`_resolve_tune_spec` → `Excluded("non_numeric")`)
   instead of fabricating a window; the concrete range is supplied per-run in the tune spec.
   Don't reach for `tunable=False` just to silence the gate when the field is genuinely a
-  knob. Canonical: `refine/_remove_by_value.py` (`min_value`/`max_value`).
+  knob. Canonical: `refine/_remove_by_feature.py` (`RemoveByFeature`, `min_value`/`max_value`).
 
 ## Gotchas
 
@@ -230,6 +230,14 @@ the gate:
   the old `phenotypic.tools_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Authoring `MeasurementInfo` members:** members are declared with
+  `Entry(label, desc, *, bio_desc="", image=None)` (the `Entry` value type in
+  `phenotypic.schema`). When adding a new member or editing one, only author/edit
+  the **`label`** (name) and **`desc`** (the technical/algorithm description of
+  what is computed). **Never author or auto-fill `bio_desc`**, and leave `image`
+  unset — biological-relevance claims must be written and verified by a human
+  domain author, not generated. Agents may scaffold the `Entry(...)` and populate
+  `label`/`desc`, but must leave `bio_desc=""`/`image=None` for human authoring.
 - **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)`,
   `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use

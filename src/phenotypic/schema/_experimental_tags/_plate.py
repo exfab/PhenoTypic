@@ -1,6 +1,6 @@
 """Plate and array layout metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class PLATE_METADATA(MeasurementInfo):
@@ -16,13 +16,13 @@ class PLATE_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    PLATE_ID = "PlateID", "Identifier of the assay/imaging plate."
-    BATCH = "Batch", "Experimental batch grouping."
-    ARRAY_DENSITY = (
+    PLATE_ID = Entry("PlateID", "Identifier of the assay/imaging plate.")
+    BATCH = Entry("Batch", "Experimental batch grouping.")
+    ARRAY_DENSITY = Entry(
         "ArrayDensity",
         "Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).",
     )
-    INCUBATOR_POSITION = (
+    INCUBATOR_POSITION = Entry(
         "IncubatorPosition",
         "Physical position of the plate within the incubator.",
     )

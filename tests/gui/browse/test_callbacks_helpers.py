@@ -1,4 +1,17 @@
+from pathlib import Path
+
 from phenotypic.gui.browse import _callbacks as cb
+
+
+def _walk_components(node: object) -> list[object]:
+    nodes = [node]
+    children = getattr(node, "children", None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            nodes.extend(_walk_components(child))
+    elif children is not None:
+        nodes.extend(_walk_components(children))
+    return nodes
 
 
 def test_dataset_options_sorted_labels():
@@ -81,3 +94,78 @@ def test_current_image_payload_prefetch_tokens_round_trip():
         "plates/b7/day3/A1.png",
         "plates/b7/day3/A3.png",
     ]
+
+
+def test_csv_metadata_panel_message_for_unset_metadata():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(state="unset", image_stem="plate_a", rows=[])
+    )
+
+    assert "No metadata CSV selected" in str(panel)
+
+
+def test_csv_metadata_panel_renders_matched_values_without_image_name():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="matched",
+            image_stem="plate_a",
+            rows=[{"Treatment": "control", "Replicate": "1"}],
+        )
+    )
+
+    text = str(panel)
+    assert "Treatment" in text
+    assert "control" in text
+    assert "Replicate" in text
+    assert "Metadata_ImageName" not in text
+
+
+def test_csv_metadata_panel_renders_multiple_rows_with_count():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="matched",
+            image_stem="plate_a",
+            rows=[
+                {"Colony": "A01", "Treatment": "control"},
+                {"Colony": "A02", "Treatment": "stress"},
+            ],
+        )
+    )
+
+    text = str(panel)
+    assert "2 metadata rows for plate_a" in text
+    assert "A01" in text
+    assert "A02" in text
+
+
+def test_csv_metadata_panel_table_is_bounded_and_horizontally_scrollable():
+    panel = cb.render_csv_metadata_panel(
+        cb.CsvMetadataPanelModel(
+            state="matched",
+            image_stem="plate_a",
+            rows=[
+                {
+                    "VeryLongMetadataColumnName01": "control",
+                    "VeryLongMetadataColumnName02": "batch-a",
+                    "VeryLongMetadataColumnName03": "edge",
+                }
+            ],
+        )
+    )
+
+    classes = {
+        getattr(component, "className", "")
+        for component in _walk_components(panel)
+        if getattr(component, "className", "")
+    }
+    assert "browse-csv-metadata-scroll" in classes
+    assert "table table-sm mb-0 browse-csv-metadata-table" in classes
+
+    css = (
+        Path(__file__).parents[3] / "src/phenotypic/gui/browse/_assets/browse.css"
+    ).read_text(encoding="utf-8")
+    assert ".browse-csv-metadata-panel" in css
+    assert ".browse-csv-metadata-scroll" in css
+    assert "max-width: 100%;" in css
+    assert "overflow-x: auto;" in css
+    assert "width: max-content;" in css

@@ -15,7 +15,7 @@ bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
 standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
 """
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 from ._metadata import METADATA
 from ._experimental_tags import (
     ACQUISITION_METADATA,
@@ -59,6 +59,7 @@ from ._symmetric_zones import SYMMETRIC_ZONES
 from ._texture import TEXTURE
 
 __all__ = [
+    "Entry",
     "MeasurementInfo",
     "METADATA",
     "ACQUISITION_METADATA",

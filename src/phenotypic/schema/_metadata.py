@@ -1,6 +1,6 @@
 """Framework metadata bookkeeping labels for the PhenoTypic module."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class METADATA(MeasurementInfo):
@@ -20,14 +20,14 @@ class METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    UUID = "UUID", "The unique identifier of the image."
-    IMAGE_NAME = "ImageName", "The name of the image."
-    PARENT_IMAGE_NAME = "ParentImageName", "The name of the parent image."
-    PARENT_UUID = "ParentUUID", "The UUID of the parent image."
-    IMFORMAT = "ImageFormat", "The format of the image."
-    IMAGE_TYPE = "ImageType", "The type of the image."
-    BIT_DEPTH = "BitDepth", "The bit depth of the image."
-    SUFFIX = (
+    UUID = Entry("UUID", "The unique identifier of the image.")
+    IMAGE_NAME = Entry("ImageName", "The name of the image.")
+    PARENT_IMAGE_NAME = Entry("ParentImageName", "The name of the parent image.")
+    PARENT_UUID = Entry("ParentUUID", "The UUID of the parent image.")
+    IMFORMAT = Entry("ImageFormat", "The format of the image.")
+    IMAGE_TYPE = Entry("ImageType", "The type of the image.")
+    BIT_DEPTH = Entry("BitDepth", "The bit depth of the image.")
+    SUFFIX = Entry(
         "FileSuffix",
         "The file suffix of the original file the image was imported from",
     )

@@ -33,8 +33,22 @@ from phenotypic.gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_HELP_BUTTON,
     SHELL_HELP_MODAL,
+    SHELL_METADATA_CSV_BROWSE_STORE,
+    SHELL_METADATA_CSV_CANCEL,
+    SHELL_METADATA_CSV_CONFIRM,
+    SHELL_METADATA_CSV_ENTRY_TYPE,
+    SHELL_METADATA_CSV_MODAL,
+    SHELL_METADATA_CSV_MODAL_BODY,
+    SHELL_METADATA_CSV_STORE,
     SHELL_RSS_INTERVAL,
     SHELL_RSS_LABEL,
+    SHELL_SETTINGS_BUTTON,
+    SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
+    SHELL_SETTINGS_INPUT_FOLDER_PICK,
+    SHELL_SETTINGS_METADATA_CSV_CLEAR,
+    SHELL_SETTINGS_METADATA_CSV_LABEL,
+    SHELL_SETTINGS_METADATA_CSV_PICK,
+    SHELL_SETTINGS_POPOVER,
     SHELL_SIDEBAR_COLLAPSE_BUTTON,
     SHELL_SIDEBAR_COLLAPSE_STORE,
     SHELL_SIDEBAR_EXPANDED_STORE,
@@ -43,7 +57,6 @@ from phenotypic.gui.shell._ids import (
     SHELL_SIDEBAR_SELECTION_STORE,
     SHELL_SIDEBAR_SYMLINK_TOGGLE,
     SHELL_SIDEBAR_TREE,
-    SHELL_SOURCE_IMAGE_ROOT_CLEAR,
     SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE,
     SHELL_SOURCE_IMAGE_ROOT_CANCEL,
     SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
@@ -54,13 +67,22 @@ from phenotypic.gui.shell._ids import (
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
 from phenotypic.gui.shell._sidebar import render_tree
+from phenotypic.gui.shell._metadata_context import (
+    metadata_csv_label,
+    metadata_csv_title,
+    metadata_payload_from_path,
+    resolve_metadata_csv,
+)
 from phenotypic.gui.shell._source_context import (
     resolve_source_image_root,
     source_label,
     source_payload_from_path,
     source_title,
 )
-from phenotypic.gui.shell._source_picker import render_source_picker_tree
+from phenotypic.gui.shell._source_picker import (
+    render_metadata_csv_picker_tree,
+    render_source_picker_tree,
+)
 
 if TYPE_CHECKING:
     import dash
@@ -99,6 +121,17 @@ def register_chrome_callbacks(
         return f"RSS {rss_bytes / 1e6:.0f} MB"
 
     @app.callback(
+        Output(SHELL_SETTINGS_POPOVER, "is_open"),
+        Input(SHELL_SETTINGS_BUTTON, "n_clicks"),
+        State(SHELL_SETTINGS_POPOVER, "is_open"),
+        prevent_initial_call=True,
+    )
+    def _toggle_settings_popover(n_clicks: int, is_open: bool) -> bool:
+        if not n_clicks:
+            return no_update  # type: ignore[return-value]
+        return not is_open
+
+    @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "children"),
         Output(SHELL_SOURCE_IMAGE_ROOT_LABEL, "title"),
         Input(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
@@ -108,7 +141,7 @@ def register_chrome_callbacks(
 
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_STORE, "data", allow_duplicate=True),
-        Input(SHELL_SOURCE_IMAGE_ROOT_CLEAR, "n_clicks"),
+        Input(SHELL_SETTINGS_INPUT_FOLDER_CLEAR, "n_clicks"),
         prevent_initial_call=True,
     )
     def _clear_source_root(n_clicks: int) -> Any:
@@ -119,7 +152,7 @@ def register_chrome_callbacks(
     @app.callback(
         Output(SHELL_SOURCE_IMAGE_ROOT_MODAL, "is_open", allow_duplicate=True),
         Output(SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE, "data", allow_duplicate=True),
-        Input(SHELL_SOURCE_IMAGE_ROOT_LABEL, "n_clicks"),
+        Input(SHELL_SETTINGS_INPUT_FOLDER_PICK, "n_clicks"),
         State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
         prevent_initial_call=True,
     )
@@ -189,6 +222,106 @@ def register_chrome_callbacks(
         if not n_clicks or not dir_value:
             return no_update, no_update
         payload = source_payload_from_path(sandbox, dir_value, source="manual")
+        if payload is None:
+            return no_update, no_update
+        return payload, False
+
+    @app.callback(
+        Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "children"),
+        Output(SHELL_SETTINGS_METADATA_CSV_LABEL, "title"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
+    )
+    def _update_metadata_csv_label(payload: object) -> tuple[str, str]:
+        return metadata_csv_label(payload), metadata_csv_title(payload)
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
+        Input(SHELL_SETTINGS_METADATA_CSV_CLEAR, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _clear_metadata_csv(n_clicks: int) -> Any:
+        if not n_clicks:
+            return no_update
+        return None
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_MODAL, "is_open", allow_duplicate=True),
+        Output(SHELL_METADATA_CSV_BROWSE_STORE, "data", allow_duplicate=True),
+        Input(SHELL_SETTINGS_METADATA_CSV_PICK, "n_clicks"),
+        State(SHELL_METADATA_CSV_STORE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _open_metadata_picker(
+        n_clicks: int,
+        current_payload: object,
+        source_payload: object,
+    ) -> tuple[Any, Any]:
+        if not n_clicks:
+            return no_update, no_update
+        current = resolve_metadata_csv(sandbox, current_payload)
+        if current is not None:
+            return True, str(current.parent)
+        source = resolve_source_image_root(sandbox, source_payload)
+        browse_dir = source if source is not None else sandbox.root
+        return True, str(browse_dir)
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_MODAL, "is_open", allow_duplicate=True),
+        Input(SHELL_METADATA_CSV_CANCEL, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _cancel_metadata_picker(n_clicks: int) -> Any:
+        if not n_clicks:
+            return no_update
+        return False
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_BROWSE_STORE, "data", allow_duplicate=True),
+        Input(
+            {
+                "type": SHELL_METADATA_CSV_ENTRY_TYPE,
+                "kind": ALL,
+                "path": ALL,
+            },
+            "n_clicks",
+        ),
+        prevent_initial_call=True,
+    )
+    def _navigate_metadata_picker(_clicks: list[int]) -> Any:
+        triggered = ctx.triggered_id
+        if not isinstance(triggered, dict):
+            return no_update
+        if triggered.get("type") != SHELL_METADATA_CSV_ENTRY_TYPE:
+            return no_update
+        if not any(t.get("value") for t in (ctx.triggered or [])):
+            return no_update
+        path = triggered.get("path")
+        return path if isinstance(path, str) and path else no_update
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_MODAL_BODY, "children"),
+        Input(SHELL_METADATA_CSV_BROWSE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _render_metadata_picker_body(path_value: str | None) -> Any:
+        current = Path(path_value) if path_value else None
+        return render_metadata_csv_picker_tree(sandbox, current)
+
+    @app.callback(
+        Output(SHELL_METADATA_CSV_STORE, "data", allow_duplicate=True),
+        Output(SHELL_METADATA_CSV_MODAL, "is_open", allow_duplicate=True),
+        Input(SHELL_METADATA_CSV_CONFIRM, "n_clicks"),
+        State(SHELL_METADATA_CSV_BROWSE_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _confirm_metadata_picker(
+        n_clicks: int,
+        path_value: str | None,
+    ) -> tuple[Any, Any]:
+        if not n_clicks or not path_value:
+            return no_update, no_update
+        payload = metadata_payload_from_path(sandbox, path_value)
         if payload is None:
             return no_update, no_update
         return payload, False

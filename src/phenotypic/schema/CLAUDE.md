@@ -3,9 +3,17 @@
 Public, blessed API for PhenoTypic's measurement naming conventions.
 
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
-  declare `(label, description)` members and a `category()` classmethod; the
-  enum value is the category-prefixed header (e.g. `Shape_Area`). Helpers:
-  `get_labels()`, `get_headers()`, `rst_table()`, `append_rst_to_doc()`.
+  declare members as `Entry(label, desc, *, bio_desc="", image=None)` plus a
+  `category()` classmethod; the enum value is the category-prefixed header
+  (e.g. `Shape_Area`). `Entry` (a frozen dataclass, also in `_measurement_info.py`
+  and exported from the package) is the **only** legal member value — raw tuples
+  raise `TypeError` at import. `desc` is the technical/algorithm description;
+  **`bio_desc` is human-authored only** (a biological claim — never
+  machine-generated, see the root `CLAUDE.md` guardrail); `image` is a path under
+  `_assets/measurements/` rendered into the Sphinx docs. Per-member attrs:
+  `.label`, `.desc`, `.bio_desc`, `.image`, `.pair`, `.CATEGORY`. Helpers:
+  `get_labels()`, `get_headers()`, `rst_table()` (conditional Biology/Image
+  columns, suppressed when empty), `append_rst_to_doc()`.
 - 24 measurement-column enum modules (`_shape.py`, `_size.py`,
   `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from
   `__init__.py`.

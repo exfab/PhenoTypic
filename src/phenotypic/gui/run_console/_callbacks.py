@@ -64,7 +64,11 @@ from phenotypic.gui.run_console._form import (
 from phenotypic.gui.run_console._layout import render_recents_table
 from phenotypic.gui.run_console._recent_runs import scan_recent_runs
 from phenotypic.gui.run_console._runner import LocalRunner
-from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
+from phenotypic.gui.shell._ids import (
+    SHELL_METADATA_CSV_STORE,
+    SHELL_SOURCE_IMAGE_ROOT_STORE,
+)
+from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
 from phenotypic.gui.shell._runs_registry import RunMode, RunRecord, RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import (
@@ -255,6 +259,9 @@ def _form_inputs_to_state(
     slurm_cpus: Optional[Any],
     slurm_gpus: Optional[Any],
     slurm_extra: Optional[str],
+    *,
+    metadata_payload: object = None,
+    sandbox: SandboxRoot | None = None,
 ) -> dict[str, Any]:
     """Bundle every form input into a flat state dict.
 
@@ -287,10 +294,16 @@ def _form_inputs_to_state(
     if extra:
         slurm_args["extra"] = extra
 
+    metadata_csv: str | None = None
+    if sandbox is not None:
+        resolved_metadata = resolve_metadata_csv(sandbox, metadata_payload)
+        metadata_csv = str(resolved_metadata) if resolved_metadata is not None else None
+
     return {
         "pipeline_path": pipeline_path,
         "input_dir": input_dir,
         "output_dir": output_dir,
+        "metadata_csv": metadata_csv,
         "mode": mode or "local",
         "dry_run": "dry_run" in flag_set,
         "resume": "resume" in flag_set,
@@ -806,6 +819,7 @@ def register_callbacks(
         Input(ids.RC_INPUT_SLURM_CPUS, "value"),
         Input(ids.RC_INPUT_SLURM_GPUS, "value"),
         Input(ids.RC_INPUT_SLURM_EXTRA, "value"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
     )
     def sync_form_state(  # noqa: PLR0913
         pipeline_path: Optional[str],
@@ -825,6 +839,7 @@ def register_callbacks(
         slurm_cpus: Optional[Any],
         slurm_gpus: Optional[Any],
         slurm_extra: Optional[str],
+        metadata_payload: object,
     ) -> dict[str, Any]:
         """Bundle all form fields into the run-state store on any change."""
         return _form_inputs_to_state(
@@ -845,6 +860,8 @@ def register_callbacks(
             slurm_cpus,
             slurm_gpus,
             slurm_extra,
+            metadata_payload=metadata_payload,
+            sandbox=sandbox,
         )
 
     # ----------------------------------------------------------------------

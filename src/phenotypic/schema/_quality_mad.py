@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement MAD QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_MAD(MeasurementInfo):
@@ -18,6 +18,6 @@ class QUALITY_MAD(MeasurementInfo):
     def category(cls) -> str:
         return "QC_MAD"
 
-    MEDIAN = ("Median", "Group median of the measurement.")
-    MAD = ("MAD", "Median absolute deviation (raw, before normalization).")
-    NUM_MEMBERS = ("NumMembers", "Members contributing to the statistic.")
+    MEDIAN = Entry("Median", "Group median of the measurement.")
+    MAD = Entry("MAD", "Median absolute deviation (raw, before normalization).")
+    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.")

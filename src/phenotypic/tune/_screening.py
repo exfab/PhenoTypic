@@ -19,8 +19,6 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.inspection import permutation_importance
 
 from ._study._protocol import StudyStore
 
@@ -196,6 +194,11 @@ def _rf_permutation_importance(
     features = pd.concat(parts, axis=1).fillna(0.0)
     if features.shape[1] == 0:
         return {}
+
+    # Deferred: scikit-learn is heavy and only needed for this fallback path,
+    # not at module import (mirrors the lazy-optuna boundary convention).
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.inspection import permutation_importance
 
     forest = RandomForestRegressor(n_estimators=200, random_state=random_state)
     forest.fit(features.to_numpy(), y)

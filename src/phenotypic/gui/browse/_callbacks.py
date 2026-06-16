@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 import dash
-from dash import Input, Output, State, ctx, no_update
+from dash import Input, Output, State, ctx, html, no_update
 
 from phenotypic.gui._shared._picker_navigation import (
     picker_button_disabled_states,
@@ -22,7 +24,14 @@ from phenotypic.gui._shared._picker_navigation import (
 from phenotypic.gui.browse import _ids as ids
 from phenotypic.gui.browse import _metadata, _source_lister, _source_render
 from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
-from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
+from phenotypic.gui.shell._ids import (
+    SHELL_METADATA_CSV_STORE,
+    SHELL_SOURCE_IMAGE_ROOT_STORE,
+)
+from phenotypic.gui.shell._metadata_context import (
+    MetadataLookupResult,
+    read_metadata_row_for_image_stem,
+)
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
 
@@ -37,6 +46,23 @@ _ROOT_LABEL = "(root)"
 #: an already-converted image (instant) instead of paying the multi-second
 #: normalize + DZI-tile on click.
 _PREFETCH_RADIUS = 3
+
+CsvMetadataPanelState = Literal[
+    "unset",
+    "unavailable",
+    "missing_image_name",
+    "no_match",
+    "matched",
+]
+
+
+@dataclass(frozen=True)
+class CsvMetadataPanelModel:
+    """Display model for Browse's optional CSV metadata panel."""
+
+    state: CsvMetadataPanelState
+    image_stem: str
+    rows: list[dict[str, str]]
 
 
 # --------------------------------------------------------------------------
@@ -109,6 +135,56 @@ def current_image_payload(
             for name in neighbor_files
         ]
     return payload
+
+
+def render_csv_metadata_panel(model: CsvMetadataPanelModel) -> Any:
+    """Render Browse's optional metadata CSV section."""
+    if model.state == "unset":
+        return html.Div("No metadata CSV selected", className="text-muted")
+    if model.state == "unavailable":
+        return html.Div("Metadata CSV is unavailable", className="text-warning")
+    if model.state == "missing_image_name":
+        return html.Div(
+            "Metadata CSV has no image-name column",
+            className="text-warning",
+        )
+    if model.state == "no_match":
+        return html.Div(
+            f"No metadata row for {model.image_stem}",
+            className="text-muted",
+        )
+    columns = list(dict.fromkeys(key for row in model.rows for key in row))
+    rows = [
+        html.Tr([html.Td(row.get(column, "-") or "-") for column in columns])
+        for row in model.rows
+    ]
+    return html.Div(
+        [
+            html.Div(
+                f"{len(model.rows)} metadata row"
+                f"{'' if len(model.rows) == 1 else 's'} for {model.image_stem}",
+                className="browse-csv-metadata-title",
+            ),
+            html.Div(
+                html.Table(
+                    [
+                        html.Thead(html.Tr([html.Th(column) for column in columns])),
+                        html.Tbody(rows),
+                    ],
+                    className="table table-sm mb-0 browse-csv-metadata-table",
+                ),
+                className="browse-csv-metadata-scroll",
+            ),
+        ]
+    )
+
+
+def _csv_panel_model(result: MetadataLookupResult) -> CsvMetadataPanelModel:
+    return CsvMetadataPanelModel(
+        state=result.state,
+        image_stem=result.image_stem,
+        rows=result.rows,
+    )
 
 
 def _src_root_rel(sandbox: SandboxRoot, payload: Any) -> str | None:
@@ -226,6 +302,33 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         captured = exif.get("captured", "—")
         camera = " ".join(p for p in (exif.get("make"), exif.get("model")) if p) or "—"
         return dims, size, captured, camera
+
+    @app.callback(
+        Output(ids.BROWSE_CSV_METADATA_PANEL, "children"),
+        Input(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
+    )
+    def _csv_metadata_panel(
+        image_payload: dict | None,
+        metadata_payload: object,
+    ) -> Any:
+        if not image_payload or not image_payload.get("token"):
+            return render_csv_metadata_panel(
+                CsvMetadataPanelModel("unset", "", [])
+            )
+        try:
+            rel = _source_render.decode_token(image_payload["token"])
+            original = sandbox.resolve(rel)
+        except Exception:  # noqa: BLE001 - metadata display is best-effort
+            return render_csv_metadata_panel(
+                CsvMetadataPanelModel("unavailable", "", [])
+            )
+        result = read_metadata_row_for_image_stem(
+            sandbox,
+            metadata_payload,
+            Path(original).stem,
+        )
+        return render_csv_metadata_panel(_csv_panel_model(result))
 
     # Clientside: mount/replace the single OSD viewer on image change.
     app.clientside_callback(

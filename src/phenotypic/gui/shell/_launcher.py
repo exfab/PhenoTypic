@@ -38,10 +38,34 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui.shell._app import create_app
 from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic.gui.shell._startup import StartupReporter, should_use_rich
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["launch_gui", "main"]
+
+#: Number of bar segments the launcher advances: core import (already done),
+#: sandbox resolution, hub composition. See :class:`StartupReporter`.
+_STARTUP_STEPS = 3
+
+
+def _core_import_elapsed() -> float | None:
+    """Seconds spent importing the ``phenotypic`` library before ``main()``.
+
+    Measured against :data:`phenotypic._startup_perf.IMPORT_STARTED_AT`,
+    which is stamped the moment the (heavy) package import begins — the only
+    point early enough to capture it, since the console-script import chain
+    runs before any launcher code. Returns ``None`` if the stamp is absent
+    (e.g. a stubbed import in tests).
+    """
+    import time
+
+    try:
+        import phenotypic
+
+        return time.perf_counter() - phenotypic._IMPORT_STARTED_AT
+    except Exception:  # pragma: no cover - defensive
+        return None
 
 
 def launch_gui(
@@ -49,6 +73,8 @@ def launch_gui(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     debug: bool = False,
+    *,
+    reporter: StartupReporter | None = None,
 ) -> None:
     """Boot the unified PhenoTypic GUI shell.
 
@@ -63,14 +89,30 @@ def launch_gui(
         port: TCP port. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose tracebacks).
             Defaults to ``False``.
+        reporter: Optional :class:`StartupReporter` driving staged progress
+            feedback (sandbox resolution + hub composition). ``None``
+            (default — the programmatic boot path) skips progress reporting
+            entirely and just resolves, composes, and serves.
 
     Raises:
         FileNotFoundError: If ``root`` does not exist.
         NotADirectoryError: If ``root`` exists but is not a directory.
         RuntimeError: On a symlink loop encountered while resolving root.
     """
-    sandbox = SandboxRoot.from_path(root)
-    app = create_app(sandbox)
+    if reporter is None:
+        sandbox = SandboxRoot.from_path(root)
+        app = create_app(sandbox)
+    else:
+        with reporter:
+            reporter.record_done(
+                "Core library loaded", reporter.import_elapsed
+            )
+            with reporter.stage("Resolving sandbox root"):
+                sandbox = SandboxRoot.from_path(root)
+            with reporter.stage("Composing GUI hub"):
+                app = create_app(sandbox, progress=reporter.detail)
+        # ``sandbox``/``app`` are always bound here: the ``with`` bodies run
+        # unless ``reporter`` raises, in which case we never reach this line.
     print_launcher_banner(
         title=TITLE_HUB, host=host, port=port, root=sandbox.root
     )
@@ -107,12 +149,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """
     args = _build_parser().parse_args(argv)
     configure_launcher_logging(debug=args.debug)
+    reporter = StartupReporter(
+        total_steps=_STARTUP_STEPS,
+        use_rich=should_use_rich(debug=args.debug),
+        import_elapsed=_core_import_elapsed(),
+    )
     try:
         launch_gui(
             root=args.root,
             host=args.host,
             port=args.port,
             debug=args.debug,
+            reporter=reporter,
         )
     except (FileNotFoundError, NotADirectoryError, RuntimeError) as exc:
         print(f"phenotypic-gui: {exc}", file=sys.stderr)

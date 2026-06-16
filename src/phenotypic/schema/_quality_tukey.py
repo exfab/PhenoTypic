@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement Tukey-fence QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_TUKEY(MeasurementInfo):
@@ -18,7 +18,7 @@ class QUALITY_TUKEY(MeasurementInfo):
     def category(cls) -> str:
         return "QC_Tukey"
 
-    LOWER_FENCE = ("LowerFence", "Lower Tukey fence, Q1 - k*IQR.")
-    UPPER_FENCE = ("UpperFence", "Upper Tukey fence, Q3 + k*IQR.")
-    NUM_OUTLIERS = ("NumOutliers", "Members falling outside the fences.")
-    NUM_MEMBERS = ("NumMembers", "Members contributing to the statistic.")
+    LOWER_FENCE = Entry("LowerFence", "Lower Tukey fence, Q1 - k*IQR.")
+    UPPER_FENCE = Entry("UpperFence", "Upper Tukey fence, Q3 + k*IQR.")
+    NUM_OUTLIERS = Entry("NumOutliers", "Members falling outside the fences.")
+    NUM_MEMBERS = Entry("NumMembers", "Members contributing to the statistic.")

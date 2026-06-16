@@ -6,6 +6,20 @@ from pathlib import Path
 from playwright.sync_api import Page, expect
 
 
+def _open_settings(page: Page) -> None:
+    if not page.locator("#shell-settings-popover").is_visible():
+        page.click("#shell-settings-button")
+    page.wait_for_selector("#shell-settings-popover", state="visible", timeout=5_000)
+
+
+def _expect_settings_source_label(page: Page, text: str) -> None:
+    _open_settings(page)
+    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
+        text,
+        timeout=5_000,
+    )
+
+
 def _select_plate1_source(page: Page, hub_url: str) -> None:
     """Click the shared fixture's image directory in the sidebar."""
     page.goto(hub_url + "/run/")
@@ -13,10 +27,7 @@ def _select_plate1_source(page: Page, hub_url: str) -> None:
     page.click(
         'button[id*="\\"path\\":\\"plate1\\""][id*="shell-sidebar-entry"]'
     )
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
 
 
 def test_shared_source_persists_across_pages_and_seeds_builder(
@@ -33,16 +44,10 @@ def test_shared_source_persists_across_pages_and_seeds_builder(
     plate = fake_sandbox / "plate1"
 
     page.goto(hub_url + "/tune/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
 
     page.goto(hub_url + "/builder/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
     page.click("#btn-load-image")
     page.wait_for_function(
         "() => {"
@@ -55,25 +60,20 @@ def test_shared_source_persists_across_pages_and_seeds_builder(
         "image.tif",
         timeout=5_000,
     )
+    _open_settings(page)
     expect(page.locator("#shell-source-image-root-label")).to_have_attribute(
         "title",
         str(plate),
     )
 
     page.goto(hub_url + "/results/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
     expect(page.locator("#results-viewer-empty-state")).to_be_visible(
         timeout=10_000
     )
 
     page.goto(hub_url + "/analysis/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
     expect(page.locator("#analysis-page")).to_be_visible(timeout=10_000)
 
 
@@ -86,7 +86,8 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
     plate = fake_sandbox / "plate1"
 
     page.goto(hub_url + "/run/")
-    page.click("#shell-source-image-root-label")
+    _open_settings(page)
+    page.click("#shell-settings-input-folder-pick")
     page.wait_for_selector("#shell-source-image-root-modal", timeout=5_000)
     page.wait_for_function(
         "() => {"
@@ -104,10 +105,7 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
     )
     page.click("#shell-source-image-root-confirm")
 
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
     expect(page.locator("#shell-source-image-root-label")).to_have_attribute(
         "title",
         str(plate),
@@ -118,10 +116,7 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
     )
 
     page.goto(hub_url + "/builder/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")
     page.click("#btn-load-image")
     page.wait_for_function(
         "() => {"
@@ -136,7 +131,4 @@ def test_status_bar_source_picker_sets_shared_source_and_page_inputs(
     )
 
     page.goto(hub_url + "/tune/")
-    expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1",
-        timeout=5_000,
-    )
+    _expect_settings_source_label(page, "source: plate1")

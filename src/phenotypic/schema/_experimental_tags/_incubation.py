@@ -1,6 +1,6 @@
 """Incubation and time-course metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import MeasurementInfo
+from .._measurement_info import Entry, MeasurementInfo
 
 
 class INCUBATION_METADATA(MeasurementInfo):
@@ -18,11 +18,11 @@ class INCUBATION_METADATA(MeasurementInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    TEMPERATURE = "Temperature", "Incubation temperature in degrees Celsius."
-    TIME = "Time", "Elapsed growth time."
-    TIME_UNIT = "TimeUnit", "Unit for the Time value (e.g. hours, days)."
-    TIMEPOINT = "Timepoint", "Discrete timepoint label in a time series."
-    DAY = "Day", "Day index of the experiment."
-    GENERATION = "Generation", "Generation or passage number."
-    HUMIDITY = "Humidity", "Relative humidity during incubation."
-    ATMOSPHERE = "Atmosphere", "Atmospheric condition (e.g. aerobic, anaerobic)."
+    TEMPERATURE = Entry("Temperature", "Incubation temperature in degrees Celsius.")
+    TIME = Entry("Time", "Elapsed growth time.")
+    TIME_UNIT = Entry("TimeUnit", "Unit for the Time value (e.g. hours, days).")
+    TIMEPOINT = Entry("Timepoint", "Discrete timepoint label in a time series.")
+    DAY = Entry("Day", "Day index of the experiment.")
+    GENERATION = Entry("Generation", "Generation or passage number.")
+    HUMIDITY = Entry("Humidity", "Relative humidity during incubation.")
+    ATMOSPHERE = Entry("Atmosphere", "Atmospheric condition (e.g. aerobic, anaerobic).")

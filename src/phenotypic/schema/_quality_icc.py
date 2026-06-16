@@ -1,6 +1,6 @@
 """Measurement info container for replicate-agreement ICC QC."""
 
-from ._measurement_info import MeasurementInfo
+from ._measurement_info import Entry, MeasurementInfo
 
 
 class QUALITY_ICC(MeasurementInfo):
@@ -19,6 +19,6 @@ class QUALITY_ICC(MeasurementInfo):
     def category(cls) -> str:
         return "QC_ICC"
 
-    NUM_SUBJECTS = ("NumSubjects", "Distinct subjects (e.g. timepoints) in the two-way model.")
-    NUM_RATERS = ("NumRaters", "Replicates per subject in the two-way model.")
-    NUM_MEMBERS = ("NumMembers", "Total measurements contributing to the ICC.")
+    NUM_SUBJECTS = Entry("NumSubjects", "Distinct subjects (e.g. timepoints) in the two-way model.")
+    NUM_RATERS = Entry("NumRaters", "Replicates per subject in the two-way model.")
+    NUM_MEMBERS = Entry("NumMembers", "Total measurements contributing to the ICC.")
