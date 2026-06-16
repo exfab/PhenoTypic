@@ -706,8 +706,8 @@ Pipeline saved!
 </section>
 <section id="Step-2:-Run-Batch-Processing">
 <h2>Step 2: Run Batch Processing<a class="headerlink" href="#Step-2:-Run-Batch-Processing" title="Link to this heading">#</a></h2>
-<p>The CLI entry point is <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span></code>. At minimum it needs <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code> for the pipeline JSON, <code class="docutils literal notranslate"><span class="pre">--input</span></code> for the image directory, and <code class="docutils literal notranslate"><span class="pre">-o</span></code> for the output directory where results will be saved.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/
+<p>The CLI entry point is <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span></code>. At minimum it needs <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">full</span></code>, <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code> for the pipeline JSON, <code class="docutils literal notranslate"><span class="pre">--input</span></code> for the image directory, and <code class="docutils literal notranslate"><span class="pre">--output</span></code> for the output directory where results will be saved.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/
 </pre></div>
 </div>
 <p>The CLI will:</p>
@@ -721,7 +721,7 @@ Pipeline saved!
 <section id="Step-3:-Specify-Image-Type-and-Grid-Dimensions">
 <h2>Step 3: Specify Image Type and Grid Dimensions<a class="headerlink" href="#Step-3:-Specify-Image-Type-and-Grid-Dimensions" title="Link to this heading">#</a></h2>
 <p>For grid plates, tell the CLI to use <code class="docutils literal notranslate"><span class="pre">GridImage</span></code> and specify the grid layout:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--image-type<span class="w"> </span>GridImage<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--nrows<span class="w"> </span><span class="m">8</span><span class="w"> </span>--ncols<span class="w"> </span><span class="m">12</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--ext<span class="w"> </span>.png
@@ -735,9 +735,9 @@ Pipeline saved!
 </section>
 <section id="Step-4:-Parallelism">
 <h2>Step 4: Parallelism<a class="headerlink" href="#Step-4:-Parallelism" title="Link to this heading">#</a></h2>
-<p>Process multiple plates at once with <code class="docutils literal notranslate"><span class="pre">--n-jobs</span></code>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--n-jobs<span class="w"> </span><span class="m">4</span>
+<p>Process multiple plates at once with <code class="docutils literal notranslate"><span class="pre">--njobs</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--njobs<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
 <p>This runs 4 plates in parallel. By default, the CLI uses all available CPU cores.</p>
@@ -745,13 +745,13 @@ Pipeline saved!
 <section id="Step-5:-Resume-Interrupted-Jobs">
 <h2>Step 5: Resume Interrupted Jobs<a class="headerlink" href="#Step-5:-Resume-Interrupted-Jobs" title="Link to this heading">#</a></h2>
 <p>If a batch job is interrupted (crash, timeout, Ctrl+C), you can resume from where it left off:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--resume
 </pre></div>
 </div>
 <p>The CLI reads the checkpoint file in the output directory and skips plates that were already processed. Only unfinished plates are reprocessed.</p>
 <p>To retry only plates that <em>failed</em> (not skipped):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>-o<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--pipeline<span class="w"> </span>batch_pipeline.json.pht-pipe<span class="w"> </span>--input<span class="w"> </span>/path/to/plates/<span class="w"> </span>--output<span class="w"> </span>/path/to/output/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--resume<span class="w"> </span>--retry-failures
 </pre></div>
 </div>
@@ -801,8 +801,8 @@ Pipeline saved!
 <p>You now know how to scale PhenoTypic from a single plate to hundreds:</p>
 <ul class="simple">
 <li><p><strong>Save your pipeline</strong> to JSON with <code class="docutils literal notranslate"><span class="pre">.to_json()</span></code></p></li>
-<li><p><strong>Run ``python -m phenotypic``</strong> with <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">--input</span></code>, and <code class="docutils literal notranslate"><span class="pre">-o</span></code></p></li>
-<li><p><strong>``–n-jobs``</strong> controls parallelism</p></li>
+<li><p><strong>Run ``python -m phenotypic``</strong> with <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">full</span></code>, <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>, <code class="docutils literal notranslate"><span class="pre">--input</span></code>, and <code class="docutils literal notranslate"><span class="pre">--output</span></code></p></li>
+<li><p><strong>``–njobs``</strong> controls parallelism</p></li>
 <li><p><strong>``–resume``</strong> picks up where you left off after interruptions</p></li>
 <li><p><strong>``–dry-run``</strong> and <strong>``–sample``</strong> let you test before committing to a full run</p></li>
 </ul>

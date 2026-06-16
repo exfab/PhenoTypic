@@ -5,7 +5,7 @@ plus an endpoint model — over the curated measurements produced by a
 CLI run. Recipes are persisted as fields on the pipeline itself
 (`deliverables/pipeline.json`, next to
 `deliverables/master_measurements.parquet`), so the same
-chain re-runs deterministically from the CLI when you `--recompile`.
+chain re-runs deterministically from the CLI when you run recompile mode.
 
 
 ## Hub mount (empty state)
@@ -34,7 +34,7 @@ long-running fits where you don't need the rest of the hub:
   "Add post…" dropdown (`PrependString`, `AppendString`,
   `ExpandMetadata`, `MergeMetadata`). The recompile banner reminds you
   that post edits change per-image measurement and require a CLI re-run
-  (`python -m phenotypic --recompile <output>`) to reach
+  (`python -m phenotypic --mode recompile --output <output>`) to reach
   `deliverables/master_measurements.parquet`.
 - **Author the filter chain**: pick a class from the "Add filter…"
   dropdown (`EdgeCorrector`, `TukeyOutlierRemover`). Filters reshape the
@@ -85,7 +85,7 @@ kwargs when on:
 
 Every section you author from the GUI is persisted to
 `<output>/deliverables/pipeline.json`. A subsequent
-`python -m phenotypic --recompile <output>` run reads that file and emits
+`python -m phenotypic --mode recompile --output <output>` run reads that file and emits
 the same `deliverables/analysis.{csv,parquet}` without booting the GUI —
 so `deliverables/pipeline.json` is the single reproducibility surface.
 

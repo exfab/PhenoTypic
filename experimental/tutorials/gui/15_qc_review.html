@@ -685,7 +685,7 @@ one QC check, so the CLI wrote the <code class="docutils literal notranslate"><s
 (<code class="docutils literal notranslate"><span class="pre">qc/qc_summary.parquet</span></code>, <code class="docutils literal notranslate"><span class="pre">qc/qc_members.parquet</span></code>,
 <code class="docutils literal notranslate"><span class="pre">qc/qc_config.json</span></code> — these stay at the output-dir root). Configure a
 check in the <strong>Configure</strong> sub-view, then re-run
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--recompile</span> <span class="pre">&lt;output&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--measure</span></code>) to compute
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span> <span class="pre">--pipeline</span> <span class="pre">&lt;pipeline.json&gt;</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code>) to compute
 it. See <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p></li>
 <li><p>The post-applied <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> mirror under
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code> — the recompute reads this
@@ -737,7 +737,7 @@ a sparse or under-powered group; the summary header counts those as
 <li><p><strong>Review progress is per-module and resets on re-run.</strong> Marked-reviewed
 groups live in GUI-owned <code class="docutils literal notranslate"><span class="pre">qc/review_state.json</span></code>, keyed by check
 <code class="docutils literal notranslate"><span class="pre">instance_id</span></code>. An in-session recompute preserves it; the next CLI
-<code class="docutils literal notranslate"><span class="pre">--recompile</span></code> / <code class="docutils literal notranslate"><span class="pre">--measure</span></code> clears it so a fresh run starts the queue
+recompile or measure-mode run clears it so a fresh run starts the queue
 over.</p></li>
 <li><p><strong>Curation is shared.</strong> Removing a colony in Review removes it
 everywhere (the Plate / Colony tabs and the heatmap) — it writes the

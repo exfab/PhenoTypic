@@ -716,6 +716,17 @@ models must set <code class="docutils literal notranslate"><span class="pre">mod
 </dd></dl>
 
 <dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.CliMode">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">CliMode</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.CliMode" title="Link to this definition">#</a></dt>
+<dd><p>Public top-level CLI execution mode. <code class="docutils literal notranslate"><span class="pre">full</span></code> performs the normal
+apply-and-measure run, <code class="docutils literal notranslate"><span class="pre">measure</span></code> reruns measurement from existing HDFs,
+<code class="docutils literal notranslate"><span class="pre">recompile</span></code> refreshes aggregate outputs from an existing output root, and
+<code class="docutils literal notranslate"><span class="pre">process</span></code> performs the apply-only single-layer export selected by
+<code class="docutils literal notranslate"><span class="pre">--layer</span></code>.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘full’, ‘measure’, ‘recompile’, ‘process’]</p>
+</dd></dl>
+
+<dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.CompositeBlend">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">CompositeBlend</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.CompositeBlend" title="Link to this definition">#</a></dt>
 <dd><p>The single-objective composite blend selector — the serialized value of
@@ -808,7 +819,7 @@ recognise the field despite the <code class="docutils literal notranslate"><span
 <dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.ProcessOnlyLayer">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ProcessOnlyLayer</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ProcessOnlyLayer" title="Link to this definition">#</a></dt>
-<dd><p>Image layer a process-only CLI run (<code class="docutils literal notranslate"><span class="pre">--process-only</span></code>) exports. A closed
+<dd><p>Image layer a process-mode CLI run exports. A closed
 subset of the layers exposed as Image accessors; <code class="docutils literal notranslate"><span class="pre">rgb</span></code>/<code class="docutils literal notranslate"><span class="pre">gray</span></code>/
 <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> save as TIFF, <code class="docutils literal notranslate"><span class="pre">objmap</span></code> as a raw-label PNG.</p>
 <p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘rgb’, ‘gray’, ‘detect_mat’, ‘objmap’]</p>
@@ -866,6 +877,7 @@ the bare-string <code class="docutils literal notranslate"><span class="pre">TAS
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.polymorphic_field"><code class="docutils literal notranslate"><span class="pre">polymorphic_field()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CheckpointType"><code class="docutils literal notranslate"><span class="pre">CheckpointType</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CliMode"><code class="docutils literal notranslate"><span class="pre">CliMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CompositeBlend"><code class="docutils literal notranslate"><span class="pre">CompositeBlend</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>

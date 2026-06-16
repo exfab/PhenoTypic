@@ -947,7 +947,7 @@
 <span class="c1">#: Generated standalone analysis HTML emitted alongside the dashboard.</span>
 <span class="n">ANALYSIS_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;analysis.html&quot;</span>
 
-<span class="c1">#: Top-level processing report HTML emitted by ``--recompile``.</span>
+<span class="c1">#: Top-level processing report HTML emitted by recompile mode.</span>
 <span class="n">PROCESSING_REPORT_HTML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;processing_report.html&quot;</span>
 
 <span class="c1">#: Mid-run combined Parquet that the chunk writer rewrites incrementally</span>
@@ -1174,9 +1174,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">default_output_dir_name</span><span class="p">(</span><span class="n">now</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Default name for an auto-generated output directory.</span>
 
-<span class="sd">    Used when the user runs the CLI without ``--output-dir`` and we</span>
-<span class="sd">    need to fabricate a timestamped fallback in the current working</span>
-<span class="sd">    directory.</span>
+<span class="sd">    Legacy helper for timestamped output-directory names.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        now: Override clock for tests; defaults to ``datetime.now()``.</span>

@@ -625,10 +625,17 @@
 
 <span class="n">DetectMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;MinRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;LabL&quot;</span><span class="p">,</span> <span class="s2">&quot;LabA&quot;</span><span class="p">,</span> <span class="s2">&quot;LabB&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvS&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvV&quot;</span><span class="p">,</span> <span class="s2">&quot;InvS&quot;</span><span class="p">]</span>
 
-<span class="c1">#: Image layer a process-only CLI run (``--process-only``) exports. A closed</span>
+<span class="c1">#: Image layer a process-mode CLI run exports. A closed</span>
 <span class="c1">#: subset of the layers exposed as Image accessors; ``rgb``/``gray``/</span>
 <span class="c1">#: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.</span>
 <span class="n">ProcessOnlyLayer</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Public top-level CLI execution mode. ``full`` performs the normal</span>
+<span class="c1">#: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,</span>
+<span class="c1">#: ``recompile`` refreshes aggregate outputs from an existing output root, and</span>
+<span class="c1">#: ``process`` performs the apply-only single-layer export selected by</span>
+<span class="c1">#: ``--layer``.</span>
+<span class="n">CliMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;measure&quot;</span><span class="p">,</span> <span class="s2">&quot;recompile&quot;</span><span class="p">,</span> <span class="s2">&quot;process&quot;</span><span class="p">]</span>
 
 <span class="n">GridSearchSaveData</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span>
     <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">,</span> <span class="s2">&quot;objmask&quot;</span><span class="p">,</span> <span class="s2">&quot;map2rgb&quot;</span><span class="p">]</span>

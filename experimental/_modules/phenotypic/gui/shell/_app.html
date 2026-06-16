@@ -777,6 +777,7 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
     <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span> <span class="n">ToolSession</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.</span>
 
@@ -795,8 +796,19 @@
 <span class="sd">        start_idle_thread: When ``True`` (default), spawn the daemon</span>
 <span class="sd">            thread that releases idle sessions. Tests pass ``False``</span>
 <span class="sd">            so they don&#39;t leak background threads.</span>
+<span class="sd">        progress: Optional callback invoked with a short label before each</span>
+<span class="sd">            eager sub-app is built (``&quot;sub-app modules&quot;``, ``&quot;shell&quot;``,</span>
+<span class="sd">            ``&quot;builder&quot;``, …). The launcher passes</span>
+<span class="sd">            :meth:`StartupReporter.detail` so the startup bar reflects which</span>
+<span class="sd">            sub-app is currently being composed. ``None`` (default) is a</span>
+<span class="sd">            no-op for non-interactive / test callers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tick</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">progress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">progress</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
     <span class="c1"># Local imports to keep boot-time cycles minimal.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;sub-app modules&quot;</span><span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
         <span class="n">analysis</span><span class="p">,</span>
         <span class="n">browse</span><span class="p">,</span>
@@ -868,6 +880,7 @@
 
     <span class="c1"># 2. Shell Dash (registers the API + runs blueprints with the</span>
     <span class="c1">#    viewer-session touch hook + analysis-session release hook).</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;shell&quot;</span><span class="p">)</span>
     <span class="n">shell_app</span> <span class="o">=</span> <span class="n">_build_shell_dash_app</span><span class="p">(</span>
         <span class="n">sandbox</span><span class="p">,</span>
         <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span><span class="p">,</span>
@@ -876,6 +889,7 @@
     <span class="p">)</span>
 
     <span class="c1"># 3. Builder Dash (eager — single-process registry build).</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;builder&quot;</span><span class="p">)</span>
     <span class="n">builder_app</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
         <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BUILDER</span>
     <span class="p">)</span>
@@ -886,6 +900,7 @@
     <span class="c1">#    Runs panel, and the run-console callbacks all share the same</span>
     <span class="c1">#    state. Rehydrate the registry from disk so historical runs are</span>
     <span class="c1">#    visible immediately without waiting for a refresh.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;run console&quot;</span><span class="p">)</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.run_console._runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalRunner</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._runs_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunRegistry</span>
 
@@ -906,6 +921,7 @@
     <span class="c1">#     user binds a tune run from the sidebar (Chunk C), at which point the</span>
     <span class="c1">#     page re-reads the bound run. The factory stays optuna-free; the live</span>
     <span class="c1">#     study is opened lazily inside the Monitor poll callback only.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;tune&quot;</span><span class="p">)</span>
     <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
         <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span>
@@ -918,6 +934,7 @@
     <span class="c1"># 4c. Browse Dash (eager — lightweight source-image viewer). No</span>
     <span class="c1">#     ToolSession: it loads no heavy parquet, just lists files + serves</span>
     <span class="c1">#     ephemeral tiles.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;browse&quot;</span><span class="p">)</span>
     <span class="n">browse_app</span> <span class="o">=</span> <span class="n">browse</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BROWSE</span><span class="p">)</span>
     <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">browse_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BROWSE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
 
@@ -978,6 +995,7 @@
     <span class="n">viewer_session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
     <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the unified GUI hub Dash app.</span>
 
@@ -1009,6 +1027,10 @@
 <span class="sd">            launch but skipped under pytest (``PYTEST_CURRENT_TEST``</span>
 <span class="sd">            in env). Tests that want the daemon explicitly should</span>
 <span class="sd">            pass ``True``.</span>
+<span class="sd">        progress: Optional per-sub-app progress callback forwarded to</span>
+<span class="sd">            :func:`compose_hub` (the launcher passes</span>
+<span class="sd">            :meth:`StartupReporter.detail`). Ignored on the Phase 3</span>
+<span class="sd">            ``viewer_session`` escape-hatch path.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Configured :class:`dash.Dash` instance. ``app.run()`` (or</span>
@@ -1031,6 +1053,7 @@
         <span class="n">sandbox</span><span class="p">,</span>
         <span class="n">idle_release_seconds</span><span class="o">=</span><span class="n">idle_release_seconds</span><span class="p">,</span>
         <span class="n">start_idle_thread</span><span class="o">=</span><span class="n">start_idle_thread</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">progress</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">shell_app</span></div>
 

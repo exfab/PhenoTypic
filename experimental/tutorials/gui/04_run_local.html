@@ -663,7 +663,7 @@ panel shows the live progress dashboard.</p>
 <p>The form has three pickers (Pipeline JSON, Input directory, Output
 directory), a Local/SLURM mode radio, two short-flag checkboxes (Dry-run,
 Resume), an <code class="docutils literal notranslate"><span class="pre">Advanced</span></code> collapse for the long-tail flags (<code class="docutils literal notranslate"><span class="pre">--sample</span></code>,
-<code class="docutils literal notranslate"><span class="pre">--nrows</span></code>, <code class="docutils literal notranslate"><span class="pre">--ncols</span></code>, <code class="docutils literal notranslate"><span class="pre">--image-type</span></code>, <code class="docutils literal notranslate"><span class="pre">Workers</span></code> → <code class="docutils literal notranslate"><span class="pre">--n-jobs</span></code>), and a
+<code class="docutils literal notranslate"><span class="pre">--nrows</span></code>, <code class="docutils literal notranslate"><span class="pre">--ncols</span></code>, <code class="docutils literal notranslate"><span class="pre">--image-type</span></code>, <code class="docutils literal notranslate"><span class="pre">Workers</span></code> → <code class="docutils literal notranslate"><span class="pre">--njobs</span></code>), and a
 <code class="docutils literal notranslate"><span class="pre">SLURM</span> <span class="pre">config</span></code> collapse covered on the <a class="reference internal" href="05_run_slurm.html"><span class="std std-doc">next page</span></a>.
 The <code class="docutils literal notranslate"><span class="pre">Log</span> <span class="pre">level</span></code> field in <code class="docutils literal notranslate"><span class="pre">Advanced</span></code> is reserved — the GUI accepts a
 value but the CLI does not currently expose <code class="docutils literal notranslate"><span class="pre">--log-level</span></code>, so the field
@@ -685,7 +685,7 @@ respects the same hidden-files / external-symlinks toggles as the sidebar.</p>
 </section>
 <section id="validate-before-running">
 <h2>Validate before running<a class="headerlink" href="#validate-before-running" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">&lt;args&gt;</span> <span class="pre">--dry-run</span></code>. The
+<p><code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">full</span> <span class="pre">&lt;args&gt;</span> <span class="pre">--dry-run</span></code>. The
 CLI parses the pipeline JSON, lists the images it would process, then
 exits without writing any output. The log tail shows the dry-run output.
 Use this whenever you’re not sure the form values match what the CLI
@@ -693,7 +693,7 @@ expects — the dry-run takes seconds, a bad real run can waste minutes.</p>
 </section>
 <section id="run">
 <h2>Run<a class="headerlink" href="#run" title="Link to this heading">#</a></h2>
-<p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">&lt;args&gt;</span></code> (no <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>).
+<p>Clicking <code class="docutils literal notranslate"><span class="pre">Run</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">full</span> <span class="pre">&lt;args&gt;</span></code> (no <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>).
 While the subprocess is alive:</p>
 <ul class="simple">
 <li><p>The log tail polls the ring buffer on a short interval. Lines arrive in

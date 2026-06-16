@@ -610,12 +610,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optimize</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">mean_absolute_error</span><span class="p">,</span>
-    <span class="n">mean_squared_error</span><span class="p">,</span>
-    <span class="n">r2_score</span><span class="p">,</span>
-    <span class="n">root_mean_squared_error</span><span class="p">,</span>
-<span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
@@ -819,6 +813,15 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_metrics</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the generic fit-quality metrics shared by all subclasses.&quot;&quot;&quot;</span>
+        <span class="c1"># Deferred: scikit-learn is heavy and only needed at fit time, not</span>
+        <span class="c1"># at module import (this module is on the eager ``phenotypic`` path).</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">mean_absolute_error</span><span class="p">,</span>
+            <span class="n">mean_squared_error</span><span class="p">,</span>
+            <span class="n">r2_score</span><span class="p">,</span>
+            <span class="n">root_mean_squared_error</span><span class="p">,</span>
+        <span class="p">)</span>
+
         <span class="k">return</span> <span class="p">{</span>
             <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">MAE</span> <span class="p">:</span> <span class="n">mean_absolute_error</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>
             <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">MSE</span> <span class="p">:</span> <span class="n">mean_squared_error</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>

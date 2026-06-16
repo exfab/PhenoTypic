@@ -605,7 +605,6 @@
 <span class="sd">SLURM cluster execution.</span>
 
 <span class="sd">Features:</span>
-<span class="sd">    - Automatic timestamped output directories</span>
 <span class="sd">    - Recursive directory support (1 level deep)</span>
 <span class="sd">    - Dry-run mode for previewing processing plans</span>
 <span class="sd">    - Sample processing mode for testing pipelines</span>
@@ -616,58 +615,58 @@
 <span class="sd">    - Progress monitoring tools</span>
 
 <span class="sd">Usage:</span>
-<span class="sd">    python -m phenotypic --pipeline pipeline.json --input ./images [OPTIONS]</span>
+<span class="sd">    python -m phenotypic --mode full --pipeline pipeline.json --input ./images --output ./out [OPTIONS]</span>
 
 <span class="sd">Examples:</span>
-<span class="sd">    # Basic usage with auto-generated output directory</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images</span>
-
-<span class="sd">    # Specify output directory</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results</span>
+<span class="sd">    # Basic usage</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results</span>
 
 <span class="sd">    # Dry-run to preview processing plan</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images --dry-run</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --dry-run</span>
 
 <span class="sd">    # Sample 5 images per dataset for testing</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images --sample 5</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --sample 5</span>
 
 <span class="sd">    # Resume interrupted processing</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --resume</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --resume</span>
 
 <span class="sd">    # Restart processing from beginning (clears previous state)</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images -o ./results --restart</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images -o ./results --restart</span>
 
 <span class="sd">    # SLURM execution (autonomous)</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images \</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \</span>
+<span class="sd">        -o ./results \</span>
 <span class="sd">        --slurm slurm_partition=compute \</span>
 <span class="sd">        --slurm slurm_account=proj \</span>
 <span class="sd">        --slurm mem_gb=16</span>
 
 <span class="sd">    # SLURM with progress monitoring</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./images \</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \</span>
+<span class="sd">        -o ./results \</span>
 <span class="sd">        --slurm slurm_partition=compute \</span>
 <span class="sd">        --slurm slurm_account=proj \</span>
 <span class="sd">        --wait</span>
 
 <span class="sd">    # GridImage with custom dimensions</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --input ./plates \</span>
+<span class="sd">    uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./plates \</span>
+<span class="sd">        -o ./results \</span>
 <span class="sd">        --image-type GridImage --nrows 16 --ncols 24</span>
 
 <span class="sd">    # Rerun measurements on a previous forward run without re-detecting</span>
 <span class="sd">    # (reads HDFs from &lt;previous-output-dir&gt;/results/*/hdf/, rewrites</span>
 <span class="sd">    # parquet measurements + master CSV, skips detection, does NOT</span>
 <span class="sd">    # regenerate overlays, does NOT touch processing state):</span>
-<span class="sd">    uv run python -m phenotypic --pipeline pipeline.json --measure \</span>
-<span class="sd">        -o &lt;previous-output-dir&gt;</span>
+<span class="sd">    uv run python -m phenotypic --mode measure --pipeline pipeline.json \</span>
+<span class="sd">        --output &lt;previous-output-dir&gt;</span>
 
 <span class="sd">    # Recompile a previous output directory: re-aggregate the master</span>
 <span class="sd">    # measurements CSV, fill in any overlay PNGs missing under</span>
 <span class="sd">    # results/&lt;ds&gt;/overlays/ by reloading their HDFs (threaded across</span>
-<span class="sd">    # --n-jobs workers, alpha from --overlay-alpha), rerun analysis</span>
+<span class="sd">    # --njobs workers, alpha from --overlay-alpha), rerun analysis</span>
 <span class="sd">    # plugins, rebuild the manifest, and regenerate the HTML dashboard.</span>
 <span class="sd">    # Existing overlays are left untouched.  Pipeline JSON is NOT</span>
 <span class="sd">    # required:</span>
-<span class="sd">    uv run python -m phenotypic --recompile &lt;previous-output-dir&gt;</span>
+<span class="sd">    uv run python -m phenotypic --mode recompile --output &lt;previous-output-dir&gt;</span>
 
 <span class="sd">Outputs:</span>
 <span class="sd">    Forward runs write a single HDF5 per input image under</span>
@@ -675,8 +674,8 @@
 <span class="sd">    state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).</span>
 <span class="sd">    Overlay PNGs are always written under</span>
 <span class="sd">    `&lt;output&gt;/results/&lt;dataset&gt;/overlays/&lt;stem&gt;.png` for forward runs;</span>
-<span class="sd">    `--measure` reruns reuse existing overlays and do not regenerate them.</span>
-<span class="sd">    `--recompile` fills in only-missing overlay PNGs from HDFs but</span>
+<span class="sd">    `--mode measure` reruns reuse existing overlays and do not regenerate them.</span>
+<span class="sd">    `--mode recompile` fills in only-missing overlay PNGs from HDFs but</span>
 <span class="sd">    leaves existing ones untouched.</span>
 
 <span class="sd">SLURM Execution (Autonomous HPC Cluster Processing):</span>
@@ -709,7 +708,8 @@
 <span class="sd">        - Valid range: 1-10080 minutes (1 minute to 7 days)</span>
 
 <span class="sd">    Example: Submit with account, partition, memory, and time limits</span>
-<span class="sd">        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\</span>
+<span class="sd">        uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\</span>
+<span class="sd">            --output ./results \\</span>
 <span class="sd">            --slurm slurm_partition=compute \\</span>
 <span class="sd">            --slurm slurm_account=lab_proj \\</span>
 <span class="sd">            --slurm mem_gb=32 \\</span>
@@ -719,7 +719,8 @@
 <span class="sd">            --wait</span>
 
 <span class="sd">    Example: Dry-run to preview SLURM submission plan</span>
-<span class="sd">        uv run python -m phenotypic --pipeline pipeline.json --input ./images \\</span>
+<span class="sd">        uv run python -m phenotypic --mode full --pipeline pipeline.json --input ./images \\</span>
+<span class="sd">            --output ./results \\</span>
 <span class="sd">            --slurm slurm_partition=compute \\</span>
 <span class="sd">            --slurm slurm_account=lab_proj \\</span>
 <span class="sd">            --dry-run</span>
@@ -729,14 +730,13 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="n">available_modes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._cli._cli_directory_scanner</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">generate_timestamped_output_dir</span><span class="p">,</span>
     <span class="n">organize_by_dataset</span><span class="p">,</span>
     <span class="n">scan_directory_structure</span><span class="p">,</span>
     <span class="n">scan_hdf_outputs</span><span class="p">,</span>
@@ -793,7 +793,7 @@
     <span class="n">recompile_dir</span><span class="p">,</span>
     <span class="n">resolve_processing_state_path</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageTypeName</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CliMode</span><span class="p">,</span> <span class="n">ImageTypeName</span><span class="p">,</span> <span class="n">ProcessOnlyLayer</span>
 
 <span class="c1"># Set up logger</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -1080,10 +1080,10 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical explicit-path CLI usage hint.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="s2">&quot;Use explicit path options instead:</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images &quot;</span>
-        <span class="s2">&quot;-o ./results</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;  python -m phenotypic --mode full --pipeline pipeline.json &quot;</span>
+        <span class="s2">&quot;--input ./images --output ./results</span><span class="se">\n</span><span class="s2">&quot;</span>
         <span class="s2">&quot;Short form:</span><span class="se">\n</span><span class="s2">&quot;</span>
-        <span class="s2">&quot;  python -m phenotypic -p pipeline.json -i ./images -o ./results&quot;</span>
+        <span class="s2">&quot;  python -m phenotypic -m full -p pipeline.json -i ./images -o ./results&quot;</span>
     <span class="p">)</span>
 
 
@@ -1110,7 +1110,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_print_process_only_dry_run_plan</span><span class="p">(</span>
     <span class="n">config</span><span class="p">:</span> <span class="n">ExecutionConfig</span><span class="p">,</span> <span class="n">datasets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dataset</span><span class="p">],</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print the resolved plan for a ``--process-only`` dry run (no processing).</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print the resolved plan for a process-mode dry run (no processing).</span>
 
 <span class="sd">    Shows the mode + layer, per-dataset image counts, a sample of mirrored</span>
 <span class="sd">    output paths, the execution backend, and the ``.phenotypic`` machine-state</span>
@@ -1123,9 +1123,9 @@
     <span class="n">backend</span> <span class="o">=</span> <span class="s2">&quot;slurm&quot;</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">is_slurm_mode</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;local&quot;</span>
 
     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
-    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;DRY-RUN MODE: process-only (No Jobs Will Be Executed)&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;DRY-RUN MODE: process (No Jobs Will Be Executed)&quot;</span><span class="p">)</span>
     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
-    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Mode:        process-only (</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Mode:        process (</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pipeline:    </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">pipeline_json</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Input root:  </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">input_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Output dir:  </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1160,7 +1160,12 @@
     <span class="p">)</span>
 
 
-<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">context_settings</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;allow_extra_args&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">(</span>
+    <span class="n">context_settings</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;allow_extra_args&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;help_option_names&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;-h&quot;</span><span class="p">,</span> <span class="s2">&quot;--help&quot;</span><span class="p">],</span>
+    <span class="p">}</span>
+<span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;-p&quot;</span><span class="p">,</span>
     <span class="s2">&quot;--pipeline&quot;</span><span class="p">,</span>
@@ -1182,10 +1187,24 @@
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;-o&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--output&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;output_dir&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
-    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory (auto-generated if not specified)&quot;</span><span class="p">,</span>
+    <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--mode&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Choice</span><span class="p">([</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;measure&quot;</span><span class="p">,</span> <span class="s2">&quot;recompile&quot;</span><span class="p">,</span> <span class="s2">&quot;process&quot;</span><span class="p">]),</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+    <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+        <span class="s2">&quot;Execution mode: full applies the pipeline and measures images; &quot;</span>
+        <span class="s2">&quot;measure reruns measurement from an existing output root; recompile &quot;</span>
+        <span class="s2">&quot;refreshes aggregate outputs from an existing output root; process &quot;</span>
+        <span class="s2">&quot;exports a single layer selected with --layer.&quot;</span>
+    <span class="p">),</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--image-type&quot;</span><span class="p">,</span>
@@ -1222,7 +1241,8 @@
     <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Source channel for the detection matrix&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
-    <span class="s2">&quot;--n-jobs&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--njobs&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_jobs&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
     <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
     <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1255,15 +1275,6 @@
     <span class="s2">&quot;File extension for legacy per-layer outputs. Forward runs now &quot;</span>
     <span class="s2">&quot;write a single .h5 per image; only overlay PNG rendering still &quot;</span>
     <span class="s2">&quot;consults this value.&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
-    <span class="s2">&quot;--measure&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;measure_only&quot;</span><span class="p">,</span>
-    <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Rerun pipeline.measure() on HDFs under &quot;</span>
-    <span class="s2">&quot;&lt;output-dir&gt;/results/*/hdf/. Skips detection. Does not regenerate &quot;</span>
-    <span class="s2">&quot;overlays.&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--overlay-alpha&quot;</span><span class="p">,</span>
@@ -1308,7 +1319,7 @@
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--restart&quot;</span><span class="p">,</span>
     <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Restart processing from beginning, clearing previous state (requires --output-dir)&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Restart processing from beginning, clearing previous state (requires --output)&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--overwrite&quot;</span><span class="p">,</span>
@@ -1334,16 +1345,6 @@
     <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Skip pipeline validation (for advanced users)&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
-    <span class="s2">&quot;--recompile&quot;</span><span class="p">,</span>
-    <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path_type</span><span class="o">=</span><span class="n">Path</span><span class="p">),</span>
-    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Recompile master measurements from existing output directory. &quot;</span>
-         <span class="s2">&quot;Skips pipeline execution — re-aggregates parquets, regenerates &quot;</span>
-         <span class="s2">&quot;any overlay PNGs missing under results/&lt;ds&gt;/overlays/ from &quot;</span>
-         <span class="s2">&quot;their HDFs (threaded by --n-jobs, alpha from --overlay-alpha), &quot;</span>
-         <span class="s2">&quot;runs analysis, rebuilds manifest, and regenerates dashboard.&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--no-qc&quot;</span><span class="p">,</span>
     <span class="s2">&quot;no_qc&quot;</span><span class="p">,</span>
     <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1352,20 +1353,22 @@
          <span class="s2">&quot;qc/ artifact and resetting GUI review progress).&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
-    <span class="s2">&quot;--process-only&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;process_only_layer&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;--layer&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;layer&quot;</span><span class="p">,</span>
     <span class="nb">type</span><span class="o">=</span><span class="n">click</span><span class="o">.</span><span class="n">Choice</span><span class="p">([</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">]),</span>
     <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Apply-only mode: run pipeline.apply() and export this single layer &quot;</span>
-         <span class="s2">&quot;(TIFF for rgb/gray/detect_mat, 16-bit raw-label PNG for objmap), &quot;</span>
-         <span class="s2">&quot;mirroring the input tree. Skips measurement, deliverables, QC, dashboard.&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+        <span class="s2">&quot;Layer exported by --mode process. TIFF for rgb/gray/detect_mat; &quot;</span>
+        <span class="s2">&quot;16-bit raw-label PNG for objmap.&quot;</span>
+    <span class="p">),</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">pass_context</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cli</span><span class="p">(</span>
     <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span>
     <span class="n">pipeline_json</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">input_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
-    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">image_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">nrows</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">ncols</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -1376,7 +1379,6 @@
     <span class="n">force_local</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">wait</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">ext</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">measure_only</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">overlay_alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">no_dataset_column</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">dry_run</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
@@ -1389,9 +1391,8 @@
     <span class="n">metadata_csv</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
     <span class="n">skip_validation</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="n">recompile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">],</span>
     <span class="n">no_qc</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
-    <span class="n">process_only_layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Execute a PhenoTypic pipeline on images.</span>
@@ -1400,41 +1401,56 @@
 
 <span class="sd">    --input: Image file or directory to process</span>
 
-<span class="sd">    --process-only {rgb|gray|detect_mat|objmap}: apply-only export mode. Runs</span>
-<span class="sd">    pipeline.apply() and writes a single image layer per input via the layer</span>
-<span class="sd">    accessor&#39;s imsave (rgb integer TIFF at the source bit depth; gray/detect_mat</span>
-<span class="sd">    float TIFF preserving full precision; objmap 16-bit raw-label PNG; PhenoTypic</span>
-<span class="sd">    metadata embedded), mirroring the input tree under --output-dir. Skips</span>
-<span class="sd">    measurement, deliverables, QC, and the dashboard; machine-state (progress</span>
-<span class="sd">    manifest, event log, pipeline copy) lives under &lt;output&gt;/.phenotypic/. Full</span>
-<span class="sd">    local + SLURM + resume reuse. Example::</span>
+<span class="sd">    --mode process --layer {rgb|gray|detect_mat|objmap}: apply-only export</span>
+<span class="sd">    mode. Runs pipeline.apply() and writes a single image layer per input via</span>
+<span class="sd">    the layer accessor&#39;s imsave (rgb integer TIFF at the source bit depth;</span>
+<span class="sd">    gray/detect_mat float TIFF preserving full precision; objmap 16-bit</span>
+<span class="sd">    raw-label PNG; PhenoTypic metadata embedded), mirroring the input tree</span>
+<span class="sd">    under --output. Skips measurement, deliverables, QC, and the dashboard;</span>
+<span class="sd">    machine-state (progress manifest, event log, pipeline copy) lives under</span>
+<span class="sd">    &lt;output&gt;/.phenotypic/. Full local + SLURM + resume reuse. Example::</span>
 
-<span class="sd">        uv run python -m phenotypic --pipeline pipe.json --input ./plates \\</span>
-<span class="sd">            --output-dir ./out --process-only detect_mat --force-local</span>
+<span class="sd">        uv run python -m phenotypic --mode process --pipeline pipe.json \\</span>
+<span class="sd">            --input ./plates --output ./out --layer detect_mat --force-local</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">_reject_unexpected_positional_args</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
 
         <span class="n">include_dataset_column</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">no_dataset_column</span>
+        <span class="n">cli_mode</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">CliMode</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>  <span class="c1"># Click&#39;s Choice has already validated this.</span>
+        <span class="n">measure_only</span> <span class="o">=</span> <span class="n">cli_mode</span> <span class="o">==</span> <span class="s2">&quot;measure&quot;</span>
+        <span class="n">recompile_only</span> <span class="o">=</span> <span class="n">cli_mode</span> <span class="o">==</span> <span class="s2">&quot;recompile&quot;</span>
+        <span class="n">process_only_layer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ProcessOnlyLayer</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">cli_mode</span> <span class="o">==</span> <span class="s2">&quot;process&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span><span class="s2">&quot;--mode process requires --layer.&quot;</span><span class="p">)</span>
+            <span class="n">process_only_layer</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">ProcessOnlyLayer</span><span class="p">,</span> <span class="n">layer</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span><span class="s2">&quot;--layer can only be used with --mode process.&quot;</span><span class="p">)</span>
 
-        <span class="c1"># ---- Early validation for --process-only -----------------------</span>
-        <span class="c1"># Process-only is an apply-only export run (one image layer per</span>
-        <span class="c1"># input, mirrored input tree, no measurement / deliverables / QC /</span>
-        <span class="c1"># dashboard). Validate it before the --measure / --recompile branches</span>
-        <span class="c1"># so conflicting run modes are rejected with a clear message.</span>
+        <span class="k">if</span> <span class="n">measure_only</span> <span class="ow">or</span> <span class="n">recompile_only</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;--mode </span><span class="si">{</span><span class="n">cli_mode</span><span class="si">}</span><span class="s2"> does not accept --input; it discovers &quot;</span>
+                    <span class="s2">&quot;inputs from the existing output directory.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;--dry-run cannot be combined with --mode </span><span class="si">{</span><span class="n">cli_mode</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="n">recompile_only</span> <span class="ow">and</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                <span class="s2">&quot;--mode recompile does not accept --pipeline; it reloads the &quot;</span>
+                <span class="s2">&quot;pipeline from the existing output directory.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ---- Early validation for --mode process -----------------------</span>
+        <span class="c1"># Process mode is an apply-only export run (one image layer per input,</span>
+        <span class="c1"># mirrored input tree, no measurement / deliverables / QC / dashboard).</span>
         <span class="k">if</span> <span class="n">process_only_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">bad</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">measure_only</span><span class="p">,</span> <span class="s2">&quot;--measure&quot;</span><span class="p">),</span>
-                <span class="p">(</span><span class="n">recompile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--recompile&quot;</span><span class="p">),</span>
-            <span class="p">):</span>
-                <span class="k">if</span> <span class="n">bad</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;--process-only cannot be combined with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> &quot;</span>
-                        <span class="s2">&quot;(conflicting run modes).&quot;</span>
-                    <span class="p">)</span>
             <span class="k">if</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--process-only requires --pipeline and --input.&quot;</span>
+                    <span class="s2">&quot;--mode process requires --pipeline and --input.&quot;</span>
                 <span class="p">)</span>
             <span class="k">for</span> <span class="n">val</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span>
                 <span class="p">(</span><span class="n">metadata_csv</span><span class="p">,</span> <span class="s2">&quot;--metadata&quot;</span><span class="p">),</span>
@@ -1443,12 +1459,12 @@
             <span class="p">):</span>
                 <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
                     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> is ignored in --process-only mode &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Warning: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> is ignored in --mode process &quot;</span>
                         <span class="s2">&quot;(no measurement/aggregation output).&quot;</span><span class="p">,</span>
                         <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                     <span class="p">)</span>
 
-        <span class="c1"># Parse SLURM args before the recompile branch so --recompile can</span>
+        <span class="c1"># Parse SLURM args before the recompile branch so --mode recompile can</span>
         <span class="c1"># explicitly choose between local and SLURM recompile dispatch.</span>
         <span class="n">slurm_args_dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="n">slurm_args</span><span class="p">:</span>
@@ -1499,10 +1515,14 @@
                             <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                         <span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">recompile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">recompile_only</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;--mode recompile output directory does not exist: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
             <span class="k">if</span> <span class="n">slurm_args_dict</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force_local</span><span class="p">:</span>
                 <span class="n">_handle_recompile_slurm</span><span class="p">(</span>
-                    <span class="n">output_dir</span><span class="o">=</span><span class="n">recompile</span><span class="p">,</span>
+                    <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
                     <span class="n">metadata_csv</span><span class="o">=</span><span class="n">metadata_csv</span><span class="p">,</span>
                     <span class="n">include_dataset_column</span><span class="o">=</span><span class="n">include_dataset_column</span><span class="p">,</span>
                     <span class="n">overlay_alpha</span><span class="o">=</span><span class="n">overlay_alpha</span><span class="p">,</span>
@@ -1513,7 +1533,7 @@
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">_handle_recompile</span><span class="p">(</span>
-                    <span class="n">recompile</span><span class="p">,</span>
+                    <span class="n">output_dir</span><span class="p">,</span>
                     <span class="n">metadata_csv</span><span class="p">,</span>
                     <span class="n">include_dataset_column</span><span class="p">,</span>
                     <span class="n">overlay_alpha</span><span class="p">,</span>
@@ -1522,68 +1542,55 @@
                 <span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
-        <span class="c1"># ---- Early validation for --measure (measure_only) -------------</span>
-        <span class="c1"># --measure is a one-shot re-measurement run over HDFs already</span>
+        <span class="c1"># ---- Early validation for --mode measure (measure_only) --------</span>
+        <span class="c1"># Measure mode is a one-shot re-measurement run over HDFs already</span>
         <span class="c1"># written by a previous forward run.  It is incompatible with any</span>
         <span class="c1"># flag that implies a fresh detection pass or state mutation, and</span>
-        <span class="c1"># it uses &lt;output-dir&gt;/results/*/hdf/ as its image source, so</span>
-        <span class="c1"># --input is optional.</span>
+        <span class="c1"># it uses &lt;output&gt;/results/*/hdf/ as its image source.</span>
         <span class="k">if</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="c1"># Reject incompatible flags first so the user gets a pointed</span>
-            <span class="c1"># rejection (&quot;--measure cannot be combined with --X&quot;) regardless</span>
-            <span class="c1"># of whether --output-dir / --pipeline are also wrong.</span>
+            <span class="c1"># rejection (&quot;--mode measure cannot be combined with --X&quot;)</span>
+            <span class="c1"># regardless of whether --output / --pipeline are also wrong.</span>
             <span class="k">if</span> <span class="n">resume</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure cannot be combined with --resume; &quot;</span>
-                    <span class="s2">&quot;--measure is a one-shot re-measurement run that does &quot;</span>
+                    <span class="s2">&quot;--mode measure cannot be combined with --resume; &quot;</span>
+                    <span class="s2">&quot;--mode measure is a one-shot re-measurement run that does &quot;</span>
                     <span class="s2">&quot;not touch processing state.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure cannot be combined with --restart; &quot;</span>
-                    <span class="s2">&quot;--measure reuses existing HDFs and does not clear state.&quot;</span>
+                    <span class="s2">&quot;--mode measure cannot be combined with --restart; &quot;</span>
+                    <span class="s2">&quot;--mode measure reuses existing HDFs and does not clear state.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">retry_failures</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure cannot be combined with --retry-failures; &quot;</span>
+                    <span class="s2">&quot;--mode measure cannot be combined with --retry-failures; &quot;</span>
                     <span class="s2">&quot;--retry-failures only applies to resume runs, and &quot;</span>
-                    <span class="s2">&quot;--measure does not touch state.&quot;</span>
+                    <span class="s2">&quot;--mode measure does not touch state.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">overwrite</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure cannot be combined with --overwrite; &quot;</span>
-                    <span class="s2">&quot;--measure reruns measurements on existing HDFs and &quot;</span>
+                    <span class="s2">&quot;--mode measure cannot be combined with --overwrite; &quot;</span>
+                    <span class="s2">&quot;--mode measure reruns measurements on existing HDFs and &quot;</span>
                     <span class="s2">&quot;must not delete output directory contents.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="n">sample</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure cannot be combined with --sample; &quot;</span>
-                    <span class="s2">&quot;--measure operates on every HDF discovered under &quot;</span>
-                    <span class="s2">&quot;&lt;output-dir&gt;/results/*/hdf/.&quot;</span>
+                    <span class="s2">&quot;--mode measure cannot be combined with --sample; &quot;</span>
+                    <span class="s2">&quot;--mode measure operates on every HDF discovered under &quot;</span>
+                    <span class="s2">&quot;&lt;output&gt;/results/*/hdf/.&quot;</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure requires --pipeline to be specified.&quot;</span>
-                <span class="p">)</span>
-            <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="s2">&quot;--measure requires --output-dir to be specified &quot;</span>
-                    <span class="s2">&quot;(it reads HDFs from &lt;output-dir&gt;/results/*/hdf/).&quot;</span>
+                    <span class="s2">&quot;--mode measure requires --pipeline to be specified.&quot;</span>
                 <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;--measure output directory does not exist: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">. &quot;</span>
-                    <span class="s2">&quot;--measure is a rerun over an existing forward-run output; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;--mode measure output directory does not exist: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;--mode measure is a rerun over an existing forward-run output; &quot;</span>
                     <span class="s2">&quot;point it at a directory produced by a previous &quot;</span>
                     <span class="s2">&quot;`python -m phenotypic ...` invocation.&quot;</span>
-                <span class="p">)</span>
-            <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Warning: --input (</span><span class="si">{</span><span class="n">input_path</span><span class="si">}</span><span class="s2">) is ignored in &quot;</span>
-                    <span class="s2">&quot;--measure mode; images are discovered under &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/results/*/hdf/.&quot;</span><span class="p">,</span>
-                    <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">measure_only</span> <span class="ow">and</span> <span class="p">(</span><span class="n">pipeline_json</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
@@ -1593,7 +1600,7 @@
             <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">missing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--input&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">UsageError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39; and &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> required unless --recompile is set.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39; and &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2"> required unless --mode recompile is set.</span><span class="se">\n</span><span class="s2">&quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_format_explicit_cli_usage_hint</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
@@ -1621,24 +1628,6 @@
             <span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">restart</span> <span class="ow">and</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                <span class="s2">&quot;Error: --restart requires --output-dir to be specified&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span>
-            <span class="p">)</span>
-            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Restart mode clears previous processing state and starts fresh. &quot;</span>
-                <span class="s2">&quot;You must specify the output directory to restart.&quot;</span><span class="p">,</span>
-                <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Example:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;    --output-dir ./results_2024-01-12_10-30-45 </span><span class="se">\\\n</span><span class="s2">&quot;</span>
-                <span class="s2">&quot;    --restart&quot;</span><span class="p">,</span>
-                <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
         <span class="c1"># Validate metadata CSV early</span>
         <span class="k">if</span> <span class="n">metadata_csv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -1652,15 +1641,14 @@
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">error_exit</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot read metadata CSV: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Create ExecutionConfig.  By this point either measure_only&#39;s</span>
-        <span class="c1"># early validation or the non-measure check above has guaranteed</span>
-        <span class="c1"># pipeline_json is non-None; input_path may only be None in</span>
-        <span class="c1"># --measure mode, where we substitute output_dir to satisfy the</span>
-        <span class="c1"># dataclass&#39;s non-optional ``input_path`` (the measure path</span>
-        <span class="c1"># never consults it for image discovery).</span>
+        <span class="c1"># Create ExecutionConfig.  By this point either measure_only&#39;s early</span>
+        <span class="c1"># validation or the non-measure check above has guaranteed pipeline_json</span>
+        <span class="c1"># is non-None; input_path may only be None in measure mode, where we</span>
+        <span class="c1"># substitute output_dir to satisfy the dataclass&#39;s non-optional</span>
+        <span class="c1"># ``input_path`` (the measure path never consults it for image</span>
+        <span class="c1"># discovery).</span>
         <span class="k">assert</span> <span class="n">pipeline_json</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by earlier UsageError branches</span>
         <span class="n">effective_input_path</span> <span class="o">=</span> <span class="n">input_path</span> <span class="k">if</span> <span class="n">input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">output_dir</span>
-        <span class="k">assert</span> <span class="n">effective_input_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by earlier --output-dir checks</span>
         <span class="c1"># Click&#39;s Choice() validated image_type against {&quot;Image&quot;, &quot;GridImage&quot;};</span>
         <span class="c1"># narrow to the typed alias for ExecutionConfig&#39;s Literal-typed field.</span>
         <span class="n">narrowed_image_type</span><span class="p">:</span> <span class="n">ImageTypeName</span> <span class="o">=</span> <span class="s2">&quot;GridImage&quot;</span> <span class="k">if</span> <span class="n">image_type</span> <span class="o">==</span> <span class="s2">&quot;GridImage&quot;</span> <span class="k">else</span> <span class="s2">&quot;Image&quot;</span>
@@ -1693,25 +1681,6 @@
 
         <span class="c1"># Handle resume mode BEFORE creating output directory</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">resume</span><span class="p">:</span>
-            <span class="c1"># For resume, output_dir must be specified</span>
-            <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="s2">&quot;Error: --resume requires --output-dir to be specified&quot;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span>
-                <span class="p">)</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Resume mode continues processing from a previous run. &quot;</span>
-                    <span class="s2">&quot;You must specify the same output directory that was used before.&quot;</span><span class="p">,</span>
-                    <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Example:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                    <span class="s2">&quot;  python -m phenotypic --pipeline pipeline.json --input ./images </span><span class="se">\\\n</span><span class="s2">&quot;</span>
-                    <span class="s2">&quot;    --output-dir ./results_2024-01-12_10-30-45 </span><span class="se">\\\n</span><span class="s2">&quot;</span>
-                    <span class="s2">&quot;    --resume&quot;</span><span class="p">,</span>
-                    <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
             <span class="c1"># Check if output directory exists</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
@@ -1755,7 +1724,6 @@
         <span class="c1"># appending to, and rebuilding its manifest/failure records from, the</span>
         <span class="c1"># prior run&#39;s events.</span>
         <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># narrowed by the --restart guard above</span>
             <span class="k">if</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">clear_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span>
                     <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
@@ -1769,11 +1737,6 @@
                 <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Note: Output directory </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2"> does not exist yet (starting fresh)&quot;</span>
                 <span class="p">)</span>
-
-        <span class="c1"># Generate or validate output directory</span>
-        <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">output_dir</span> <span class="o">=</span> <span class="n">generate_timestamped_output_dir</span><span class="p">()</span>
-            <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Auto-generated output directory: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="n">config</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span>
 
@@ -1799,7 +1762,7 @@
                     <span class="p">)</span>
                     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="c1"># Scan directory structure (or discover HDFs if in --measure mode)</span>
+        <span class="c1"># Scan directory structure (or discover HDFs in measure mode)</span>
         <span class="k">if</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Discovering HDF outputs under </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/results/...&quot;</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
@@ -1938,7 +1901,7 @@
         <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="c1"># Create initial state (or update if resuming) — skipped in</span>
-        <span class="c1"># --measure mode, which never mutates processing state.</span>
+        <span class="c1"># measure mode, which never mutates processing state.</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">measure_only</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">resume</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="n">resume_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -1979,7 +1942,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
             <span class="n">output_manager</span><span class="o">.</span><span class="n">create_structure</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
 
-        <span class="c1"># Copy pipeline config for reproducibility (skip in --measure mode — the</span>
+        <span class="c1"># Copy pipeline config for reproducibility (skip in measure mode — the</span>
         <span class="c1"># forward run already copied it). Process-only writes its copy under</span>
         <span class="c1"># the hidden cache (.phenotypic/pipeline.json), not deliverables/.</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">process_only_layer</span><span class="p">:</span>
@@ -2121,7 +2084,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Re-render overlay PNGs that are missing under ``results/&lt;ds&gt;/overlays/``.</span>
 
 <span class="sd">    HDF-driven: walks ``results/&lt;ds&gt;/hdf/*.h5`` (the same discovery</span>
-<span class="sd">    used by ``--measure``) and, for each HDF whose corresponding</span>
+<span class="sd">    used by measure mode) and, for each HDF whose corresponding</span>
 <span class="sd">    overlay PNG is absent, loads the HDF as the right ``Image`` /</span>
 <span class="sd">    ``GridImage`` subclass and writes the overlay using the same</span>
 <span class="sd">    :class:`OutputManager` writer the forward run uses.  Existing</span>
@@ -2140,7 +2103,7 @@
 <span class="sd">            ``--overlay-alpha`` flag used by forward runs.</span>
 <span class="sd">        n_jobs: Number of worker threads.  ``-1`` means allocated CPUs</span>
 <span class="sd">            under SLURM, otherwise host CPUs.  ``1`` runs in-thread.</span>
-<span class="sd">            Mirrors the ``--n-jobs`` flag used by forward runs.</span>
+<span class="sd">            Mirrors the ``--njobs`` flag used by forward runs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
 
@@ -2509,7 +2472,7 @@
 <span class="sd">            PNGs from HDFs.  Forwarded from the ``--overlay-alpha``</span>
 <span class="sd">            CLI flag.</span>
 <span class="sd">        n_jobs: Worker thread count for overlay regeneration.</span>
-<span class="sd">            Forwarded from the ``--n-jobs`` CLI flag (``-1`` = all</span>
+<span class="sd">            Forwarded from the ``--njobs`` CLI flag (``-1`` = all</span>
 <span class="sd">            cores, ``1`` = single-threaded).</span>
 <span class="sd">        no_qc: Forwarded from ``--no-qc`` to skip the QC compute step</span>
 <span class="sd">            in finalize.</span>

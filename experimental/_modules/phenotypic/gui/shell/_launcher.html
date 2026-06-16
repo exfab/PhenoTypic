@@ -639,10 +639,34 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._app</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_app</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._sandbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">SandboxRoot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._startup</span><span class="w"> </span><span class="kn">import</span> <span class="n">StartupReporter</span><span class="p">,</span> <span class="n">should_use_rich</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;launch_gui&quot;</span><span class="p">,</span> <span class="s2">&quot;main&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Number of bar segments the launcher advances: core import (already done),</span>
+<span class="c1">#: sandbox resolution, hub composition. See :class:`StartupReporter`.</span>
+<span class="n">_STARTUP_STEPS</span> <span class="o">=</span> <span class="mi">3</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_core_import_elapsed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Seconds spent importing the ``phenotypic`` library before ``main()``.</span>
+
+<span class="sd">    Measured against :data:`phenotypic._startup_perf.IMPORT_STARTED_AT`,</span>
+<span class="sd">    which is stamped the moment the (heavy) package import begins — the only</span>
+<span class="sd">    point early enough to capture it, since the console-script import chain</span>
+<span class="sd">    runs before any launcher code. Returns ``None`` if the stamp is absent</span>
+<span class="sd">    (e.g. a stubbed import in tests).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
+
+        <span class="k">return</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">_IMPORT_STARTED_AT</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - defensive</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
 
 <div class="viewcode-block" id="launch_gui">
@@ -652,6 +676,8 @@
     <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_HOST</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span>
     <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">reporter</span><span class="p">:</span> <span class="n">StartupReporter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Boot the unified PhenoTypic GUI shell.</span>
 
@@ -666,14 +692,30 @@
 <span class="sd">        port: TCP port. Defaults to :data:`DEFAULT_PORT`.</span>
 <span class="sd">        debug: Run Dash in debug mode (auto-reload + verbose tracebacks).</span>
 <span class="sd">            Defaults to ``False``.</span>
+<span class="sd">        reporter: Optional :class:`StartupReporter` driving staged progress</span>
+<span class="sd">            feedback (sandbox resolution + hub composition). ``None``</span>
+<span class="sd">            (default — the programmatic boot path) skips progress reporting</span>
+<span class="sd">            entirely and just resolves, composes, and serves.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: If ``root`` does not exist.</span>
 <span class="sd">        NotADirectoryError: If ``root`` exists but is not a directory.</span>
 <span class="sd">        RuntimeError: On a symlink loop encountered while resolving root.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
-    <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reporter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+        <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">reporter</span><span class="p">:</span>
+            <span class="n">reporter</span><span class="o">.</span><span class="n">record_done</span><span class="p">(</span>
+                <span class="s2">&quot;Core library loaded&quot;</span><span class="p">,</span> <span class="n">reporter</span><span class="o">.</span><span class="n">import_elapsed</span>
+            <span class="p">)</span>
+            <span class="k">with</span> <span class="n">reporter</span><span class="o">.</span><span class="n">stage</span><span class="p">(</span><span class="s2">&quot;Resolving sandbox root&quot;</span><span class="p">):</span>
+                <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">reporter</span><span class="o">.</span><span class="n">stage</span><span class="p">(</span><span class="s2">&quot;Composing GUI hub&quot;</span><span class="p">):</span>
+                <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="n">reporter</span><span class="o">.</span><span class="n">detail</span><span class="p">)</span>
+        <span class="c1"># ``sandbox``/``app`` are always bound here: the ``with`` bodies run</span>
+        <span class="c1"># unless ``reporter`` raises, in which case we never reach this line.</span>
     <span class="n">print_launcher_banner</span><span class="p">(</span>
         <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span>
     <span class="p">)</span>
@@ -713,12 +755,18 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">args</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
     <span class="n">configure_launcher_logging</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+    <span class="n">reporter</span> <span class="o">=</span> <span class="n">StartupReporter</span><span class="p">(</span>
+        <span class="n">total_steps</span><span class="o">=</span><span class="n">_STARTUP_STEPS</span><span class="p">,</span>
+        <span class="n">use_rich</span><span class="o">=</span><span class="n">should_use_rich</span><span class="p">(</span><span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">),</span>
+        <span class="n">import_elapsed</span><span class="o">=</span><span class="n">_core_import_elapsed</span><span class="p">(),</span>
+    <span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">launch_gui</span><span class="p">(</span>
             <span class="n">root</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
             <span class="n">host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
             <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
             <span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
+            <span class="n">reporter</span><span class="o">=</span><span class="n">reporter</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">NotADirectoryError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;phenotypic-gui: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>

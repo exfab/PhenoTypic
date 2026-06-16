@@ -657,7 +657,7 @@ plus an endpoint model — over the curated measurements produced by a
 CLI run. Recipes are persisted as fields on the pipeline itself
 (<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code>, next to
 <code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code>), so the same
-chain re-runs deterministically from the CLI when you <code class="docutils literal notranslate"><span class="pre">--recompile</span></code>.</p>
+chain re-runs deterministically from the CLI when you run recompile mode.</p>
 <section id="hub-mount-empty-state">
 <h2>Hub mount (empty state)<a class="headerlink" href="#hub-mount-empty-state" title="Link to this heading">#</a></h2>
 <p>Open the <code class="docutils literal notranslate"><span class="pre">Analysis</span></code> tab in the hub:</p>
@@ -684,7 +684,7 @@ long-running fits where you don’t need the rest of the hub:</p>
 “Add post…” dropdown (<code class="docutils literal notranslate"><span class="pre">PrependString</span></code>, <code class="docutils literal notranslate"><span class="pre">AppendString</span></code>,
 <code class="docutils literal notranslate"><span class="pre">ExpandMetadata</span></code>, <code class="docutils literal notranslate"><span class="pre">MergeMetadata</span></code>). The recompile banner reminds you
 that post edits change per-image measurement and require a CLI re-run
-(<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--recompile</span> <span class="pre">&lt;output&gt;</span></code>) to reach
+(<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code>) to reach
 <code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code>.</p></li>
 <li><p><strong>Author the filter chain</strong>: pick a class from the “Add filter…”
 dropdown (<code class="docutils literal notranslate"><span class="pre">EdgeCorrector</span></code>, <code class="docutils literal notranslate"><span class="pre">TukeyOutlierRemover</span></code>). Filters reshape the
@@ -729,7 +729,7 @@ kwargs when on:</p>
 <h2>CLI parity<a class="headerlink" href="#cli-parity" title="Link to this heading">#</a></h2>
 <p>Every section you author from the GUI is persisted to
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code>. A subsequent
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--recompile</span> <span class="pre">&lt;output&gt;</span></code> run reads that file and emits
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> run reads that file and emits
 the same <code class="docutils literal notranslate"><span class="pre">deliverables/analysis.{csv,parquet}</span></code> without booting the GUI —
 so <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> is the single reproducibility surface.</p>
 </section>

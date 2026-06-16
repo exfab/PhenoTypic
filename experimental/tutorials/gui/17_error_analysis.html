@@ -753,7 +753,7 @@ tab always recomputes from the current <code class="docutils literal notranslate
 <code class="docutils literal notranslate"><span class="pre">deliverables/error_analysis.{parquet,csv}</span></code> (focused category) and
 <code class="docutils literal notranslate"><span class="pre">deliverables/errors/&lt;category&gt;.parquet</span></code> <strong>live</strong> as you curate; the
 HTML report is written only on <code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">analysis</span> <span class="pre">report</span></code>. The next CLI
-finalize / <code class="docutils literal notranslate"><span class="pre">--recompile</span></code> re-emits <code class="docutils literal notranslate"><span class="pre">errors/*</span></code> and <code class="docutils literal notranslate"><span class="pre">error_analysis.*</span></code>
+finalize / recompile-mode run re-emits <code class="docutils literal notranslate"><span class="pre">errors/*</span></code> and <code class="docutils literal notranslate"><span class="pre">error_analysis.*</span></code>
 (all categories) from the durable labels store, so headless output
 matches the GUI. <code class="docutils literal notranslate"><span class="pre">deliverables/verified.parquet</span></code> is <strong>GUI-only</strong> — the
 CLI never writes it.</p></li>
