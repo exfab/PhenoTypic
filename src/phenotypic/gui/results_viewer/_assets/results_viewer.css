@@ -82,6 +82,10 @@
     margin-right: 0.25rem;
 }
 
+.browse-step-button {
+    min-width: 3rem;
+}
+
 /* ---------- Header ---------- */
 /* Top app bar: navy background with white text and gold pipeline chip. */
 .results-viewer-header {
