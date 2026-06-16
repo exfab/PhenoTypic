@@ -349,6 +349,7 @@ def build_settings_popover(sandbox: SandboxRoot) -> dbc.Popover:
         target=SHELL_SETTINGS_BUTTON,
         is_open=False,
         placement="bottom-end",
+        className="shell-settings-popover",
     )
 
 
