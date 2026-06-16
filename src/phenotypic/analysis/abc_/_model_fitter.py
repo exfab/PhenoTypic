@@ -12,12 +12,6 @@ import pandas as pd
 import scipy.optimize as optimize
 from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score,
-    root_mean_squared_error,
-)
 
 from phenotypic.tools_ import ColumnRef
 from phenotypic.schema import MODEL_METRICS
@@ -216,6 +210,15 @@ class ModelFitter(SetAnalyzer, ABC):
     @staticmethod
     def _compute_metrics(y_true, y_pred) -> Dict[Any, float]:
         """Compute the generic fit-quality metrics shared by all subclasses."""
+        # Deferred: scikit-learn is heavy and only needed at fit time, not
+        # at module import (this module is on the eager ``phenotypic`` path).
+        from sklearn.metrics import (
+            mean_absolute_error,
+            mean_squared_error,
+            r2_score,
+            root_mean_squared_error,
+        )
+
         return {
             MODEL_METRICS.MAE : mean_absolute_error(y_true, y_pred),
             MODEL_METRICS.MSE : mean_squared_error(y_true, y_pred),

@@ -176,6 +176,7 @@ def compose_hub(
     *,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
+    progress: Callable[[str], None] | None = None,
 ) -> tuple[dash.Dash, ToolSession[dash.Dash]]:
     """Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.
 
@@ -194,8 +195,19 @@ def compose_hub(
         start_idle_thread: When ``True`` (default), spawn the daemon
             thread that releases idle sessions. Tests pass ``False``
             so they don't leak background threads.
+        progress: Optional callback invoked with a short label before each
+            eager sub-app is built (``"sub-app modules"``, ``"shell"``,
+            ``"builder"``, …). The launcher passes
+            :meth:`StartupReporter.detail` so the startup bar reflects which
+            sub-app is currently being composed. ``None`` (default) is a
+            no-op for non-interactive / test callers.
     """
+    def _tick(label: str) -> None:
+        if progress is not None:
+            progress(label)
+
     # Local imports to keep boot-time cycles minimal.
+    _tick("sub-app modules")
     from phenotypic.gui import (
         analysis,
         browse,
@@ -267,6 +279,7 @@ def compose_hub(
 
     # 2. Shell Dash (registers the API + runs blueprints with the
     #    viewer-session touch hook + analysis-session release hook).
+    _tick("shell")
     shell_app = _build_shell_dash_app(
         sandbox,
         viewer_session=viewer_session,
@@ -275,6 +288,7 @@ def compose_hub(
     )
 
     # 3. Builder Dash (eager — single-process registry build).
+    _tick("builder")
     builder_app = builder.create_app(
         image_root=sandbox.root, url_prefix=MOUNT_BUILDER
     )
@@ -285,6 +299,7 @@ def compose_hub(
     #    Runs panel, and the run-console callbacks all share the same
     #    state. Rehydrate the registry from disk so historical runs are
     #    visible immediately without waiting for a refresh.
+    _tick("run console")
     from phenotypic.gui.run_console._runner import LocalRunner
     from phenotypic.gui.shell._runs_registry import RunRegistry
 
@@ -305,6 +320,7 @@ def compose_hub(
     #     user binds a tune run from the sidebar (Chunk C), at which point the
     #     page re-reads the bound run. The factory stays optuna-free; the live
     #     study is opened lazily inside the Monitor poll callback only.
+    _tick("tune")
     tune_app = tune.create_app(
         root=None,
         url_prefix=MOUNT_TUNE,
@@ -317,6 +333,7 @@ def compose_hub(
     # 4c. Browse Dash (eager — lightweight source-image viewer). No
     #     ToolSession: it loads no heavy parquet, just lists files + serves
     #     ephemeral tiles.
+    _tick("browse")
     browse_app = browse.create_app(sandbox, url_prefix=MOUNT_BROWSE)
     wrap_in_chrome(browse_app, active_tab=SHELL_TAB_BROWSE, sandbox=sandbox)
 
@@ -375,6 +392,7 @@ def create_app(
     viewer_session: "ToolSession[Any] | None" = None,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> dash.Dash:
     """Build the unified GUI hub Dash app.
 
@@ -406,6 +424,10 @@ def create_app(
             launch but skipped under pytest (``PYTEST_CURRENT_TEST``
             in env). Tests that want the daemon explicitly should
             pass ``True``.
+        progress: Optional per-sub-app progress callback forwarded to
+            :func:`compose_hub` (the launcher passes
+            :meth:`StartupReporter.detail`). Ignored on the Phase 3
+            ``viewer_session`` escape-hatch path.
 
     Returns:
         Configured :class:`dash.Dash` instance. ``app.run()`` (or
@@ -428,5 +450,6 @@ def create_app(
         sandbox,
         idle_release_seconds=idle_release_seconds,
         start_idle_thread=start_idle_thread,
+        progress=progress,
     )
     return shell_app

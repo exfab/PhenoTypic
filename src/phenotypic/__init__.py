@@ -18,6 +18,12 @@ __version__ = "0.17.0b1"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
+# Import first (before the heavy submodule chain below): stamps the import-start
+# time as ``_IMPORT_STARTED_AT`` so launchers can report core-load duration, and
+# installs a lazy stub for colour-science's eager-but-unused ``colour.plotting``
+# submodule. Both happen as import side effects of ``_startup_perf``.
+from ._startup_perf import IMPORT_STARTED_AT as _IMPORT_STARTED_AT  # noqa: F401
+
 # Import abc_ first: its __init__ imports the public ``schema`` package
 # (the stdlib-only MeasurementInfo base + leaf enums, cached instantly) then
 # triggers tools_ init.  When tools_.constants_ later does

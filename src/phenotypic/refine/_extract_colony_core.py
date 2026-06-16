@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
+    from sklearn.mixture import GaussianMixture
+
     from phenotypic._core._image import Image
 
 import numpy as np
 import cv2
-from sklearn.mixture import GaussianMixture
 
 from ..abc_ import ObjectRefiner
 from ..tools_.typing_ import TuneSpec
@@ -237,6 +238,11 @@ class ExtractColonyCore(ObjectRefiner):
         # Uniform region — keep as-is
         if pixels.std() < 1e-6:
             return mask
+
+        # Deferred import: scikit-learn is heavy (~250 ms) and only needed
+        # when this refiner actually runs, so keep it out of module import
+        # (which is on the eager ``phenotypic`` boot path / GUI startup).
+        from sklearn.mixture import GaussianMixture
 
         gmm = GaussianMixture(
                 n_components=n_components,

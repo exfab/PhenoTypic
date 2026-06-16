@@ -23,7 +23,6 @@ import numpy.typing as npt
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, field_validator
 from scipy.stats import f_oneway, false_discovery_control
-from sklearn.metrics import roc_auc_score, roc_curve
 
 #: Column-name prefixes treated as numeric **phenotype** measurements.
 #: Absolute position (``Bbox_`` centroids/corners) is intentionally **excluded**
@@ -236,6 +235,9 @@ class ErrorCutoffFinder(BaseModel):
         # BEFORE the value can poison BH-FDR (false_discovery_control rejects NaN).
         if not np.isfinite(f_stat) or not np.isfinite(p_value):
             return None
+
+        # Deferred: scikit-learn is heavy; only import when actually scoring.
+        from sklearn.metrics import roc_auc_score, roc_curve
 
         auc_raw = roc_auc_score(y, scores)  # P(error score > good score)
         if auc_raw >= 0.5:
