@@ -179,13 +179,15 @@ def run_cli_once() -> None:
         sys.executable,
         "-m",
         "phenotypic",
+        "--mode",
+        "full",
         "--pipeline",
         str(PIPELINE_JSON),
         "--input",
         str(PLATES_DIR),
         "-o",
         str(OUTPUT_DIR),
-        "--n-jobs",
+        "--njobs",
         "1",
     ]
     print(f"[cli]   {' '.join(cmd)}")

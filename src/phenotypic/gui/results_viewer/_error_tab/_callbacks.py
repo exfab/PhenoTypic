@@ -236,7 +236,7 @@ def _recompute(
     }
 
     # Don't publish deliverables derived from a stale cached master: once the
-    # curation store is stale (a concurrent CLI --measure/--recompile rewrote
+    # curation store is stale (a concurrent CLI measure/recompile-mode run rewrote
     # measurements.parquet), the in-memory frames may no longer match disk, and
     # finalize will re-emit error_analysis.* authoritatively anyway. The table /
     # figure still render in-session; we just skip the on-disk write.

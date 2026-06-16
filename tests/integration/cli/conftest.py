@@ -41,7 +41,7 @@ def synth_one_level_input(tmp_path: Path) -> Path:
     """One-level input tree: ``<tmp>/in/day1/plateA.tif`` (one synth plate).
 
     Returns the input root (``<tmp>/in``) so callers can pass it as
-    ``--input`` and assert on the mirrored ``--process-only`` output tree.
+    ``--input`` and assert on the mirrored process-mode output tree.
     """
     root = tmp_path / "in"
     day = root / "day1"

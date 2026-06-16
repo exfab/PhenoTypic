@@ -121,7 +121,7 @@ class ExecutionConfig:
     # Detection mode (default: gray)
     detect_mode: str = "gray"
 
-    # Overlay PNG output is always-on for forward runs; --measure runs
+    # Overlay PNG output is always-on for forward runs; measure-mode runs
     # never regenerate overlays regardless of this flag.
     save_overlays: bool = True
 

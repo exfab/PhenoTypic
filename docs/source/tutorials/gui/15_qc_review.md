@@ -32,7 +32,7 @@ The review loop:
   (`qc/qc_summary.parquet`, `qc/qc_members.parquet`,
   `qc/qc_config.json` — these stay at the output-dir root). Configure a
   check in the **Configure** sub-view, then re-run
-  `python -m phenotypic --recompile <output>` (or `--measure`) to compute
+  `python -m phenotypic --mode recompile --output <output>` (or `--mode measure --pipeline <pipeline.json> --output <output>`) to compute
   it. See [Run Locally](04_run_local.md).
 - The post-applied `deliverables/measurements.parquet` mirror under
   `<output>/deliverables/measurements.parquet` — the recompute reads this
@@ -88,7 +88,7 @@ gains a `⤳` "moved/changed" hint. The queue only reorders when you click
 - **Review progress is per-module and resets on re-run.** Marked-reviewed
   groups live in GUI-owned `qc/review_state.json`, keyed by check
   `instance_id`. An in-session recompute preserves it; the next CLI
-  `--recompile` / `--measure` clears it so a fresh run starts the queue
+  recompile or measure-mode run clears it so a fresh run starts the queue
   over.
 - **Curation is shared.** Removing a colony in Review removes it
   everywhere (the Plate / Colony tabs and the heatmap) — it writes the

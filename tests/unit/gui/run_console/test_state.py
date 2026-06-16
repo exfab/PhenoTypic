@@ -91,11 +91,13 @@ def test_to_argv_emits_required_explicit_path_options() -> None:
         output_dir="/out",
     )
     assert to_argv(state) == [
+        "--mode",
+        "full",
         "--pipeline",
         "/p.json",
         "--input",
         "/in",
-        "-o",
+        "--output",
         "/out",
     ]
 
@@ -169,9 +171,9 @@ def test_to_argv_threads_advanced_args() -> None:
         },
     )
     argv = to_argv(state)
-    # Skip the first 6 (path options + -o + output_dir); the rest is
+    # Skip the first 8 (mode + path options + output); the rest is
     # ``--flag value`` pairs in unspecified order.
-    tail = argv[6:]
+    tail = argv[8:]
     pair_dict: dict[str, str] = {}
     for i in range(0, len(tail), 2):
         pair_dict[tail[i]] = tail[i + 1]
@@ -179,8 +181,8 @@ def test_to_argv_threads_advanced_args() -> None:
     assert pair_dict["--nrows"] == "8"
     assert pair_dict["--ncols"] == "12"
     assert pair_dict["--image-type"] == "jpg"
-    # ``workers`` maps to the CLI's ``--n-jobs``.
-    assert pair_dict["--n-jobs"] == "4"
+    # ``workers`` maps to the CLI's ``--njobs``.
+    assert pair_dict["--njobs"] == "4"
 
 
 def test_to_argv_skips_unset_advanced_args() -> None:

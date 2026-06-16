@@ -27,10 +27,17 @@ FootprintShape = Literal["disk", "square", "diamond"]
 
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
 
-#: Image layer a process-only CLI run (``--process-only``) exports. A closed
+#: Image layer a process-mode CLI run exports. A closed
 #: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
 #: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.
 ProcessOnlyLayer = Literal["rgb", "gray", "detect_mat", "objmap"]
+
+#: Public top-level CLI execution mode. ``full`` performs the normal
+#: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,
+#: ``recompile`` refreshes aggregate outputs from an existing output root, and
+#: ``process`` performs the apply-only single-layer export selected by
+#: ``--layer``.
+CliMode = Literal["full", "measure", "recompile", "process"]
 
 GridSearchSaveData = List[
     Literal["rgb", "gray", "detect_mat", "objmap", "objmask", "map2rgb"]

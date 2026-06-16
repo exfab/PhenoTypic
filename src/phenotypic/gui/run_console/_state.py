@@ -250,8 +250,8 @@ def to_argv(state: RunConsoleState) -> list[str]:
 
     Returns:
         List of argv tokens, e.g.
-        ``["--pipeline", "pipeline.json", "--input", "/in", "-o", "/out",
-        "--dry-run"]``.
+        ``["--mode", "full", "--pipeline", "pipeline.json", "--input", "/in",
+        "--output", "/out", "--dry-run"]``.
 
     Raises:
         ValueError: If any of ``pipeline_path``, ``input_dir``, or
@@ -279,11 +279,13 @@ def to_argv(state: RunConsoleState) -> list[str]:
     output_dir = str(state.output_dir)
 
     argv: list[str] = [
+        "--mode",
+        "full",
         "--pipeline",
         pipeline_path,
         "--input",
         input_dir,
-        "-o",
+        "--output",
         output_dir,
     ]
 
@@ -316,7 +318,7 @@ def to_argv(state: RunConsoleState) -> list[str]:
 
     workers = advanced.get("workers")
     if workers is not None:
-        argv.extend(["--n-jobs", str(workers)])
+        argv.extend(["--njobs", str(workers)])
 
     # ``log_level`` is intentionally not forwarded: the CLI does not expose
     # a ``--log-level`` flag. We keep the field in state so future CLI work

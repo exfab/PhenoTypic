@@ -441,7 +441,7 @@ class TestOutputManager:
         assert manager.save_overlays is True
 
     def test_from_config_factory_overlays_disabled(self, temp_output_dir):
-        """from_config(save_overlays=False) disables overlay output (e.g. --measure)."""
+        """from_config(save_overlays=False) disables overlay output (e.g. measure mode)."""
         manager = OutputManager.from_config(
             base_dir=temp_output_dir,
             ext=".tiff",
@@ -731,6 +731,8 @@ class TestCLIv2Integration:
                     str(temp_pipeline),
                     "--input",
                     str(temp_input_dir),
+                    "--output",
+                    "./out",
                     "--dry-run",
                 ],
             )
@@ -750,6 +752,8 @@ class TestCLIv2Integration:
                     str(temp_pipeline),
                     "-i",
                     str(temp_input_dir),
+                    "--output",
+                    "./out",
                     "--dry-run",
                 ],
             )
@@ -766,6 +770,8 @@ class TestCLIv2Integration:
             [
                 str(temp_pipeline),
                 str(temp_input_dir),
+                "--output",
+                "./out",
                 "--dry-run",
             ],
         )
@@ -786,6 +792,8 @@ class TestCLIv2Integration:
                 str(temp_pipeline),
                 "--input",
                 str(temp_input_dir),
+                "--output",
+                "./out",
                 "unexpected",
                 "--dry-run",
             ],
@@ -805,6 +813,8 @@ class TestCLIv2Integration:
             [
                 "--input",
                 str(temp_input_dir),
+                "--output",
+                "./out",
                 "--dry-run",
             ],
         )
@@ -821,6 +831,8 @@ class TestCLIv2Integration:
             [
                 "--pipeline",
                 str(temp_pipeline),
+                "--output",
+                "./out",
                 "--dry-run",
             ],
         )
@@ -839,6 +851,8 @@ class TestCLIv2Integration:
                     str(temp_pipeline),
                     "--input",
                     str(temp_input_dir),
+                    "--output",
+                    "./out",
                     "--dry-run",
                 ],
             )
@@ -847,7 +861,7 @@ class TestCLIv2Integration:
             assert "DRY-RUN MODE" in result.output
             assert "To proceed with execution" in result.output
 
-    def test_cli_auto_output_dir(self, runner, temp_pipeline, temp_input_dir):
+    def test_cli_uses_explicit_output_dir(self, runner, temp_pipeline, temp_input_dir):
         """Test CLI with specified output directory in tmp location."""
         # Use isolated filesystem to avoid creating files in repo
         with runner.isolated_filesystem():
@@ -867,7 +881,7 @@ class TestCLIv2Integration:
                 ],
             )
 
-            # Check that the specified output directory was used (not auto-generated)
+            # Check that the specified output directory was used.
             assert "Auto-generated output directory" not in result.output
             assert temp_output_dir.exists()
 
@@ -1041,8 +1055,8 @@ class TestResumeMode:
         assert result.exit_code != 0
         assert "processing state" in result.output.lower()
 
-    def test_resume_without_output_dir_specified(self, runner, tmp_path):
-        """Test that resume requires --output-dir."""
+    def test_resume_without_output_specified(self, runner, tmp_path):
+        """Test that the public CLI requires --output."""
 
         temp_input_dir = tmp_path / "images"
         temp_input_dir.mkdir()
@@ -1064,10 +1078,7 @@ class TestResumeMode:
         )
 
         assert result.exit_code != 0
-        assert (
-            "resume requires" in result.output.lower()
-            or "output-dir" in result.output.lower()
-        )
+        assert "--output" in result.output
 
 
 class TestDryRunMode:
@@ -1230,7 +1241,7 @@ class TestEdgeCases:
                 str(input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
             ],
@@ -1312,7 +1323,7 @@ class TestEdgeCases:
                 str(input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
             ],
@@ -2192,11 +2203,11 @@ class TestAggregateMeasurements:
 
 
 # ---------------------------------------------------------------------------
-# --process-only top-level CLI option: validation, ignored-flag warnings, dry-run
+# process-mode top-level CLI option: validation, ignored-flag warnings, dry-run
 # ---------------------------------------------------------------------------
 
 
-def test_process_only_rejects_measure(
+def test_layer_rejected_outside_process_mode(
     tmp_path, simple_pipeline_json, synth_one_level_input
 ):
     r = CliRunner().invoke(
@@ -2204,13 +2215,13 @@ def test_process_only_rejects_measure(
         [
             "--pipeline", str(simple_pipeline_json),
             "--input", str(synth_one_level_input),
-            "--output-dir", str(tmp_path / "o"),
-            "--process-only", "rgb",
-            "--measure",
+            "--output", str(tmp_path / "o"),
+            "--layer", "rgb",
+            "--dry-run",
         ],
     )
     assert r.exit_code != 0
-    assert "process-only" in r.output.lower() and "measure" in r.output.lower()
+    assert "--layer" in r.output and "--mode process" in r.output
 
 
 def test_process_only_warns_ignored_flags(
@@ -2219,11 +2230,12 @@ def test_process_only_warns_ignored_flags(
     r = CliRunner().invoke(
         phenotypic_cli,
         [
+            "--mode", "process",
             "--pipeline", str(simple_pipeline_json),
             "--input", str(synth_one_level_input),
-            "--output-dir", str(tmp_path / "o2"),
-            "--process-only", "rgb",
-            "--no-qc", "--force-local", "--n-jobs", "1", "--dry-run",
+            "--output", str(tmp_path / "o2"),
+            "--layer", "rgb",
+            "--no-qc", "--force-local", "--njobs", "1", "--dry-run",
         ],
     )
     assert r.exit_code == 0, r.output
@@ -2236,13 +2248,14 @@ def test_process_only_dry_run_lists_plan(
     r = CliRunner().invoke(
         phenotypic_cli,
         [
+            "--mode", "process",
             "--pipeline", str(simple_pipeline_json),
             "--input", str(synth_one_level_input),
-            "--output-dir", str(tmp_path / "o3"),
-            "--process-only", "detect_mat",
+            "--output", str(tmp_path / "o3"),
+            "--layer", "detect_mat",
             "--dry-run", "--force-local",
         ],
     )
     assert r.exit_code == 0, r.output
-    assert "process-only" in r.output.lower()
+    assert "process" in r.output.lower()
     assert ".phenotypic" in r.output

@@ -8,24 +8,24 @@ Usage
 
 .. code-block:: bash
 
-   python -m phenotypic --pipeline PIPELINE_JSON --input INPUT_DIR [OPTIONS]
+   python -m phenotypic --mode full --pipeline PIPELINE_JSON --input INPUT_DIR --output OUTPUT_DIR [OPTIONS]
 
 Path Options
 ------------
 
 ``-p, --pipeline PIPELINE_JSON``
    Path to a pipeline configuration file created with ``pipeline.to_json()``.
-   Required for normal runs and ``--measure``.
+   Required for ``full``, ``measure``, and ``process`` modes. Rejected in
+   ``recompile`` mode, which reloads the saved pipeline from the output root.
 
 ``-i, --input INPUT_DIR``
-   Directory containing plate images to process. Required for normal runs.
-   Optional in ``--measure`` mode; if provided there, it is ignored because
-   images are discovered from the previous output directory.
+   Directory containing plate images to process. Required for ``full`` and
+   ``process`` modes. Rejected in ``measure`` and ``recompile`` modes, which
+   discover prior outputs from the output root.
 
-``-o, --output-dir OUTPUT_DIR``
+``-o, --output OUTPUT_DIR``
    Directory where results (overlays, measurements, checkpoints) are saved.
-   Normal runs auto-generate an output directory when omitted. Required for
-   ``--measure``, ``--resume``, and ``--restart``.
+   Required for every mode.
 
 Image Options
 -------------
@@ -51,14 +51,36 @@ Image Options
 Execution Options
 -----------------
 
-``--n-jobs N``
+``-m, --mode {full,measure,recompile,process}``
+   Select the execution mode. Default: ``full``.
+
+   ``full``
+      Apply the pipeline, measure, and emit all deliverables.
+
+   ``measure``
+      Re-run measurements from HDF files in an existing output root. Requires
+      ``--pipeline`` and ``--output``. Rejects ``--input`` and ``--dry-run``.
+
+   ``recompile``
+      Rebuild aggregate deliverables from an existing output root. Requires
+      ``--output``. Rejects ``--pipeline``, ``--input``, and ``--dry-run``.
+
+   ``process``
+      Apply the pipeline and export one image layer per input. Requires
+      ``--pipeline``, ``--input``, ``--output``, and ``--layer``.
+
+``--layer {rgb,gray,detect_mat,objmap}``
+   Image layer exported by ``--mode process``. Rejected in other modes.
+
+``--njobs N``
    Number of parallel worker processes. Default: all available CPUs.
 
 ``--force-local``
    Run locally even if SLURM is available.
 
 ``--dry-run``
-   Validate pipeline and list images without processing.
+   Validate pipeline and list images without processing. Supported by
+   ``full`` and ``process`` modes; rejected by ``measure`` and ``recompile``.
 
 ``--sample N``
    Process only N random images (for testing).

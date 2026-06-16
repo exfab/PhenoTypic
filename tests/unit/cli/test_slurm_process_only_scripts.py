@@ -30,9 +30,11 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     # The per-image command is line-broken with ``\`` continuations, so the
     # flag and its value land on separate lines — assert each token is threaded
     # into the per-image worker invocation.
-    assert "--process-only" in blob
+    assert "--mode" in blob
+    assert "\n    process \\" in blob
+    assert "--layer" in blob
     assert "phenotypic._cli._cli_process_single" in blob
-    # The layer value appears on its own continuation line after --process-only.
+    # The layer value appears on its own continuation line after --layer.
     assert "\n    rgb \\" in blob
     assert "--input-root" in blob
     # No measurement aggregation / full finalizer chain in process-only.
@@ -44,6 +46,48 @@ def test_array_script_threads_process_only_and_omits_aggregation(
     assert "--checkpoint-type manifest" in blob
     # Process-only never threads the forward-run overlay flag
     assert "--save-overlays" not in blob
+
+
+def test_array_script_mode_rewrite_does_not_mutate_dataset_named_full(
+    tmp_path, simple_pipeline_json, synth_one_level_input, make_exec_config
+):
+    from phenotypic._cli._cli_slurm_array_scripts import generate_array_job_script
+
+    out = tmp_path / "out"
+    datasets = organize_by_dataset(
+        scan_directory_structure(synth_one_level_input), out
+    )
+    dataset = datasets[0]
+    dataset.name = "full"
+
+    process_config = make_exec_config(
+        pipeline_json=simple_pipeline_json,
+        input_path=synth_one_level_input,
+        output_dir=out,
+        force_local=False,
+        process_only_layer="rgb",
+        slurm_args={"slurm_partition": "compute"},
+    )
+    process_script = generate_array_job_script(
+        dataset, (0, len(dataset.images)), process_config, out, chunk_id=0
+    ).read_text()
+    assert "--dataset-name \\\n    full \\" in process_script
+    assert "--mode \\\n    process \\" in process_script
+    assert "--layer \\\n    rgb \\" in process_script
+
+    measure_config = make_exec_config(
+        pipeline_json=simple_pipeline_json,
+        input_path=synth_one_level_input,
+        output_dir=out,
+        force_local=False,
+        measure_only=True,
+        slurm_args={"slurm_partition": "compute"},
+    )
+    measure_script = generate_array_job_script(
+        dataset, (0, len(dataset.images)), measure_config, out, chunk_id=1
+    ).read_text()
+    assert "--dataset-name \\\n    full \\" in measure_script
+    assert "--mode \\\n    measure \\" in measure_script
 
 
 def test_process_only_embeds_manifest_sentinel_on_last_chunk_only(

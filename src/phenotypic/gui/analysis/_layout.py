@@ -256,7 +256,7 @@ def _build_recompile_banner() -> html.Div:
             html.Span("ℹ "),
             "Post edits change per-image measurement. Re-run the CLI "
             "(",
-            html.Code("python -m phenotypic --recompile <output>"),
+            html.Code("python -m phenotypic --mode recompile --output <output>"),
             ") to apply post changes to ",
             html.Code("measurements.parquet"),
             " (",

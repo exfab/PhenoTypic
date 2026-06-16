@@ -25,7 +25,8 @@ def test_process_only_option_parses(tmp_path, monkeypatch):
             "--image", str(img),
             "--output-dir", str(tmp_path / "out"),
             "--dataset-name", "in",
-            "--process-only", "detect_mat",
+            "--mode", "process",
+            "--layer", "detect_mat",
             "--input-root", str(tmp_path / "in"),
         ],
     )
@@ -51,7 +52,8 @@ def test_process_only_requires_input_root(tmp_path, monkeypatch):
             "--image", str(img),
             "--output-dir", str(tmp_path / "out"),
             "--dataset-name", "in",
-            "--process-only", "rgb",
+            "--mode", "process",
+            "--layer", "rgb",
         ],
     )
     assert res.exit_code != 0

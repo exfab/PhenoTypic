@@ -1,4 +1,4 @@
-"""End-to-end --process-only CLI run: mirrored layer files + manifest, no suite."""
+"""End-to-end process-mode CLI run: mirrored layer files + manifest, no suite."""
 
 import numpy as np
 import tifffile
@@ -20,9 +20,10 @@ def test_process_only_end_to_end(tmp_path, synth_one_level_input, simple_pipelin
         [
             "--pipeline", str(simple_pipeline_json),
             "--input", str(synth_one_level_input),
-            "--output-dir", str(out),
-            "--process-only", "detect_mat",
-            "--force-local", "--n-jobs", "1",
+            "--output", str(out),
+            "--mode", "process",
+            "--layer", "detect_mat",
+            "--force-local", "--njobs", "1",
         ],
     )
     assert r.exit_code == 0, r.output

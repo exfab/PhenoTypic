@@ -162,7 +162,7 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
     ``input_dir`` is the ``hdf/`` directory itself, ``output_dir`` is the
     supplied root output directory, and ``name`` is the subdirectory name.
 
-    Intended for ``--measure`` mode, which skips detection and reloads
+    Intended for measure mode, which skips detection and reloads
     HDFs emitted by a prior forward run.
 
     Args:
@@ -208,7 +208,7 @@ def scan_hdf_outputs(output_dir: Path) -> List[Dataset]:
     if not datasets:
         raise ValueError(
             f"No HDF outputs found under {results_dir}. "
-            f"--measure expects a previous forward run to have written "
+            f"--mode measure expects a previous forward run to have written "
             f"HDF files under <output-dir>/results/<dataset>/hdf/*.h5."
         )
 

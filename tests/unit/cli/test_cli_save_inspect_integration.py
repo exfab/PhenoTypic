@@ -141,7 +141,7 @@ class TestSaveInspectForwardRun:
 
 
 class TestSaveInspectMeasureRerun:
-    """``--save-inspect`` also fires on the ``--measure`` HDF rerun path."""
+    """``--save-inspect`` also fires on the measure-mode HDF rerun path."""
 
     @requires_kaleido_chrome
     def test_save_inspect_regenerates_on_hdf_rerun(
@@ -166,7 +166,7 @@ class TestSaveInspectMeasureRerun:
         assert hdf_path.exists()
         assert not (output_dir / "results" / "plate" / "inspect").exists()
 
-        # Now: --measure rerun WITH save_inspects=True. Reuses the saved
+        # Now: measure-mode rerun WITH save_inspects=True. Reuses the saved
         # HDF, re-runs pipeline.measure(image), repopulates the per-measurer
         # diagnostic cache, and renders the inspect PNG.
         om_remeasure = _make_output_manager(output_dir, save_inspects=True)

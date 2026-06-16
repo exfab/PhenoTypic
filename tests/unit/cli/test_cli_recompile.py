@@ -1,4 +1,4 @@
-"""Unit tests for the CLI ``--recompile`` path (``_handle_recompile``).
+"""Unit tests for the CLI recompile mode (``_handle_recompile``).
 
 Verifies that recompile mirrors the SLURM finalizer's post-aggregation
 pattern: it reads the freshly-written ``master_measurements.csv`` and
@@ -44,7 +44,7 @@ def _make_fake_results(tmp_path: Path) -> Path:
 
 
 class TestRecompileCliRouting:
-    """Top-level ``--recompile`` selects local or SLURM explicitly."""
+    """Top-level recompile mode selects local or SLURM explicitly."""
 
     def test_recompile_without_slurm_uses_local_handler(
         self, tmp_path: Path
@@ -57,7 +57,7 @@ class TestRecompileCliRouting:
         ):
             result = CliRunner().invoke(
                 phenotypic_cli,
-                ["--recompile", str(output_dir)],
+                ["--mode", "recompile", "--output", str(output_dir)],
             )
 
         assert result.exit_code == 0, result.output
@@ -78,7 +78,9 @@ class TestRecompileCliRouting:
             result = CliRunner().invoke(
                 phenotypic_cli,
                 [
-                    "--recompile",
+                    "--mode",
+                    "recompile",
+                    "--output",
                     str(output_dir),
                     "--slurm",
                     "slurm_partition=compute",
@@ -112,7 +114,9 @@ class TestRecompileCliRouting:
             result = CliRunner().invoke(
                 phenotypic_cli,
                 [
-                    "--recompile",
+                    "--mode",
+                    "recompile",
+                    "--output",
                     str(output_dir),
                     "--slurm",
                     "slurm_partition=compute",

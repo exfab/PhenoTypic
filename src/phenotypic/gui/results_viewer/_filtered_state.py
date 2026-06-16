@@ -19,7 +19,7 @@ writes — and so a future caller that wraps an external mutation in
 ``with state._lock:`` cannot deadlock against the lock-acquiring
 :meth:`save`.
 
-Re-running the CLI (forward, ``--measure``, ``--recompile``) overwrites the
+Re-running the CLI (forward, measure mode, recompile mode) overwrites the
 on-disk seed with a fresh copy of the master, intentionally wiping prior
 GUI curation. ``filtered_measurements.{csv,parquet}`` files left on disk
 by older versions are inert — no code in this module references them, so
@@ -200,7 +200,7 @@ class FilteredMeasurements:
     #: instance — set by :meth:`load` and refreshed after each successful
     #: :meth:`_save_locked`. ``None`` means the seed has never existed
     #: from this instance's perspective. Used to detect external rewrites
-    #: (CLI ``--measure`` / ``--recompile`` against a directory whose
+    #: (CLI measure / recompile mode against a directory whose
     #: viewer session is still open) so we don't clobber a freshly seeded
     #: master with stale curation derived from an older ``_master_df``.
     _seed_mtime_ns: int | None = field(default=None, repr=False)
@@ -525,7 +525,7 @@ class FilteredMeasurements:
 
         Refuses to write (logging at WARNING) when the on-disk parquet's
         mtime no longer matches :attr:`_seed_mtime_ns` — that means
-        something else (typically a CLI ``--measure`` / ``--recompile``
+        something else (typically a CLI measure / recompile-mode
         re-run) has rewritten the seed since this instance was loaded,
         and our cached :attr:`_master_df` may no longer match disk. The
         viewer must :meth:`load` again (the session's release path
@@ -546,8 +546,8 @@ class FilteredMeasurements:
                 logger.warning(
                     "Refusing to overwrite curation parquet at %s — the "
                     "file's mtime changed since this viewer session "
-                    "loaded it (likely a CLI --measure / --recompile "
-                    "re-run). Release and reopen the viewer to pick up "
+                    "loaded it (likely a CLI measure/recompile-mode "
+                    "run). Release and reopen the viewer to pick up "
                     "the fresh master before curating again.",
                     self.parquet_path,
                 )

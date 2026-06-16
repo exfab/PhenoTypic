@@ -1,5 +1,5 @@
 """
-Integration tests for the HDF-centric CLI output layout and ``--measure`` rerun.
+Integration tests for the HDF-centric CLI output layout and measure-mode rerun.
 
 These tests exercise the full CLI via :mod:`click.testing.CliRunner` to verify
 the behaviour promised by Phase 7 of the HDF-centric CLI plan:
@@ -9,9 +9,9 @@ the behaviour promised by Phase 7 of the HDF-centric CLI plan:
   ``results/<dataset>/measurements/<stem>.parquet`` — and nothing else
   (no per-layer ``rgb/`` / ``gray/`` / ``detect_mat/`` / ``objmap/`` folders).
 * Forward runs always write a PNG overlay per image alongside the HDF.
-* ``--measure`` reruns :meth:`ImagePipeline.measure` on existing HDFs
+* ``--mode measure`` reruns :meth:`ImagePipeline.measure` on existing HDFs
   without touching the HDF files on disk and without regenerating overlays.
-* ``--measure`` rejects incompatible flags with a clear error message.
+* ``--mode measure`` rejects incompatible flags with a clear error message.
 
 All tests pass ``--force-local`` so SLURM is never dispatched.
 """
@@ -112,7 +112,7 @@ class TestForwardRunHdfLayout:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -182,7 +182,7 @@ class TestOverlayAlwaysOn:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -201,17 +201,17 @@ class TestOverlayAlwaysOn:
 
 
 # ---------------------------------------------------------------------------
-# --measure rerun semantics
+# measure-mode rerun semantics
 # ---------------------------------------------------------------------------
 
 
 class TestMeasureRerun:
-    """``--measure`` reruns measurements without touching HDFs or overlays."""
+    """Measure mode reruns measurements without touching HDFs or overlays."""
 
     def test_measure_rerun_rewrites_measurements(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward run, then --measure: parquet changes, HDF does not."""
+        """Forward run, then measure mode: parquet changes, HDF does not."""
         output_dir = tmp_path / "out"
 
         # Forward run.
@@ -224,7 +224,7 @@ class TestMeasureRerun:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -252,56 +252,54 @@ class TestMeasureRerun:
         # Sleep so mtimes actually differ on filesystems that round to seconds.
         time.sleep(0.1)
 
-        # --measure rerun. --input is still accepted (but ignored with a
-        # warning); we pass the same one for minimal drift from a real user.
+        # Measure rerun discovers HDFs under the existing output root.
         measure = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
-                "--input",
-                str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
-                "--measure",
             ],
         )
         assert measure.exit_code == 0, (
-            f"--measure rerun failed:\n{measure.output}"
+            f"Measure-mode rerun failed:\n{measure.output}"
         )
 
         # Parquet must be rewritten (mtime advanced).
         parquet_mtime_after = parquet_path.stat().st_mtime_ns
         assert parquet_mtime_after > parquet_mtime_before, (
-            f"Parquet mtime did not advance after --measure rerun "
+            f"Parquet mtime did not advance after measure-mode rerun "
             f"(before={parquet_mtime_before}, after={parquet_mtime_after}). "
-            f"--measure should rewrite measurements."
+            f"Measure mode should rewrite measurements."
         )
 
         # HDF must be untouched.
         hdf_mtime_after = hdf_path.stat().st_mtime_ns
         assert hdf_mtime_after == hdf_mtime_before, (
-            f"HDF mtime changed after --measure rerun "
+            f"HDF mtime changed after measure-mode rerun "
             f"(before={hdf_mtime_before}, after={hdf_mtime_after}). "
-            f"--measure must not rewrite HDF files."
+            f"Measure mode must not rewrite HDF files."
         )
 
         # Existing overlay must NOT be rewritten by a measure rerun.
         overlay_mtime_after = overlay_path.stat().st_mtime_ns
         assert overlay_mtime_after == overlay_mtime_before, (
-            f"Overlay mtime changed after --measure rerun "
+            f"Overlay mtime changed after measure-mode rerun "
             f"(before={overlay_mtime_before}, after={overlay_mtime_after}). "
-            f"--measure must not regenerate overlays."
+            f"Measure mode must not regenerate overlays."
         )
 
     def test_measure_rerun_grid_image_hdf(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """GridImage HDFs round-trip through --measure successfully."""
+        """GridImage HDFs round-trip through measure mode successfully."""
         output_dir = tmp_path / "out_grid"
 
         forward = runner.invoke(
@@ -313,7 +311,7 @@ class TestMeasureRerun:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -371,15 +369,16 @@ class TestMeasureRerun:
         measure = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
-                "--measure",
                 "--image-type",
                 "GridImage",
                 "--nrows",
@@ -389,7 +388,7 @@ class TestMeasureRerun:
             ],
         )
         assert measure.exit_code == 0, (
-            f"GridImage --measure rerun failed:\n{measure.output}"
+            f"GridImage measure-mode rerun failed:\n{measure.output}"
         )
 
         parquet_path = (
@@ -401,21 +400,21 @@ class TestMeasureRerun:
 
         df = pd.read_parquet(parquet_path)
         assert not df.empty, (
-            "GridImage --measure rerun produced an empty measurements frame."
+            "GridImage measure-mode rerun produced an empty measurements frame."
         )
 
         # Sanity: the canonical category-prefixed columns from the
         # RoundPeaksPipeline measurement set (Shape + Intensity) must be
-        # present — catches regressions where --measure silently returns a
+        # present — catches regressions where measure mode silently returns a
         # column-schema-stripped frame.
         shape_cols = {c for c in df.columns if c.startswith("Shape_")}
         intensity_cols = {c for c in df.columns if c.startswith("Intensity_")}
         assert shape_cols, (
-            f"Measurements parquet is missing Shape_* columns after --measure; "
+            f"Measurements parquet is missing Shape_* columns after measure mode; "
             f"columns={list(df.columns)}"
         )
         assert intensity_cols, (
-            f"Measurements parquet is missing Intensity_* columns after --measure; "
+            f"Measurements parquet is missing Intensity_* columns after measure mode; "
             f"columns={list(df.columns)}"
         )
 
@@ -434,7 +433,7 @@ class TestMeasureRerun:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -459,7 +458,7 @@ class TestMeasureRerun:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -487,18 +486,18 @@ class TestMeasureRerun:
 
 
 # ---------------------------------------------------------------------------
-# --measure flag validation
+# measure-mode validation
 # ---------------------------------------------------------------------------
 
 
 class TestMeasureFlagValidation:
-    """``--measure`` must reject incompatible flags with clear errors."""
+    """Measure mode must reject incompatible flags with clear errors."""
 
     @pytest.fixture
     def prepared_output_dir(
         self, runner, temp_pipeline, plates_input_dir, tmp_path
     ):
-        """Forward-run once so ``--measure`` has HDFs to rediscover.
+        """Forward-run once so measure mode has HDFs to rediscover.
 
         The incompatible-flag checks fire *before* HDF discovery, so most of
         these tests would work against an empty output dir — but the
@@ -515,7 +514,7 @@ class TestMeasureFlagValidation:
                 str(plates_input_dir),
                 "-o",
                 str(output_dir),
-                "--n-jobs",
+                "--njobs",
                 "1",
                 "--skip-validation",
                 "--force-local",
@@ -529,152 +528,158 @@ class TestMeasureFlagValidation:
     def test_measure_rejects_sample(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """--measure --sample N must exit non-zero with a clear message."""
+        """Measure mode with --sample N must exit non-zero with a clear message."""
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
                 "--sample",
                 "1",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure --sample should fail but got exit_code=0:\n"
+            f"Measure mode with --sample should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--measure cannot be combined with --sample" in result.output, (
+        assert "--mode measure cannot be combined with --sample" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
         )
 
     def test_measure_rejects_resume(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """--measure --resume must exit non-zero with a clear message."""
+        """Measure mode with --resume must exit non-zero with a clear message."""
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
                 "--resume",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure --resume should fail but got exit_code=0:\n"
+            f"Measure mode with --resume should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--measure cannot be combined with --resume" in result.output, (
+        assert "--mode measure cannot be combined with --resume" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
         )
 
     def test_measure_rejects_restart(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """--measure --restart must exit non-zero with a clear message."""
+        """Measure mode with --restart must exit non-zero with a clear message."""
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
                 "--restart",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure --restart should fail but got exit_code=0:\n"
+            f"Measure mode with --restart should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--measure cannot be combined with --restart" in result.output, (
+        assert "--mode measure cannot be combined with --restart" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
         )
 
     def test_measure_rejects_retry_failures(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """--measure --retry-failures must exit non-zero with a clear message."""
+        """Measure mode with --retry-failures must exit non-zero."""
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
                 "--retry-failures",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure --retry-failures should fail but got exit_code=0:\n"
+            f"Measure mode with --retry-failures should fail but got exit_code=0:\n"
             f"{result.output}"
         )
         assert (
-            "--measure cannot be combined with --retry-failures" in result.output
+            "--mode measure cannot be combined with --retry-failures" in result.output
         ), f"Error message missing expected substring:\n{result.output}"
 
     def test_measure_rejects_overwrite(
         self, runner, temp_pipeline, prepared_output_dir
     ):
-        """--measure --overwrite must exit non-zero with a clear message."""
+        """Measure mode with --overwrite must exit non-zero with a clear message."""
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(prepared_output_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
                 "--overwrite",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure --overwrite should fail but got exit_code=0:\n"
+            f"Measure mode with --overwrite should fail but got exit_code=0:\n"
             f"{result.output}"
         )
-        assert "--measure cannot be combined with --overwrite" in result.output, (
+        assert "--mode measure cannot be combined with --overwrite" in result.output, (
             f"Error message missing expected substring:\n{result.output}"
         )
 
     def test_measure_rejects_missing_output_dir(
         self, runner, temp_pipeline, tmp_path
     ):
-        """--measure against a non-existent -o dir must exit non-zero."""
+        """Measure mode against a non-existent -o dir must exit non-zero."""
         missing_dir = tmp_path / "does_not_exist"
         assert not missing_dir.exists()
 
         result = runner.invoke(
             phenotypic_cli,
             [
+                "--mode",
+                "measure",
                 "--pipeline",
                 str(temp_pipeline),
                 "-o",
                 str(missing_dir),
                 "--force-local",
                 "--skip-validation",
-                "--measure",
             ],
         )
         assert result.exit_code != 0, (
-            f"--measure against missing -o dir should fail but got "
+            f"Measure mode against missing -o dir should fail but got "
             f"exit_code=0:\n{result.output}"
         )
         assert (
-            "--measure output directory does not exist" in result.output
+            "--mode measure output directory does not exist" in result.output
         ), f"Error message missing expected substring:\n{result.output}"

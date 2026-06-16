@@ -159,7 +159,7 @@ class CurationLabels:
         _seed_mtime_ns: Nanosecond mtime of ``measurements.parquet`` as last
             observed by this instance.  ``None`` means the mirror has never
             existed from this instance's perspective.  Used to detect external
-            rewrites (CLI ``--measure`` / ``--recompile`` against a directory
+            rewrites (CLI measure / recompile mode against a directory
             whose viewer session is still open) so we don't clobber a freshly
             seeded master with stale curation derived from an older
             ``_master_df``.  Watches ``measurements.parquet`` only (C7).
@@ -288,7 +288,7 @@ class CurationLabels:
         # finalize decision). A genuine durable store re-keys above.
 
         # Capture the mtime of the curated mirror so _save_locked can detect
-        # an external re-seed (e.g. CLI --measure) while the session is open.
+        # an external re-seed (e.g. CLI measure mode) while the session is open.
         mirror = measurements_parquet_path(root)
         seed_mtime: int | None = mirror.stat().st_mtime_ns if mirror.exists() else None
 
@@ -604,7 +604,7 @@ class CurationLabels:
         Refuses to write (logging at WARNING and setting :attr:`stale`) when the
         on-disk ``measurements.parquet`` mtime no longer matches
         :attr:`_seed_mtime_ns` — that means something else (typically a CLI
-        ``--measure`` / ``--recompile`` re-run) has rewritten the mirror since
+        measure / recompile-mode run) has rewritten the mirror since
         this instance was loaded, and our cached ``_master_df`` may no longer
         match disk.  The guard watches ``measurements.parquet`` only (C7).
         """
@@ -615,7 +615,7 @@ class CurationLabels:
                 logger.warning(
                     "Refusing to overwrite curation mirror at %s — the "
                     "file's mtime changed since this viewer session loaded it "
-                    "(likely a CLI --measure / --recompile re-run). Reload the "
+                    "(likely a CLI measure/recompile-mode run). Reload the "
                     "viewer to pick up the fresh master before curating again.",
                     mirror,
                 )
