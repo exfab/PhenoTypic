@@ -580,8 +580,6 @@ class FssDinoDetector(GpuDetector):
             _cosine_map(dense, p) for p in np.asarray(prototypes)
         ]
         maps.append(gram_score_map(dense, gram))
-        if not maps:
-            return np.zeros(dense.shape[:2], np.float32)
         return combine_score_maps(maps)
 
     @staticmethod

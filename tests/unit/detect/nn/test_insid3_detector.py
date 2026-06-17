@@ -193,11 +193,19 @@ class TestInsid3FunctionalDinoV2:
     def test_apply_writes_objmask_on_dinov2(self, synth_plate):
         # DINOv2 path (ungated) with the bundled exemplar; the debias is a
         # near-no-op on DINOv2 (0 register tokens) but the plumbing must run.
-        det = Insid3Detector(dino_version=2, dino_size="small", device="cpu")
+        # similarity_thresh=0.0 is a permissive plumbing floor (the default 0.5
+        # cosine floor is conservative for DINOv2-small); this asserts the full
+        # apply() pipeline produces a non-empty semantic mask, not accuracy.
+        det = Insid3Detector(
+            dino_version=2, dino_size="small", similarity_thresh=0.0,
+            device="cpu",
+        )
         result = det.apply(synth_plate.copy(), inplace=False)
         objmask = result.objmask[:]
         objmap = result.objmap[:]
         assert objmask.dtype == bool
+        # The detector must actually segment something on the bundled exemplar.
+        assert objmask.any(), "Insid3Detector produced an empty objmask"
         # Semantic route: objmap auto-labels from objmask (Spec 1 §8 invariant).
         assert np.array_equal(objmap[:] > 0, objmask[:])
 
