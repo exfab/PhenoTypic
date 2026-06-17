@@ -255,13 +255,58 @@ Internal state (attributes prefixed with `_`, such as the loaded model) is
 excluded from serialization. The model is rebuilt transparently on the next
 call to `apply`.
 
+## Local Staged GPU Detection (CLI)
+
+When you run a pipeline through the CLI (`python -m phenotypic`) and it contains
+a `GpuDetector`, detection runs as **three internal stages** rather than invoking
+the GPU model once per image. The segmentation model is built **once** and every
+image is streamed through it — far more efficient than the notebook per-image
+path when processing a directory:
+
+1. **Stage 1 — CPU preprocess.** Every prior `ImageOperation` (enhancers,
+   corrections) is applied per image and the result is saved to the normal
+   per-image HDF (`results/<dataset>/hdf/<stem>.h5`).
+2. **Stage 2 — resident-model GPU detect.** The detector's model is built once
+   and kept resident while each staged HDF is streamed through
+   `preprocess → infer_batch`. The labelled object map is written to a per-image
+   `.npy` **sidecar** at `results/<dataset>/objmap/<stem>.npy`; the HDF is opened
+   read-only here, so an interrupted run never corrupts it.
+3. **Stage 3 — CPU merge + measure.** The sidecar is merged back into the image
+   through the object-map accessor, the post-detector refiners and the
+   measurement queue run, the HDF is re-saved atomically, and the sidecar is
+   **deleted**.
+
+The output folder is identical to a single-pass run — staging is an internal
+optimization, not a different output contract.
+
+**Resume is content-defined.** Re-running the same command skips any image whose
+work already exists: Stage 1 skips when the HDF exists, Stage 2 skips when the
+sidecar *or* the measurement parquet exists (Stage 3 deletes the sidecar, so the
+parquet is the durable "done" marker), and Stage 3 skips when the parquet exists.
+Progress is **stage-tagged** in the event log, so the run dashboard can show how
+far each image has moved through the three stages. If Stage 1 fails for an image
+(e.g. an unreadable file), Stages 2 and 3 skip it and record a structured failure
+instead of aborting the batch.
+
+```bash
+# Forward run: detection stages automatically because the pipeline has a GpuDetector
+python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/
+
+# Export just the object maps (runs Stages 1-2, then writes one objmap PNG per image)
+python -m phenotypic --mode process --layer objmap \
+    --pipeline sam2_pipeline.json --input /plates/ -o /output/
+```
+
 ## SLURM Deployment
 
 When a pipeline contains a `GpuDetector` operation (either `Sam2Detector` or
 `MicroSamDetector`), the CLI automatically adapts:
 
-**Local execution:** Forces sequential processing (`n_jobs=1`) to avoid
-multiple workers competing for the same GPU.
+**Local execution:** Forward GPU runs use the staged engine above (the model
+loads once and streams every image); see "Local Staged GPU Detection". The
+legacy per-image path (measure-only and non-objmap layer exports) still forces
+sequential processing (`n_jobs=1`) to avoid multiple workers competing for the
+same GPU.
 
 **SLURM execution:** Automatically adds `--gpus-per-node=1` to the SLURM
 job if GPU resources were not explicitly requested.

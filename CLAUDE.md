@@ -26,6 +26,13 @@
   `objmap` 16-bit raw-label PNG), mirroring the input tree. Skips
   measurement/deliverables/QC/dashboard; machine-state lives under `.phenotypic/`.
   Full local + SLURM + resume reuse.
+- **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
+  `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
+  resident-model GPU detect → CPU measure — reusing the per-image HDF. Stage 2 writes a
+  per-image `.npy` objmap **sidecar** (HDF opened read-only); Stage 3 merges it into the
+  final HDF, measures, and deletes the sidecar. The output folder is identical to a
+  single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
+  stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/`--storage-url`
 
@@ -221,6 +228,9 @@ the gate:
 - External tools: ExifTool (raw metadata), Pandoc (doc builds).
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
+- **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
+  engine (preprocess → GPU → measure) with a per-image objmap **sidecar**, not per-image
+  processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
