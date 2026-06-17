@@ -13,6 +13,76 @@ from phenotypic.detect.nn._checkpoint_manager import (
 )
 
 
+def build_sam2_generator(
+    model_size: Sam2ModelSize,
+    *,
+    device: str,
+    points_per_side: int = 32,
+    pred_iou_thresh: float = 0.7,
+    stability_score_thresh: float = 0.92,
+    min_mask_region_area: int = 100,
+    checkpoint: str | Path | None = None,
+    config: str | None = None,
+) -> object:
+    """Build a ``SAM2AutomaticMaskGenerator`` (shared by SAM2 + DinoSam2).
+
+    Centralises the ``build_sam2`` + generator construction so detectors that
+    need SAM2 class-agnostic proposals (``Sam2Detector``,
+    ``DinoSam2Detector``) do not duplicate the checkpoint-resolution and
+    Hydra-config-prefix logic. There is no public accessor for an existing
+    generator, so each detector calls this to rebuild its own.
+
+    Args:
+        model_size: SAM2 variant (``"tiny"`` … ``"large"``).
+        device: Resolved torch device string (from ``resolve_device``).
+        points_per_side: Point-prompt grid density (``points_per_side ** 2``).
+        pred_iou_thresh: Minimum predicted-IoU score to keep a mask.
+        stability_score_thresh: Minimum mask-stability score.
+        min_mask_region_area: Minimum mask area in pixels.
+        checkpoint: Optional path to a custom checkpoint.
+        config: Optional SAM2 config YAML identifier for a custom checkpoint.
+
+    Returns:
+        A configured ``SAM2AutomaticMaskGenerator`` instance.
+
+    Raises:
+        ImportError: If the ``sam2`` package is not installed.
+    """
+    try:
+        from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+        from sam2.build_sam import build_sam2
+    except ImportError:
+        raise ImportError(
+            "SAM2 proposals require the sam2 package. "
+            "Install with: pip install phenotypic[torch]"
+        ) from None
+
+    from phenotypic.detect.nn._checkpoint_manager import Sam2CheckpointManager
+
+    mgr = Sam2CheckpointManager()
+    if checkpoint is not None:
+        ckpt = str(checkpoint)
+        cfg = config or mgr.get_config(model_size)
+    else:
+        ckpt = str(mgr.get_checkpoint(model_size))
+        cfg = mgr.get_config(model_size)
+
+    # sam2 1.1.0 registers `pkg://sam2` as the Hydra search root, but the
+    # config YAMLs live at `sam2/configs/sam2.1/…`. Prepend `configs/` at the
+    # call site so the serialized identifier stays portable.
+    if not cfg.startswith("configs/") and not cfg.startswith("/"):
+        cfg = f"configs/{cfg}"
+
+    model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
+    return SAM2AutomaticMaskGenerator(
+        model,
+        points_per_side=points_per_side,
+        pred_iou_thresh=pred_iou_thresh,
+        stability_score_thresh=stability_score_thresh,
+        min_mask_region_area=min_mask_region_area,
+    )
+
+
 class Sam2Detector(GpuDetector):
     """Detect colonies using Meta's SAM2 foundation model.
 
@@ -163,44 +233,18 @@ class Sam2Detector(GpuDetector):
         if getattr(self, "_generator", None) is not None:
             return
 
-        try:
-            from sam2.build_sam import build_sam2
-            from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
-        except ImportError:
-            raise ImportError(
-                "Sam2Detector requires the sam2 package. "
-                "Install with: pip install phenotypic[torch]"
-            ) from None
-
-        from phenotypic.detect.nn._checkpoint_manager import (
-            Sam2CheckpointManager,
-            resolve_device,
-        )
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         device = resolve_device(self.device)
-        mgr = Sam2CheckpointManager()
-
-        if self.checkpoint is not None:
-            ckpt = str(self.checkpoint)
-            cfg = self.config or mgr.get_config(self.model_size)
-        else:
-            ckpt = str(mgr.get_checkpoint(self.model_size))
-            cfg = mgr.get_config(self.model_size)
-
-        # sam2 1.1.0 registers `pkg://sam2` as the Hydra search root, but the
-        # config YAMLs live at `sam2/configs/sam2.1/…`. Prepend `configs/` at
-        # the call site so the serialized identifier (used in to_json/from_json)
-        # stays portable across upstream layout changes.
-        if not cfg.startswith("configs/") and not cfg.startswith("/"):
-            cfg = f"configs/{cfg}"
-
-        model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
-        self._generator = SAM2AutomaticMaskGenerator(
-            model,
+        self._generator = build_sam2_generator(
+            self.model_size,
+            device=device,
             points_per_side=self.points_per_side,
             pred_iou_thresh=self.pred_iou_thresh,
             stability_score_thresh=self.stability_score_thresh,
             min_mask_region_area=self.min_mask_region_area,
+            checkpoint=self.checkpoint,
+            config=self.config,
         )
 
     def _infer_one(self, sample):
