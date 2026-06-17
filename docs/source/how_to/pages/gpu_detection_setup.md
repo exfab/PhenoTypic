@@ -1,16 +1,31 @@
 # GPU-Accelerated Colony Detection
 
-Set up and use deep-learning-based colony detectors (SAM2, micro-sam) with
-GPU acceleration.
+Set up and use deep-learning-based colony detectors (SAM2, micro-sam, SAM3,
+DinoSam2) with GPU acceleration.
 
 ## Installation
 
-The two GPU detectors have different packaging constraints:
+The GPU detectors have different packaging constraints:
 
 | Detector            | Package(s) needed          | Available via              | CUDA-capable?          |
 |---------------------|----------------------------|----------------------------|------------------------|
 | `Sam2Detector`      | `torch`, `torchvision`, `sam2` | **PyPI** (ships in `phenotypic[torch]`) | Yes — Linux + CUDA |
 | `MicroSamDetector`  | `micro_sam` (+ `torch`)    | **conda-forge only**, not on PyPI | CPU by default; user-managed CUDA possible |
+| `Sam3Detector`      | `transformers`, `huggingface_hub` (+ `torch`) | **PyPI** (ships in `phenotypic[foundation]`); weights **gated** | Yes — Linux + CUDA |
+| `DinoSam2Detector`  | `transformers`, `sam2` (+ `torch`) | **PyPI** (ships in `phenotypic[foundation]`); DINOv2 weights **ungated** | Yes — Linux + CUDA |
+
+### Per-model license posture
+
+| Model         | Code license          | Weights license            | Gated? |
+|---------------|-----------------------|----------------------------|--------|
+| SAM2          | Apache-2.0            | Apache-2.0                 | No     |
+| SAM3          | Apache-2.0 (`transformers`) | **SAM License** (commercial-OK) | **Yes** — accept on Hugging Face |
+| DINOv2        | Apache-2.0            | Apache-2.0                 | No     |
+| DINOv3 (opt-in) | Apache-2.0          | DINOv3 License (custom)    | **Yes** (reserved for a later release) |
+
+PhenoTypic **does not redistribute model weights** — each weight is downloaded
+by you from the upstream source under that model's license, which you accept
+(see `NOTICE` and `licenses/`).
 
 PhenoTypic itself is distributed via PyPI and managed with `uv`. `micro_sam`
 is not published on PyPI, so it is **not** included in any `phenotypic`
@@ -29,6 +44,24 @@ uv sync --extra torch
 
 The `torch` extra is not available on Windows — `sam2` requires CUDA `nvcc`
 and has no pre-built Windows wheels. Use WSL2 (Ubuntu) instead.
+
+### Installing the foundation models (`Sam3Detector`, `DinoSam2Detector`)
+
+The foundation detectors collapse to two pure-Python, permissive libraries —
+`transformers` (>=5.2.0, the first release shipping `Sam3Model`/`Sam3Processor`)
+and `huggingface_hub`. Both ship in the `foundation` extra (which pulls
+`torch`); the `gpu` umbrella extra installs every GPU detector at once.
+
+```bash
+uv sync --extra foundation           # SAM3 + DINO-based detectors
+uv sync --extra gpu                  # umbrella: every GPU detector (dev env)
+# as a dependency of a downstream project:
+uv add 'phenotypic[foundation]'
+```
+
+Installing any extra **never pulls encumbered material** — only the gated
+*weights* (SAM3, DINOv3) require a license handshake, and they are fetched at
+runtime, never at install time (see *Gated weights* below).
 
 ### Enabling `micro_sam` (optional, self-service)
 
@@ -122,6 +155,46 @@ python -m phenotypic.detect.nn download --model-type microsam --all
 micro-sam stores checkpoints via `platformdirs`. Set `MICROSAM_CACHEDIR` to
 override the cache location.
 
+### Foundation-model weights (SAM3 gated, DINOv2 ungated)
+
+SAM3 and the DINO backbones live on the Hugging Face Hub and are downloaded via
+`huggingface_hub.snapshot_download` into the HF cache. **SAM3 weights
+(~3.45 GB) are gated**; DINOv2 is ungated.
+
+**One-time human handshake for SAM3 (per user):**
+
+1. Have a Hugging Face account.
+2. Accept the gate at <https://huggingface.co/facebook/sam3> (this *is* the
+   license acceptance).
+3. Authenticate locally once: `uv run hf auth login` (stores a token), or
+   export `HF_TOKEN`.
+
+Then download with the extended `phenotypic.detect.nn` CLI:
+
+```bash
+# SAM3 (gated): --accept-license acknowledges the SAM License non-interactively
+uv run python -m phenotypic.detect.nn download --model-type sam3 --accept-license
+
+# DINOv2 (ungated): no acceptance, no token
+uv run python -m phenotypic.detect.nn download --model-type dinov2 --dino-size base
+```
+
+If the gate is not accepted or no token is present, the download fails with an
+actionable message ("Request access at <url>, then run `uv run hf auth
+login`"). The informational acceptance gate is also satisfied non-interactively
+by `PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3` (a comma list for several models) —
+this is the layer the `--accept-license` flag sets for you, on top of the
+binding Hugging Face gate.
+
+### Foundation-model environment variables
+
+| Variable | Purpose |
+|---|---|
+| `HF_TOKEN` / `HUGGING_FACE_HUB_TOKEN` | auth for gated download (alternative to `hf auth login`) |
+| `HF_HOME` (or `HF_HUB_CACHE`) | cache location → point at shared HPCC storage |
+| `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` | force load-from-cache on offline compute nodes |
+| `PHENOTYPIC_ACCEPT_MODEL_LICENSE` | non-interactive acknowledgement for batch/SLURM jobs |
+
 ### SLURM pre-caching workflow
 
 On a cluster, download models on the login node first:
@@ -137,6 +210,29 @@ python -m phenotypic.detect.nn list
 # Now submit SLURM jobs -- compute nodes will use the cached checkpoints
 python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 ```
+
+**Foundation models on HPCC (offline compute nodes).** Never download inside a
+job — accept the gate and pre-stage weights to shared storage on the login node,
+then run the compute job offline:
+
+```bash
+# On the login node (has internet): cache to shared storage, accept once
+export HF_HOME=/bigdata/exfab/<...>/hf_cache
+uv run hf auth login
+uv run python -m phenotypic.detect.nn download --model-type sam3 --accept-license
+uv run python -m phenotypic.detect.nn download --model-type dinov2
+
+# In the SLURM job: same HF_HOME, force offline, carry the accepted acknowledgement
+export HF_HOME=/bigdata/exfab/<...>/hf_cache
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+export PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3
+python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
+```
+
+The binding acceptance (HF gate + token) happens **once on the login node**;
+the compute job carries only the already-accepted token plus
+`PHENOTYPIC_ACCEPT_MODEL_LICENSE` and reads the pre-staged cache. Acceptance
+never happens silently inside a batch job.
 
 ## Using Sam2Detector
 
@@ -216,6 +312,65 @@ Electron microscopy models (for organelle segmentation):
 Base SAM checkpoints (without microscopy finetuning):
 
 - `"vit_t"`, `"vit_b"`, `"vit_l"`, `"vit_h"`
+
+## Using Sam3Detector
+
+`Sam3Detector` wraps Meta's **text-prompted** SAM3 foundation model. Unlike
+SAM2's dense point grid, SAM3 segments everything matching a short text
+`prompt` (default `"colony"`) in one true batched forward pass, then assembles
+the predicted instance masks into a labelled `objmap` (`output_kind="instance"`).
+
+```python
+from phenotypic.detect.nn import Sam3Detector
+
+# Override the prompt per run — SAM3 has no prompt-free "segment everything" mode.
+det = Sam3Detector(prompt="yeast colony", score_thresh=0.5)
+```
+
+SAM3 weights are **gated** (SAM License). Accept the gate and authenticate
+once (see *Foundation-model weights* above) before the first `apply()`.
+
+**Dense plates.** SAM3 caps at 200 instances per forward and runs at 1008 px
+internally, so `Sam3Detector` tiles large plates into fixed `tile_px` crops
+with `tile_overlap`, infers each tile, offsets the masks back to full
+coordinates, and merges cross-tile duplicates by IoU-NMS — all automatically.
+Images that fit one tile run un-tiled.
+
+Key parameters:
+
+- `prompt` — free text describing the target (`"colony"`, `"bacterial colony"`).
+- `score_thresh` / `mask_threshold` — instance-confidence and mask-probability
+  cutoffs.
+- `min_mask_region_area` — drop masks smaller than this (default 100).
+- `tile_px` / `tile_overlap` — dense-plate tiling controls (defaults 1008 / 0.15).
+
+## Using DinoSam2Detector
+
+`DinoSam2Detector` is a **training-free** instance detector that composes two
+ungated foundation models: SAM2's automatic mask generator produces
+class-agnostic proposals, and a **DINOv2** backbone (Apache-2.0, ungated by
+default) supplies dense patch features. Each proposal is scored by cosine
+similarity of its pooled DINO feature to a foreground prototype; background-like
+proposals are dropped, near-duplicates merged by IoU, and survivors painted into
+a labelled `objmap`.
+
+```python
+from phenotypic.detect.nn import DinoSam2Detector
+
+# Recommended config is fully ungated (SAM2 Apache + DINOv2 Apache).
+det = DinoSam2Detector(dino_size="base", similarity_thresh=0.5)
+```
+
+`dino_version` selects the backbone generation: `2` = DINOv2 (default, ungated),
+`3` = DINOv3 (gated opt-in, reserved for a later release — a `dino_version=3`
+detector constructs and serialises, but loading it raises `NotImplementedError`).
+
+Key parameters:
+
+- `dino_version` / `dino_size` — backbone generation (2/3) and size.
+- `sam2_model_size` — SAM2 variant for the proposal generator.
+- `similarity_thresh` — minimum cosine-to-prototype score to keep a proposal.
+- `merge_iou_thresh` — IoU above which two survivors are merged.
 
 ## Pipeline Integration
 
