@@ -163,6 +163,23 @@ def _load_manifest(manifest_path: Path) -> List[Tuple[str, ...]]:
     return [tuple(entry) for entry in data]
 
 
+def _preload_custom_op_modules() -> None:
+    """Import modules named in ``PHENOTYPIC_PRELOAD_MODULES`` (comma-separated).
+
+    A SLURM worker is a fresh process; ``ImagePipeline.from_json`` resolves op
+    classes from the ``phenotypic`` namespace, so operations defined OUTSIDE the
+    package (a user's custom detector module — or, in tests, the fake detector)
+    must register themselves before deserialization. Listing such a module here
+    imports it (and runs its registration side effect) on worker startup.
+    """
+    import importlib
+
+    for mod in os.environ.get("PHENOTYPIC_PRELOAD_MODULES", "").split(","):
+        mod = mod.strip()
+        if mod:
+            importlib.import_module(mod)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="phenotypic-staged-slurm-worker")
     parser.add_argument("--stage", type=int, required=True, choices=(1, 2, 3))
@@ -175,6 +192,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ext", default=".tiff")
     args = parser.parse_args(argv)
 
+    _preload_custom_op_modules()
     manifest = _load_manifest(args.manifest)
     image_type: ImageTypeName = (
         "GridImage" if args.image_type == "GridImage" else "Image"
