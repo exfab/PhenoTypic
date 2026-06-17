@@ -13,8 +13,9 @@ Three content-defined stages, each a pure per-image function:
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 
 from phenotypic import GridImage, Image
 from phenotypic.abc_ import GpuDetector
@@ -24,10 +25,47 @@ from phenotypic.tools_.typing_ import ImageTypeName
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
 from ._cli_sidecar import delete_sidecar, load_sidecar, write_sidecar
+from ._cli_update_state import append_completion_event, append_event
 
 
 def _image_class(image_type: ImageTypeName):
     return GridImage if image_type == "GridImage" else Image
+
+
+@contextmanager
+def stage_event(
+    event_log: Path, dataset: str, image: str, stage: str
+) -> Iterator[None]:
+    """Emit ``started`` -> ``completed`` around a stage body; on exception emit a
+    stage-tagged ``failed`` event (``"<ExcType>: <msg>"``) and re-raise.
+
+    Centralizes the per-image event bookkeeping shared by the local strategy and
+    the SLURM workers. The SLURM workers want the re-raise (fail the task);
+    local callers that isolate a bad image wrap the ``with`` in ``try/except``.
+    """
+    append_event(event_log, dataset, image, "started", stage=stage)
+    try:
+        yield
+    except Exception as e:
+        append_event(
+            event_log, dataset, image, "failed",
+            error_msg=f"{type(e).__name__}: {e}", stage=stage,
+        )
+        raise
+    append_completion_event(event_log, dataset, image, "completed", stage=stage)
+
+
+def emit_missing_prereq(
+    event_log: Path, dataset: str, image: str, stage: str, what: str
+) -> None:
+    """Record an S6 skip: a stage's input artifact is absent.
+
+    *what* is e.g. ``"staged HDF"`` (Stage 2) or ``"objmap sidecar"`` (Stage 3).
+    """
+    append_event(
+        event_log, dataset, image, "failed",
+        error_msg=f"{stage} skipped: {what} missing", stage=stage,
+    )
 
 
 def stage1_preprocess_core(

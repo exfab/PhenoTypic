@@ -22,12 +22,14 @@ from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_sidecar import sidecar_exists
 from ._cli_staged_workers import (
+    _image_class,
+    emit_missing_prereq,
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
+    stage_event,
 )
 from ._cli_types import Dataset, DatasetResults, ExecutionResults
-from ._cli_update_state import append_completion_event, append_event
 
 
 class StagedGpuStrategy(ExecutionStrategy):
@@ -72,20 +74,14 @@ class StagedGpuStrategy(ExecutionStrategy):
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
             if cfg.resume and hdf.is_file():
                 return
-            append_event(event_log, ds.name, img.name, "started", stage="stage1")
-            try:
-                stage1_preprocess_core(
-                    plan, img, ds.name, img.stem, output_dir,
-                    self.output_manager, cfg.image_type, read_kwargs,
-                )
-                append_completion_event(
-                    event_log, ds.name, img.name, "completed", stage="stage1"
-                )
-            except Exception as e:  # isolate one bad image from the batch
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg=f"{type(e).__name__}: {e}", stage="stage1",
-                )
+            try:  # isolate one bad image from the batch (failed event logged)
+                with stage_event(event_log, ds.name, img.name, "stage1"):
+                    stage1_preprocess_core(
+                        plan, img, ds.name, img.stem, output_dir,
+                        self.output_manager, cfg.image_type, read_kwargs,
+                    )
+            except Exception:
+                pass
 
         Parallel(n_jobs=cfg.n_jobs)(
             delayed(_stage1)(ds, img) for ds, img in tasks
@@ -106,26 +102,18 @@ class StagedGpuStrategy(ExecutionStrategy):
                 # deliberately records a failed event per stage so the per-stage
                 # view shows where each image is blocked; overall totals still
                 # count the image exactly once (via Stage 3's return value).
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg="stage2 skipped: staged HDF missing",
-                    stage="stage2",
+                emit_missing_prereq(
+                    event_log, ds.name, img.name, "stage2", "staged HDF"
                 )
                 continue
-            append_event(event_log, ds.name, img.name, "started", stage="stage2")
             try:
-                stage2_detect_core(
-                    plan.gpu_detector, output_dir, ds.name, img.stem,
-                    cfg.image_type,
-                )
-                append_completion_event(
-                    event_log, ds.name, img.name, "completed", stage="stage2"
-                )
-            except Exception as e:
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg=f"{type(e).__name__}: {e}", stage="stage2",
-                )
+                with stage_event(event_log, ds.name, img.name, "stage2"):
+                    stage2_detect_core(
+                        plan.gpu_detector, output_dir, ds.name, img.stem,
+                        cfg.image_type,
+                    )
+            except Exception:
+                pass
 
         # ---- Stage 3: CPU merge + measure (parallel, resumable) ------------
         results: Dict[str, Dict[str, int]] = {
@@ -139,27 +127,18 @@ class StagedGpuStrategy(ExecutionStrategy):
                 return ds.name, True
             if not sidecar_exists(output_dir, ds.name, img.stem):
                 # Stage 2 failed/absent for this image (S6): skip + record.
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg="stage3 skipped: objmap sidecar missing",
-                    stage="stage3",
+                emit_missing_prereq(
+                    event_log, ds.name, img.name, "stage3", "objmap sidecar"
                 )
                 return ds.name, False
-            append_event(event_log, ds.name, img.name, "started", stage="stage3")
             try:
-                stage3_merge_measure_core(
-                    plan, output_dir, ds.name, img.stem, self.output_manager,
-                    cfg.image_type,
-                )
-                append_completion_event(
-                    event_log, ds.name, img.name, "completed", stage="stage3"
-                )
+                with stage_event(event_log, ds.name, img.name, "stage3"):
+                    stage3_merge_measure_core(
+                        plan, output_dir, ds.name, img.stem, self.output_manager,
+                        cfg.image_type,
+                    )
                 return ds.name, True
-            except Exception as e:
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg=f"{type(e).__name__}: {e}", stage="stage3",
-                )
+            except Exception:
                 return ds.name, False
 
         if cfg.process_only_layer == "objmap":
@@ -200,8 +179,6 @@ class StagedGpuStrategy(ExecutionStrategy):
         objmap layer (mirrored) — no measurement (Spec 1 §6). Runs after Stages
         1-2; deletes the sidecar after export.
         """
-        from phenotypic import GridImage, Image
-
         from ._cli_process_only import (
             process_only_output_path,
             write_process_only_layer,
@@ -209,7 +186,7 @@ class StagedGpuStrategy(ExecutionStrategy):
         from ._cli_sidecar import delete_sidecar, load_sidecar
 
         cfg = self.config
-        image_cls = GridImage if cfg.image_type == "GridImage" else Image
+        image_cls = _image_class(cfg.image_type)
         for ds, img in tasks:
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap"
@@ -218,29 +195,20 @@ class StagedGpuStrategy(ExecutionStrategy):
                 results[ds.name]["completed"] += 1
                 continue
             if not sidecar_exists(output_dir, ds.name, img.stem):
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg="stage3 skipped: objmap sidecar missing",
-                    stage="stage3",
+                emit_missing_prereq(
+                    event_log, ds.name, img.name, "stage3", "objmap sidecar"
                 )
                 results[ds.name]["failed"] += 1
                 continue
-            append_event(event_log, ds.name, img.name, "started", stage="stage3")
             try:
-                hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
-                image = image_cls.load_hdf5(hdf)
-                plan.gpu_detector._write_object_output(
-                    image, load_sidecar(output_dir, ds.name, img.stem)
-                )
-                write_process_only_layer(image, "objmap", out_path)
-                delete_sidecar(output_dir, ds.name, img.stem)
-                append_completion_event(
-                    event_log, ds.name, img.name, "completed", stage="stage3"
-                )
+                with stage_event(event_log, ds.name, img.name, "stage3"):
+                    hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
+                    image = image_cls.load_hdf5(hdf)
+                    plan.gpu_detector._write_object_output(
+                        image, load_sidecar(output_dir, ds.name, img.stem)
+                    )
+                    write_process_only_layer(image, "objmap", out_path)
+                    delete_sidecar(output_dir, ds.name, img.stem)
                 results[ds.name]["completed"] += 1
-            except Exception as e:
-                append_event(
-                    event_log, ds.name, img.name, "failed",
-                    error_msg=f"{type(e).__name__}: {e}", stage="stage3",
-                )
+            except Exception:
                 results[ds.name]["failed"] += 1

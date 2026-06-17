@@ -31,11 +31,12 @@ from ._cli_pipeline_split import split_pipeline_at_gpu
 from ._cli_sidecar import sidecar_exists
 from ._cli_staged_slurm import partition_shards
 from ._cli_staged_workers import (
+    emit_missing_prereq,
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
+    stage_event,
 )
-from ._cli_update_state import append_completion_event, append_event
 
 # A manifest entry is [dataset, image_stem, image_path]; Stage 1 needs the path,
 # Stages 2/3 only the (dataset, stem).
@@ -103,18 +104,12 @@ def run_stage1_step(
         manifest[index][0], manifest[index][1], manifest[index][2]
     )
     log = event_log_path(output_dir)
-    append_event(log, dataset, stem, "started", stage="stage1")
-    try:
+    # stage_event re-raises on failure: the task fails (visible in sacct) and
+    # afterany lets the chain proceed.
+    with stage_event(log, dataset, stem, "stage1"):
         stage1_preprocess_core(
             plan, Path(image_path), dataset, stem, output_dir, om, image_type
         )
-        append_completion_event(log, dataset, stem, "completed", stage="stage1")
-    except Exception as e:
-        append_event(
-            log, dataset, stem, "failed",
-            error_msg=f"{type(e).__name__}: {e}", stage="stage1",
-        )
-        raise  # fail the task (visible in sacct); afterany lets the chain go on
 
 
 def run_stage2_shard(
@@ -147,24 +142,15 @@ def run_stage2_shard(
         attempted.add((dataset, stem))
         hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
         if not hdf.is_file():
-            append_event(
-                log, dataset, stem, "failed",
-                error_msg="stage2 skipped: staged HDF missing", stage="stage2",
-            )
+            emit_missing_prereq(log, dataset, stem, "stage2", "staged HDF")
             continue
-        append_event(log, dataset, stem, "started", stage="stage2")
         try:
-            stage2_detect_core(
-                plan.gpu_detector, output_dir, dataset, stem, image_type
-            )
-            append_completion_event(
-                log, dataset, stem, "completed", stage="stage2"
-            )
-        except Exception as e:  # isolate one bad image from the rest of the shard
-            append_event(
-                log, dataset, stem, "failed",
-                error_msg=f"{type(e).__name__}: {e}", stage="stage2",
-            )
+            with stage_event(log, dataset, stem, "stage2"):
+                stage2_detect_core(
+                    plan.gpu_detector, output_dir, dataset, stem, image_type
+                )
+        except Exception:  # isolate one bad image from the rest of the shard
+            pass
 
     if _should_stop():
         # Walltime SIGTERM: requeue only if images were NOT yet attempted (we ran
@@ -199,23 +185,12 @@ def run_stage3_step(
     if not sidecar_exists(output_dir, dataset, stem):
         # S6: Stage 2 failed/absent for this image — record + fail the task
         # (rather than letting load_sidecar raise an opaque FileNotFoundError).
-        append_event(
-            log, dataset, stem, "failed",
-            error_msg="stage3 skipped: objmap sidecar missing", stage="stage3",
-        )
+        emit_missing_prereq(log, dataset, stem, "stage3", "objmap sidecar")
         raise SystemExit(1)
-    append_event(log, dataset, stem, "started", stage="stage3")
-    try:
+    with stage_event(log, dataset, stem, "stage3"):
         stage3_merge_measure_core(
             plan, output_dir, dataset, stem, om, image_type
         )
-        append_completion_event(log, dataset, stem, "completed", stage="stage3")
-    except Exception as e:
-        append_event(
-            log, dataset, stem, "failed",
-            error_msg=f"{type(e).__name__}: {e}", stage="stage3",
-        )
-        raise
 
 
 def _load_manifest(manifest_path: Path) -> List[Tuple[str, ...]]:
