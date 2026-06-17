@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=cdd3b7d5"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0b1" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -730,7 +730,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">click</span>
 
@@ -838,6 +838,16 @@
 <span class="sd">    kept for backward compatibility within this module.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">parse_slurm_args</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_gpu_batch_size</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;--gpu-batch-size: integer images-per-forward, or the literal ``auto``.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;auto&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">click</span><span class="o">.</span><span class="n">BadParameter</span><span class="p">(</span><span class="s2">&quot;--gpu-batch-size must be an integer or &#39;auto&#39;&quot;</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_resume_input_images</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">current_datasets</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
@@ -1258,6 +1268,41 @@
     <span class="s2">&quot;standard SBATCH directives, or use convenience params like mem_gb and time.&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--gpu-batch-size&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gpu_batch_size&quot;</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
+    <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">callback</span><span class="o">=</span><span class="n">_parse_gpu_batch_size</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Images per GPU forward pass (Stage 2). Integer, or &#39;auto&#39; (VRAM-probe). &quot;</span>
+    <span class="s2">&quot;Effective only for batchable detectors; the &#39;auto&#39; probe lands in Spec 2.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--gpu-workers-per-gpu&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gpu_workers_per_gpu&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Model replicas packed per physical GPU (Stage 2) to fill a GPU for &quot;</span>
+    <span class="s2">&quot;small models.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--gpu-shards&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gpu_shards&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">show_default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Parallel Stage-2 GPU tasks (one whole GPU each; SLURM-only, ignored &quot;</span>
+    <span class="s2">&quot;locally). Set to your concurrent-GPU count.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
+    <span class="s2">&quot;--gpu-slurm&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gpu_slurm_args&quot;</span><span class="p">,</span>
+    <span class="n">multiple</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;GPU-stage (Stage 2) SBATCH resources, e.g. --gpu-slurm &quot;</span>
+    <span class="s2">&quot;slurm_partition=gpu --gpu-slurm slurm_account=&lt;acct&gt;. Inherits/deltas over &quot;</span>
+    <span class="s2">&quot;--slurm (the CPU profile for Stages 1 &amp; 3); auto-adds slurm_gpus_per_node=1.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nd">@click</span><span class="o">.</span><span class="n">option</span><span class="p">(</span>
     <span class="s2">&quot;--force-local&quot;</span><span class="p">,</span>
     <span class="n">is_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Force local execution even if SLURM available&quot;</span><span class="p">,</span>
@@ -1376,6 +1421,10 @@
     <span class="n">detect_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">slurm_args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">gpu_batch_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="n">gpu_workers_per_gpu</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">gpu_shards</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">gpu_slurm_args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">force_local</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">wait</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">ext</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -1677,6 +1726,10 @@
             <span class="n">checkpoint_interval</span><span class="o">=</span><span class="n">checkpoint_interval</span><span class="p">,</span>
             <span class="n">measure_only</span><span class="o">=</span><span class="n">measure_only</span><span class="p">,</span>
             <span class="n">process_only_layer</span><span class="o">=</span><span class="n">process_only_layer</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+            <span class="n">gpu_batch_size</span><span class="o">=</span><span class="n">gpu_batch_size</span><span class="p">,</span>
+            <span class="n">gpu_workers_per_gpu</span><span class="o">=</span><span class="n">gpu_workers_per_gpu</span><span class="p">,</span>
+            <span class="n">gpu_shards</span><span class="o">=</span><span class="n">gpu_shards</span><span class="p">,</span>
+            <span class="n">gpu_slurm_args</span><span class="o">=</span><span class="n">_parse_slurm_args</span><span class="p">(</span><span class="n">gpu_slurm_args</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="c1"># Handle resume mode BEFORE creating output directory</span>

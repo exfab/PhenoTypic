@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=cdd3b7d5"></script>
+    <script src="../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.abc_.ThresholdDetector" href="phenotypic.abc_.ThresholdDetector.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0b1" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -1136,11 +1136,19 @@
 <h1>phenotypic.abc_.GpuDetector<a class="headerlink" href="#phenotypic-abc-gpudetector" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GpuDetector</span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">GpuDetector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_layer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'rgb'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'gray'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'detect_mat'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rgb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supports_batching</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_kind</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'instance'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'semantic'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'instance'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.ObjectDetector" title="phenotypic.abc_._object_detector.ObjectDetector"><code class="xref py py-class docutils literal notranslate"><span class="pre">ObjectDetector</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></a></p>
-<p>Marker ABC for object detectors that require GPU acceleration.</p>
+<p>Interface ABC for GPU-accelerated object detectors (batched/streaming).</p>
 <p>Subclass GpuDetector when your detection algorithm depends on a GPU
 (e.g., deep-learning foundation models like SAM2 or micro-sam).</p>
+<p>GpuDetector provides a concrete <code class="docutils literal notranslate"><span class="pre">_operate</span></code> built from a small set of
+overridable hooks — <code class="docutils literal notranslate"><span class="pre">preprocess</span></code> (raw <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> array → model-ready
+sample), <code class="docutils literal notranslate"><span class="pre">collate</span></code> (samples → batch), <code class="docutils literal notranslate"><span class="pre">infer_batch</span></code> (batch → per-sample
+results), and <code class="docutils literal notranslate"><span class="pre">_write_object_output</span></code> (result → <code class="docutils literal notranslate"><span class="pre">objmap</span></code>/<code class="docutils literal notranslate"><span class="pre">objmask</span></code>).
+The single-image notebook path and the batched CLI engine drive the <em>same</em>
+hooks, so a detector implemented once runs in both. Capability is declared
+via three fields — <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> (<code class="docutils literal notranslate"><span class="pre">rgb</span></code>/<code class="docutils literal notranslate"><span class="pre">gray</span></code>/<code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>),
+<code class="docutils literal notranslate"><span class="pre">supports_batching</span></code>, and <code class="docutils literal notranslate"><span class="pre">output_kind</span></code> (<code class="docutils literal notranslate"><span class="pre">instance</span></code>/<code class="docutils literal notranslate"><span class="pre">semantic</span></code>).</p>
 <p>When a pipeline contains a GpuDetector, the CLI enforces:</p>
 <ul class="simple">
 <li><p><strong>Local execution:</strong> Sequential processing (n_jobs=1) to avoid
@@ -1190,18 +1198,24 @@ dependencies.</p></li>
         <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>  <span class="c1"># lazy import</span>
         <span class="c1"># ... build model ...</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_model_loaded</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
+        <span class="c1"># ``sample`` is a preprocessed (H, W, 3) array. Return a uint16</span>
+        <span class="c1"># labeled objmap (output_kind=&quot;instance&quot;) or a bool mask</span>
+        <span class="c1"># (output_kind=&quot;semantic&quot;). The base _operate/infer_batch wire</span>
+        <span class="c1"># this into the image; do NOT override _operate.</span>
         <span class="c1"># ... run inference ...</span>
-        <span class="k">return</span> <span class="n">image</span>
+        <span class="k">return</span> <span class="n">objmap</span>
 </pre></div>
 </div>
 <div class="admonition-notes admonition">
 <p class="admonition-title">Notes</p>
-<p>This is a marker ABC with no additional methods beyond those
-inherited from ObjectDetector. It exists to categorize
-GPU-requiring detectors in the class hierarchy and enable the
-CLI to make informed resource-allocation decisions.</p>
+<p><code class="docutils literal notranslate"><span class="pre">_operate</span></code> is concrete here and should not be overridden. Non-batchable
+subclasses (SAM2, micro-sam) implement just <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded</span></code> +
+<code class="docutils literal notranslate"><span class="pre">_infer_one</span></code>; the default <code class="docutils literal notranslate"><span class="pre">infer_batch</span></code> loops <code class="docutils literal notranslate"><span class="pre">_infer_one</span></code> and is
+the sole caller of <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded</span></code>. Batchable subclasses
+(Spec 2 foundation models) instead override <code class="docutils literal notranslate"><span class="pre">infer_batch</span></code> with a true
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">C,</span> <span class="pre">H,</span> <span class="pre">W)</span></code> forward — no engine changes needed. The class also lets
+the CLI make informed GPU resource-allocation decisions.</p>
 </div>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1212,20 +1226,26 @@ CLI to make informed resource-allocation decisions.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.apply" title="phenotypic.abc_.GpuDetector.apply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">apply</span></code></a></p></td>
 <td><p>Detect colonies using sinusoidal cross-correlation grid estimation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.construct" title="phenotypic.abc_.GpuDetector.construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">construct</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.collate" title="phenotypic.abc_.GpuDetector.collate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">collate</span></code></a></p></td>
+<td><p>Merge per-sample <code class="docutils literal notranslate"><span class="pre">preprocess</span></code> outputs into a batch.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.construct" title="phenotypic.abc_.GpuDetector.construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">construct</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.copy" title="phenotypic.abc_.GpuDetector.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.copy" title="phenotypic.abc_.GpuDetector.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a></p></td>
 <td><p>Returns a copy of the model.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.dict" title="phenotypic.abc_.GpuDetector.dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.dict" title="phenotypic.abc_.GpuDetector.dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.from_json" title="phenotypic.abc_.GpuDetector.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.from_json" title="phenotypic.abc_.GpuDetector.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
 <td><p>Reconstruct an operation from JSON written by <a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.to_json" title="phenotypic.abc_.GpuDetector.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.from_orm" title="phenotypic.abc_.GpuDetector.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.from_orm" title="phenotypic.abc_.GpuDetector.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.infer_batch" title="phenotypic.abc_.GpuDetector.infer_batch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">infer_batch</span></code></a></p></td>
+<td><p>Run inference over a collated batch; return one result per sample.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.json" title="phenotypic.abc_.GpuDetector.json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">json</span></code></a></p></td>
 <td><p></p></td>
@@ -1272,22 +1292,25 @@ CLI to make informed resource-allocation decisions.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.parse_raw" title="phenotypic.abc_.GpuDetector.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.schema" title="phenotypic.abc_.GpuDetector.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.preprocess" title="phenotypic.abc_.GpuDetector.preprocess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preprocess</span></code></a></p></td>
+<td><p>Turn a raw <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> array into a model-ready sample (CPU).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.schema" title="phenotypic.abc_.GpuDetector.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.schema_json" title="phenotypic.abc_.GpuDetector.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.schema_json" title="phenotypic.abc_.GpuDetector.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.to_json" title="phenotypic.abc_.GpuDetector.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.to_json" title="phenotypic.abc_.GpuDetector.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this operation to JSON.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.update_forward_refs" title="phenotypic.abc_.GpuDetector.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.update_forward_refs" title="phenotypic.abc_.GpuDetector.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.validate" title="phenotypic.abc_.GpuDetector.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.validate" title="phenotypic.abc_.GpuDetector.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.widget" title="phenotypic.abc_.GpuDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.widget" title="phenotypic.abc_.GpuDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -1311,11 +1334,94 @@ CLI to make informed resource-allocation decisions.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.model_fields_set" title="phenotypic.abc_.GpuDetector.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
 <td><p>Returns the set of fields that have been explicitly set on this model instance.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.input_layer" title="phenotypic.abc_.GpuDetector.input_layer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">input_layer</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.supports_batching" title="phenotypic.abc_.GpuDetector.supports_batching"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_batching</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.GpuDetector.output_kind" title="phenotypic.abc_.GpuDetector.output_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">output_kind</span></code></a></p></td>
+<td><p></p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_layer</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'rgb'</em><em>, </em><em>'gray'</em><em>, </em><em>'detect_mat'</em><em>]</em>)</p></li>
+<li><p><strong>supports_batching</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>output_kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'instance'</em><em>, </em><em>'semantic'</em><em>]</em>)</p></li>
+</ul>
+</dd>
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.input_layer">
+<span class="sig-name descname"><span class="pre">input_layer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">GpuInputLayer</span></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.input_layer" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.supports_batching">
+<span class="sig-name descname"><span class="pre">supports_batching</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.supports_batching" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.output_kind">
+<span class="sig-name descname"><span class="pre">output_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">GpuOutputKind</span></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.output_kind" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.preprocess">
+<span class="sig-name descname"><span class="pre">preprocess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector.preprocess"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector.preprocess" title="Link to this definition">#</a></dt>
+<dd><p>Turn a raw <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> array into a model-ready sample (CPU).</p>
+<p>Default: a single-channel 2D layer (<code class="docutils literal notranslate"><span class="pre">gray</span></code>/<code class="docutils literal notranslate"><span class="pre">detect_mat</span></code>) is stacked
+into an <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code> block so 3-channel models (SAM/DINO ViT) consume
+it unchanged; <code class="docutils literal notranslate"><span class="pre">rgb</span></code> passes through untouched. Subclasses may override
+for model-specific normalization (e.g. uint8 coercion).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>array</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.collate">
+<span class="sig-name descname"><span class="pre">collate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector.collate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector.collate" title="Link to this definition">#</a></dt>
+<dd><p>Merge per-sample <code class="docutils literal notranslate"><span class="pre">preprocess</span></code> outputs into a batch.</p>
+<p>Default returns the list unchanged (consumed by the looped
+<code class="docutils literal notranslate"><span class="pre">infer_batch</span></code>). Batchable subclasses override to stack into a tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>samples</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.infer_batch">
+<span class="sig-name descname"><span class="pre">infer_batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">TypeAliasForwardRef</span><span class="p"><span class="pre">(</span></span><span class="s"><span class="pre">'numpy.ndarray'</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector.infer_batch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector.infer_batch" title="Link to this definition">#</a></dt>
+<dd><p>Run inference over a collated batch; return one result per sample.</p>
+<p>Each result is a uint16 labeled map (<code class="docutils literal notranslate"><span class="pre">output_kind=&quot;instance&quot;</span></code>) or a
+boolean mask (<code class="docutils literal notranslate"><span class="pre">output_kind=&quot;semantic&quot;</span></code>). The default loops
+<code class="docutils literal notranslate"><span class="pre">_infer_one</span></code> (correct for <code class="docutils literal notranslate"><span class="pre">supports_batching=False</span></code>); batchable
+subclasses override with a true <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">C,</span> <span class="pre">H,</span> <span class="pre">W)</span></code> forward.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>batch</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><em>List</em></a>[TypeAliasForwardRef(‘numpy.ndarray’)]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.__copy__">
 <span class="sig-name descname"><span class="pre">__copy__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><span class="pre">Self</span></a></span></span><a class="headerlink" href="#phenotypic.abc_.GpuDetector.__copy__" title="Link to this definition">#</a></dt>
@@ -1835,7 +1941,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'input_layer':</span> <span class="pre">FieldInfo(annotation=Literal['rgb',</span> <span class="pre">'gray',</span> <span class="pre">'detect_mat'],</span> <span class="pre">required=False,</span> <span class="pre">default='rgb'),</span> <span class="pre">'output_kind':</span> <span class="pre">FieldInfo(annotation=Literal['instance',</span> <span class="pre">'semantic'],</span> <span class="pre">required=False,</span> <span class="pre">default='instance'),</span> <span class="pre">'supports_batching':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=False,</span> <span class="pre">default=False)}</span></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2243,6 +2349,12 @@ visualization controls will be added to the widget.</p></li>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector"><code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.input_layer"><code class="docutils literal notranslate"><span class="pre">GpuDetector.input_layer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.supports_batching"><code class="docutils literal notranslate"><span class="pre">GpuDetector.supports_batching</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.output_kind"><code class="docutils literal notranslate"><span class="pre">GpuDetector.output_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.preprocess"><code class="docutils literal notranslate"><span class="pre">GpuDetector.preprocess()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.collate"><code class="docutils literal notranslate"><span class="pre">GpuDetector.collate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.infer_batch"><code class="docutils literal notranslate"><span class="pre">GpuDetector.infer_batch()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__copy__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__del__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__del__()</span></code></a></li>

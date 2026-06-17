@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=cdd3b7d5"></script>
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0b1" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -599,7 +599,11 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GpuInputLayer</span><span class="p">,</span> <span class="n">GpuOutputKind</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -611,10 +615,19 @@
 <div class="viewcode-block" id="GpuDetector">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GpuDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marker ABC for object detectors that require GPU acceleration.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Interface ABC for GPU-accelerated object detectors (batched/streaming).</span>
 
 <span class="sd">    Subclass GpuDetector when your detection algorithm depends on a GPU</span>
 <span class="sd">    (e.g., deep-learning foundation models like SAM2 or micro-sam).</span>
+
+<span class="sd">    GpuDetector provides a concrete ``_operate`` built from a small set of</span>
+<span class="sd">    overridable hooks — ``preprocess`` (raw ``input_layer`` array → model-ready</span>
+<span class="sd">    sample), ``collate`` (samples → batch), ``infer_batch`` (batch → per-sample</span>
+<span class="sd">    results), and ``_write_object_output`` (result → ``objmap``/``objmask``).</span>
+<span class="sd">    The single-image notebook path and the batched CLI engine drive the *same*</span>
+<span class="sd">    hooks, so a detector implemented once runs in both. Capability is declared</span>
+<span class="sd">    via three fields — ``input_layer`` (``rgb``/``gray``/``detect_mat``),</span>
+<span class="sd">    ``supports_batching``, and ``output_kind`` (``instance``/``semantic``).</span>
 
 <span class="sd">    When a pipeline contains a GpuDetector, the CLI enforces:</span>
 
@@ -668,20 +681,109 @@
 <span class="sd">                import torch  # lazy import</span>
 <span class="sd">                # ... build model ...</span>
 
-<span class="sd">            def _operate(self, image):</span>
-<span class="sd">                self._ensure_model_loaded()</span>
+<span class="sd">            def _infer_one(self, sample):</span>
+<span class="sd">                # ``sample`` is a preprocessed (H, W, 3) array. Return a uint16</span>
+<span class="sd">                # labeled objmap (output_kind=&quot;instance&quot;) or a bool mask</span>
+<span class="sd">                # (output_kind=&quot;semantic&quot;). The base _operate/infer_batch wire</span>
+<span class="sd">                # this into the image; do NOT override _operate.</span>
 <span class="sd">                # ... run inference ...</span>
-<span class="sd">                return image</span>
+<span class="sd">                return objmap</span>
 
 <span class="sd">    Notes:</span>
-<span class="sd">        This is a marker ABC with no additional methods beyond those</span>
-<span class="sd">        inherited from ObjectDetector. It exists to categorize</span>
-<span class="sd">        GPU-requiring detectors in the class hierarchy and enable the</span>
-<span class="sd">        CLI to make informed resource-allocation decisions.</span>
+<span class="sd">        ``_operate`` is concrete here and should not be overridden. Non-batchable</span>
+<span class="sd">        subclasses (SAM2, micro-sam) implement just ``_ensure_model_loaded`` +</span>
+<span class="sd">        ``_infer_one``; the default ``infer_batch`` loops ``_infer_one`` and is</span>
+<span class="sd">        the sole caller of ``_ensure_model_loaded``. Batchable subclasses</span>
+<span class="sd">        (Spec 2 foundation models) instead override ``infer_batch`` with a true</span>
+<span class="sd">        ``(N, C, H, W)`` forward — no engine changes needed. The class also lets</span>
+<span class="sd">        the CLI make informed GPU resource-allocation decisions.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1"># Capability / routing markers — pydantic FIELDS (not ClassVar) so they</span>
+    <span class="c1"># serialize and round-trip (Spec 1 §4, review S4). Subclasses override the</span>
+    <span class="c1"># defaults; &quot;instance&quot; keeps existing SAM behavior unchanged.</span>
+    <span class="n">input_layer</span><span class="p">:</span> <span class="n">GpuInputLayer</span> <span class="o">=</span> <span class="s2">&quot;rgb&quot;</span>
+    <span class="n">supports_batching</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">output_kind</span><span class="p">:</span> <span class="n">GpuOutputKind</span> <span class="o">=</span> <span class="s2">&quot;instance&quot;</span>
+
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_model_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build/load the GPU model on first use (idempotent).&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GpuDetector.preprocess">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.preprocess">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a raw ``input_layer`` array into a model-ready sample (CPU).</span>
+
+<span class="sd">        Default: a single-channel 2D layer (``gray``/``detect_mat``) is stacked</span>
+<span class="sd">        into an ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume</span>
+<span class="sd">        it unchanged; ``rgb`` passes through untouched. Subclasses may override</span>
+<span class="sd">        for model-specific normalization (e.g. uint8 coercion).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">array</span></div>
+
+
+<div class="viewcode-block" id="GpuDetector.collate">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.collate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-sample ``preprocess`` outputs into a batch.</span>
+
+<span class="sd">        Default returns the list unchanged (consumed by the looped</span>
+<span class="sd">        ``infer_batch``). Batchable subclasses override to stack into a tensor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="GpuDetector.infer_batch">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.infer_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">infer_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run inference over a collated batch; return one result per sample.</span>
+
+<span class="sd">        Each result is a uint16 labeled map (``output_kind=&quot;instance&quot;``) or a</span>
+<span class="sd">        boolean mask (``output_kind=&quot;semantic&quot;``). The default loops</span>
+<span class="sd">        ``_infer_one`` (correct for ``supports_batching=False``); batchable</span>
+<span class="sd">        subclasses override with a true ``(N, C, H, W)`` forward.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_model_loaded</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_infer_one</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the model on ONE preprocessed sample. Subclasses must implement.</span>
+
+<span class="sd">        Returns a uint16 labeled objmap (instance) or a boolean mask (semantic).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must implement _infer_one()&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_object_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write one ``infer_batch`` result onto the image per ``output_kind``.</span>
+
+<span class="sd">        - ``instance`` -&gt; ``image.objmap[:]`` (detector-controlled labels).</span>
+<span class="sd">        - ``semantic`` -&gt; ``image.objmask[:]`` (auto-labels into the shared</span>
+<span class="sd">          ``objmap`` backend, exactly like a threshold detector; see Spec 1 §8).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_kind</span> <span class="o">==</span> <span class="s2">&quot;instance&quot;</span><span class="p">:</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># semantic</span>
+            <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Image&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run GPU detection on one image (notebook / single-image path).</span>
+
+<span class="sd">        Reads the declared ``input_layer``, preprocesses, runs a one-element</span>
+<span class="sd">        batch through ``collate`` + ``infer_batch``, and writes the result via</span>
+<span class="sd">        ``output_kind``. The batched CLI engine drives the same</span>
+<span class="sd">        ``preprocess``/``collate``/``infer_batch`` methods over many images.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">)[:]</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate</span><span class="p">([</span><span class="n">sample</span><span class="p">])</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_object_output</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">image</span></div>
 
 </pre></div>

@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=cdd3b7d5"></script>
+    <script src="../_static/documentation_options.js?v=9b4af9f2"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -64,7 +64,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0b1" />
+  <meta name="docsearch:version" content="0.17.0" />
   </head>
   
   
@@ -740,6 +740,23 @@ blend is intentionally NOT offered (it inverts the conjunctive property).</p>
 </dd></dl>
 
 <dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.DinoSize">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">DinoSize</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.DinoSize" title="Link to this definition">#</a></dt>
+<dd><p>DINO backbone size for DinoSam2Detector. Maps with DinoVersion to the HF
+model id (e.g. (2, “base”) -&gt; “facebook/dinov2-base”).</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘small’, ‘base’, ‘large’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.DinoVersion">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">DinoVersion</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.DinoVersion" title="Link to this definition">#</a></dt>
+<dd><p>DINO backbone generation for DinoSam2Detector. 2 = DINOv2 (Apache, ungated,
+default); 3 = DINOv3 (gated, opt-in — routes through require_license_acceptance).
+Type-only closed set (no Enum / documentation surface needed).</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[2, 3]</p>
+</dd></dl>
+
+<dl class="py data">
 <dt class="sig sig-object py" id="phenotypic.tools_.typing_.ExecutionMode">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">ExecutionMode</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.ExecutionMode" title="Link to this definition">#</a></dt>
 <dd><p>Forward-run / recompile execution backend. Bare-string carrier for
@@ -754,6 +771,22 @@ dataclass field of the same name on <code class="docutils literal notranslate"><
 <dd><p>Tag attached to each row of <code class="docutils literal notranslate"><span class="pre">progress/failures.jsonl</span></code> distinguishing
 Python-side exceptions from SLURM sbatch failures.</p>
 <p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘python’, ‘slurm’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.GpuInputLayer">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">GpuInputLayer</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.GpuInputLayer" title="Link to this definition">#</a></dt>
+<dd><p>Image layer a GpuDetector consumes as model input. Single-channel layers
+(gray/detect_mat) are stacked to (H, W, 3) by GpuDetector.preprocess.</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘rgb’, ‘gray’, ‘detect_mat’]</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="phenotypic.tools_.typing_.GpuOutputKind">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.tools_.typing_.</span></span><span class="sig-name descname"><span class="pre">GpuOutputKind</span></span><a class="headerlink" href="#phenotypic.tools_.typing_.GpuOutputKind" title="Link to this definition">#</a></dt>
+<dd><p>Object output a GpuDetector produces. “instance” -&gt; labeled objmap;
+“semantic” -&gt; binary objmask (auto-labels into objmap, like a threshold detector).</p>
+<p>alias of <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Literal</span></code></a>[‘instance’, ‘semantic’]</p>
 </dd></dl>
 
 <dl class="py data">
@@ -879,8 +912,12 @@ the bare-string <code class="docutils literal notranslate"><span class="pre">TAS
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CheckpointType"><code class="docutils literal notranslate"><span class="pre">CheckpointType</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CliMode"><code class="docutils literal notranslate"><span class="pre">CliMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.CompositeBlend"><code class="docutils literal notranslate"><span class="pre">CompositeBlend</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.DinoSize"><code class="docutils literal notranslate"><span class="pre">DinoSize</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.DinoVersion"><code class="docutils literal notranslate"><span class="pre">DinoVersion</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ExecutionMode"><code class="docutils literal notranslate"><span class="pre">ExecutionMode</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.FailureSource"><code class="docutils literal notranslate"><span class="pre">FailureSource</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.GpuInputLayer"><code class="docutils literal notranslate"><span class="pre">GpuInputLayer</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.GpuOutputKind"><code class="docutils literal notranslate"><span class="pre">GpuOutputKind</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.ImageTypeName"><code class="docutils literal notranslate"><span class="pre">ImageTypeName</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.NdArrayField"><code class="docutils literal notranslate"><span class="pre">NdArrayField</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.tools_.typing_.OperationField"><code class="docutils literal notranslate"><span class="pre">OperationField</span></code></a></li>
