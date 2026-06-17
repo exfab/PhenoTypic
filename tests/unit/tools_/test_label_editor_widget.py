@@ -101,8 +101,12 @@ class TestSaveObjmask:
 
         result_mask = detected_image.objmask[:]
         np.testing.assert_array_equal(result_mask, mask > 0)
-        # Relabel produced sequential integer IDs on the objmap.
-        labels = np.unique(detected_image.objmap[:])
+        # The stray value 5 must have been binarized, not stored verbatim:
+        # relabel produces sequential IDs [1, 2] and no label equals 5.
+        objmap = detected_image.objmap[:]
+        assert 5 not in np.unique(objmap)
+        assert objmap.max() == 2
+        labels = np.unique(objmap)
         labels = labels[labels > 0]
         np.testing.assert_array_equal(labels, np.array([1, 2], dtype=labels.dtype))
         panel._viewer.close.assert_called_once()

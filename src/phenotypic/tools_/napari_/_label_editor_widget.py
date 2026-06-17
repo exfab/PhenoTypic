@@ -76,7 +76,11 @@ class LabelEditorWidget:
         panel = _LabelEditorPanel(active_viewer, labels_layer, image, accessor_name)
         active_viewer.window.add_dock_widget(panel, name="Label Editor", area="right")
 
-        napari.run()
+        # Only drive a blocking event loop when we own the viewer. When the
+        # caller supplies one (advanced reuse), they manage their own loop and
+        # the panel's Save button writes back whenever they click it.
+        if viewer is None:
+            napari.run()
 
         return panel.saved_labels
 
