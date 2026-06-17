@@ -3,6 +3,8 @@ import importlib.util
 import logging
 import os
 
+import pytest
+
 # The shared fixtures plugin (tests/unit/test_fixtures.py) imports numpy and
 # walks the entire ``phenotypic`` package at import time, and ``pytest_configure``
 # below imports ``phenotypic.settings_``. Both require the project and its full
@@ -20,6 +22,12 @@ if _PHENOTYPIC_AVAILABLE:
     pytest_plugins = ["tests.unit.test_fixtures"]
 
 
+# ``optionalhook`` so pluggy does not reject this hook when pytest-xdist
+# (which declares the ``pytest_xdist_auto_num_workers`` spec) is not
+# installed -- e.g. the packaging-integrity CI job's bare ``pytest``-only
+# env (``uv run --no-project --with pytest``). With xdist present the hook
+# is called normally; without it, it is silently ignored.
+@pytest.hookimpl(optionalhook=True)
 def pytest_xdist_auto_num_workers(config):
     """Resolve ``pytest -n auto`` to the cores this process was *allocated*.
 
