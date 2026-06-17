@@ -949,5 +949,21 @@ def create_execution_strategy(
     """
     if config.is_slurm_mode():
         return AutonomousSLURMStrategy(config, output_manager)
-    else:
-        return LocalParallelStrategy(config, output_manager)
+
+    # Local: route forward GPU runs (and objmap export) through the staged
+    # engine, which loads the resident model once instead of per image. The
+    # measure-only path and other process-layer exports (rgb/gray/detect_mat,
+    # which come from the pre-detector ops) keep the per-image
+    # LocalParallelStrategy. Imports are local to avoid a circular import
+    # (_cli_staged_strategy imports ExecutionStrategy from this module).
+    from ._cli_validation import pipeline_requires_gpu
+
+    if (
+        not config.measure_only
+        and config.process_only_layer in (None, "objmap")
+        and pipeline_requires_gpu(config.pipeline_json)
+    ):
+        from ._cli_staged_strategy import StagedGpuStrategy
+
+        return StagedGpuStrategy(config, output_manager)
+    return LocalParallelStrategy(config, output_manager)
