@@ -99,3 +99,30 @@ class TestInferBatchDefault:
         det = _FakeGpuDetector()
         det.infer_batch([np.zeros((2, 2, 3))])
         assert det._loaded is True
+
+
+from phenotypic.data import load_synth_yeast_plate
+
+
+class TestOperateRoutes:
+    def test_instance_route_writes_objmap(self):
+        image = load_synth_yeast_plate()
+        det = _FakeGpuDetector(output_kind="instance", threshold=0.3)
+        out = det.apply(image, inplace=False)
+        assert out.objmap[:].max() >= 1
+        # objmask is the derived view of objmap
+        np.testing.assert_array_equal(out.objmap[:] > 0, out.objmask[:])
+
+    def test_semantic_route_writes_objmask(self):
+        image = load_synth_yeast_plate()
+        det = _FakeGpuDetector(output_kind="semantic", threshold=0.3)
+        out = det.apply(image, inplace=False)
+        assert out.objmask[:].any()
+
+    def test_input_layer_detect_mat_is_read_and_stacked(self):
+        image = load_synth_yeast_plate()
+        det = _FakeGpuDetector(input_layer="detect_mat", output_kind="instance",
+                               threshold=0.3)
+        # detect_mat is 2D -> preprocess stacks to (H,W,3); must not raise
+        out = det.apply(image, inplace=False)
+        assert out.objmap[:].shape == image.shape[:2]

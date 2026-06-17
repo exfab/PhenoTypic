@@ -135,6 +135,29 @@ class GpuDetector(ObjectDetector, ABC):
             f"{type(self).__name__} must implement _infer_one()"
         )
 
-    @abstractmethod
-    def _operate(self, image: Image) -> Image:
+    def _write_object_output(self, image: "Image", result: np.ndarray) -> None:
+        """Write one ``infer_batch`` result onto the image per ``output_kind``.
+
+        - ``instance`` -> ``image.objmap[:]`` (detector-controlled labels).
+        - ``semantic`` -> ``image.objmask[:]`` (auto-labels into the shared
+          ``objmap`` backend, exactly like a threshold detector; see Spec 1 §8).
+        """
+        if self.output_kind == "instance":
+            image.objmap[:] = result.astype(np.uint16)
+        else:  # semantic
+            image.objmask[:] = result.astype(bool)
+
+    def _operate(self, image: "Image") -> "Image":
+        """Run GPU detection on one image (notebook / single-image path).
+
+        Reads the declared ``input_layer``, preprocesses, runs a one-element
+        batch through ``collate`` + ``infer_batch``, and writes the result via
+        ``output_kind``. The batched CLI engine drives the same
+        ``preprocess``/``collate``/``infer_batch`` methods over many images.
+        """
+        array = getattr(image, self.input_layer)[:]
+        sample = self.preprocess(array)
+        batch = self.collate([sample])
+        results = self.infer_batch(batch)
+        self._write_object_output(image, results[0])
         return image
