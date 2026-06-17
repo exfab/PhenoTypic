@@ -107,6 +107,34 @@ class GpuDetector(ObjectDetector, ABC):
             return np.stack([array, array, array], axis=-1)
         return array
 
+    def collate(self, samples: List[Any]) -> Any:
+        """Merge per-sample ``preprocess`` outputs into a batch.
+
+        Default returns the list unchanged (consumed by the looped
+        ``infer_batch``). Batchable subclasses override to stack into a tensor.
+        """
+        return samples
+
+    def infer_batch(self, batch: Any) -> List[np.ndarray]:
+        """Run inference over a collated batch; return one result per sample.
+
+        Each result is a uint16 labeled map (``output_kind="instance"``) or a
+        boolean mask (``output_kind="semantic"``). The default loops
+        ``_infer_one`` (correct for ``supports_batching=False``); batchable
+        subclasses override with a true ``(N, C, H, W)`` forward.
+        """
+        self._ensure_model_loaded()
+        return [self._infer_one(sample) for sample in batch]
+
+    def _infer_one(self, sample: Any) -> np.ndarray:
+        """Run the model on ONE preprocessed sample. Subclasses must implement.
+
+        Returns a uint16 labeled objmap (instance) or a boolean mask (semantic).
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement _infer_one()"
+        )
+
     @abstractmethod
     def _operate(self, image: Image) -> Image:
         return image
