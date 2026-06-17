@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pydantic import PrivateAttr
-
-if TYPE_CHECKING:
-    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import (
@@ -207,27 +203,15 @@ class Sam2Detector(GpuDetector):
             min_mask_region_area=self.min_mask_region_area,
         )
 
-    def _operate(self, image: Image) -> Image:
-        """Segment colonies via SAM2 automatic mask generation.
+    def _infer_one(self, sample):
+        """Segment colonies in one preprocessed RGB sample via SAM2 AMG.
 
-        Reads the full-colour RGB image, runs SAM2's automatic mask
-        generator, and paints the resulting instance masks onto a
-        uint16 object map.  Masks are sorted largest-first so that
-        smaller colonies overwrite at overlaps, preserving their
-        identity in the final label map.
-
-        Args:
-            image: Input plate image.  Must have RGB data available
-                via ``image.rgb[:]``.
-
-        Returns:
-            Image with ``objmask`` and ``objmap`` populated.
+        Returns a uint16 labeled objmap (largest-first painting preserves
+        small-colony identity at overlaps).
         """
         import numpy as np
 
-        self._ensure_model_loaded()
-
-        rgb = image.rgb[:]
+        rgb = sample
         if rgb.dtype != np.uint8:
             max_val = rgb.max()
             if max_val > 0:
@@ -237,9 +221,8 @@ class Sam2Detector(GpuDetector):
 
         masks = self._generator.generate(rgb)  # type: ignore[attr-defined]
 
-        h, w = image.shape[:2]
+        h, w = rgb.shape[:2]
         objmap = np.zeros((h, w), dtype=np.uint16)
-
         if masks:
             max_labels = int(np.iinfo(np.uint16).max)
             if len(masks) > max_labels:
@@ -252,17 +235,11 @@ class Sam2Detector(GpuDetector):
                     stacklevel=2,
                 )
                 masks = masks[:max_labels]
-
-            # Sort largest-first; paint in order so smaller colonies
-            # overwrite at overlaps, preserving small-colony identity.
             masks = sorted(masks, key=lambda m: m["area"], reverse=True)
             for idx, m in enumerate(masks, start=1):
                 objmap[m["segmentation"]] = idx
-
-        image.objmask = objmap > 0
-        image.objmap[:] = objmap
-        return image
+        return objmap
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc
-Sam2Detector.apply.__doc__ = Sam2Detector._operate.__doc__
+Sam2Detector.apply.__doc__ = Sam2Detector.__doc__
