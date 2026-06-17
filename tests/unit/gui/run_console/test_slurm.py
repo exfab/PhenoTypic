@@ -84,12 +84,14 @@ def test_submit_slurm_returns_array_job_id(tmp_path: Path) -> None:
     argv = run_mock.call_args.args[0]
     assert argv[0].endswith("python") or argv[0].endswith("python3") or "python" in argv[0]
     assert argv[1:3] == ["-m", "phenotypic"]
-    assert argv[3:9] == [
+    assert argv[3:11] == [
+        "--mode",
+        "full",
         "--pipeline",
         "/p/pipeline.json",
         "--input",
         "/p/in",
-        "-o",
+        "--output",
         str(output_dir),
     ]
     assert "--slurm" in argv

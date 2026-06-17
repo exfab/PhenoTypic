@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+# setuptools>=62.3 is required for recursive ``**`` globs in
+# ``[tool.setuptools.package-data]`` (used to ship the GUI sub-app assets).
+requires = ["setuptools>=62.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -204,6 +206,14 @@ version = { attr = "phenotypic.__version__" }
     "_assets/vendor/*",
     "_assets/measurements/*",
     "_assets/measurements/*/*",
+    # GUI sub-app static assets (shell/builder/results_viewer/browse/
+    # run_console/analysis/tune): CSS/JS + vendored OpenSeadragon control
+    # icons. Without these the ``phenotypic-gui`` entry point fails to
+    # import (shell/_layout.py reads shell.css at import time) and the Dash
+    # sub-apps load unstyled with broken image-viewer controls.
+    "gui/**/*.css",
+    "gui/**/*.js",
+    "gui/**/*.png",
 ]
 
 [tool.uv]
