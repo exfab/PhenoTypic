@@ -24,9 +24,11 @@ from phenotypic.gui._config import (
     CFG_OUTPUT_ROOT,
     CFG_RECIPE_STATE,
     CFG_URL_PREFIX,
+    DEFAULT_URL_PREFIX,
     MOUNT_HOME,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_ANALYSIS,
+    join_url_prefix,
 )
 from dash import Input, Output, State
 
@@ -55,6 +57,7 @@ def create_app(
     *,
     output_root: Optional[OutputRoot] = None,
     url_prefix: str = MOUNT_HOME,
+    api_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> dash.Dash:
     """Build a configured Dash instance for the analysis sub-app.
 
@@ -68,6 +71,9 @@ def create_app(
             ``requests_pathname_prefix`` and ``routes_pathname_prefix``.
             Standalone launches collapse to ``MOUNT_HOME`` ("/");
             :func:`compose_hub` passes ``MOUNT_ANALYSIS``.
+        api_url_prefix: Browser-visible base prefix for shell-level
+            Flask APIs. Defaults to ``"/"``; the hub passes the external
+            proxy prefix when configured.
 
     Returns:
         Configured :class:`dash.Dash` instance.
@@ -94,7 +100,11 @@ def create_app(
 
     if output_root is None:
         app.layout = build_empty_state_layout()
-        _register_empty_state_callbacks(app, url_prefix=url_prefix)
+        _register_empty_state_callbacks(
+            app,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+        )
         return app
 
     recipe = RecipeState.load(Path(output_root.root))
@@ -119,7 +129,12 @@ def create_app(
     return app
 
 
-def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
+def _register_empty_state_callbacks(
+    app: dash.Dash,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+) -> None:
     """Wire the hand-off banner: selection store -> banner; click -> bind.
 
     Mirrors the results-viewer empty-state pattern. The clientside
@@ -157,6 +172,8 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
         is_cli_output = bool(caps.get("is_cli_output"))
         return visible, path, not is_cli_output
 
+    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+
     app.clientside_callback(
         """
         async function(n_clicks, selection) {
@@ -184,7 +201,7 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
                 return String(err);
             }
         }
-        """.replace("__PHENO_API_OUTPUT_ROOT__", SANDBOX_API_VIEWER_OUTPUT_ROOT).replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
+        """.replace("__PHENO_API_OUTPUT_ROOT__", api_output_root).replace("__PHENO_ANALYSIS_PREFIX__", repr(url_prefix)),
         Output(analysis_ids.EMPTY_HANDOFF_ERROR, "children"),
         Input(analysis_ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),

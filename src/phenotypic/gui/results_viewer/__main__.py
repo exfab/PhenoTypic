@@ -35,6 +35,7 @@ from typing import Optional, Sequence
 from phenotypic.gui._config import (
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_URL_PREFIX,
     SSH_TUNNEL_HINT,
     TITLE_VIEWER,
     VIEWER_CACHE_DIRNAME,
@@ -53,6 +54,7 @@ def launch_results_viewer(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     debug: bool = False,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Boot the Dash results viewer against an output root.
 
@@ -75,6 +77,8 @@ def launch_results_viewer(
         port: TCP port to bind. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose
             tracebacks). Defaults to ``False``.
+        url_prefix: Browser-visible path prefix for path-stripping
+            reverse proxies such as Open OnDemand. Defaults to ``"/"``.
 
     Raises:
         FileNotFoundError: If *output_root* does not contain a valid CLI
@@ -85,13 +89,14 @@ def launch_results_viewer(
     """
     root = Path(output_root).resolve()
     output = OutputRoot.discover(root)
-    app = create_app(output)
+    app = create_app(output, url_prefix=url_prefix)
     cache_dir = root / VIEWER_CACHE_DIRNAME
     print_launcher_banner(
         title=TITLE_VIEWER,
         host=host,
         port=port,
         root=root,
+        url_prefix=url_prefix,
         extra_lines=(f"Clear tile cache    : rm -rf {cache_dir}",),
     )
     app.run(host=host, port=port, debug=debug)
@@ -142,6 +147,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         host=args.host,
         port=args.port,
         debug=args.debug,
+        url_prefix=args.url_prefix,
     )
 
 

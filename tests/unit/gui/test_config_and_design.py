@@ -28,6 +28,7 @@ class TestConfigConstants:
         """Default host/port match the CLI launchers and SSH-tunnel hint."""
         assert _config.DEFAULT_HOST == "127.0.0.1"
         assert _config.DEFAULT_PORT == 8050
+        assert _config.DEFAULT_URL_PREFIX == "/"
         assert "%(asctime)s" in _config.LOG_FORMAT
         # SSH hint must reference the default port so the two stay synced.
         assert str(_config.DEFAULT_PORT) in _config.SSH_TUNNEL_HINT
@@ -220,22 +221,34 @@ class TestTileDimDesignToken:
 
 
 class TestAddLauncherArgs:
-    """``add_launcher_args`` adds a consistent --host/--port/--debug block."""
+    """``add_launcher_args`` adds consistent launcher flags."""
 
-    def test_adds_three_flags_with_defaults(self) -> None:
+    def test_adds_flags_with_defaults(self) -> None:
         parser = argparse.ArgumentParser()
         _config.add_launcher_args(parser)
         ns = parser.parse_args([])
         assert ns.host == _config.DEFAULT_HOST
         assert ns.port == _config.DEFAULT_PORT
+        assert ns.url_prefix == _config.DEFAULT_URL_PREFIX
         assert ns.debug is False
 
     def test_user_overrides_take_effect(self) -> None:
         parser = argparse.ArgumentParser()
         _config.add_launcher_args(parser)
-        ns = parser.parse_args(["--host", "0.0.0.0", "--port", "9000", "--debug"])
+        ns = parser.parse_args(
+            [
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "9000",
+                "--url-prefix",
+                "node/hz01/30099",
+                "--debug",
+            ]
+        )
         assert ns.host == "0.0.0.0"
         assert ns.port == 9000
+        assert ns.url_prefix == "/node/hz01/30099/"
         assert ns.debug is True
 
     def test_include_debug_false_omits_flag(self) -> None:
@@ -247,6 +260,50 @@ class TestAddLauncherArgs:
         ns = parser.parse_args([])
         assert ns.host == _config.DEFAULT_HOST
         assert ns.port == _config.DEFAULT_PORT
+        assert ns.url_prefix == _config.DEFAULT_URL_PREFIX
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("/", "/"),
+            ("", "/"),
+            ("node/hz01/30099", "/node/hz01/30099/"),
+            ("/node/hz01/30099", "/node/hz01/30099/"),
+            ("/node/hz01/30099/", "/node/hz01/30099/"),
+        ],
+    )
+    def test_normalize_url_prefix_canonicalizes_slashes(
+        self, raw: str, expected: str
+    ) -> None:
+        assert _config.normalize_url_prefix(raw) == expected
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "https://ondemand.hpcc.ucr.edu/node/hz01/30099/",
+            "//ondemand.hpcc.ucr.edu/node/hz01/30099/",
+            "/node/hz01/30099/?x=1",
+            "/node/hz01/30099/#frag",
+        ],
+    )
+    def test_normalize_url_prefix_rejects_non_path_prefixes(
+        self, raw: str
+    ) -> None:
+        with pytest.raises(ValueError):
+            _config.normalize_url_prefix(raw)
+
+    def test_join_url_prefix_preserves_default_paths(self) -> None:
+        assert _config.join_url_prefix("/", "/builder/") == "/builder/"
+        assert _config.join_url_prefix("/", "/sandbox/api/root") == "/sandbox/api/root"
+
+    def test_join_url_prefix_prepends_explicit_base_prefix(self) -> None:
+        base = "/node/hz01/30099/"
+        assert _config.join_url_prefix(base, "/builder/") == (
+            "/node/hz01/30099/builder/"
+        )
+        assert _config.join_url_prefix(base, "/sandbox/api/root") == (
+            "/node/hz01/30099/sandbox/api/root"
+        )
 
 
 class TestPrintLauncherBanner:

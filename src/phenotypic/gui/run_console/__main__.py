@@ -16,6 +16,7 @@ from typing import Optional, Sequence
 from phenotypic.gui._config import (
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_URL_PREFIX,
     TITLE_RUN,
     add_launcher_args,
     configure_launcher_logging,
@@ -32,12 +33,21 @@ def launch_run_console(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     debug: bool = False,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Boot the standalone Run console."""
     sandbox = SandboxRoot.from_path(root)
-    app = create_app(sandbox)
+    app = create_app(
+        sandbox,
+        url_prefix=url_prefix,
+        server_url_prefix=url_prefix,
+    )
     print_launcher_banner(
-        title=TITLE_RUN, host=host, port=port, root=sandbox.root
+        title=TITLE_RUN,
+        host=host,
+        port=port,
+        root=sandbox.root,
+        url_prefix=url_prefix,
     )
     app.run(host=host, port=port, debug=debug)
 
@@ -53,7 +63,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     configure_launcher_logging(debug=args.debug)
     try:
         launch_run_console(
-            root=args.root, host=args.host, port=args.port, debug=args.debug
+            root=args.root,
+            host=args.host,
+            port=args.port,
+            debug=args.debug,
+            url_prefix=args.url_prefix,
         )
     except (FileNotFoundError, NotADirectoryError, RuntimeError) as exc:
         print(f"phenotypic.gui.run_console: {exc}", file=sys.stderr)

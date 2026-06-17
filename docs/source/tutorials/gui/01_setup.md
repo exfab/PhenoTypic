@@ -87,6 +87,11 @@ The startup banner prints the local URL and an SSH-tunnel command sized to
 the bound port (handy if you launched the hub on a remote workstation).
 Open the URL in your browser:
 
+If your site serves apps through Open OnDemand, add the path prefix with
+`--url-prefix /node/<node>/<port>/` and open the full OOD URL in the browser.
+See the [GUI hub guide](../../how_to/pages/gui_hub.md) for the full proxy
+example.
+
 ![Landing page with three capability cards.](../../_static/gui_images/setup/01_landing_page.png)
 
 The landing page shows:

@@ -54,6 +54,10 @@
   results viewer + run console mounted under one URL via Werkzeug
   `DispatcherMiddleware`. SSH-tunnel from a workstation:
   `ssh -L 8050:localhost:8050 user@cluster`.
+  For Open OnDemand-style path-stripping proxies, pass only the browser-visible
+  path as `--url-prefix`, e.g.
+  `--url-prefix /node/hz01/30099/`, then open the full OOD URL
+  `https://ondemand.hpcc.ucr.edu/node/hz01/30099/`.
 - `uv run python -m phenotypic.gui --root ./images` — equivalent module entry.
 - Standalone tools still work: `python -m phenotypic.gui.builder`,
   `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.

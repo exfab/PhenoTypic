@@ -49,6 +49,7 @@ import argparse
 import logging
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from phenotypic.tools_ import (
     ANALYSIS_CSV,
@@ -80,6 +81,7 @@ __all__ = [
     # Launcher defaults
     "DEFAULT_HOST",
     "DEFAULT_PORT",
+    "DEFAULT_URL_PREFIX",
     "LOG_FORMAT",
     # Mount-point prefixes
     "MOUNT_HOME",
@@ -182,6 +184,8 @@ __all__ = [
     # Helpers
     "add_launcher_args",
     "configure_launcher_logging",
+    "join_url_prefix",
+    "normalize_url_prefix",
     "print_launcher_banner",
     "tune_presets_dir",
 ]
@@ -192,6 +196,7 @@ __all__ = [
 
 DEFAULT_HOST: str = "127.0.0.1"
 DEFAULT_PORT: int = 8050
+DEFAULT_URL_PREFIX: str = "/"
 LOG_FORMAT: str = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 # ---------------------------------------------------------------------------
@@ -642,6 +647,70 @@ THREAD_NAME_PREFIX: str = "phenotypic-gui"
 # Launcher helpers
 # ---------------------------------------------------------------------------
 
+def normalize_url_prefix(value: str | None) -> str:
+    """Return a canonical browser-visible path prefix.
+
+    Args:
+        value: Path prefix supplied by a launcher flag. Empty values map
+            to ``"/"``. Full URLs, network-location URLs, query strings,
+            and fragments are rejected because this value is only the
+            browser-visible path prefix behind a path-stripping proxy.
+
+    Returns:
+        Prefix with one leading slash and one trailing slash.
+
+    Raises:
+        ValueError: If ``value`` is a full URL or contains query/fragment
+            components.
+    """
+    raw = (value or "").strip()
+    if raw in {"", "/"}:
+        return MOUNT_HOME
+
+    parsed = urlsplit(raw)
+    if parsed.scheme or parsed.netloc or parsed.query or parsed.fragment:
+        raise ValueError(
+            "--url-prefix must be a path prefix like /node/hz01/30099/, "
+            "not a full URL, query string, or fragment"
+        )
+
+    prefix = "/" + parsed.path.strip("/")
+    if prefix == "/":
+        return MOUNT_HOME
+    return f"{prefix}/"
+
+
+def join_url_prefix(base_prefix: str | None, path: str) -> str:
+    """Join an external base prefix with an app or blueprint path.
+
+    Args:
+        base_prefix: Browser-visible base path, usually ``"/"`` or an
+            Open OnDemand path such as ``"/node/hz01/30099/"``.
+        path: Absolute or relative path under the GUI server.
+
+    Returns:
+        Browser-facing path with the base prefix prepended. Passing the
+        default base prefix preserves ``path``'s historical root-relative
+        form.
+    """
+    base = normalize_url_prefix(base_prefix)
+    child = (path or "").strip("/")
+    if not child:
+        return base
+    suffix = "/" if path.endswith("/") else ""
+    if base == MOUNT_HOME:
+        return f"/{child}{suffix}"
+    return f"{base}{child}{suffix}"
+
+
+def _argparse_url_prefix(value: str) -> str:
+    """Argparse adapter for :func:`normalize_url_prefix`."""
+    try:
+        return normalize_url_prefix(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def add_launcher_args(
     parser: argparse.ArgumentParser,
     *,
@@ -675,6 +744,16 @@ def add_launcher_args(
         default=DEFAULT_PORT,
         help=f"TCP port to bind. Default {DEFAULT_PORT}.",
     )
+    parser.add_argument(
+        "--url-prefix",
+        type=_argparse_url_prefix,
+        default=DEFAULT_URL_PREFIX,
+        help=(
+            "Browser-visible path prefix for path-stripping proxies such "
+            "as Open OnDemand. Pass only the path portion, e.g. "
+            "/node/hz01/30099/. Default /."
+        ),
+    )
     if include_debug:
         parser.add_argument(
             "--debug",
@@ -702,6 +781,7 @@ def print_launcher_banner(
     host: str,
     port: int,
     root: Path,
+    url_prefix: str = DEFAULT_URL_PREFIX,
     extra_lines: tuple[str, ...] = (),
 ) -> None:
     """Print a friendly startup banner with SSH-tunnel hint.
@@ -717,14 +797,16 @@ def print_launcher_banner(
         port: Bound TCP port.
         root: Resolved sandbox / image / output root, surfaced verbatim
             so the user can confirm what the launcher pointed at.
+        url_prefix: Browser-visible path prefix. Defaults to ``"/"``.
         extra_lines: Optional additional banner lines (e.g. a cache-nuke
             hint specific to the viewer). Each line is printed with the
             same two-space indent as the standard rows.
     """
+    prefix = normalize_url_prefix(url_prefix)
     print()
     print(title)
     print(f"  root  : {root}")
-    print(f"  url   : http://{host}:{port}/")
+    print(f"  url   : http://{host}:{port}{prefix}")
     print()
     print(f"  SSH tunnel from local: ssh -L {port}:localhost:{port} <cluster>")
     for line in extra_lines:
