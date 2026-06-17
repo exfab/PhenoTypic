@@ -7,13 +7,12 @@ All tests construct detectors WITHOUT torch — the interface and the CPU
 from typing import get_args
 
 import numpy as np
-from pydantic import PrivateAttr
-from skimage.measure import label as _sk_label
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect.nn import Sam2Detector
 from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
+from tests._fakes.fake_gpu_detector import FakeGpuDetector as _FakeGpuDetector
 
 
 class TestTypingAliases:
@@ -51,29 +50,6 @@ class TestPreprocess:
         out = det.preprocess(rgb)
         assert out.shape == (4, 5, 3)
         assert out is rgb  # no copy for already-3-channel input
-
-
-class _FakeGpuDetector(GpuDetector):
-    """CPU-only GpuDetector for interface tests (no torch).
-
-    Thresholds the (stacked) input and either labels it (instance) or returns
-    the binary mask (semantic). ``supports_batching``/``output_kind``/
-    ``input_layer`` are overrideable per test.
-    """
-
-    threshold: float = 0.5
-    _loaded: bool = PrivateAttr(default=False)
-
-    def _ensure_model_loaded(self) -> None:
-        self._loaded = True
-
-    def _infer_one(self, sample):
-        gray = sample.mean(axis=-1) if sample.ndim == 3 else sample
-        peak = gray.max()
-        mask = gray > (self.threshold * peak) if peak > 0 else gray > 0
-        if self.output_kind == "instance":
-            return _sk_label(mask).astype(np.uint16)
-        return mask
 
 
 class TestInferBatchDefault:
