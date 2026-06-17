@@ -948,6 +948,20 @@ def create_execution_strategy(
         ExecutionStrategy instance (Local or SLURM)
     """
     if config.is_slurm_mode():
+        # SLURM: a forward GPU run becomes the staged 3-link afterany chain
+        # (CPU preprocess -> resident-model GPU detect shards -> CPU measure).
+        # measure-only and process-layer exports keep the per-image
+        # AutonomousSLURMStrategy (the staged SLURM path is forward-only).
+        from ._cli_validation import pipeline_requires_gpu
+
+        if (
+            not config.measure_only
+            and config.process_only_layer is None
+            and pipeline_requires_gpu(config.pipeline_json)
+        ):
+            from ._cli_staged_slurm import StagedSlurmStrategy
+
+            return StagedSlurmStrategy(config, output_manager)
         return AutonomousSLURMStrategy(config, output_manager)
 
     # Local: route forward GPU runs (and objmap export) through the staged
