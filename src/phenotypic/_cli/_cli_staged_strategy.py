@@ -144,10 +144,14 @@ class StagedGpuStrategy(ExecutionStrategy):
                 )
                 return ds.name, False
 
-        for ds_name, ok in Parallel(n_jobs=cfg.n_jobs)(
-            delayed(_stage3)(ds, img) for ds, img in tasks
-        ):
-            results[ds_name]["completed" if ok else "failed"] += 1
+        if cfg.process_only_layer == "objmap":
+            # process-mode: export the objmap layer (mirrored), no measurement.
+            self._export_objmap_layer(plan, tasks, output_dir, event_log, results)
+        else:
+            for ds_name, ok in Parallel(n_jobs=cfg.n_jobs)(
+                delayed(_stage3)(ds, img) for ds, img in tasks
+            ):
+                results[ds_name]["completed" if ok else "failed"] += 1
 
         ds_results = {
             name: DatasetResults(
@@ -165,3 +169,60 @@ class StagedGpuStrategy(ExecutionStrategy):
             start_time=start,
             end_time=datetime.now(),
         )
+
+    def _export_objmap_layer(
+        self,
+        plan,
+        tasks: List[tuple[Dataset, Path]],
+        output_dir: Path,
+        event_log: Path,
+        results: Dict[str, Dict[str, int]],
+    ) -> None:
+        """``--mode process --layer objmap``: merge the sidecar and write the
+        objmap layer (mirrored) — no measurement (Spec 1 §6). Runs after Stages
+        1-2; deletes the sidecar after export.
+        """
+        from phenotypic import GridImage, Image
+
+        from ._cli_process_only import (
+            process_only_output_path,
+            write_process_only_layer,
+        )
+        from ._cli_sidecar import delete_sidecar, load_sidecar
+
+        cfg = self.config
+        image_cls = GridImage if cfg.image_type == "GridImage" else Image
+        for ds, img in tasks:
+            out_path = process_only_output_path(
+                output_dir, img, cfg.input_path, "objmap"
+            )
+            if cfg.resume and out_path.is_file():
+                results[ds.name]["completed"] += 1
+                continue
+            if not sidecar_exists(output_dir, ds.name, img.stem):
+                append_event(
+                    event_log, ds.name, img.name, "failed",
+                    error_msg="stage3 skipped: objmap sidecar missing",
+                    stage="stage3",
+                )
+                results[ds.name]["failed"] += 1
+                continue
+            append_event(event_log, ds.name, img.name, "started", stage="stage3")
+            try:
+                hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
+                image = image_cls.load_hdf5(hdf)
+                plan.gpu_detector._write_object_output(
+                    image, load_sidecar(output_dir, ds.name, img.stem)
+                )
+                write_process_only_layer(image, "objmap", out_path)
+                delete_sidecar(output_dir, ds.name, img.stem)
+                append_completion_event(
+                    event_log, ds.name, img.name, "completed", stage="stage3"
+                )
+                results[ds.name]["completed"] += 1
+            except Exception as e:
+                append_event(
+                    event_log, ds.name, img.name, "failed",
+                    error_msg=f"{type(e).__name__}: {e}", stage="stage3",
+                )
+                results[ds.name]["failed"] += 1

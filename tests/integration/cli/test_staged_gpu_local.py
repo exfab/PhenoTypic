@@ -8,6 +8,7 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.measure import MeasureSize
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+from phenotypic._cli._cli_process_only import process_only_output_path
 from phenotypic._cli._cli_sidecar import sidecar_exists
 from phenotypic._cli._cli_staged_strategy import StagedGpuStrategy
 from phenotypic._cli._cli_staged_workers import (
@@ -125,4 +126,29 @@ def test_staged_strategy_resumes_skipping_done_stages(tmp_path):
     # no orphan sidecar is recreated.
     StagedGpuStrategy(_config(out, pipe_path, resume=True), om).execute(ds, out)
     assert parquet.stat().st_mtime_ns == mtime
+    assert not sidecar_exists(out, "ds", "img")
+
+
+def test_process_objmap_runs_stages_1_2_then_exports(tmp_path):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+
+    cfg = _config(out, pipe_path)
+    cfg.process_only_layer = "objmap"
+    StagedGpuStrategy(cfg, om).execute(
+        [Dataset("ds", [image_path], tmp_path, out)], out
+    )
+
+    # objmap layer exported (mirrored); no measurement parquet; sidecar cleaned
+    expected = process_only_output_path(out, image_path, out, "objmap")
+    assert expected.is_file()
+    assert not (
+        out / "results" / "ds" / "measurements" / "img.parquet"
+    ).exists()
     assert not sidecar_exists(out, "ds", "img")
