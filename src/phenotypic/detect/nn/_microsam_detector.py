@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pydantic import PrivateAttr
-
-if TYPE_CHECKING:
-    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import (
@@ -193,29 +188,17 @@ class MicroSamDetector(GpuDetector):
             device=resolve_device(self.device),
         )
 
-    def _operate(self, image: Image) -> Image:
-        """Segment colonies via micro-sam automatic instance segmentation.
+    def _infer_one(self, sample):
+        """Segment colonies in one preprocessed RGB sample via micro-sam AIS.
 
-        Reads the RGB image, ensures uint8 range, runs micro-sam's
-        ``automatic_instance_segmentation``, and writes the resulting
-        labeled array to ``image.objmap`` and the derived binary mask
-        to ``image.objmask``.
-
-        Args:
-            image: Input plate image with RGB data available.
-
-        Returns:
-            Image with ``objmask`` and ``objmap`` populated.
+        Returns a uint16 labeled objmap.
         """
         import numpy as np
-
-        self._ensure_model_loaded()
-
         from micro_sam.automatic_segmentation import (
             automatic_instance_segmentation,
         )
 
-        rgb = image.rgb[:]
+        rgb = sample
         if rgb.dtype != np.uint8:
             max_val = rgb.max()
             if max_val > 0:
@@ -230,12 +213,8 @@ class MicroSamDetector(GpuDetector):
             ndim=2,
             verbose=False,
         )
-        objmap = labeled.astype(np.uint16)
-
-        image.objmask = objmap > 0
-        image.objmap[:] = objmap
-        return image
+        return labeled.astype(np.uint16)
 
 
-# Propagate the _operate docstring to the public apply method
-MicroSamDetector.apply.__doc__ = MicroSamDetector._operate.__doc__
+# Propagate the class docstring to the public apply method
+MicroSamDetector.apply.__doc__ = MicroSamDetector.__doc__

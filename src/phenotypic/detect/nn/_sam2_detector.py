@@ -3,18 +3,84 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from pydantic import PrivateAttr
-
-if TYPE_CHECKING:
-    from phenotypic._core._image import Image
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     Sam2ModelSize,
 )
+
+
+def build_sam2_generator(
+    model_size: Sam2ModelSize,
+    *,
+    device: str,
+    points_per_side: int = 32,
+    pred_iou_thresh: float = 0.7,
+    stability_score_thresh: float = 0.92,
+    min_mask_region_area: int = 100,
+    checkpoint: str | Path | None = None,
+    config: str | None = None,
+) -> object:
+    """Build a ``SAM2AutomaticMaskGenerator`` (shared by SAM2 + DinoSam2).
+
+    Centralises the ``build_sam2`` + generator construction so detectors that
+    need SAM2 class-agnostic proposals (``Sam2Detector``,
+    ``DinoSam2Detector``) do not duplicate the checkpoint-resolution and
+    Hydra-config-prefix logic. There is no public accessor for an existing
+    generator, so each detector calls this to rebuild its own.
+
+    Args:
+        model_size: SAM2 variant (``"tiny"`` … ``"large"``).
+        device: Resolved torch device string (from ``resolve_device``).
+        points_per_side: Point-prompt grid density (``points_per_side ** 2``).
+        pred_iou_thresh: Minimum predicted-IoU score to keep a mask.
+        stability_score_thresh: Minimum mask-stability score.
+        min_mask_region_area: Minimum mask area in pixels.
+        checkpoint: Optional path to a custom checkpoint.
+        config: Optional SAM2 config YAML identifier for a custom checkpoint.
+
+    Returns:
+        A configured ``SAM2AutomaticMaskGenerator`` instance.
+
+    Raises:
+        ImportError: If the ``sam2`` package is not installed.
+    """
+    try:
+        from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+        from sam2.build_sam import build_sam2
+    except ImportError:
+        raise ImportError(
+            "SAM2 proposals require the sam2 package. "
+            "Install with: pip install phenotypic[torch]"
+        ) from None
+
+    from phenotypic.detect.nn._checkpoint_manager import Sam2CheckpointManager
+
+    mgr = Sam2CheckpointManager()
+    if checkpoint is not None:
+        ckpt = str(checkpoint)
+        cfg = config or mgr.get_config(model_size)
+    else:
+        ckpt = str(mgr.get_checkpoint(model_size))
+        cfg = mgr.get_config(model_size)
+
+    # sam2 1.1.0 registers `pkg://sam2` as the Hydra search root, but the
+    # config YAMLs live at `sam2/configs/sam2.1/…`. Prepend `configs/` at the
+    # call site so the serialized identifier stays portable.
+    if not cfg.startswith("configs/") and not cfg.startswith("/"):
+        cfg = f"configs/{cfg}"
+
+    model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
+    return SAM2AutomaticMaskGenerator(
+        model,
+        points_per_side=points_per_side,
+        pred_iou_thresh=pred_iou_thresh,
+        stability_score_thresh=stability_score_thresh,
+        min_mask_region_area=min_mask_region_area,
+    )
 
 
 class Sam2Detector(GpuDetector):
@@ -167,67 +233,29 @@ class Sam2Detector(GpuDetector):
         if getattr(self, "_generator", None) is not None:
             return
 
-        try:
-            from sam2.build_sam import build_sam2
-            from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
-        except ImportError:
-            raise ImportError(
-                "Sam2Detector requires the sam2 package. "
-                "Install with: pip install phenotypic[torch]"
-            ) from None
-
-        from phenotypic.detect.nn._checkpoint_manager import (
-            Sam2CheckpointManager,
-            resolve_device,
-        )
+        from phenotypic.detect.nn._checkpoint_manager import resolve_device
 
         device = resolve_device(self.device)
-        mgr = Sam2CheckpointManager()
-
-        if self.checkpoint is not None:
-            ckpt = str(self.checkpoint)
-            cfg = self.config or mgr.get_config(self.model_size)
-        else:
-            ckpt = str(mgr.get_checkpoint(self.model_size))
-            cfg = mgr.get_config(self.model_size)
-
-        # sam2 1.1.0 registers `pkg://sam2` as the Hydra search root, but the
-        # config YAMLs live at `sam2/configs/sam2.1/…`. Prepend `configs/` at
-        # the call site so the serialized identifier (used in to_json/from_json)
-        # stays portable across upstream layout changes.
-        if not cfg.startswith("configs/") and not cfg.startswith("/"):
-            cfg = f"configs/{cfg}"
-
-        model = build_sam2(cfg, ckpt, device=device, apply_postprocessing=False)
-        self._generator = SAM2AutomaticMaskGenerator(
-            model,
+        self._generator = build_sam2_generator(
+            self.model_size,
+            device=device,
             points_per_side=self.points_per_side,
             pred_iou_thresh=self.pred_iou_thresh,
             stability_score_thresh=self.stability_score_thresh,
             min_mask_region_area=self.min_mask_region_area,
+            checkpoint=self.checkpoint,
+            config=self.config,
         )
 
-    def _operate(self, image: Image) -> Image:
-        """Segment colonies via SAM2 automatic mask generation.
+    def _infer_one(self, sample):
+        """Segment colonies in one preprocessed RGB sample via SAM2 AMG.
 
-        Reads the full-colour RGB image, runs SAM2's automatic mask
-        generator, and paints the resulting instance masks onto a
-        uint16 object map.  Masks are sorted largest-first so that
-        smaller colonies overwrite at overlaps, preserving their
-        identity in the final label map.
-
-        Args:
-            image: Input plate image.  Must have RGB data available
-                via ``image.rgb[:]``.
-
-        Returns:
-            Image with ``objmask`` and ``objmap`` populated.
+        Returns a uint16 labeled objmap (largest-first painting preserves
+        small-colony identity at overlaps).
         """
         import numpy as np
 
-        self._ensure_model_loaded()
-
-        rgb = image.rgb[:]
+        rgb = sample
         if rgb.dtype != np.uint8:
             max_val = rgb.max()
             if max_val > 0:
@@ -237,9 +265,8 @@ class Sam2Detector(GpuDetector):
 
         masks = self._generator.generate(rgb)  # type: ignore[attr-defined]
 
-        h, w = image.shape[:2]
+        h, w = rgb.shape[:2]
         objmap = np.zeros((h, w), dtype=np.uint16)
-
         if masks:
             max_labels = int(np.iinfo(np.uint16).max)
             if len(masks) > max_labels:
@@ -252,17 +279,11 @@ class Sam2Detector(GpuDetector):
                     stacklevel=2,
                 )
                 masks = masks[:max_labels]
-
-            # Sort largest-first; paint in order so smaller colonies
-            # overwrite at overlaps, preserving small-colony identity.
             masks = sorted(masks, key=lambda m: m["area"], reverse=True)
             for idx, m in enumerate(masks, start=1):
                 objmap[m["segmentation"]] = idx
-
-        image.objmask = objmap > 0
-        image.objmap[:] = objmap
-        return image
+        return objmap
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc
-Sam2Detector.apply.__doc__ = Sam2Detector._operate.__doc__
+Sam2Detector.apply.__doc__ = Sam2Detector.__doc__

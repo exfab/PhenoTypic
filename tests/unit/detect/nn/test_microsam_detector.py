@@ -46,6 +46,12 @@ class TestMicroSamDetectorConstruction:
             det = MicroSamDetector(model_type=mt)
             assert det.model_type == mt
 
+    def test_capability_fields(self):
+        det = MicroSamDetector()
+        assert det.input_layer == "rgb"
+        assert det.output_kind == "instance"
+        assert det.supports_batching is False
+
 
 # ---------------------------------------------------------------------------
 # isinstance checks

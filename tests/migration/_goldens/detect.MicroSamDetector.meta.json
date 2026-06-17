@@ -1,0 +1,6 @@
+{
+  "scenario_id": "detect.MicroSamDetector",
+  "class_name": "MicroSamDetector",
+  "structural_only": true,
+  "note": "model-backed detector; goldens record metadata only, equivalence is structural"
+}

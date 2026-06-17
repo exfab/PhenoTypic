@@ -575,10 +575,10 @@ class TestInteractiveFeatures:
 class TestExecutionStrategies:
     """Test execution strategy selection and behavior."""
 
-    def test_strategy_factory_local(self, temp_output_dir):
+    def test_strategy_factory_local(self, temp_output_dir, simple_pipeline_json):
         """Test creating local execution strategy."""
         config = ExecutionConfig(
-            pipeline_json=Path("pipeline.json"),
+            pipeline_json=simple_pipeline_json,
             input_path=Path("."),
             output_dir=temp_output_dir,
             image_type="GridImage",
@@ -610,10 +610,10 @@ class TestExecutionStrategies:
 
         assert isinstance(strategy, LocalParallelStrategy)
 
-    def test_strategy_factory_slurm(self, temp_output_dir):
+    def test_strategy_factory_slurm(self, temp_output_dir, simple_pipeline_json):
         """Test creating SLURM execution strategy."""
         config = ExecutionConfig(
-            pipeline_json=Path("pipeline.json"),
+            pipeline_json=simple_pipeline_json,
             input_path=Path("."),
             output_dir=temp_output_dir,
             image_type="GridImage",
@@ -645,10 +645,12 @@ class TestExecutionStrategies:
 
         assert isinstance(strategy, AutonomousSLURMStrategy)
 
-    def test_strategy_factory_force_local_overrides_slurm(self, temp_output_dir):
+    def test_strategy_factory_force_local_overrides_slurm(
+        self, temp_output_dir, simple_pipeline_json
+    ):
         """Test that --force-local overrides SLURM args."""
         config = ExecutionConfig(
-            pipeline_json=Path("pipeline.json"),
+            pipeline_json=simple_pipeline_json,
             input_path=Path("."),
             output_dir=temp_output_dir,
             image_type="GridImage",

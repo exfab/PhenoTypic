@@ -1,10 +1,18 @@
 from typing import get_args
 
-from phenotypic.tools_.typing_ import ProcessOnlyLayer
+from phenotypic.tools_.typing_ import DinoSize, DinoVersion, ProcessOnlyLayer
 
 
 def test_process_only_layer_values():
     assert set(get_args(ProcessOnlyLayer)) == {"rgb", "gray", "detect_mat", "objmap"}
+
+
+def test_dino_version_alias_values():
+    assert set(get_args(DinoVersion)) == {2, 3}
+
+
+def test_dino_size_alias_values():
+    assert set(get_args(DinoSize)) == {"small", "base", "large"}
 
 
 def test_process_only_layers_are_image_accessors():

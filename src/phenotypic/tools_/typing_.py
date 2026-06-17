@@ -32,6 +32,23 @@ DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "
 #: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.
 ProcessOnlyLayer = Literal["rgb", "gray", "detect_mat", "objmap"]
 
+#: Image layer a GpuDetector consumes as model input. Single-channel layers
+#: (gray/detect_mat) are stacked to (H, W, 3) by GpuDetector.preprocess.
+GpuInputLayer = Literal["rgb", "gray", "detect_mat"]
+
+#: Object output a GpuDetector produces. "instance" -> labeled objmap;
+#: "semantic" -> binary objmask (auto-labels into objmap, like a threshold detector).
+GpuOutputKind = Literal["instance", "semantic"]
+
+#: DINO backbone generation for DinoSam2Detector. 2 = DINOv2 (Apache, ungated,
+#: default); 3 = DINOv3 (gated, opt-in — routes through require_license_acceptance).
+#: Type-only closed set (no Enum / documentation surface needed).
+DinoVersion = Literal[2, 3]
+
+#: DINO backbone size for DinoSam2Detector. Maps with DinoVersion to the HF
+#: model id (e.g. (2, "base") -> "facebook/dinov2-base").
+DinoSize = Literal["small", "base", "large"]
+
 #: Public top-level CLI execution mode. ``full`` performs the normal
 #: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,
 #: ``recompile`` refreshes aggregate outputs from an existing output root, and

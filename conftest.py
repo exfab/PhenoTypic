@@ -1,6 +1,9 @@
 # conftest.py
 import importlib.util
 import logging
+import os
+
+import pytest
 
 # The shared fixtures plugin (tests/unit/test_fixtures.py) imports numpy and
 # walks the entire ``phenotypic`` package at import time, and ``pytest_configure``
@@ -17,6 +20,28 @@ _PHENOTYPIC_AVAILABLE = importlib.util.find_spec("phenotypic") is not None
 # Share test fixtures defined in tests/unit/test_fixtures.py across the suite.
 if _PHENOTYPIC_AVAILABLE:
     pytest_plugins = ["tests.unit.test_fixtures"]
+
+
+# ``optionalhook`` so pluggy does not reject this hook when pytest-xdist
+# (which declares the ``pytest_xdist_auto_num_workers`` spec) is not
+# installed -- e.g. the packaging-integrity CI job's bare ``pytest``-only
+# env (``uv run --no-project --with pytest``). With xdist present the hook
+# is called normally; without it, it is silently ignored.
+@pytest.hookimpl(optionalhook=True)
+def pytest_xdist_auto_num_workers(config):
+    """Resolve ``pytest -n auto`` to the cores this process was *allocated*.
+
+    On the HPCC (SLURM cgroup/cpuset) a compute node may expose hundreds of
+    cores while the job is granted only a handful. pytest-xdist's default
+    ``auto`` counts every physical core and oversubscribes the allocation,
+    which thrashes memory and gets the job killed. ``os.sched_getaffinity``
+    reflects the scheduler's actual grant. Returning ``None`` falls back to
+    xdist's default on platforms without affinity support (macOS/Windows).
+    """
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except AttributeError:
+        return None
 
 
 def pytest_configure(config):

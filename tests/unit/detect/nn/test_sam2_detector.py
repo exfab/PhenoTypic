@@ -63,6 +63,12 @@ class TestSam2DetectorConstruction:
             det = Sam2Detector(model_size=size)
             assert det.model_size == size
 
+    def test_capability_fields(self):
+        det = Sam2Detector()
+        assert det.input_layer == "rgb"
+        assert det.output_kind == "instance"
+        assert det.supports_batching is False
+
 
 # ---------------------------------------------------------------------------
 # isinstance checks
@@ -186,11 +192,19 @@ class TestSam2DetectorFunctional:
     """Functional tests that load a model and run inference."""
 
     def test_apply_produces_objects(self, synth_plate):
+        import numpy as np
+
         image = synth_plate.copy()
         det = Sam2Detector(model_size="tiny", device="cpu")
         result = det.apply(image, inplace=False)
         assert result.objmap[:].max() > 0
+        # S1: after the interface refactor writes objmap, the shared-backend
+        # invariant must still hold (objmask is the derived view of objmap).
         assert result.objmask[:].any()
+        np.testing.assert_array_equal(
+            result.objmap[:] > 0,
+            result.objmask[:],
+        )
 
     def test_objmask_objmap_consistency(self, synth_plate):
         image = synth_plate.copy()

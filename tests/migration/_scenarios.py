@@ -604,9 +604,18 @@ _STOCHASTIC_DEFAULTS: frozenset[str] = frozenset(
         }
 )
 
-# nn/ detectors need model checkpoints -> structural-only capture.
+# nn/ detectors need model checkpoints (some gated) -> structural-only
+# capture: their goldens record metadata only, never a model download or
+# a real forward pass, so the suite stays runnable in CI without weights.
 _STRUCTURAL_ONLY: frozenset[str] = frozenset(
-        {"Sam2Detector", "MicroSamDetector"}
+        {
+            "Sam2Detector",
+            "MicroSamDetector",
+            "Sam3Detector",
+            "DinoSam2Detector",
+            "Insid3Detector",
+            "FssDinoDetector",
+        }
 )
 
 # Operations that are *not bit-reproducible* even on the unmigrated

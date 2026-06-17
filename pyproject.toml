@@ -25,7 +25,7 @@ requires-python = ">=3.10, <3.13"
 
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.10",
@@ -105,6 +105,18 @@ torch = [
     "torchvision>=0.20.1;sys_platform!='win32'",
     "sam2;sys_platform!='win32'",
 ]
+
+foundation = [
+    # SAM3 + every DINO backbone collapse to transformers + huggingface_hub.
+    # transformers>=5.2.0 is the first release shipping Sam3Model/Sam3Processor
+    # and the DINO AutoModel route (Spec 2 O3, verified). Both are pure-Python
+    # and permissive (Apache) — gated *weights* are fetched at runtime behind
+    # the license-acceptance gate (Spec 2 §7), never at install time.
+    "phenotypic[torch]",
+    "transformers>=5.2.0",
+    "huggingface_hub>=0.26",
+]
+gpu = ["phenotypic[torch,foundation]"]  # umbrella: every GPU detector
 
 tune = [
     # Optuna backend for the tune engine (Phase 2). Imported lazily inside
@@ -206,6 +218,7 @@ version = { attr = "phenotypic.__version__" }
     "_assets/vendor/*",
     "_assets/measurements/*",
     "_assets/measurements/*/*",
+    "_assets/exemplars/*",
     # GUI sub-app static assets (shell/builder/results_viewer/browse/
     # run_console/analysis/tune): CSS/JS + vendored OpenSeadragon control
     # icons. Without these the ``phenotypic-gui`` entry point fails to
@@ -263,5 +276,8 @@ module = [
     # micro_sam is conda-only (not on PyPI); habana_frameworks is Intel Gaudi.
     "micro_sam.*",
     "habana_frameworks.*",
+    # Foundation-model libs (Spec 2a): permissive but no first-party stubs.
+    "transformers.*",
+    "huggingface_hub.*",
 ]
 ignore_missing_imports = true

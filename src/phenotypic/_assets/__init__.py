@@ -35,6 +35,30 @@ def logos_dir() -> Path:
     return ASSET_DIR / "logos"
 
 
+#: Filenames of the bundled curated colony exemplar (rendered once from
+#: ``load_synth_yeast_plate()``): a reference RGB crop + its 0/255 mask. These
+#: are the DEFAULT reference/support for the few-shot semantic detectors
+#: (``Insid3Detector``, ``FssDinoDetector``).
+COLONY_EXEMPLAR_RGB = "colony_reference_rgb.png"
+COLONY_EXEMPLAR_MASK = "colony_reference_mask.png"
+
+
+def colony_exemplar_paths() -> tuple[Path, Path]:
+    """Return the bundled curated colony exemplar ``(rgb_path, mask_path)``.
+
+    The pair is a small reference colony patch and its ground-truth mask,
+    rendered once from :func:`phenotypic.data.load_synth_yeast_plate`. The
+    few-shot semantic detectors use it as their default
+    ``reference_image``/``reference_mask`` (INSID3) and ``support_*`` (FSSDINO),
+    so they have a working out-of-the-box exemplar.
+
+    Returns:
+        ``(rgb_path, mask_path)`` — absolute paths to the bundled PNGs.
+    """
+    exemplars = ASSET_DIR / "exemplars"
+    return exemplars / COLONY_EXEMPLAR_RGB, exemplars / COLONY_EXEMPLAR_MASK
+
+
 def asset_bytes(relpath: str) -> bytes:
     """Read an asset's raw bytes by POSIX-style relative path.
 

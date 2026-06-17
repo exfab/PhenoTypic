@@ -15,6 +15,7 @@ can be imported without PyTorch installed.
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal
@@ -542,3 +543,297 @@ class MicroSamCheckpointManager:
                     logger.info("Deleted %s", ckpt)
 
         return deleted
+
+
+# ---------------------------------------------------------------------------
+# Gated foundation-model checkpoint managers (Spec 2a) — Hugging Face pulls
+# ---------------------------------------------------------------------------
+#
+# SAM3 and the DINO backbones live on the Hugging Face Hub, not the SAM2
+# ``torch.hub`` host. They pull a *snapshot* (multi-file repo) rather than a
+# single ``.pt``, so they use ``huggingface_hub.snapshot_download`` instead of
+# ``Sam2CheckpointManager``'s ``torch.hub.download_url_to_file``. The managers
+# are deliberately **instance-style** (carry a ``repo_id`` per-instance for the
+# size-parameterised DINOv2 case) — a different shape from the classmethod-only
+# ``Sam2CheckpointManager`` because the underlying retrieval API differs.
+#
+# ``huggingface_hub`` is imported lazily inside the module-level
+# :func:`snapshot_download` indirection so this module stays importable without
+# it (mirrors the torch-lazy pattern). Tests patch the single name
+# ``_checkpoint_manager.snapshot_download``.
+
+
+def _hf_snapshot_download(**kwargs: Any) -> str:
+    """Lazy-import wrapper around ``huggingface_hub.snapshot_download``.
+
+    Args:
+        **kwargs: Forwarded verbatim to ``huggingface_hub.snapshot_download``
+            (``repo_id``, ``token``, ``revision``, ...).
+
+    Returns:
+        The local cache path of the downloaded snapshot.
+
+    Raises:
+        ImportError: If ``huggingface_hub`` is not installed.
+    """
+    try:
+        from huggingface_hub import snapshot_download as _dl
+    except ImportError:
+        raise ImportError(
+            "Downloading foundation-model weights requires huggingface_hub. "
+            "Install with: pip install phenotypic[foundation]"
+        ) from None
+    return _dl(**kwargs)
+
+
+#: Module-level indirection so tests can patch one name. Re-assigned (not a
+#: direct alias to the function object) so ``monkeypatch.setattr`` on this
+#: attribute is the single override point.
+snapshot_download = _hf_snapshot_download
+
+
+class _GatedRepoError(Exception):
+    """Local stand-in for ``huggingface_hub.errors.GatedRepoError``.
+
+    Used by tests to simulate a 403/gated response without importing
+    ``huggingface_hub``. :func:`_is_gated_or_auth_error` recognises both this
+    class and the real ``huggingface_hub`` error hierarchy.
+    """
+
+
+def _is_gated_or_auth_error(exc: Exception) -> bool:
+    """Return ``True`` if *exc* signals a gated/unauthorized Hugging Face pull.
+
+    Matches the real ``huggingface_hub`` error hierarchy
+    (``GatedRepoError`` / ``RepositoryNotFoundError`` / a ``401``/``403``
+    ``HfHubHTTPError``) when it is importable, the local
+    :class:`_GatedRepoError` test stand-in, and finally falls back to a string
+    match on ``"401"`` / ``"403"`` / ``"gated"`` / ``"access"`` so a wrapped or
+    re-raised error is still caught.
+
+    Args:
+        exc: The exception raised by :func:`snapshot_download`.
+
+    Returns:
+        Whether the error is an access/authentication failure (vs. an
+        unrelated error like a disk-full ``OSError``, which should propagate).
+    """
+    if isinstance(exc, _GatedRepoError):
+        return True
+    try:
+        from huggingface_hub.errors import (
+            GatedRepoError,
+            HfHubHTTPError,
+            RepositoryNotFoundError,
+        )
+
+        if isinstance(exc, (GatedRepoError, RepositoryNotFoundError)):
+            return True
+        if isinstance(exc, HfHubHTTPError):
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status in (401, 403):
+                return True
+    except ImportError:
+        pass
+    text = str(exc).lower()
+    return any(tok in text for tok in ("401", "403", "gated", "access"))
+
+
+class Sam3CheckpointManager:
+    """Download and cache Meta's gated SAM3 weights from the Hugging Face Hub.
+
+    SAM3 weights (~3.45 GB) are **gated**: the user must accept the SAM License
+    on the model page and authenticate locally (``hf auth login`` or
+    ``HF_TOKEN``). PhenoTypic adds an *informational* acceptance gate on top of
+    the binding Hugging Face gate (:func:`require_license_acceptance`) before any
+    network call, and reworries a 401/403 into an actionable message.
+
+    All ``huggingface_hub`` imports are deferred to
+    :func:`snapshot_download` so this class can be imported and inspected
+    without ``huggingface_hub`` installed.
+    """
+
+    repo_id = "facebook/sam3"
+    license_key = "sam3"
+    license_name = "SAM License"
+    license_url = "https://huggingface.co/facebook/sam3"
+
+    def download(self, *, interactive: bool = True) -> str:
+        """Download the SAM3 snapshot, gated on license acceptance.
+
+        Args:
+            interactive: When *True*, fall back to a terminal y/N prompt if
+                ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` does not already grant
+                acceptance. SLURM/batch callers pass ``False``.
+
+        Returns:
+            The local cache path of the downloaded snapshot.
+
+        Raises:
+            RuntimeError: If the license has not been accepted, or if the pull
+                fails because access was not granted / no token is present.
+        """
+        require_license_acceptance(
+            self.license_key, self.license_name, self.license_url,
+            interactive=interactive,
+        )
+        try:
+            return snapshot_download(repo_id=self.repo_id)
+        except Exception as exc:
+            if _is_gated_or_auth_error(exc):
+                raise RuntimeError(
+                    f"Cannot download {self.repo_id}: access not granted or no "
+                    f"token. Request access at {self.license_url}, then run "
+                    f"`uv run hf auth login` (or export HF_TOKEN)."
+                ) from exc
+            raise
+
+
+class Dinov2CheckpointManager:
+    """Download and cache an **ungated** DINOv2 backbone from the Hub.
+
+    DINOv2 is Apache-2.0 and ungated — no license-acceptance handshake and no
+    token are required. The ``size`` maps to the Hugging Face id
+    (``facebook/dinov2-{small|base|large}``).
+
+    All ``huggingface_hub`` imports are deferred to
+    :func:`snapshot_download`.
+    """
+
+    _SIZE_TO_REPO: dict[str, str] = {
+        "small": "facebook/dinov2-small",
+        "base": "facebook/dinov2-base",
+        "large": "facebook/dinov2-large",
+    }
+
+    def __init__(self, *, size: str = "base") -> None:
+        if size not in self._SIZE_TO_REPO:
+            raise ValueError(
+                f"Unknown DINOv2 size {size!r}; expected one of "
+                f"{sorted(self._SIZE_TO_REPO)}."
+            )
+        self.size = size
+
+    @property
+    def repo_id(self) -> str:
+        """The Hugging Face repo id for this manager's ``size``."""
+        return self._SIZE_TO_REPO[self.size]
+
+    def download(self) -> str:
+        """Download the DINOv2 snapshot (no acceptance gate, no token).
+
+        Returns:
+            The local cache path of the downloaded snapshot.
+        """
+        return snapshot_download(repo_id=self.repo_id)
+
+
+class Dinov3CheckpointManager:
+    """Download and cache Meta's **gated** DINOv3 backbone from the Hub.
+
+    DINOv3 is a hybrid of the two existing managers: it carries the
+    ``Dinov2CheckpointManager``'s size-parameterised constructor
+    (``__init__(self, *, size)`` mapping to the three
+    ``dinov3-vit{s|b|l}16-pretrain-lvd1689m`` ids), but — unlike the ungated
+    DINOv2 — it is **gated** under the DINOv3 License, so it runs SAM3's
+    acceptance gate (:func:`require_license_acceptance`) before any network
+    call and reworries a 401/403 into an actionable message.
+
+    All ``huggingface_hub`` imports are deferred to :func:`snapshot_download`
+    so this class can be imported and inspected without ``huggingface_hub``.
+    """
+
+    _SIZE_TO_REPO: dict[str, str] = {
+        "small": "facebook/dinov3-vits16-pretrain-lvd1689m",
+        "base": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        "large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    }
+
+    license_key = "dinov3"
+    license_name = "DINOv3 License"
+    license_url = (
+        "https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m"
+    )
+
+    def __init__(self, *, size: str = "base") -> None:
+        if size not in self._SIZE_TO_REPO:
+            raise ValueError(
+                f"Unknown DINOv3 size {size!r}; expected one of "
+                f"{sorted(self._SIZE_TO_REPO)}."
+            )
+        self.size = size
+
+    @property
+    def repo_id(self) -> str:
+        """The Hugging Face repo id for this manager's ``size``."""
+        return self._SIZE_TO_REPO[self.size]
+
+    def download(self, *, interactive: bool = True) -> str:
+        """Download the DINOv3 snapshot, gated on license acceptance.
+
+        Args:
+            interactive: When *True*, fall back to a terminal y/N prompt if
+                ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` does not already grant
+                acceptance. SLURM/batch callers pass ``False``.
+
+        Returns:
+            The local cache path of the downloaded snapshot.
+
+        Raises:
+            RuntimeError: If the license has not been accepted, or if the pull
+                fails because access was not granted / no token is present.
+        """
+        require_license_acceptance(
+            self.license_key, self.license_name, self.license_url,
+            interactive=interactive,
+        )
+        try:
+            return snapshot_download(repo_id=self.repo_id)
+        except Exception as exc:
+            if _is_gated_or_auth_error(exc):
+                raise RuntimeError(
+                    f"Cannot download {self.repo_id}: access not granted or no "
+                    f"token. Request access at {self.license_url}, then run "
+                    f"`uv run hf auth login` (or export HF_TOKEN)."
+                ) from exc
+            raise
+
+
+def require_license_acceptance(
+    model: str, license_name: str, license_url: str, *, interactive: bool = True
+) -> None:
+    """Gate a gated-weights download on the user accepting the model's license.
+
+    Acceptance is satisfied by ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` (a comma list
+    of model names) for non-interactive / batch use, or by an interactive y/N
+    prompt. Ungated components (SAM2, micro-sam) never call this; the hook exists
+    for the gated foundation models added by later work (SAM3, DINOv3).
+
+    Args:
+        model: Model name to check against the accepted set (case-insensitive).
+        license_name: Human-readable license name shown in the prompt/error.
+        license_url: Where the user can read the license.
+        interactive: When True, fall back to a terminal y/N prompt if the env
+            var does not already grant acceptance.
+
+    Raises:
+        RuntimeError: If the license has not been accepted.
+    """
+    accepted = {
+        m.strip().lower()
+        for m in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
+        if m.strip()
+    }
+    if model.lower() in accepted:
+        return
+    if interactive:
+        print(f"\n{model} weights are under the {license_name}: {license_url}")
+        resp = input(f"Accept the {license_name} to download {model}? [y/N] ")
+        if resp.strip().lower() in ("y", "yes"):
+            return
+    raise RuntimeError(
+        f"{model} weights require accepting the {license_name} license "
+        f"({license_url}). Re-run after setting "
+        f"PHENOTYPIC_ACCEPT_MODEL_LICENSE={model} "
+        f"(and `hf auth login` for gated Hugging Face models)."
+    )

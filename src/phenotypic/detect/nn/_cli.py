@@ -24,7 +24,7 @@ def nn_cli() -> None:
 @nn_cli.command()
 @click.option(
     "--model-type",
-    type=click.Choice(["sam2", "microsam"]),
+    type=click.Choice(["sam2", "microsam", "sam3", "dinov2", "dinov3"]),
     default="sam2",
     show_default=True,
     help="Model family to download.",
@@ -37,10 +37,26 @@ def nn_cli() -> None:
     help="SAM2 model size (ignored for microsam).",
 )
 @click.option(
+    "--dino-size",
+    type=click.Choice(["small", "base", "large"]),
+    default="base",
+    show_default=True,
+    help="DINOv2/DINOv3 backbone size (ignored for other model types).",
+)
+@click.option(
     "--model-name",
     default="vit_b_lm",
     show_default=True,
     help="micro-sam model name (ignored for sam2).",
+)
+@click.option(
+    "--accept-license",
+    is_flag=True,
+    help=(
+        "Accept the gated model's license non-interactively (sets "
+        "PHENOTYPIC_ACCEPT_MODEL_LICENSE for this call). Required for sam3 "
+        "and dinov3."
+    ),
 )
 @click.option(
     "--all",
@@ -56,14 +72,72 @@ def nn_cli() -> None:
 def download(
     model_type: str,
     model_size: str,
+    dino_size: str,
     model_name: str,
+    accept_license: bool,
     download_all: bool,
     force: bool,
 ) -> None:
     """Download model checkpoints for offline use."""
+    import os
+
     from rich.console import Console
 
     console = Console()
+
+    if model_type == "sam3":
+        from ._checkpoint_manager import Sam3CheckpointManager
+
+        if accept_license:
+            existing = os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "")
+            tokens = [t for t in existing.split(",") if t.strip()]
+            if "sam3" not in {t.strip().lower() for t in tokens}:
+                tokens.append("sam3")
+            os.environ["PHENOTYPIC_ACCEPT_MODEL_LICENSE"] = ",".join(tokens)
+        console.print("[cyan]Downloading SAM3 weights (gated)...[/cyan]")
+        try:
+            path = Sam3CheckpointManager().download(interactive=not accept_license)
+            console.print(f"[green]Cached:[/green] {path}")
+        except Exception as exc:
+            console.print(f"[red]Failed:[/red] {exc}")
+            sys.exit(1)
+        return
+
+    if model_type == "dinov2":
+        from ._checkpoint_manager import Dinov2CheckpointManager
+
+        console.print(
+            f"[cyan]Downloading DINOv2 backbone: {dino_size} (ungated)...[/cyan]"
+        )
+        try:
+            path = Dinov2CheckpointManager(size=dino_size).download()
+            console.print(f"[green]Cached:[/green] {path}")
+        except Exception as exc:
+            console.print(f"[red]Failed:[/red] {exc}")
+            sys.exit(1)
+        return
+
+    if model_type == "dinov3":
+        from ._checkpoint_manager import Dinov3CheckpointManager
+
+        if accept_license:
+            existing = os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "")
+            tokens = [t for t in existing.split(",") if t.strip()]
+            if "dinov3" not in {t.strip().lower() for t in tokens}:
+                tokens.append("dinov3")
+            os.environ["PHENOTYPIC_ACCEPT_MODEL_LICENSE"] = ",".join(tokens)
+        console.print(
+            f"[cyan]Downloading DINOv3 backbone: {dino_size} (gated)...[/cyan]"
+        )
+        try:
+            path = Dinov3CheckpointManager(size=dino_size).download(
+                interactive=not accept_license
+            )
+            console.print(f"[green]Cached:[/green] {path}")
+        except Exception as exc:
+            console.print(f"[red]Failed:[/red] {exc}")
+            sys.exit(1)
+        return
 
     if model_type == "sam2":
         from ._checkpoint_manager import Sam2CheckpointManager
