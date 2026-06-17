@@ -32,6 +32,14 @@ DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "
 #: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.
 ProcessOnlyLayer = Literal["rgb", "gray", "detect_mat", "objmap"]
 
+#: Image layer a GpuDetector consumes as model input. Single-channel layers
+#: (gray/detect_mat) are stacked to (H, W, 3) by GpuDetector.preprocess.
+GpuInputLayer = Literal["rgb", "gray", "detect_mat"]
+
+#: Object output a GpuDetector produces. "instance" -> labeled objmap;
+#: "semantic" -> binary objmask (auto-labels into objmap, like a threshold detector).
+GpuOutputKind = Literal["instance", "semantic"]
+
 #: Public top-level CLI execution mode. ``full`` performs the normal
 #: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,
 #: ``recompile`` refreshes aggregate outputs from an existing output root, and
