@@ -50,9 +50,14 @@ interface and proves the engine with them.
 | D3 | Staging artifact | **Full per-image HDF now**, with a documented hook for an optional compact pre-resize cache later ("HDF now, compact later"). |
 | D4 | `GpuDetector` interface | **Full batched API now** — `input_layer`, `supports_batching`, `output_kind`, `preprocess`, `collate`, `infer_batch`; default `infer_batch` loops single-image inference. |
 | D5 | Stage-2 topology | **Small array of resident-model shard-workers** (`G` GPUs × `W` workers/GPU); two fill knobs — `gpu_batch_size` (in-worker batch) and `workers_per_gpu` (GPU packing). |
-| D6 | SLURM resources | **Per-stage** — CPU partition for stages 1 & 3, GPU partition for stage 2; a 3-link `afterok` dependency chain. |
+| D6 | SLURM resources | **Per-stage** — CPU partition for stages 1 & 3, GPU partition for stage 2; a 3-link **`afterany`** dependency chain (per-image failures don't block the next stage; content-defined work-lists). |
 | D7 | GPU-fill defaults | **Safe defaults (`workers_per_gpu=1`, `gpu_batch_size=1`) + explicit flags now; auto-tuner a documented future hook.** |
 | D8 | Output routes | Detectors declare `output_kind ∈ {instance, semantic}`; **instance** writes `objmap`, **semantic** writes only `objmask` (like a threshold detector). |
+| D9 | Input layer | Detectors declare `input_layer ∈ {rgb, gray, detect_mat}` (pydantic field); single-channel layers are stacked to `(H,W,3)` by the base `preprocess`. |
+| D10 | Stage tracking | Content-defined artifacts = truth/resume; the existing event log with **stage-tagged** statuses = live progress; existing dashboard reused. |
+| D11 | Staged HDF | The staged `.h5` **is** the normal `results/<ds>/hdf/` output (GPU objmap merged in at Stage 3 from a sidecar); no separate staging area, no clean flag. |
+| D12 | objmap-clear prep | **Optional under D13** — the sidecar is the GPU objmap's source of truth and Stage 3 overwrites the HDF objmap from it, so a stale pre-stage-detector objmap can neither leak nor false-trigger resume. Kept only as tidiness. |
+| D13 | objmap write-back | **Sidecar** — Stage 2 writes the GPU result to a per-image `results/<ds>/objmap/<stem>.npy` (HDF opened read-only); Stage 3 merges it into the final HDF on an atomic re-save. The GPU stage never mutates the HDF → crash-safe, no HDF5 locking. |
 
 ---
 
@@ -85,11 +90,14 @@ The Stage-3 sub-pipeline **carries the original pipeline's `meas`/`post`/`filter
 `AutoGridFinder` via `_build_measurement_run_order`) behaves identically to a single-pass
 run.
 
-**Layer routing.** The detector declares `input_layer ∈ {rgb, detect_mat}`; Stage 1
-guarantees that layer is valid before staging. The CLI splitter uses
-`_layers_modified_by()` to validate that **no post-detector op feeds back into the
-detector's input layer** (else fail fast with a clear message). (Caveat per review S3:
-`_layers_modified_by` does not descend into nested sub-pipeline ops.)
+**Layer routing.** The detector declares `input_layer ∈ {rgb, gray, detect_mat}` (a
+pydantic field; §4); Stage 1 guarantees that layer is valid before staging. When
+`input_layer` is a single-channel 2D layer (`gray`/`detect_mat`), the base `preprocess`
+**stacks it into a 3-channel `(H, W, 3)` block** so 3-channel models (SAM-family) consume
+it unchanged (§4). The CLI splitter uses `_layers_modified_by()` to validate that **no
+post-detector op feeds back into the detector's input layer** (else fail fast with a clear
+message). (Caveat per review S3: `_layers_modified_by` does not descend into nested
+sub-pipeline ops.)
 
 **Multiple GPU detectors.** Spec 1 supports the common **single-`GpuDetector`** case
 and **explicitly rejects `> 1` `GpuDetector`** in one pipeline with a clear
@@ -104,13 +112,15 @@ so Spec 2 models only implement overrides — **no engine changes later**.
 
 ```text
 GpuDetector(ObjectDetector, ABC):
-  # capability / routing markers (class-level; subclasses set them)
-  input_layer:       Literal["rgb","detect_mat"]      # which layer the model consumes
-  supports_batching: bool = False                     # true (N,C,H,W) forward available?
+  # capability / routing markers (pydantic FIELDS — see note below)
+  input_layer:       Literal["rgb","gray","detect_mat"] = "rgb"  # which layer the model consumes
+  supports_batching: bool = False                               # true (N,C,H,W) forward available?
   output_kind:       Literal["instance","semantic"] = "instance"
 
   # batched inference API — the engine drives these
-  def preprocess(self, array) -> sample          # CPU; runs in DataLoader workers
+  def preprocess(self, array) -> sample          # CPU; runs in DataLoader workers.
+                                                 # DEFAULT: 2D layer (gray/detect_mat) -> stack (H,W,3),
+                                                 # then model-specific normalization.
   def collate(self, samples) -> batch            # default: stack / list passthrough
   def infer_batch(self, batch) -> list[result]   # GPU; result is objmap (instance) or mask (semantic)
 
@@ -124,6 +134,18 @@ GpuDetector(ObjectDetector, ABC):
   `infer_batch` with a real `(N,C,H,W)` forward.
 - `infer_batch` returns **lightweight arrays** (objmaps or masks), **never `Image`
   objects** — so DataLoader worker IPC stays cheap.
+- **Channel adaptation (default `preprocess`, decision D9):** when `input_layer` is
+  `gray` or `detect_mat` (a single-channel 2D array), the base `preprocess` **stacks it
+  to a `(H, W, 3)` block** (replicate the channel ×3) so 3-channel models consume it
+  unchanged; `rgb` passes through. Model-specific normalization (e.g. uint8 coercion)
+  runs after. `input_layer` is a pydantic field reusing a
+  `Literal["rgb","gray","detect_mat"]` alias (per the project's `tools_/typing_.py`
+  convention). **Every detector scoped so far (SAM2, micro-sam, SAM3, DINO+SAM2, INSID3,
+  FSSDINO) is 3-channel** — SAM image encoders and DINO ViT backbones are inherently RGB —
+  so `input_layer="rgb"` is the right default for all of them; the stacking adapter lets
+  `gray`/`detect_mat` *work* but replicates one channel into a color-pretrained encoder
+  (discarding its color prior), so it is a deliberate/edge choice here (it matters more for
+  a future grayscale-native model).
 - **`output_kind` routes the write-back** (see §5, §8): `instance` → `objmap`;
   `semantic` → `objmask` only.
 - `_operate` is preserved and re-expressed in terms of `preprocess` + `infer_batch`
@@ -140,51 +162,64 @@ overrideable. (`ClassVar` would not serialize, breaking the pipeline JSON contra
 
 Per-image `.h5` is the **canonical cross-stage carrier**:
 
-1. **Stage 1** writes it *pre-detection* (input layer valid, object output empty)
-   via the existing `OutputManager.save_image_hdf` path. HDF already embeds
-   `HdfAttr.PHENOTYPIC_CLASS` + grid state, so `GridImage` rehydrates correctly in
-   Stage 3 (the existing `--mode measure` path already relies on this).
-2. **Stage 2** does a **partial read** of just `input_layer` (h5py reads one
-   dataset; it never decodes `detect_mat`/`rgb` it doesn't need), runs `infer_batch`,
-   and **writes the object output back into the HDF's `layers/objmap` dataset in
-   place** (h5py `mode="a"`; Stage 1's `save2hdf5` already pre-allocates `objmap` as
-   zeros, so the dataset exists with the right shape/dtype). The in-memory write goes
-   through the Image accessors:
-   - `output_kind="instance"` → `image.objmap[:] = labeled` (detector controls labels).
-   - `output_kind="semantic"` → `image.objmask[:] = binary_mask`, which **auto-labels**
-     the mask (`skimage.measure.label`) into the shared `objmap` backend (see §8).
-   In **both** cases the persisted artifact is the `layers/objmap` dataset — there is **no
-   separate `objmask` dataset**. **Do not** call
-   `save_intermediate_layers(layers=("objmask",))`: its valid layer set is
-   `{rgb, gray, detect_mat, objmap}` and `"objmask"` raises `ValueError`.
-3. **Stage 3** reloads the full `.h5` and runs the existing measure path
-   (`process_single_hdf_measure_core`) — post-detector refiners (incl. watershed),
-   `measure()`, aggregation, deliverables.
+1. **Stage 1** writes the `.h5` *pre-detection* via the existing
+   `OutputManager.save_image_hdf` path — **unchanged HDF contract**. Whatever the pre-ops
+   leave in `objmap` (zeros if no detector ran, or a stale map if a **non-GPU
+   `ObjectDetector`** was placed before the `GpuDetector`) is **irrelevant under the
+   sidecar design**: Stage 3 overwrites the HDF's objmap from the sidecar, and the Stage-2
+   resume signal is *sidecar presence* (§9), not the HDF's objmap. The **objmap-clear prep
+   step (D12) is therefore optional tidiness, not load-bearing** here. HDF already embeds
+   `HdfAttr.PHENOTYPIC_CLASS` + grid state, so `GridImage` rehydrates correctly in Stage 3
+   (the existing `--mode measure` path relies on this).
+2. **Stage 2 (sidecar write-back, decision D13)** opens the `.h5` **read-only**, does a
+   **partial read** of just `input_layer` (h5py reads one dataset; it never decodes
+   `detect_mat`/`rgb` it doesn't need), runs `infer_batch`, and writes the raw GPU result
+   to a small **per-image sidecar** — `results/<ds>/objmap/<stem>.npy` — via `np.save`
+   (to `*.tmp` then `os.rename` so it appears atomically). **It never opens the HDF for
+   writing**, so there is no HDF5 write-lock on the shared filesystem and no way to corrupt
+   the staged input. The sidecar holds exactly what `infer_batch` returns (a labeled uint16
+   map for `output_kind="instance"`, or a binary mask for `output_kind="semantic"`); the
+   route is known from the detector's `output_kind` (so Stage 3 applies it via the right
+   accessor — §8), so the sidecar itself is just a plain array.
+3. **Stage 3** reloads the full `.h5` (existing `load_hdf5`), loads the sidecar
+   (`np.load`), and **applies it via the Image accessor** — `image.objmap[:] = arr`
+   (instance) or `image.objmask[:] = arr` (semantic; auto-labels into `objmap`, see §8) —
+   then runs the existing measure path (`process_single_hdf_measure_core`): post-detector
+   refiners (incl. watershed), `measure()`, aggregation, deliverables. Stage 3 also
+   **re-saves the final `.h5`** (existing `save_image_hdf`, written to a temp file then
+   `os.rename`d atomically over the original) so the output HDF carries the GPU objmap —
+   matching the forward path, which already saves the HDF after detection. Stage 3 then **deletes the sidecar** (cleanup is **non-optional** — the
+   sidecar is a transient cross-stage handoff, not an output).
 
 A **documented hook** is left for an optional compact pre-resize cache if profiling
 later shows the GPU starving on HDF reads — added as a pure optimisation **without
-changing the contract**. Transient `.h5` retention follows current behavior (kept),
-with an optional `--clean-stage-hdf` flag.
+changing the contract**. The staged `.h5` **is** the run's normal
+`results/<ds>/hdf/<stem>.h5` output (created in Stage 1; GPU objmap merged in at Stage 3
+from the sidecar), so after Stage 3 the output folder is **identical to a single-pass
+run** — there is **no** separate staging area and **no** `--clean-stage-hdf` flag. The
+only extra artifact is the transient `results/<ds>/objmap/<stem>.npy` sidecar, which
+**Stage 3 deletes after the merge** (mandatory cleanup).
 
 **Storage fact (verified in review):** the HDF `/layers/` group stores only `rgb`,
 `gray`, `detect_mat`, `objmap`; **`objmask` is a derived binary view of the same
 `sparse_object_map` backend as `objmap`**, not an independent dataset. A semantic
 detector therefore cannot "write only `objmask`" at the storage layer —
 `image.objmask[:] = mask` auto-labels into `objmap`, which is what the HDF persists. The
-round-trip works, but write-back and resume must both target `objmap` for **both** routes
-(see §8, §9). The plan must target the Stage-2 in-place patch at `layers/objmap` under the
-**v2 grouped** HDF layout (not a root-level dataset / the v1 flat layout used by
-`save_intermediate_layers`).
+round-trip works: at the **Stage-3 merge**, `image.objmask[:] = mask` (semantic)
+auto-labels into `objmap`, and `save_image_hdf` persists it under the **v2 grouped**
+`layers/objmap` dataset — the existing save path, no new HDF layout. The sidecar (a plain
+`.npy`) carries the GPU result between stages and is **outside** the HDF contract entirely.
 
 ---
 
 ## 6. Three-Stage Data Flow
 
 ```text
-        ┌── Stage 1: CPU parallel ──┐   ┌── Stage 2: GPU resident ──┐   ┌── Stage 3: CPU parallel ──┐
- raw →  │ read → pre-ops → save .h5 │ → │ DataLoader → infer_batch  │ → │ reload .h5 → post-ops →   │ → deliverables
-        │ (object output empty)     │   │ → write objmap/objmask    │   │ measure → aggregate       │
-        └───────────────────────────┘   └───────────────────────────┘   └───────────────────────────┘
+        ┌── Stage 1: CPU parallel ──┐   ┌── Stage 2: GPU resident ───┐   ┌── Stage 3: CPU parallel ──────┐
+ raw →  │ read → pre-ops → save .h5 │ → │ read .h5 (input, RO) →     │ → │ reload .h5 + objmap sidecar → │ → deliverables
+        │                           │   │ infer_batch → write objmap │   │ apply → post-ops → measure →  │
+        │                           │   │ .npy sidecar               │   │ aggregate → atomic re-save .h5│
+        └───────────────────────────┘   └────────────────────────────┘   └───────────────────────────────┘
 
  --mode process --layer objmap = Stage 1 + Stage 2, then export objmap PNGs (stop).
  --mode full                    = Stage 1 + Stage 2 + Stage 3.
@@ -207,8 +242,10 @@ reassembly**, wrapped in `torch.inference_mode()` with `model.eval()`. GPU→CPU
 copies are synchronised (non-blocking H2D is safe; D2H is not without a sync).
 
 ### SLURM
-A **3-link `afterok` dependency chain**, each link with its **own partition/
-resources**: Stage 1/3 on a **CPU partition**, Stage 2 on the **GPU partition**.
+A **3-link `afterany` dependency chain** (not `afterok` — a few per-image failures must
+not block the next stage; each stage's work-list is content-defined, §9), each link with
+its **own partition/resources**: Stage 1/3 on a **CPU partition**, Stage 2 on the **GPU
+partition**.
 
 **Scope note (review S1) — this is a non-trivial refactor, not a parameter addition.**
 The current `submit_slurm_script_chain` / `generate_all_array_job_scripts` apply a
@@ -217,9 +254,10 @@ stage** (a drip-feed serial chunk chain in `generate_dispatcher_chain`); there i
 concept of "stage" or per-stage resources. The plan must introduce a **stage
 abstraction**: three distinct script sets (Stage 1 CPU array, Stage 2 GPU shard-workers,
 Stage 3 CPU array), each with its own SBATCH resource profile, wired
-`afterok:stage_{n-1}` — and Stage 2's worker model (a few resident workers streaming
-shards) is **structurally different** from today's one-task-per-image array. Budget for
-this as real surgery.
+`afterany:stage_{n-1}` (per-image failures must not block the next stage; work-lists are
+content-defined) — and Stage 2's worker model (a few resident workers streaming shards) is
+**structurally different** from today's one-task-per-image array. Budget for this as real
+surgery.
 
 ### Stage-2 GPU pool
 A *small* array of **resident-model shard-workers** — 1 worker locally; on SLURM a
@@ -269,30 +307,56 @@ splits touching colonies.
 Both routes therefore persist a labeled `objmap` (the semantic route's labels are naive
 connected components pending the downstream watershed). This is the *identical image
 state a threshold detector produces today*, so HDF staging, resume, and measure handle it
-with **zero new machinery** — the only engine difference is **which accessor the
-write-back calls** (`objmap[:]` vs `objmask[:]`). The `output_kind` marker is added in
-Spec 1 (per D4), defaulting to `instance` so existing behavior is unchanged.
+with **zero new machinery** — the only route-dependent difference is **which accessor the
+Stage-3 merge calls when applying the sidecar** (`objmap[:]` for instance vs `objmask[:]`
+for semantic; §5). The `output_kind` marker is added in Spec 1 (per D4), defaulting to
+`instance` so existing behavior is unchanged.
 
 ---
 
-## 9. Resume & Idempotency
+## 9. Resume, Idempotency & Stage Tracking
 
 Stage boundaries are **content-defined**:
 
-- Stage 1 done for an id ⇔ its `.h5` exists with `input_layer` valid.
-- Stage 2 done for an id ⇔ its `.h5`'s `layers/objmap` dataset is **non-zero**
-  (**both** routes — there is no separate `objmask` dataset; the semantic route's
-  auto-label also lands in `objmap`).
+- Stage 1 done for an id ⇔ its `.h5` exists with `input_layer` valid and readable.
+- Stage 2 done for an id ⇔ its **objmap sidecar** (`results/<ds>/objmap/<stem>.npy`)
+  exists. Cheap to check (a file stat — no need to open the HDF) and **immune to any
+  pre-stage detector's objmap** in the `.h5`, which is why the D12 objmap-clear is
+  unnecessary under the sidecar design.
 - Stage 3 done for an id ⇔ its per-image measurement parquet exists under
-  `results/<ds>/measurements/`.
+  `results/<ds>/measurements/` (Stage 3 also deletes the now-merged sidecar).
 
-The **non-zero `objmap` check is the sole, robust Stage-2 resume predicate** (review C2):
-a worker that dies mid-batch leaves each `.h5` either done (non-zero `objmap` → skip) or
-not (zero `objmap` → reprocess), with no double-counting, so a walltime-bounded Stage-2
-worker is `--requeue`-safe without extra bookkeeping. A separate completed-id manifest is
-therefore **optional** — only an optimisation to avoid the open-check-close cost on very
-large batches, not required for correctness. (`processing_state.json` / per-image parquets
-track **Stage 3**, not Stage 2.)
+The **sidecar-presence check is the sole, robust Stage-2 resume predicate** (review C2):
+`np.save` to `*.tmp` + `os.rename` makes the sidecar appear atomically, so a worker that
+dies mid-batch leaves each id either done (sidecar present → skip) or not (absent →
+reprocess), with no double-counting — a walltime-bounded Stage-2 worker is `--requeue`-safe
+without extra bookkeeping. A separate completed-id manifest is therefore **optional**, not
+required for correctness. (`processing_state.json` / per-image parquets track **Stage 3**,
+not Stage 2.)
+
+**Stage tracking — the progress mechanism (decision D10).** Two layers, both reusing
+existing infrastructure:
+
+1. **Truth = content-defined artifacts** (above). The source of truth for resume *and*
+   for each stage worker's work-list. Robust to lost/partial logs: any worker re-derives
+   an image's furthest stage by checking HDF presence → **objmap sidecar presence** →
+   per-image parquet presence. This is what makes `afterany` chaining safe — a stage
+   processes exactly the artifacts the prior stage actually produced.
+2. **Live progress = the existing append-only event log** (`event_log_path`,
+   `append_event` / `append_completion_event`), extended with **stage-tagged statuses**:
+   each stage worker emits `stage{N}_started` / `stage{N}_completed` / `stage{N}_failed`
+   keyed by `(dataset, image)`. `aggregate_state_from_events` is extended to compute, per
+   image, the **furthest completed stage** (and the failure stage, if any) plus per-stage
+   counts; `job_metadata.json` records that the run is a 3-stage GPU run and its stage
+   list so the dashboard knows to render three stages.
+
+An image's **current stage = max stage with a `completed` event** (live view) or the
+highest stage whose artifact predicate holds (authoritative view). The existing dashboard
+(OQ5 = reuse) reads this aggregate and renders per-stage progress, e.g.
+`Stage 1 ✓ 100/100 · Stage 2 63/100 · Stage 3 40/100`, plus each image's furthest stage.
+Events drive the low-latency UI; artifacts drive correctness/resume — the same split the
+current single-pass run already uses between its event log and `processing_state.json` /
+parquets.
 
 ---
 
@@ -305,7 +369,6 @@ No new *mode* flag (batched is simply *how* a `GpuDetector` runs). New options:
 - `--gpu-shards` (Stage-2 array size; default auto from image count / worker count)
 - per-stage SLURM resources: `--gpu-partition` / `--gpu-gres` (distinct from the CPU
   `--slurm` args used for stages 1 & 3)
-- `--keep-stage-hdf` / `--clean-stage-hdf` (default keep)
 
 `--mode process --layer objmap` requires no new flags; it routes through Stages 1–2
 automatically when a `GpuDetector` is present.
@@ -352,8 +415,10 @@ The gated HF download path + `foundation`/`gpu` extras + per-model managers land
 ## 14. Testing Strategy
 
 - **Unit:** pipeline-split partitioning; the `>1 GpuDetector` and input-layer-feedback
-  guards; `infer_batch` default-loop equivalence to `_operate`; HDF object-output
-  write-back round-trip (both `objmap` and `objmask`); resume skip logic.
+  guards; `infer_batch` default-loop equivalence to `_operate`; **sidecar write → Stage-3
+  merge → atomic HDF re-save** round-trip (both `objmap` instance and `objmask` semantic
+  routes, asserting the final HDF objmap matches); **mandatory sidecar cleanup after Stage
+  3**; resume skip logic (sidecar-presence predicate).
 - **Integration:** a tiny **fake CPU `GpuDetector`** with both `supports_batching ∈
   {True, False}` and `output_kind ∈ {instance, semantic}` variants, driven end-to-end
   through all 3 stages locally; plus the `--mode process --layer objmap` path.
@@ -364,12 +429,12 @@ The gated HF download path + `foundation`/`gpu` extras + per-model managers land
 
 ## 15. Risks / Open Questions
 
-- **Semantic write-back / resume target `objmap`** (review B1/B2): `objmask` is not an
+- **Semantic write-back via the accessor** (review B1/B2): `objmask` is not an
   independent HDF dataset — it shares the `objmap` backend, and `objmask[:] = mask`
-  auto-labels into it. Write-back uses `image.objmask[:]` / `image.objmap[:]`;
-  persistence and the resume predicate both target `layers/objmap` (see §5, §8, §9). The
-  Stage-2 in-place patch must target the **v2 grouped** `layers/objmap` path, not the v1
-  flat layout used by `save_intermediate_layers`.
+  auto-labels into it. The **Stage-3 merge** applies the sidecar via `image.objmask[:]`
+  (semantic) / `image.objmap[:]` (instance); the subsequent `save_image_hdf` persists it
+  under the **v2 grouped** `layers/objmap` dataset (the existing save path). No in-place
+  HDF dataset patching and no v1 flat-layout writes.
 - **SLURM 3-stage chaining is a real refactor** of the flat single-partition drip-feed
   machinery (see §7) — not a parameter addition.
 - **Pipeline splitter** finds the *first-`GpuDetector` position* by iterating `_ops`
@@ -377,6 +442,17 @@ The gated HF download path + `foundation`/`gpu` extras + per-model managers land
   does **not** descend into nested sub-pipeline ops (review S3), so the input-layer
   feedback check is blind to ops wrapped in a nested `ImagePipelineCore` — document the
   limitation.
+- **objmap write-back = sidecar (chosen, D13).** The GPU stage never opens the HDF for
+  writing — it writes a per-image `.npy` sidecar — so there is **no HDF5 write-locking on
+  the shared filesystem and no way to corrupt the staged input**. Residual items for the
+  plan: (a) Stage 2's `np.save` uses `*.tmp` + `os.rename` for atomic sidecar appearance;
+  (b) Stage 3's HDF re-save is **atomic** (`save_image_hdf` to `*.tmp` then `os.rename`)
+  so a crash there can't corrupt the output; (c) the big HDF is written twice (Stage 1 +
+  the Stage-3 re-save) — accepted I/O cost; (d) **Stage 3 deletes the sidecar after the
+  merge — cleanup is non-optional.**
+- **All scoped detectors are 3-channel** (Q1): `input_layer="rgb"` is the default; the
+  `gray`/`detect_mat` → `(H,W,3)` stacking adapter (D9) works but discards the color
+  prior of these RGB-pretrained backbones.
 - **MPS availability on UCR HPCC** GPU nodes is unconfirmed; packing degrades
   gracefully to time-slicing without it.
 - **DataLoader IPC of arrays** — ensure per-sample id + array (not `Image`) crosses
