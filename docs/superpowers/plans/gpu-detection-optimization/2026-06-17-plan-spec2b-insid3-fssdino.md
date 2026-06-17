@@ -211,12 +211,63 @@ class TestFssDinoConstruction:
 **Shared core:** `_dino_support.py` (prototype match) + `_tiling.py` (extracted from 2a) keep both detectors thin and DRY; the 2a `dino_version=3` stub is completed here.
 **Out of scope:** none remaining in Spec 2 after this — Spec 2 (all four models) is complete once 2b lands.
 
-## Open questions to surface (plan-review + user)
-1. **INSID3 — clean-room vs vendor (Apache-2.0).** The plan clean-rooms a minimal prototype-match version (sharing `_dino_support`) rather than vendoring `visinf/INSID3`'s research codebase (+ its `requirements.txt`/CRF refiner). Cheaper + dep-clean, but it's a *simplification* of INSID3's actual in-context method (which may include correspondence/CRF steps the plan omits). Accept the minimal clean-room, or vendor the real module for fidelity?
-2. **`dino_version` defaults.** INSID3 defaults to DINOv3 (gated, its native backbone); FSSDINO defaults to DINOv2 (ungated, per spec §4.4 "prefer DINOv2 where the method permits") even though the paper is DINOv3-specific. Confirm these defaults (esp. whether FSSDINO-on-DINOv2 is acceptable vs. the paper's DINOv3).
-3. **Exemplar/"curated data" (spec §1).** The detectors take user-supplied reference/support image+mask **Paths** (no bundled colony exemplars; no usable default — `_ensure_model_loaded` raises without them). Spec §1 mentions "curated exemplar data" — do we **ship** example colony exemplars (a small annotated reference under `_assets/`), or require the user to provide them (the plan's choice)?
-4. **FSSDINO algorithm latitude (O6).** The clean-room is from the **abstract** (prototypes + Gram-matrix + n_clusters) — the full paper's Gram-refinement details aren't pinned. The plan fixes a concrete `gram_weight`-blended version. Accept, or require reading the full paper / a tighter spec first?
-5. **Completing the DinoSam2 v3 path (Task 1).** This plan removes the 2a `NotImplementedError` stub and wires the real `Dinov3CheckpointManager`. Confirm that closure belongs in 2b (vs. leaving DinoSam2 v3 stubbed).
+## Plan-Review Resolutions (apply during implementation — supersedes the tasks where they conflict)
+
+Plan-reviewer pass (2026-06-17) verified the DINOv3 load API, INSID3 Apache-2.0, FSSDINO
+licensing, the semantic route, and the tiling extraction as **correct**, and found 1 real
+bug + 3 fidelity gaps. The user resolved the design OQs. Apply all of the below.
+
+**User decisions:**
+- **D-faithful — FAITHFUL reproductions.** Implement the papers' actual methods (NOT naive
+  prototype matching) and KEEP the `Insid3Detector` / `FssDinoDetector` names:
+  - **INSID3 (C2):** implement the **positional-bias removal** that is INSID3's defining step.
+    Read `github.com/visinf/INSID3` (Apache-2.0) — either **vendor its small debias module with
+    attribution** OR clean-room the SVD/PCA-projection (find the positional component of DINO
+    features on low-semantic inputs, project patch features onto its orthogonal complement)
+    **before** prototype matching. Faithful, not naive cosine matching.
+  - **FSSDINO (C3):** read the paper **arXiv:2602.07550 §3–4** (WebFetch the PDF / HTML) for the
+    actual prototype + **Gram-matrix refinement** math and the **layer-selection** finding.
+    Expose a `feature_layer: int` field (use `output_hidden_states=True` → `hidden_states[layer]`)
+    and default it to the paper's recommended intermediate layer (not the last layer). Use the
+    paper's Gram formulation — do not invent a `gram_weight` blend unless the paper supports it
+    (document any deviation).
+- **D-curated-example — SHIP a curated colony exemplar** under `src/phenotypic/_assets/exemplars/`
+  (a reference colony RGB + its ground-truth mask, rendered once from `load_synth_yeast_plate()`).
+  Use it as the **default** `reference_image`/`reference_mask` (INSID3) and default `support_*`
+  (FSSDINO) so the detectors have a working default, and add it to `[tool.setuptools.package-data]`.
+- **D-dino-version-for-testing — both detectors take `dino_version: DinoVersion`** so a **gate-free
+  DINOv2** functional test can actually run in CI (DINOv2 + transformers are installed; no gate).
+  INSID3 defaults to `dino_version=3` (its native backbone; the debias targets DINOv3's bias, and
+  is a near-no-op on DINOv2); FSSDINO defaults per the paper but supports v2. **Add ONE real
+  functional test per detector** that loads **DINOv2** + the bundled exemplar and asserts `.apply()`
+  writes a non-empty `objmask` (skips only if `foundation` is absent — NOT gated, so it runs here).
+
+**Blocker fix:**
+- **C1 — DINOv3 register-token BUG (real, also in shipped 2a code).** DINOv3's `last_hidden_state`
+  is `(B, 1 + num_register_tokens + Hp·Wp, D)` with **`config.num_register_tokens = 4`**. The
+  planned `extract_patch_features` AND the existing `_dinosam2_detector._dino_dense_features`
+  (lines ~365–394) slice `[:, 1:, :]` (drop CLS only) → 4 register tokens contaminate the patch
+  grid for DINOv3 (the square-grid fallback silently mis-shapes it). **Fix:** slice
+  `[:, 1 + model.config.num_register_tokens:, :]` (default 0 for v2), then reshape to `(Hp, Wp, D)`.
+  Put the single correct implementation in `_dino_support.extract_patch_features` and **refactor
+  `DinoSam2Detector` to call it** (delete the buggy private copy — don't leave the bug in two
+  places). Add a synthetic test asserting an exact grid reshape for `num_register_tokens > 0`.
+
+**Should-fixes:**
+- **W1 — annotation readiness:** the coverage gate is scoped to `detect.__all__` (NOT `detect.nn`).
+  Pin the new detectors' tune-readiness by **extending `tests/unit/detect/nn/test_foundation_detectors_exports.py`** (the dedicated test), not the coverage gate. (Every new numeric field still carries a `TuneSpec`: `n_clusters` `TuneSpec(1,20)`, `similarity_thresh`, `feature_layer` `TuneSpec(tunable=False)` or a bare `TuneSpec()`, tile fields.)
+- **W2 — rewrite the v3-stub test:** `test_dinosam2_detector.py::test_dinov3_load_raises_not_implemented`
+  must be **replaced** with a mocked-`snapshot_download` + mocked-`AutoModel` v3 success-path test
+  (the stub is removed in Task 1).
+- **W3 — `Dinov3CheckpointManager` = DINOv2-sized constructor + SAM3 gating:** `__init__(self, *, size)`
+  + `_SIZE_TO_REPO` for the three `dinov3-vit{s|b|l}16-pretrain-lvd1689m` ids + `require_license_acceptance("dinov3", "DINOv3 License", url)`. (Not a literal "mirror SAM3" — it's a hybrid.)
+- **W4 — exemplar mask ↔ patch-grid alignment:** resize the reference/support mask through the
+  **same processed geometry** the image went through (`inputs.pixel_values.shape`), THEN downsample
+  to the patch grid (`order=0`). Add a test with a **non-square** exemplar.
+- **W5 (note):** real INSID3/FSSDINO accuracy still needs a manual gated-DINOv3 run; the bundled
+  DINOv2 functional test validates plumbing + the v2 path, not paper-level accuracy.
 
 ## Execution Handoff
-Plan complete. Per the requested flow (same as 2a): a plan-review subagent runs next; surface any OQ that survives; if none, implement with a single Opus agent, then a code-review subagent.
+Plan + resolutions complete. Per the requested flow (same as 2a): implement with a **single Opus
+agent** (applying this resolutions section — it must WebFetch the INSID3 method + the FSSDINO paper
+§3–4 to implement faithfully), then a **code-review subagent**.
