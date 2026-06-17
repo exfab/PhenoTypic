@@ -73,7 +73,12 @@ def _tile_starts(extent: int, tile_px: int, stride: int) -> list[int]:
     starts.append(last_start)
     # De-dup while preserving order (the clamp can coincide with a step).
     seen: set[int] = set()
-    return [s for s in starts if not (s in seen or seen.add(s))]
+    unique: list[int] = []
+    for s in starts:
+        if s not in seen:
+            seen.add(s)
+            unique.append(s)
+    return unique
 
 
 def _plan_tiles(
