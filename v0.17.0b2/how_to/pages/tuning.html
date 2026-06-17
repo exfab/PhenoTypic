@@ -1,0 +1,1078 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Hyperparameter Tuning &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=ed622d3e"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'how_to/pages/tuning';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0b2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0b2/how_to/pages/tuning.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Distributed Tuning on HPCC Clusters" href="tune_distributed_hpcc.html" />
+    <link rel="prev" title="SLURM Pipelines" href="slurm_pipelines.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0b2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Correction &amp; Preprocessing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_grid_rotation.html">How To: Correct Grid Rotation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/enhance_low_contrast.html">How To: Enhance Low-Contrast Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/crop_and_pad.html">How To: Crop and Pad Images for Batch Consistency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/denoise_low_light.html">How To: Denoise Low-Light Images</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Refinement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/choose_detection_algorithm.html">How To: Choose a Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/refine_noisy_boundaries.html">How To: Refine Noisy Detection Boundaries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/manual_grid_detection.html">How To: Manual Grid Detection When Automatic Fails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/combine_detectors.html">How To: Combine Detectors with CompositeDetector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/merge_fragmented_detections.html">How To: Merge Fragmented Detections</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gpu_detection_setup.html">GPU-Accelerated Colony Detection</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/measure_colony_size_intensity.html">How To: Measure Colony Size and Intensity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/correct_edge_effects.html">How To: Correct Edge Effects in Plate Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/fit_logistic_growth.html">How To: Fit Logistic Growth Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../notebooks/assess_image_quality.html">How To: Assess Image Quality Before Pipeline Design</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CLI &amp; Infrastructure</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="cli_batch_processing.html">CLI Batch Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="slurm_pipelines.html">SLURM Pipelines</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Hyperparameter Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tune_distributed_hpcc.html">Distributed Tuning on HPCC Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui_hub.html">GUI hub</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serialize_pipelines.html">Serialize and Share Pipelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hdf5_storage.html">Store Results in HDF5</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_reports.html">Generate HTML Processing Reports</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">How-To Guides</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Hyperparameter Tuning</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="hyperparameter-tuning">
+<h1>Hyperparameter Tuning<a class="headerlink" href="#hyperparameter-tuning" title="Link to this heading">#</a></h1>
+<p>The tune engine searches over an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>’s parameters and returns the
+combination that scores best on your plates. It is sample-efficient — grid and
+seeded-random for small spaces, Optuna samplers (TPE, CMA-ES, GP, NSGA-II) for
+larger ones — and pairs the search with pluggable scoring objectives and a
+robust held-out generalization check, so a winning pipeline has to prove it
+holds up on plates the search never optimized against.</p>
+<p>The engine replaces the old <code class="docutils literal notranslate"><span class="pre">sweep</span></code> module: instead of enumerating a fixed
+grid of pipeline variants, you author (or auto-infer) a search space, pick a
+scoring objective, and let the optimizer propose candidates.</p>
+<p>```{admonition} Migrating from a legacy <code class="docutils literal notranslate"><span class="pre">sweep</span></code> manifest
+:class: tip</p>
+<p>If you have an existing sweep manifest, convert it to a <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code> —
+a <code class="docutils literal notranslate"><span class="pre">Categorical</span></code> grid over the manifest’s varying parameters (plus
+<code class="docutils literal notranslate"><span class="pre">__enabled__</span></code> presence knobs for optional ops) — with the migration script:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>python scripts/migrate_sweep_manifest.py old_manifest.json \
+    -o tuning_spec.json --metadata layout.csv
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is the per-image layout CSV/Parquet that feeds the count scorer
+(grouped by <code class="docutils literal notranslate"><span class="pre">--groupby</span></code>, default <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>). Manifests that swept
+<strong>nested</strong> operations raise <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> — author those spaces by
+hand against the new <code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code> API.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span>
+<span class="c1">## Python interface</span>
+
+<span class="c1">### Running a study from the CLI</span>
+
+<span class="n">The</span> <span class="n">basic</span> <span class="n">run</span> <span class="n">takes</span> <span class="n">a</span> <span class="err">`</span><span class="n">tuning_spec</span><span class="o">.</span><span class="n">json</span><span class="err">`</span><span class="p">,</span> <span class="n">an</span> <span class="n">image</span> <span class="n">directory</span><span class="p">,</span> <span class="ow">and</span> <span class="n">an</span> <span class="n">output</span>
+<span class="n">directory</span><span class="p">:</span>
+
+<span class="err">```</span><span class="n">bash</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">tune</span> <span class="n">run</span> <span class="n">spec</span><span class="o">.</span><span class="n">json</span> <span class="o">-</span><span class="n">i</span> <span class="o">./</span><span class="n">plates</span> <span class="o">-</span><span class="n">o</span> <span class="o">./</span><span class="n">out</span>
+</pre></div>
+</div>
+<p>Override the spec’s strategy and trial budget, and turn on the two-round
+screening freeze, from the command line:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--strategy<span class="w"> </span>tpe<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-trials<span class="w"> </span><span class="m">200</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--screen
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--strategy</span> <span class="pre">grid</span></code> and <code class="docutils literal notranslate"><span class="pre">--strategy</span> <span class="pre">random</span></code> use the built-in configs;
+<code class="docutils literal notranslate"><span class="pre">tpe</span></code>, <code class="docutils literal notranslate"><span class="pre">cmaes</span></code>, <code class="docutils literal notranslate"><span class="pre">gp</span></code>, and <code class="docutils literal notranslate"><span class="pre">nsga2</span></code> build an <code class="docutils literal notranslate"><span class="pre">OptunaConfig</span></code> and require the
+<code class="docutils literal notranslate"><span class="pre">tune</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extras</span> <span class="pre">tune</span></code>). <code class="docutils literal notranslate"><span class="pre">--screen</span></code> enables the two-round
+screening freeze (it is off by default; <code class="docutils literal notranslate"><span class="pre">--no-screen</span></code> is the explicit
+default). <code class="docutils literal notranslate"><span class="pre">--n-trials</span></code> overrides the spec’s <code class="docutils literal notranslate"><span class="pre">Budget.n_trials</span></code>.</p>
+<p>A run writes its deliverables under <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code> — the winning pipeline, ready to run with
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code> — the fully resolved spec (pipeline + space + scorer +
+strategy + budget), so the run round-trips.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">param_importance.json</span></code> — per-parameter importance (random-forest / fANOVA)
+showing which knobs moved the objective.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pareto/</span></code> — the non-dominated front, for a multi-objective
+(<code class="docutils literal notranslate"><span class="pre">CompositeScorer(multi_objective=True)</span></code>) study.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">generalization.json</span></code> — the held-out verdict: how the winner scored on the
+reserved plates versus the search set.</p></li>
+</ul>
+<p>Alongside the deliverables, <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> is written at the <strong>output
+root</strong>. It is dual-purpose: the Optuna resume store <em>and</em> the trial journal.</p>
+<p><strong>Resume</strong> is automatic. Re-running <code class="docutils literal notranslate"><span class="pre">run</span></code> with <code class="docutils literal notranslate"><span class="pre">-o</span></code> pointed at a prior run
+directory <em>resumes</em> the study rather than restarting it — grid/random pick up
+from <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code>, while the Optuna samplers resume from the study store
+(the local <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/study.db</span></code> or the <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code> study). A killed or
+extended run picks up its prior trials.</p>
+<section id="authoring-a-tuningspec-in-python">
+<h2>Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python<a class="headerlink" href="#authoring-a-tuningspec-in-python" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> is one self-contained, round-trippable recipe. Its fields are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pipeline</span></code> — the base <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> being tuned (embedded in the spec).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">search_space</span></code> — the <code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code> of <code class="docutils literal notranslate"><span class="pre">Knob</span></code>s to search over.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scorer</span></code> — the tuning objective (any <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> subclass; see below).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evaluator</span></code> — the candidate-evaluation policy (<code class="docutils literal notranslate"><span class="pre">Evaluator</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">strategy</span></code> — the optimizer config (<code class="docutils literal notranslate"><span class="pre">GridConfig</span></code>, <code class="docutils literal notranslate"><span class="pre">RandomConfig</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">OptunaConfig</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">budget</span></code> — the stopping criteria (<code class="docutils literal notranslate"><span class="pre">Budget</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">held_out</span></code> — the held-out / generalization policy (defaults to a
+conservative <code class="docutils literal notranslate"><span class="pre">HeldOutConfig</span></code>).</p></li>
+</ul>
+<p>All of these are keyword-only pydantic models. A minimal spec — tune a
+Gaussian-blur <code class="docutils literal notranslate"><span class="pre">sigma</span></code> ahead of an Otsu detector, scored against an expected
+96-well colony count:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">Budget</span><span class="p">,</span> <span class="n">Evaluator</span><span class="p">,</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">Knob</span><span class="p">,</span> <span class="n">FloatRange</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">QCScorer</span><span class="p">,</span> <span class="n">GridConfig</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">space</span> <span class="o">=</span> <span class="n">SearchSpace</span><span class="p">(</span><span class="n">knobs</span><span class="o">=</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">Knob</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;0.sigma&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">FloatRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">8.0</span><span class="p">)),</span>
+<span class="gp">... </span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">layout</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span> <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">))}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">scorer</span> <span class="o">=</span> <span class="n">QCScorer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">check</span><span class="o">=</span><span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
+<span class="gp">... </span>        <span class="n">metadata</span><span class="o">=</span><span class="n">layout</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">)</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span> <span class="o">=</span> <span class="n">TuningSpec</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">pipeline</span><span class="o">=</span><span class="n">pipe</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">search_space</span><span class="o">=</span><span class="n">space</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">scorer</span><span class="o">=</span><span class="n">scorer</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">evaluator</span><span class="o">=</span><span class="n">Evaluator</span><span class="p">(),</span>
+<span class="gp">... </span>    <span class="n">strategy</span><span class="o">=</span><span class="n">GridConfig</span><span class="p">(),</span>
+<span class="gp">... </span>    <span class="n">budget</span><span class="o">=</span><span class="n">Budget</span><span class="p">(</span><span class="n">n_trials</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="go">[&#39;0.sigma&#39;]</span>
+
+</pre></div>
+</div>
+<p>A knob’s <code class="docutils literal notranslate"><span class="pre">key</span></code> is a position-indexed path: <code class="docutils literal notranslate"><span class="pre">&quot;0.sigma&quot;</span></code> targets the <code class="docutils literal notranslate"><span class="pre">sigma</span></code>
+field of op <code class="docutils literal notranslate"><span class="pre">0</span></code> (the <code class="docutils literal notranslate"><span class="pre">GaussianBlur</span></code>). Save the spec with
+<code class="docutils literal notranslate"><span class="pre">spec.model_dump_json()</span></code> and feed it to <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code>. For a
+spec that must round-trip through JSON, configure the count check from a
+metadata <em>path</em> (<code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount(metadata=&quot;layout.csv&quot;,</span> <span class="pre">...)</span></code>) — a
+check built from an in-memory frame cannot be rebuilt from JSON.</p>
+</section>
+<section id="inferring-a-search-space-with-auto-space">
+<h2>Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code><a class="headerlink" href="#inferring-a-search-space-with-auto-space" title="Link to this heading">#</a></h2>
+<p>When you don’t want to hand-author every knob, <code class="docutils literal notranslate"><span class="pre">auto-space</span></code> mines a configured
+pipeline’s pydantic fields into a reviewable candidate space — no engine runs:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.tune<span class="w"> </span>auto-space<span class="w"> </span>pipeline.json<span class="w"> </span>-o<span class="w"> </span>./out
+</pre></div>
+</div>
+<p>The same inference is available in Python as <code class="docutils literal notranslate"><span class="pre">infer_search_space</span></code>, which
+returns an <code class="docutils literal notranslate"><span class="pre">InferredSearchSpace</span></code> carrying:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.knobs</span></code> — the inferred <code class="docutils literal notranslate"><span class="pre">Knob</span></code>s (each with a <code class="docutils literal notranslate"><span class="pre">source</span></code> provenance tag and a
+<code class="docutils literal notranslate"><span class="pre">needs_review</span></code> flag).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.excluded</span></code> — <code class="docutils literal notranslate"><span class="pre">Excluded</span></code> records for fields inference declined to tune, each
+with a reason.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.needs_review</span></code> — <code class="docutils literal notranslate"><span class="pre">True</span></code> when any knob is flagged for review (or a field was
+excluded blindly).</p></li>
+</ul>
+<p>Flagged knobs (<code class="docutils literal notranslate"><span class="pre">needs_review=True</span></code>) keep the autonomy gate conservative: an
+unattended run stays cautious until a human confirms the shaky guesses, so a
+generously-inferred bound never silently drives a fully-automatic study.</p>
+</section>
+<section id="the-four-scoring-objectives">
+<h2>The four scoring objectives<a class="headerlink" href="#the-four-scoring-objectives" title="Link to this heading">#</a></h2>
+<p>Every scorer is a <code class="docutils literal notranslate"><span class="pre">Scorer</span></code> subclass with a higher-is-better objective in
+<code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>. Pick the one that matches the ground truth you have.</p>
+<section id="qcscorer">
+<h3><code class="docutils literal notranslate"><span class="pre">QCScorer</span></code><a class="headerlink" href="#qcscorer" title="Link to this heading">#</a></h3>
+<p>Use it when you have <strong>no ground-truth masks</strong> but you know the expected colony
+<strong>count</strong> per plate (e.g. a 96-well layout). It is a purely statistical check:
+it wraps <code class="docutils literal notranslate"><span class="pre">phenotypic.analysis.ExpectedVsDetectedCount</span></code> and scores each
+<code class="docutils literal notranslate"><span class="pre">groupby</span></code> unit on <code class="docutils literal notranslate"><span class="pre">|detected</span> <span class="pre">−</span> <span class="pre">expected|</span> <span class="pre">/</span> <span class="pre">expected</span></code>, folded to a
+higher-is-better term.</p>
+<p>It requires a configured count check on its <code class="docutils literal notranslate"><span class="pre">check</span></code> field. Configure that check
+from a metadata <strong>path</strong> so the scorer round-trips through <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">QCScorer</span>
+
+<span class="n">scorer</span> <span class="o">=</span> <span class="n">QCScorer</span><span class="p">(</span>
+    <span class="n">check</span><span class="o">=</span><span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="s2">&quot;layout.csv&quot;</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="referencefreescorer">
+<h3><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer</span></code><a class="headerlink" href="#referencefreescorer" title="Link to this heading">#</a></h3>
+<p>Use it when you have <strong>no ground truth at all</strong> — not even expected counts — and
+want to score segmentation quality from the result itself. It computes
+fixed-normalized proxy terms: <code class="docutils literal notranslate"><span class="pre">ShapeRegularity</span></code> (mean shape-prior plausibility
+from the <code class="docutils literal notranslate"><span class="pre">Shape_*</span></code> columns), <code class="docutils literal notranslate"><span class="pre">Contrast</span></code> (Otsu between-class separation of
+foreground vs. background), and <code class="docutils literal notranslate"><span class="pre">SizeCV</span></code> (within-replicate size uniformity).
+Supply an optional <code class="docutils literal notranslate"><span class="pre">count_check</span></code> to add the <code class="docutils literal notranslate"><span class="pre">Count</span></code> term.</p>
+<p>It requires nothing to construct, but it is <strong>gated behind meta-validation</strong>:
+<code class="docutils literal notranslate"><span class="pre">availability()</span></code> returns <code class="docutils literal notranslate"><span class="pre">False</span></code> (so the engine fails safe and degrades to
+<code class="docutils literal notranslate"><span class="pre">QCScorer</span></code>) until the proxy is correlated against ground truth and clears the
+enable threshold (Spearman ρ ≥ 0.7; ρ ≥ 0.8 for fully unattended tuning). Point
+<code class="docutils literal notranslate"><span class="pre">gt_masks_source</span></code> at a ground-truth source to let the gate validate; without it
+the gate abstains and the scorer stays unavailable.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceFreeScorer</span>
+
+<span class="n">scorer</span> <span class="o">=</span> <span class="n">ReferenceFreeScorer</span><span class="p">(</span><span class="n">replicate_groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="supervisedscorer">
+<h3><code class="docutils literal notranslate"><span class="pre">SupervisedScorer</span></code><a class="headerlink" href="#supervisedscorer" title="Link to this heading">#</a></h3>
+<p>Use it when you <strong>have ground-truth annotations</strong>. It is modality-tiered: a
+directory of per-image masks runs the <strong>mask tier</strong> (per-object Dice or IoU,
+macro-averaged into the <code class="docutils literal notranslate"><span class="pre">Region</span></code> term); a <code class="docutils literal notranslate"><span class="pre">.csv</span></code>/<code class="docutils literal notranslate"><span class="pre">.parquet</span></code> count table runs the
+<strong>count tier</strong> (count divergence into the <code class="docutils literal notranslate"><span class="pre">CountMAE</span></code> term); nothing resolvable
+makes it abstain.</p>
+<p>It requires a <code class="docutils literal notranslate"><span class="pre">GroundTruthMasks</span></code> loader on its <code class="docutils literal notranslate"><span class="pre">gt</span></code> field, whose
+<code class="docutils literal notranslate"><span class="pre">gt_masks_source</span></code> path selects the modality. The mask tier carries exactly one
+region metric (<code class="docutils literal notranslate"><span class="pre">region_metric=&quot;dice&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;iou&quot;</span></code> — they rank identically); the
+count tier additionally needs a configured <code class="docutils literal notranslate"><span class="pre">count_check</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroundTruthMasks</span><span class="p">,</span> <span class="n">SupervisedScorer</span>
+
+<span class="c1"># Mask tier: a directory of per-image masks.</span>
+<span class="n">masks</span> <span class="o">=</span> <span class="n">SupervisedScorer</span><span class="p">(</span>
+    <span class="n">gt</span><span class="o">=</span><span class="n">GroundTruthMasks</span><span class="p">(</span><span class="n">gt_masks_source</span><span class="o">=</span><span class="s2">&quot;./gt_masks/&quot;</span><span class="p">),</span>
+    <span class="n">region_metric</span><span class="o">=</span><span class="s2">&quot;dice&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Count tier: a count table plus the reused count check.</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">SupervisedScorer</span><span class="p">(</span>
+    <span class="n">gt</span><span class="o">=</span><span class="n">GroundTruthMasks</span><span class="p">(</span><span class="n">gt_masks_source</span><span class="o">=</span><span class="s2">&quot;./counts.csv&quot;</span><span class="p">),</span>
+    <span class="n">count_check</span><span class="o">=</span><span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="s2">&quot;counts.csv&quot;</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">]</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="compositescorer">
+<h3><code class="docutils literal notranslate"><span class="pre">CompositeScorer</span></code><a class="headerlink" href="#compositescorer" title="Link to this heading">#</a></h3>
+<p>Use it to <strong>combine</strong> the above into one objective — the small complementary
+panel no single metric covers. It nests a <code class="docutils literal notranslate"><span class="pre">list[Scorer]</span></code> on its <code class="docutils literal notranslate"><span class="pre">scorers</span></code> field
+and composes them two ways:</p>
+<ul class="simple">
+<li><p><strong>single-objective</strong> (default): a <code class="docutils literal notranslate"><span class="pre">weights</span></code>-weighted arithmetic blend, or
+(without weights) the geometric mean — so one weak axis cannot be masked by a
+strong one.</p></li>
+<li><p><strong>multi-objective</strong> (<code class="docutils literal notranslate"><span class="pre">multi_objective=True</span></code>): per-child objectives kept
+separate, driving a true Pareto study (requires an Optuna <code class="docutils literal notranslate"><span class="pre">nsga2</span></code> strategy;
+pairing a multi-objective scorer with grid/random is rejected at spec
+construction). The non-dominated front lands in <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/</span></code>.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeScorer</span>
+
+<span class="n">scorer</span> <span class="o">=</span> <span class="n">CompositeScorer</span><span class="p">(</span>
+    <span class="n">scorers</span><span class="o">=</span><span class="p">[</span><span class="n">qc_scorer</span><span class="p">,</span> <span class="n">reference_free_scorer</span><span class="p">],</span>
+    <span class="n">weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;s0&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">&quot;s1&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="gui-interface">
+<h2>GUI interface<a class="headerlink" href="#gui-interface" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> mounts a <code class="docutils literal notranslate"><span class="pre">/tune/</span></code> Dash co-pilot as a tab alongside
+<strong>Home · Builder · Tune · Run · Viewer · Analysis</strong>. The co-pilot is a full
+<strong>author → run → monitor</strong> workflow organised as three top-level destinations,
+selected from the destination row at the top of the page:</p>
+<section id="setup-author-a-tuning-spec">
+<h3>Setup — author a tuning spec<a class="headerlink" href="#setup-author-a-tuning-spec" title="Link to this heading">#</a></h3>
+<p>The landing destination. Point it at a base pipeline (or an existing tuning
+spec) and a <strong>metadata layout CSV/Parquet</strong> for the default <code class="docutils literal notranslate"><span class="pre">QCScorer</span></code>; the
+search-space and scorer sections stay locked until a pipeline is present, and
+<strong>Continue</strong> stays blocked until the required scorer metadata is supplied.
+Continue writes a typed, path-backed authored spec under
+<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/.phenotypic-gui/presets/tune/</span></code> and advances to <strong>Run</strong>. (Review and
+edit the inferred search space itself on the <strong>Space</strong> sub-tab under Monitor —
+see below.)</p>
+</section>
+<section id="run-configure-and-launch">
+<h3>Run — configure and launch<a class="headerlink" href="#run-configure-and-launch" title="Link to this heading">#</a></h3>
+<p>The Run destination (unlocked once a pipeline is chosen) is a launch form whose
+live command card mirrors your choices into the real
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation — the same subcommand and flag names
+you would type by hand. It exposes:</p>
+<ul class="simple">
+<li><p><strong>Inputs</strong> — an in-sandbox image-source override (blank falls back to the
+shared source root) and the output directory.</p></li>
+<li><p><strong>Strategy</strong> — strategy dropdown (<code class="docutils literal notranslate"><span class="pre">grid</span></code> / <code class="docutils literal notranslate"><span class="pre">random</span></code> / <code class="docutils literal notranslate"><span class="pre">tpe</span></code> / <code class="docutils literal notranslate"><span class="pre">cmaes</span></code> / <code class="docutils literal notranslate"><span class="pre">gp</span></code>
+/ <code class="docutils literal notranslate"><span class="pre">nsga2</span></code>), trial budget, and storage URL.</p></li>
+<li><p><strong>Compute</strong> — Local vs. SLURM, the two-round screening toggle, and the SLURM
+fleet sizing fields (workers, partition, memory, time).</p></li>
+<li><p><strong>Evaluation</strong> — held-out fraction and CV-group overrides.</p></li>
+</ul>
+<p>A pre-flight gate blocks <strong>Deploy</strong> when the configuration cannot run (for
+example a <code class="docutils literal notranslate"><span class="pre">grid</span></code> search over a continuous <code class="docutils literal notranslate"><span class="pre">FloatRange</span></code>). Unlike the earlier
+read-only co-pilot, <strong>Deploy actually launches the run</strong>: it registers the run
+in the shared run registry and starts it through the local runner, or submits
+the SLURM fleet. You no longer have to copy the command out and run it in a
+terminal (though the live command card still lets you, if you prefer).</p>
+</section>
+<section id="monitor-watch-curate-and-export">
+<h3>Monitor — watch, curate, and export<a class="headerlink" href="#monitor-watch-curate-and-export" title="Link to this heading">#</a></h3>
+<p>Once a run is deployed (or you <strong>Bind run</strong> to an existing
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span></code> output directory via the sandbox-bounded run
+picker), the Monitor destination opens the live read over the study. It carries
+a run switcher across registered Local/SLURM runs, a Local-only <strong>Cancel</strong>
+(SLURM runs are not killed from the GUI in v1), and an <strong>Export best pipeline</strong>
+button — plus the four classic sub-tabs:</p>
+<ul class="simple">
+<li><p><strong>Monitor</strong> — the live study read: objective curve (raw scores + running
+best), a parameter-importance bar chart, a winner-stability
+(generalization-gap) badge, and a trials table, polled every 3 s while a run
+is in flight. If the live study store is unreachable it degrades to the
+finished <code class="docutils literal notranslate"><span class="pre">trials.parquet</span></code> journal. A Pareto-front card appears for
+multi-objective runs only.</p></li>
+<li><p><strong>Curate</strong> — a shortlist of the best (and gap-flagged) trials; pin two into
+<strong>A</strong> / <strong>B</strong> slots and compare their colony overlays side-by-side (or as a
+single difference image) on any plate, with linked pan/zoom. “Set as winner”
+writes <code class="docutils literal notranslate"><span class="pre">best_pipeline.json</span></code>.</p></li>
+<li><p><strong>Space</strong> — the inferred search space as editable knob-rows; export the
+edited space back to <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>.</p></li>
+<li><p><strong>Launch</strong> — a strategy / budget / storage-URL form whose live command card
+renders a copy-paste <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.tune</span> <span class="pre">run</span></code> invocation.</p></li>
+</ul>
+<p>The co-pilot keeps its import surface optuna-free — the live study is opened
+lazily inside the Monitor poll only — and binding an existing run never writes
+to its directory.</p>
+<p>For the full walkthrough, see the
+<a class="reference internal" href="../../tutorials/gui/16_tune_copilot.html"><span class="std std-doc">Tune co-pilot tutorial</span></a>.</p>
+</section>
+</section>
+<section id="distributed-runs">
+<h2>Distributed runs<a class="headerlink" href="#distributed-runs" title="Link to this heading">#</a></h2>
+<p>For running a single tune study across many SLURM compute nodes that share one
+Optuna study (via <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> and a Postgres <code class="docutils literal notranslate"><span class="pre">--storage-url</span></code>), see
+<a class="reference internal" href="tune_distributed_hpcc.html"><span class="std std-doc">Distributed Tuning on HPCC Clusters</span></a>.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-a-tuningspec-in-python">Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inferring-a-search-space-with-auto-space">Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-four-scoring-objectives">The four scoring objectives</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#qcscorer"><code class="docutils literal notranslate"><span class="pre">QCScorer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#referencefreescorer"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#supervisedscorer"><code class="docutils literal notranslate"><span class="pre">SupervisedScorer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#compositescorer"><code class="docutils literal notranslate"><span class="pre">CompositeScorer</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gui-interface">GUI interface</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setup-author-a-tuning-spec">Setup — author a tuning spec</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-configure-and-launch">Run — configure and launch</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#monitor-watch-curate-and-export">Monitor — watch, curate, and export</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#distributed-runs">Distributed runs</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/how_to/pages/tuning.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

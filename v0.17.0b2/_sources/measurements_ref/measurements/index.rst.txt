@@ -1,0 +1,27 @@
+Measurements
+============
+
+Schema enums in the **Measurements** group. Each page documents an enum's
+DataFrame column labels and descriptions.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Measurements
+
+   Size <size>
+   Shape <shape>
+   Bbox <bbox>
+   Intensity <intensity>
+   Texture <texture>
+   ColorLab <colorlab>
+   ColorHSV <colorhsv>
+   Colorxy <colorxy>
+   ColorXYZ <colorxyz>
+   ColorComposition <colorcomposition>
+   Object <object>
+   Grid <grid>
+   GridSpatial <grid_spatial>
+   GridLinReg <grid_linreg_stats>
+   GridSpread <grid_spread>
+   SymZones <symmetric_zones>
+   RadialExpansion <radial_expansion>

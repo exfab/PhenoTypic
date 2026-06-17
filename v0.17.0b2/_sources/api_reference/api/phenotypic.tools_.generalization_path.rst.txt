@@ -1,0 +1,6 @@
+phenotypic.tools\_.generalization\_path
+=======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: generalization_path

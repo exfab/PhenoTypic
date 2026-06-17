@@ -1,0 +1,67 @@
+phenotypic.enhance.FocusEdgeFrangi
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeFrangi
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeFrangi.__init__
+      ~FocusEdgeFrangi.apply
+      ~FocusEdgeFrangi.construct
+      ~FocusEdgeFrangi.copy
+      ~FocusEdgeFrangi.dict
+      ~FocusEdgeFrangi.from_json
+      ~FocusEdgeFrangi.from_orm
+      ~FocusEdgeFrangi.json
+      ~FocusEdgeFrangi.model_construct
+      ~FocusEdgeFrangi.model_copy
+      ~FocusEdgeFrangi.model_dump
+      ~FocusEdgeFrangi.model_dump_json
+      ~FocusEdgeFrangi.model_json_schema
+      ~FocusEdgeFrangi.model_parametrized_name
+      ~FocusEdgeFrangi.model_post_init
+      ~FocusEdgeFrangi.model_rebuild
+      ~FocusEdgeFrangi.model_validate
+      ~FocusEdgeFrangi.model_validate_json
+      ~FocusEdgeFrangi.model_validate_strings
+      ~FocusEdgeFrangi.parse_file
+      ~FocusEdgeFrangi.parse_obj
+      ~FocusEdgeFrangi.parse_raw
+      ~FocusEdgeFrangi.schema
+      ~FocusEdgeFrangi.schema_json
+      ~FocusEdgeFrangi.to_json
+      ~FocusEdgeFrangi.update_forward_refs
+      ~FocusEdgeFrangi.validate
+      ~FocusEdgeFrangi.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeFrangi.model_computed_fields
+      ~FocusEdgeFrangi.model_config
+      ~FocusEdgeFrangi.model_extra
+      ~FocusEdgeFrangi.model_fields
+      ~FocusEdgeFrangi.model_fields_set
+      ~FocusEdgeFrangi.sigmas
+      ~FocusEdgeFrangi.alpha
+      ~FocusEdgeFrangi.beta
+      ~FocusEdgeFrangi.gamma
+      ~FocusEdgeFrangi.black_ridges
+   
+   

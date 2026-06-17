@@ -1,0 +1,6 @@
+phenotypic.tools\_.qc\_dir
+==========================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: qc_dir

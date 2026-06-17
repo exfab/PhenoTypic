@@ -1,0 +1,18 @@
+LINEAR_SOFTPLUS_MODEL
+=====================
+
+Python object: ``phenotypic.schema._linear_softplus_model.LINEAR_SOFTPLUS_MODEL``
+
+.. list-table:: Category: **LinearSoftplus**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``LinearSoftplus_v``
+     - The post-lag phase growth rate.
+   * - ``LinearSoftplus_s0``
+     - The initial size
+   * - ``LinearSoftplus_lambda``
+     - The duration of the lag phase
+   * - ``LinearSoftplus_alpha``
+     - lag phase transition sharpness

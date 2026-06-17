@@ -1,0 +1,70 @@
+phenotypic.grid.AutoGridFinder
+==============================
+
+.. currentmodule:: phenotypic.grid
+
+.. autoclass:: AutoGridFinder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AutoGridFinder.__init__
+      ~AutoGridFinder.construct
+      ~AutoGridFinder.copy
+      ~AutoGridFinder.dashboard
+      ~AutoGridFinder.dict
+      ~AutoGridFinder.from_json
+      ~AutoGridFinder.from_orm
+      ~AutoGridFinder.get_col_edges
+      ~AutoGridFinder.get_row_edges
+      ~AutoGridFinder.json
+      ~AutoGridFinder.measure
+      ~AutoGridFinder.model_construct
+      ~AutoGridFinder.model_copy
+      ~AutoGridFinder.model_dump
+      ~AutoGridFinder.model_dump_json
+      ~AutoGridFinder.model_json_schema
+      ~AutoGridFinder.model_parametrized_name
+      ~AutoGridFinder.model_post_init
+      ~AutoGridFinder.model_rebuild
+      ~AutoGridFinder.model_validate
+      ~AutoGridFinder.model_validate_json
+      ~AutoGridFinder.model_validate_strings
+      ~AutoGridFinder.parse_file
+      ~AutoGridFinder.parse_obj
+      ~AutoGridFinder.parse_raw
+      ~AutoGridFinder.schema
+      ~AutoGridFinder.schema_json
+      ~AutoGridFinder.to_json
+      ~AutoGridFinder.update_forward_refs
+      ~AutoGridFinder.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AutoGridFinder.model_computed_fields
+      ~AutoGridFinder.model_config
+      ~AutoGridFinder.model_extra
+      ~AutoGridFinder.model_fields
+      ~AutoGridFinder.model_fields_set
+      ~AutoGridFinder.nrows
+      ~AutoGridFinder.ncols
+      ~AutoGridFinder.residual_fraction
+      ~AutoGridFinder.warn
+      ~AutoGridFinder.tol
+      ~AutoGridFinder.max_iter
+   
+   

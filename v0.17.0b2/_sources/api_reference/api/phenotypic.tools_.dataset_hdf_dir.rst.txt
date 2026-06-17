@@ -1,0 +1,6 @@
+phenotypic.tools\_.dataset\_hdf\_dir
+====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: dataset_hdf_dir

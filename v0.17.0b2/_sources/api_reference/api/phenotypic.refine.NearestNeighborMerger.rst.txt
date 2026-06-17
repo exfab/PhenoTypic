@@ -1,0 +1,64 @@
+phenotypic.refine.NearestNeighborMerger
+=======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: NearestNeighborMerger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NearestNeighborMerger.__init__
+      ~NearestNeighborMerger.apply
+      ~NearestNeighborMerger.construct
+      ~NearestNeighborMerger.copy
+      ~NearestNeighborMerger.dict
+      ~NearestNeighborMerger.from_json
+      ~NearestNeighborMerger.from_orm
+      ~NearestNeighborMerger.json
+      ~NearestNeighborMerger.model_construct
+      ~NearestNeighborMerger.model_copy
+      ~NearestNeighborMerger.model_dump
+      ~NearestNeighborMerger.model_dump_json
+      ~NearestNeighborMerger.model_json_schema
+      ~NearestNeighborMerger.model_parametrized_name
+      ~NearestNeighborMerger.model_post_init
+      ~NearestNeighborMerger.model_rebuild
+      ~NearestNeighborMerger.model_validate
+      ~NearestNeighborMerger.model_validate_json
+      ~NearestNeighborMerger.model_validate_strings
+      ~NearestNeighborMerger.parse_file
+      ~NearestNeighborMerger.parse_obj
+      ~NearestNeighborMerger.parse_raw
+      ~NearestNeighborMerger.schema
+      ~NearestNeighborMerger.schema_json
+      ~NearestNeighborMerger.to_json
+      ~NearestNeighborMerger.update_forward_refs
+      ~NearestNeighborMerger.validate
+      ~NearestNeighborMerger.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NearestNeighborMerger.model_computed_fields
+      ~NearestNeighborMerger.model_config
+      ~NearestNeighborMerger.model_extra
+      ~NearestNeighborMerger.model_fields
+      ~NearestNeighborMerger.model_fields_set
+      ~NearestNeighborMerger.distance_threshold
+      ~NearestNeighborMerger.min_size
+   
+   

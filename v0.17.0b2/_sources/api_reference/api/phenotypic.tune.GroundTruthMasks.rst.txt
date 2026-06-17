@@ -1,0 +1,63 @@
+phenotypic.tune.GroundTruthMasks
+================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: GroundTruthMasks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GroundTruthMasks.__init__
+      ~GroundTruthMasks.available_names
+      ~GroundTruthMasks.construct
+      ~GroundTruthMasks.copy
+      ~GroundTruthMasks.dict
+      ~GroundTruthMasks.from_orm
+      ~GroundTruthMasks.json
+      ~GroundTruthMasks.masks_for
+      ~GroundTruthMasks.modality
+      ~GroundTruthMasks.model_construct
+      ~GroundTruthMasks.model_copy
+      ~GroundTruthMasks.model_dump
+      ~GroundTruthMasks.model_dump_json
+      ~GroundTruthMasks.model_json_schema
+      ~GroundTruthMasks.model_parametrized_name
+      ~GroundTruthMasks.model_post_init
+      ~GroundTruthMasks.model_rebuild
+      ~GroundTruthMasks.model_validate
+      ~GroundTruthMasks.model_validate_json
+      ~GroundTruthMasks.model_validate_strings
+      ~GroundTruthMasks.parse_file
+      ~GroundTruthMasks.parse_obj
+      ~GroundTruthMasks.parse_raw
+      ~GroundTruthMasks.schema
+      ~GroundTruthMasks.schema_json
+      ~GroundTruthMasks.update_forward_refs
+      ~GroundTruthMasks.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GroundTruthMasks.model_computed_fields
+      ~GroundTruthMasks.model_config
+      ~GroundTruthMasks.model_extra
+      ~GroundTruthMasks.model_fields
+      ~GroundTruthMasks.model_fields_set
+      ~GroundTruthMasks.gt_masks_source
+      ~GroundTruthMasks.gt_format
+   
+   

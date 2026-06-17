@@ -1,0 +1,6 @@
+phenotypic.tools\_.qc\_summary\_parquet\_path
+=============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: qc_summary_parquet_path

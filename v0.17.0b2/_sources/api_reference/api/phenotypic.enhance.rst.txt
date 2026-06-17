@@ -1,0 +1,61 @@
+﻿phenotypic.enhance
+==================
+
+.. automodule:: phenotypic.enhance
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      BayesShrinkEnhancer
+      LocalEdgeDenoise
+      BM3DDenoiser
+      EnhanceLocalContrast
+      StructureSmoothing
+      ContrastStretching
+      FocusEdgeFrangi
+      GaussianBlur
+      SubtractGaussian
+      GrayOpening
+      FocusEdgeHessian
+      FlattenIllumination
+      ImageInverter
+      FocusEdgeLaplace
+      MedianFilter
+      FocusEdgeMeijering
+      FocusBlobLoG
+      NonLocalMeansDenoiser
+      SubtractOpening
+      FocusEdgePhase
+      RankMedianEnhancer
+      SubtractRollingBall
+      FocusEdgeSato
+      FocusEdgeSobel
+      SharpenEdgeGauss
+      VisuShrinkEnhancer
+      WhiteTophatEnhance
+      SubtractWhiteTophat
+      SetDetectMode
+   
+   
+
+   
+   
+   
+
+
+

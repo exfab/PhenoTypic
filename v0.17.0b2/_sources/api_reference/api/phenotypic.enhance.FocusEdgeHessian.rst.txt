@@ -1,0 +1,69 @@
+phenotypic.enhance.FocusEdgeHessian
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeHessian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeHessian.__init__
+      ~FocusEdgeHessian.apply
+      ~FocusEdgeHessian.construct
+      ~FocusEdgeHessian.copy
+      ~FocusEdgeHessian.dict
+      ~FocusEdgeHessian.from_json
+      ~FocusEdgeHessian.from_orm
+      ~FocusEdgeHessian.json
+      ~FocusEdgeHessian.model_construct
+      ~FocusEdgeHessian.model_copy
+      ~FocusEdgeHessian.model_dump
+      ~FocusEdgeHessian.model_dump_json
+      ~FocusEdgeHessian.model_json_schema
+      ~FocusEdgeHessian.model_parametrized_name
+      ~FocusEdgeHessian.model_post_init
+      ~FocusEdgeHessian.model_rebuild
+      ~FocusEdgeHessian.model_validate
+      ~FocusEdgeHessian.model_validate_json
+      ~FocusEdgeHessian.model_validate_strings
+      ~FocusEdgeHessian.parse_file
+      ~FocusEdgeHessian.parse_obj
+      ~FocusEdgeHessian.parse_raw
+      ~FocusEdgeHessian.schema
+      ~FocusEdgeHessian.schema_json
+      ~FocusEdgeHessian.to_json
+      ~FocusEdgeHessian.update_forward_refs
+      ~FocusEdgeHessian.validate
+      ~FocusEdgeHessian.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeHessian.model_computed_fields
+      ~FocusEdgeHessian.model_config
+      ~FocusEdgeHessian.model_extra
+      ~FocusEdgeHessian.model_fields
+      ~FocusEdgeHessian.model_fields_set
+      ~FocusEdgeHessian.sigmas
+      ~FocusEdgeHessian.alpha
+      ~FocusEdgeHessian.beta
+      ~FocusEdgeHessian.gamma
+      ~FocusEdgeHessian.black_ridges
+      ~FocusEdgeHessian.mode
+      ~FocusEdgeHessian.cval
+   
+   

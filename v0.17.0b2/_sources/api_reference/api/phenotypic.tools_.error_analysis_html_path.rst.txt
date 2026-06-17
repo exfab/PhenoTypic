@@ -1,0 +1,6 @@
+phenotypic.tools\_.error\_analysis\_html\_path
+==============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: error_analysis_html_path

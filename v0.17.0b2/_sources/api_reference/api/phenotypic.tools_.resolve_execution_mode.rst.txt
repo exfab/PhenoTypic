@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_execution\_mode
+===========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_execution_mode

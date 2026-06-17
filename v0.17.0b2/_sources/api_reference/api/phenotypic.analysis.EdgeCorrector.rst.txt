@@ -1,0 +1,72 @@
+phenotypic.analysis.EdgeCorrector
+=================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: EdgeCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EdgeCorrector.__init__
+      ~EdgeCorrector.analyze
+      ~EdgeCorrector.construct
+      ~EdgeCorrector.copy
+      ~EdgeCorrector.dash
+      ~EdgeCorrector.dict
+      ~EdgeCorrector.from_orm
+      ~EdgeCorrector.json
+      ~EdgeCorrector.model_construct
+      ~EdgeCorrector.model_copy
+      ~EdgeCorrector.model_dump
+      ~EdgeCorrector.model_dump_json
+      ~EdgeCorrector.model_json_schema
+      ~EdgeCorrector.model_parametrized_name
+      ~EdgeCorrector.model_post_init
+      ~EdgeCorrector.model_rebuild
+      ~EdgeCorrector.model_validate
+      ~EdgeCorrector.model_validate_json
+      ~EdgeCorrector.model_validate_strings
+      ~EdgeCorrector.parse_file
+      ~EdgeCorrector.parse_obj
+      ~EdgeCorrector.parse_raw
+      ~EdgeCorrector.results
+      ~EdgeCorrector.schema
+      ~EdgeCorrector.schema_json
+      ~EdgeCorrector.show
+      ~EdgeCorrector.update_forward_refs
+      ~EdgeCorrector.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EdgeCorrector.model_computed_fields
+      ~EdgeCorrector.model_config
+      ~EdgeCorrector.model_extra
+      ~EdgeCorrector.model_fields
+      ~EdgeCorrector.model_fields_set
+      ~EdgeCorrector.time_label
+      ~EdgeCorrector.nrows
+      ~EdgeCorrector.ncols
+      ~EdgeCorrector.top_n
+      ~EdgeCorrector.pvalue
+      ~EdgeCorrector.connectivity
+      ~EdgeCorrector.on
+      ~EdgeCorrector.groupby
+      ~EdgeCorrector.agg_func
+      ~EdgeCorrector.n_jobs
+   
+   

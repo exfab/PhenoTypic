@@ -1,0 +1,61 @@
+phenotypic.abc\_.GridMeasureFeatures
+====================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridMeasureFeatures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridMeasureFeatures.__init__
+      ~GridMeasureFeatures.construct
+      ~GridMeasureFeatures.copy
+      ~GridMeasureFeatures.dict
+      ~GridMeasureFeatures.from_json
+      ~GridMeasureFeatures.from_orm
+      ~GridMeasureFeatures.json
+      ~GridMeasureFeatures.measure
+      ~GridMeasureFeatures.model_construct
+      ~GridMeasureFeatures.model_copy
+      ~GridMeasureFeatures.model_dump
+      ~GridMeasureFeatures.model_dump_json
+      ~GridMeasureFeatures.model_json_schema
+      ~GridMeasureFeatures.model_parametrized_name
+      ~GridMeasureFeatures.model_post_init
+      ~GridMeasureFeatures.model_rebuild
+      ~GridMeasureFeatures.model_validate
+      ~GridMeasureFeatures.model_validate_json
+      ~GridMeasureFeatures.model_validate_strings
+      ~GridMeasureFeatures.parse_file
+      ~GridMeasureFeatures.parse_obj
+      ~GridMeasureFeatures.parse_raw
+      ~GridMeasureFeatures.schema
+      ~GridMeasureFeatures.schema_json
+      ~GridMeasureFeatures.to_json
+      ~GridMeasureFeatures.update_forward_refs
+      ~GridMeasureFeatures.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridMeasureFeatures.model_computed_fields
+      ~GridMeasureFeatures.model_config
+      ~GridMeasureFeatures.model_extra
+      ~GridMeasureFeatures.model_fields
+      ~GridMeasureFeatures.model_fields_set
+   
+   

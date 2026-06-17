@@ -1,0 +1,73 @@
+phenotypic.detect.RoundPeaksDetector
+====================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: RoundPeaksDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RoundPeaksDetector.__init__
+      ~RoundPeaksDetector.apply
+      ~RoundPeaksDetector.construct
+      ~RoundPeaksDetector.copy
+      ~RoundPeaksDetector.dict
+      ~RoundPeaksDetector.from_json
+      ~RoundPeaksDetector.from_orm
+      ~RoundPeaksDetector.json
+      ~RoundPeaksDetector.model_construct
+      ~RoundPeaksDetector.model_copy
+      ~RoundPeaksDetector.model_dump
+      ~RoundPeaksDetector.model_dump_json
+      ~RoundPeaksDetector.model_json_schema
+      ~RoundPeaksDetector.model_parametrized_name
+      ~RoundPeaksDetector.model_post_init
+      ~RoundPeaksDetector.model_rebuild
+      ~RoundPeaksDetector.model_validate
+      ~RoundPeaksDetector.model_validate_json
+      ~RoundPeaksDetector.model_validate_strings
+      ~RoundPeaksDetector.parse_file
+      ~RoundPeaksDetector.parse_obj
+      ~RoundPeaksDetector.parse_raw
+      ~RoundPeaksDetector.schema
+      ~RoundPeaksDetector.schema_json
+      ~RoundPeaksDetector.to_json
+      ~RoundPeaksDetector.update_forward_refs
+      ~RoundPeaksDetector.validate
+      ~RoundPeaksDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RoundPeaksDetector.model_computed_fields
+      ~RoundPeaksDetector.model_config
+      ~RoundPeaksDetector.model_extra
+      ~RoundPeaksDetector.model_fields
+      ~RoundPeaksDetector.model_fields_set
+      ~RoundPeaksDetector.thresh_method
+      ~RoundPeaksDetector.subtract_background
+      ~RoundPeaksDetector.remove_noise
+      ~RoundPeaksDetector.footprint_width
+      ~RoundPeaksDetector.noise_radius
+      ~RoundPeaksDetector.smoothing_sigma
+      ~RoundPeaksDetector.min_peak_distance
+      ~RoundPeaksDetector.peak_prominence
+      ~RoundPeaksDetector.edge_refinement
+      ~RoundPeaksDetector.selection_mode
+      ~RoundPeaksDetector.split_merged
+   
+   

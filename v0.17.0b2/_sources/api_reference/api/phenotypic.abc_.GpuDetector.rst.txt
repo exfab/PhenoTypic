@@ -1,0 +1,62 @@
+phenotypic.abc\_.GpuDetector
+============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GpuDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GpuDetector.__init__
+      ~GpuDetector.apply
+      ~GpuDetector.construct
+      ~GpuDetector.copy
+      ~GpuDetector.dict
+      ~GpuDetector.from_json
+      ~GpuDetector.from_orm
+      ~GpuDetector.json
+      ~GpuDetector.model_construct
+      ~GpuDetector.model_copy
+      ~GpuDetector.model_dump
+      ~GpuDetector.model_dump_json
+      ~GpuDetector.model_json_schema
+      ~GpuDetector.model_parametrized_name
+      ~GpuDetector.model_post_init
+      ~GpuDetector.model_rebuild
+      ~GpuDetector.model_validate
+      ~GpuDetector.model_validate_json
+      ~GpuDetector.model_validate_strings
+      ~GpuDetector.parse_file
+      ~GpuDetector.parse_obj
+      ~GpuDetector.parse_raw
+      ~GpuDetector.schema
+      ~GpuDetector.schema_json
+      ~GpuDetector.to_json
+      ~GpuDetector.update_forward_refs
+      ~GpuDetector.validate
+      ~GpuDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GpuDetector.model_computed_fields
+      ~GpuDetector.model_config
+      ~GpuDetector.model_extra
+      ~GpuDetector.model_fields
+      ~GpuDetector.model_fields_set
+   
+   

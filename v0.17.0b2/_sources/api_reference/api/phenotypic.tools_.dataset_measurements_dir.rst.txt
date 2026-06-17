@@ -1,0 +1,6 @@
+phenotypic.tools\_.dataset\_measurements\_dir
+=============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: dataset_measurements_dir

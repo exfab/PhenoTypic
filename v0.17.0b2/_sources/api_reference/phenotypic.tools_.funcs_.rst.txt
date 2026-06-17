@@ -1,0 +1,7 @@
+phenotypic.tools\_.funcs\_ module
+=================================
+
+.. automodule:: phenotypic.tools_.funcs_
+   :members:
+   :show-inheritance:
+   :undoc-members:

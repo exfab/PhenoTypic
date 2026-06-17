@@ -1,0 +1,1198 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>The Linear-Softplus and Double-Softplus Growth Models &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=ed622d3e"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'explanation/notebooks/linear_softplus_model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0b2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0b2/explanation/notebooks/linear_softplus_model.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="The Filamentous Fungi Detection Algorithm" href="../filamentous_fungi_algorithm.html" />
+    <link rel="prev" title="Image Quality: Noise, Contrast, and Structure" href="../image_quality_noise_contrast_structure.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0b2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="../index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Concepts</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../pipeline_mental_model.html">The Pipeline Mental Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../color_spaces_for_phenotyping.html">Color Spaces for Phenotyping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../how_the_image_class_works.html">How the Image Class Works</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Processing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../detection_strategies_compared.html">Detection Strategies Compared</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../grid_vs_non_grid_detection.html">Grid vs Non-Grid Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../what_enhancement_does.html">What Enhancement Actually Does</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../refinement_strategies.html">Refinement Strategies</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../measurement_metrics_biological_meaning.html">Measurement Metrics and Their Biological Meaning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../edge_effects_in_plate_assays.html">Edge Effects in Plate-Based Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../image_quality_noise_contrast_structure.html">Image Quality: Noise, Contrast, and Structure</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">The Linear-Softplus and Double-Softplus Growth Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Specialized Topics</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../filamentous_fungi_algorithm.html">The Filamentous Fungi Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../prefab_pipelines_guide.html">Prefab Pipelines: Which One for Which Organism</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Explanation</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">The Linear-Softplus and Double-Softplus Growth Models</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="The-Linear-Softplus-and-Double-Softplus-Growth-Models">
+<h1>The Linear-Softplus and Double-Softplus Growth Models<a class="headerlink" href="#The-Linear-Softplus-and-Double-Softplus-Growth-Models" title="Link to this heading">#</a></h1>
+<p>The phenotypic library ships two complementary kinetic fits for time-course colony sizing on solid media:</p>
+<ul class="simple">
+<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.LinearSoftplus</span></code> — 4 parameters, no saturation ceiling. Use when colonies are still in the linear- growth regime, or when you want the saturation tail discarded as observation noise. Pruning is ON by default.</p></li>
+<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.DoubleSoftplus</span></code> — 4 or 5 parameters, with a softplus saturation ceiling. Use when the data shows a clear carrying-capacity plateau and you want to recover <code class="docutils literal notranslate"><span class="pre">smax</span></code> (and optionally fit β).</p></li>
+</ul>
+<p>Both classes share the same lag-phase math, the same σ-resolution machinery, the same Gaussian-prior-on-<code class="docutils literal notranslate"><span class="pre">s0</span></code> infrastructure, and the same robust-loss handling. <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> adds a softplus ceiling on top of the shared core and a per-group binary mode dispatch (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> vs <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>). This page is a conceptual walkthrough covering:</p>
+<ol class="arabic simple">
+<li><p>The model equations and what each parameter means biologically.</p></li>
+<li><p>The two-way mode dispatch on <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> — how the fitter picks between a 4-parameter clamped fit (fixed β) and a 5-parameter fit with saturation sharpness as a free parameter.</p></li>
+<li><p>Every outlier-robustness mitigation wired into the fits: saturation pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> only), robust loss, inverse-variance weighting, the replicate-SEM quantile floor, the <span class="math notranslate nohighlight">\(n=1\)</span> timepoint pooled-std fallback, and the optional Gaussian prior on the inoculum size <span class="math notranslate nohighlight">\(s_0\)</span>.</p></li>
+</ol>
+<p>The growth-curve literature has pulled in this direction for years — robust M-estimators for outliers (<a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">Huber, 1964</a>), inverse-variance weighting for heteroskedastic timepoints, and weakly-informative priors for ill-posed initial conditions (<a class="reference external" href="https://doi.org/10.1214/08-AOAS191">Gelman et al., 2008</a>). The softplus-lag representation itself and the saturation-clamp form extend the classical 3-phase bacterial-growth framing of <a class="reference external" href="https://doi.org/10.1128/aem.56.6.1875-1881.1990">Zwietering et al.,
+1990</a> with smoothly-differentiable transitions that play nicely with gradient-based optimizers.</p>
+<section id="1.-The-Model-Equation">
+<h2>1. The Model Equation<a class="headerlink" href="#1.-The-Model-Equation" title="Link to this heading">#</a></h2>
+<p>The fit combines a <strong>softplus lag</strong> with an optional <strong>softplus saturation ceiling</strong>. The unclamped (growth-only) form is</p>
+<div class="math notranslate nohighlight">
+\[s_{\mathrm{lin}}(t) \;=\; \frac{v}{\alpha}\,\ln\!\bigl(1 + e^{\alpha(t - \lambda)}\bigr) + s_0 ,\]</div>
+<p>and the clamped form folds this through a second softplus to impose the carrying-capacity ceiling:</p>
+<div class="math notranslate nohighlight">
+\[s(t) \;=\; s_{\max} \;-\; \frac{1}{\beta}\,\ln\!\bigl(1 + e^{\beta(s_{\max} - s_{\mathrm{lin}}(t))}\bigr) .\]</div>
+<section id="Why-softplus-rather-than-a-piecewise-linear-lag?">
+<h3>Why softplus rather than a piecewise-linear lag?<a class="headerlink" href="#Why-softplus-rather-than-a-piecewise-linear-lag?" title="Link to this heading">#</a></h3>
+<p>The softplus function</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{sp}_\alpha(x) \;=\; \frac{1}{\alpha}\ln\!\bigl(1 + e^{\alpha x}\bigr)\]</div>
+<p>is the canonical <span class="math notranslate nohighlight">\(C^\infty\)</span> approximation of <span class="math notranslate nohighlight">\(\max(x, 0)\)</span>: far below <span class="math notranslate nohighlight">\(x=0\)</span> it decays exponentially to <span class="math notranslate nohighlight">\(0\)</span>, far above it grows linearly with slope <span class="math notranslate nohighlight">\(1\)</span>, and the transition sharpness is set by <span class="math notranslate nohighlight">\(\alpha\)</span>. The lag term in the model is a <span class="math notranslate nohighlight">\(v\)</span>-scaled softplus of <span class="math notranslate nohighlight">\((t - \lambda)\)</span>, so the curve transitions smoothly from “no growth” to “linear growth at rate <span class="math notranslate nohighlight">\(v\)</span>” without any discontinuous derivatives. That smoothness matters for gradient-based
+least-squares solvers: a kink in the model creates a kink in the residual surface, and Levenberg–Marquardt / trust-region solvers do not recover gracefully from kinks.</p>
+<p>The saturation clamp plays the same role at the ceiling. Subtracting a softplus of the excess <span class="math notranslate nohighlight">\((s_{\max} - s_{\mathrm{lin}})\)</span> from <span class="math notranslate nohighlight">\(s_{\max}\)</span> flattens the curve smoothly once it approaches the carrying capacity. When <span class="math notranslate nohighlight">\(s_{\mathrm{lin}}(t)\)</span> is well below <span class="math notranslate nohighlight">\(s_{\max}\)</span> the clamp is inactive (<code class="docutils literal notranslate"><span class="pre">softplus(large</span> <span class="pre">positive)</span></code> is essentially the identity); when it is well above, the clamp pins the output to <span class="math notranslate nohighlight">\(s_{\max}\)</span> (<code class="docutils literal notranslate"><span class="pre">softplus(large</span> <span class="pre">negative)</span></code> is nearly zero). The transition
+sharpness is set by <span class="math notranslate nohighlight">\(\beta\)</span>.</p>
+</section>
+<section id="Numerical-detail">
+<h3>Numerical detail<a class="headerlink" href="#Numerical-detail" title="Link to this heading">#</a></h3>
+<p>The implementation uses :func:<code class="docutils literal notranslate"><span class="pre">numpy.logaddexp</span></code>, the numerically stable form of <span class="math notranslate nohighlight">\(\ln(1 + e^x)\)</span>. Naïve evaluation of <span class="math notranslate nohighlight">\(\ln(1 + e^{\alpha(t-\lambda)})\)</span> overflows when <span class="math notranslate nohighlight">\(\alpha(t-\lambda) \gtrsim 700\)</span>; <code class="docutils literal notranslate"><span class="pre">logaddexp(0,</span> <span class="pre">x)</span></code> computes the same quantity as <span class="math notranslate nohighlight">\(\max(0, x) + \ln(1 + e^{-|x|})\)</span> and stays well-behaved across the full range the optimizer visits.</p>
+</section>
+</section>
+<section id="2.-Parameter-Cheat-Sheet">
+<h2>2. Parameter Cheat-Sheet<a class="headerlink" href="#2.-Parameter-Cheat-Sheet" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Biological interpretation</p></th>
+<th class="head"><p>Typical scale</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(v\)</span></p></td>
+<td><p>Post-lag linear growth rate</p></td>
+<td><p>Maximum specific growth rate reached during the exponential/linear phase</p></td>
+<td><p>Units of <span class="math notranslate nohighlight">\(s\)</span> per unit <span class="math notranslate nohighlight">\(t\)</span> (e.g. pixels²/hour)</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(s_0\)</span></p></td>
+<td><p>Intercept of the post-lag line</p></td>
+<td><p>Effective inoculum size, back-extrapolated from the linear phase</p></td>
+<td><p>Same units as <span class="math notranslate nohighlight">\(s\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\lambda\)</span></p></td>
+<td><p>Lag duration</p></td>
+<td><p>Time at which the curve enters the linear phase</p></td>
+<td><p>Same units as <span class="math notranslate nohighlight">\(t\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\alpha\)</span></p></td>
+<td><p>Lag transition sharpness</p></td>
+<td><p><span class="math notranslate nohighlight">\(\alpha \to \infty\)</span> gives a hard switch-on; <span class="math notranslate nohighlight">\(\alpha \approx 2\)</span> is very gentle</p></td>
+<td><p>Dimensionally <span class="math notranslate nohighlight">\(1/t\)</span>; fit bounds are <span class="math notranslate nohighlight">\([2, 50]\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(s_{\max}\)</span></p></td>
+<td><p>Carrying capacity</p></td>
+<td><p>Plateau imposed by nutrient limitation, space, or toxic by-product accumulation</p></td>
+<td><p>Same units as <span class="math notranslate nohighlight">\(s\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\beta\)</span></p></td>
+<td><p>Saturation transition sharpness</p></td>
+<td><p>Same role as <span class="math notranslate nohighlight">\(\alpha\)</span>, but for the ceiling</p></td>
+<td><p>Dimensionally <span class="math notranslate nohighlight">\(1/s\)</span>; fit bounds are <span class="math notranslate nohighlight">\([2, 50]\)</span> in <code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> mode; default scalar is <code class="docutils literal notranslate"><span class="pre">10.0</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Two things worth highlighting:</p>
+<ul class="simple">
+<li><p><strong>:math:`s_0` is an intercept, not the :math:`t=0` observation.</strong> The softplus lag is not identically zero for <span class="math notranslate nohighlight">\(t &lt; \lambda\)</span> — it is <em>exponentially small but non-zero</em>. So <span class="math notranslate nohighlight">\(s(0) = s_0 + (v/\alpha)\, \ln(1 + e^{-\alpha\lambda})\)</span>, which is numerically very close to <span class="math notranslate nohighlight">\(s_0\)</span> for typical <span class="math notranslate nohighlight">\(\alpha\lambda \gg 1\)</span> but not exactly equal. In the limit of a perfectly sharp switch-on <span class="math notranslate nohighlight">\((\alpha \to \infty)\)</span>, the softplus collapses to <span class="math notranslate nohighlight">\(\max(t - \lambda, 0)\)</span> and <span class="math notranslate nohighlight">\(s_0\)</span> is
+recovered exactly as the pre-lag baseline.</p></li>
+<li><p><strong>:math:`v` and :math:`lambda` are only separately identifiable with enough sub-saturation points.</strong> On a fully-clamped curve, many <span class="math notranslate nohighlight">\((v, \lambda)\)</span> pairs produce the same plateau, and the fit can drift into implausible regions. Section 3 discusses how pruning and priors address this.</p></li>
+</ul>
+</section>
+<section id="3.-DoubleSoftplus:-Per-Group-Mode-Dispatch">
+<h2>3. DoubleSoftplus: Per-Group Mode Dispatch<a class="headerlink" href="#3.-DoubleSoftplus:-Per-Group-Mode-Dispatch" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> is single-mode by construction — it always fits the 4-parameter unclamped form. <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> is the saturating variant, and within it the fitter picks one of two variants per group, recorded in the <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus_mode</span></code> column of the results.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Mode</p></th>
+<th class="head"><p>Trigger</p></th>
+<th class="head"><p>Free parameters</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;fixed_beta&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code> user-supplied, <strong>or</strong> no shoulder detected</p></td>
+<td><p><span class="math notranslate nohighlight">\(v, s_0, \lambda, \alpha\)</span> (clamped, <span class="math notranslate nohighlight">\(\beta\)</span> held constant)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;fitted_beta&quot;</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">beta</span> <span class="pre">is</span> <span class="pre">None</span></code> and a shoulder is detected</p></td>
+<td><p><span class="math notranslate nohighlight">\(v, s_0, \lambda, \alpha, \beta\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>When a curve has no clear plateau, it likely belongs to <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> instead — using <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> on non-saturating data still produces a fit (with <span class="math notranslate nohighlight">\(\beta\)</span> pinned at the module default and <code class="docutils literal notranslate"><span class="pre">smax</span></code> set to the per-group observed max), but the inferred carrying capacity will be sampling-window-dependent rather than biologically meaningful.</p>
+<section id="Shoulder-detection">
+<h3>Shoulder detection<a class="headerlink" href="#Shoulder-detection" title="Link to this heading">#</a></h3>
+<p>Shoulder detection lives in <code class="docutils literal notranslate"><span class="pre">_has_saturation_shoulder</span></code> and is deliberately conservative:</p>
+<ol class="arabic simple">
+<li><p><strong>Dynamic-range gate.</strong> If the finite-<span class="math notranslate nohighlight">\(y\)</span> range is <span class="math notranslate nohighlight">\(\leq 5\%\)</span> of <span class="math notranslate nohighlight">\(|\mathrm{median}(y)|\)</span>, the group is treated as flat noise and no shoulder is declared. This guards against coincidental ratio tests firing on curves that never really grew.</p></li>
+<li><p><strong>Peak-slope estimation.</strong> The gradient <span class="math notranslate nohighlight">\(dy/dt\)</span> is smoothed with a small box filter whose width scales with the series length (<code class="docutils literal notranslate"><span class="pre">min(5,</span> <span class="pre">max(3,</span> <span class="pre">len(y)//4))</span></code>); the maximum of the smoothed gradient becomes the reference “peak slope” — robust to single-point noise spikes that would otherwise inflate a raw max.</p></li>
+<li><p><strong>Terminal-slope collapse.</strong> The minimum of the last few <em>raw</em> gradients (<code class="docutils literal notranslate"><span class="pre">tail_k</span> <span class="pre">=</span> <span class="pre">max(2,</span> <span class="pre">min(3,</span> <span class="pre">len(dy_dt)</span> <span class="pre">//</span> <span class="pre">5))</span></code>) is compared against <code class="docutils literal notranslate"><span class="pre">shoulder_slope_ratio</span> <span class="pre">×</span> <span class="pre">peak_slope</span></code> (default <span class="math notranslate nohighlight">\(0.05 \times\)</span> peak). Using the min (not the mean) of the tail keeps the criterion sensitive to short plateaus where just the final <span class="math notranslate nohighlight">\(2\)</span>–<span class="math notranslate nohighlight">\(3\)</span> points have collapsed to near-zero slope.</p></li>
+</ol>
+<p>If the terminal-slope collapse condition fires, the group has a shoulder; otherwise it does not.</p>
+</section>
+<section id="When-to-pick-LinearSoftplus-vs-DoubleSoftplus">
+<h3>When to pick <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> vs <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code><a class="headerlink" href="#When-to-pick-LinearSoftplus-vs-DoubleSoftplus" title="Link to this heading">#</a></h3>
+<p>Picking the right class up front is more honest than relying on runtime dispatch to silently switch models. If a fit group has not plateaued within the observed window and you fit a saturated model, pinning <span class="math notranslate nohighlight">\(s_{\max}\)</span> to the observed maximum silently encodes <em>“this is the carrying capacity”</em> — even though the data only supports <em>“growth has not plateaued yet”</em>. Those are very different claims. The split into two classes makes that choice explicit:</p>
+<ul class="simple">
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> when growth is still in the linear regime. <span class="math notranslate nohighlight">\(s_{\max}\)</span> and <span class="math notranslate nohighlight">\(\beta\)</span> never appear in the output.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> when there is a real plateau worth recovering. The mode column records whether <span class="math notranslate nohighlight">\(\beta\)</span> was fit or held at the default.</p></li>
+</ul>
+</section>
+</section>
+<section id="4.-Outlier-Mitigations">
+<h2>4. Outlier Mitigations<a class="headerlink" href="#4.-Outlier-Mitigations" title="Link to this heading">#</a></h2>
+<p>Field colony data is rarely well-behaved. A typical run has:</p>
+<ul class="simple">
+<li><p>A handful of catastrophically wrong measurements — bubble artefacts, segmentation errors, contamination spikes, mis-registered timepoints.</p></li>
+<li><p>Heteroskedastic noise — early timepoints often have a factor-of-10 smaller absolute <span class="math notranslate nohighlight">\(\sigma\)</span> than late ones, yet contribute the same number of residuals in an unweighted fit.</p></li>
+<li><p>Replicate coverage that varies timepoint-to-timepoint — some timepoints have many plates, others have only one.</p></li>
+<li><p>An inoculum whose magnitude is known <em>a priori</em> to a few percent but that the optimizer has no access to — so <span class="math notranslate nohighlight">\(s_0\)</span> routinely drifts into biologically implausible regions when the early-lag fit is under-determined.</p></li>
+</ul>
+<p>Both <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> ship the same set of mitigations, with one exception: saturation pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> (in <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> the saturation IS the model — pruning it would defeat the fit). The mitigations are orthogonal axes of the fit, composable, and the library defaults already sit at the robust end of each dial. Several power-user knobs that used to be public <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs (<code class="docutils literal notranslate"><span class="pre">stderr_floor_quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">v_upper</span></code>, the pruning
+slope-ratio and buffer) are now class constants on the shared base — set them by subclass override if you need to deviate.</p>
+<section id="4.1-Robust-Loss-(loss,-f_scale)">
+<h3>4.1 Robust Loss (<code class="docutils literal notranslate"><span class="pre">loss</span></code>, <code class="docutils literal notranslate"><span class="pre">f_scale</span></code>)<a class="headerlink" href="#4.1-Robust-Loss-(loss,-f_scale)" title="Link to this heading">#</a></h3>
+<p>:func:<code class="docutils literal notranslate"><span class="pre">scipy.optimize.least_squares</span></code> exposes a family of robust <span class="math notranslate nohighlight">\(\rho\)</span>-functions that down-weight large residuals (<a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">Huber, 1964</a>; the <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html">scipy reference</a> lists the exact forms). Both <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> default to <code class="docutils literal notranslate"><span class="pre">loss=&quot;huber&quot;</span></code> with <code class="docutils literal notranslate"><span class="pre">f_scale=1.0</span></code>.</p>
+<p>The optimizer minimises <span class="math notranslate nohighlight">\(\tfrac{1}{2}\,\mathrm{cost}\)</span> where</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{cost}(x) \;=\; \sum_i \rho\!\Bigl(r_i(x)^2 / f_{\mathrm{scale}}^2\Bigr) ,\]</div>
+<p>and <span class="math notranslate nohighlight">\(\rho\)</span> is the chosen loss function applied to the squared, rescaled residuals. With <span class="math notranslate nohighlight">\(\rho(z) = z\)</span> (<code class="docutils literal notranslate"><span class="pre">loss=&quot;linear&quot;</span></code>) this is the classical least-squares objective; with the Huber <span class="math notranslate nohighlight">\(\rho\)</span>, residuals well below the <span class="math notranslate nohighlight">\(f_\mathrm{scale}\)</span> knee contribute like <span class="math notranslate nohighlight">\(z\)</span> (i.e. squared error), while residuals well above it contribute proportionally to <span class="math notranslate nohighlight">\(\sqrt{z}\)</span> (i.e. absolute error, reducing their influence).</p>
+<p><code class="docutils literal notranslate"><span class="pre">f_scale</span></code> is the knee of the loss. Its units depend on whether the fit is weighted:</p>
+<ul class="simple">
+<li><p><strong>Unweighted fit.</strong> <span class="math notranslate nohighlight">\(f_\mathrm{scale}\)</span> is measured in the same units as the residual — so <span class="math notranslate nohighlight">\(f_\mathrm{scale} = 1\)</span> means “any residual larger than <span class="math notranslate nohighlight">\(1\)</span> unit of <span class="math notranslate nohighlight">\(s\)</span> starts getting downweighted.”</p></li>
+<li><p><strong>Weighted fit.</strong> Residuals are pre-divided by <span class="math notranslate nohighlight">\(\sigma\)</span> before entering the loss, so <span class="math notranslate nohighlight">\(f_\mathrm{scale}\)</span> is measured in multiples of <span class="math notranslate nohighlight">\(\sigma\)</span> — <span class="math notranslate nohighlight">\(f_\mathrm{scale} = 3\)</span> treats points more than <span class="math notranslate nohighlight">\(\sim\!3\sigma\)</span> off the curve as outliers.</p></li>
+</ul>
+<p>Choice of <code class="docutils literal notranslate"><span class="pre">loss</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code> — classical least-squares, no outlier protection.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;huber&quot;</span></code> (default) — quadratic inside the knee, linear outside. The least aggressive robust option; recovers least-squares efficiency on clean data while limiting the influence of true outliers.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;soft_l1&quot;</span></code> — smooth approximation to <span class="math notranslate nohighlight">\(\ell_1\)</span> loss; similar to Huber but with a smoother transition at the knee.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cauchy&quot;</span></code> — heavy-tailed; strongly suppresses outliers but can introduce multiple local minima.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;arctan&quot;</span></code> — bounded influence function (asymptotes to a constant); the most aggressive outlier suppression available in scipy.</p></li>
+</ul>
+</section>
+<section id="4.2-Inverse-Variance-Weighting-(stderr_label)">
+<h3>4.2 Inverse-Variance Weighting (<code class="docutils literal notranslate"><span class="pre">stderr_label</span></code>)<a class="headerlink" href="#4.2-Inverse-Variance-Weighting-(stderr_label)" title="Link to this heading">#</a></h3>
+<p>When replicates are available, the fitter divides each residual by a per-timepoint standard error,</p>
+<div class="math notranslate nohighlight">
+\[r_i \;=\; \frac{y_i - s(t_i)}{\sigma_i} ,\]</div>
+<p>so tight-replicate timepoints pull the fit harder than noisy ones. This addresses heteroskedasticity directly: at late timepoints colony variance is often 5–10× the early-timepoint variance, and without weighting those residuals dominate the loss purely because they are larger in absolute terms, not because they are more informative.</p>
+<p>Priority order inside <code class="docutils literal notranslate"><span class="pre">_resolve_y_stderr</span></code>:</p>
+<ol class="arabic simple">
+<li><p><strong>User-supplied ``stderr_label``.</strong> If the user passes a column name and that column exists in the aggregated group, those <span class="math notranslate nohighlight">\(\sigma\)</span> values are used verbatim. No pool fallback — the user has opted into their own <span class="math notranslate nohighlight">\(\sigma\)</span> semantics.</p></li>
+<li><p><strong>Auto-derived replicate SEM</strong> (when <code class="docutils literal notranslate"><span class="pre">stderr_label</span> <span class="pre">is</span> <span class="pre">None</span></code>). During <code class="docutils literal notranslate"><span class="pre">analyze</span></code> the fitter computes <code class="docutils literal notranslate"><span class="pre">data.groupby(groupby</span> <span class="pre">+</span> <span class="pre">[time_label])[on].transform('sem')</span></code> and stores it in a column named <code class="docutils literal notranslate"><span class="pre">{on}_stderr</span></code>. That column is then read as <span class="math notranslate nohighlight">\(\sigma\)</span> for each aggregated row.</p></li>
+<li><p><strong>No weights</strong> (return <code class="docutils literal notranslate"><span class="pre">None</span></code>) if neither path is available.</p></li>
+</ol>
+<p>The auto-SEM path is the common case: the user does not need to pre-compute <span class="math notranslate nohighlight">\(\sigma\)</span>, and the per-timepoint standard error naturally captures both the measurement noise and any per-plate variability contributing to that timepoint.</p>
+</section>
+<section id="4.3-Replicate-SEM-Quantile-Floor-(class-constant-_STDERR_FLOOR_QUANTILE)">
+<h3>4.3 Replicate-SEM Quantile Floor (class constant <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span></code>)<a class="headerlink" href="#4.3-Replicate-SEM-Quantile-Floor-(class-constant-_STDERR_FLOOR_QUANTILE)" title="Link to this heading">#</a></h3>
+<p>Pure inverse-variance weighting has a well-known failure mode. When replicates happen to agree by chance — or when the measurement process is discretised so a handful of reps land on identical values — the SEM collapses toward zero and the corresponding <span class="math notranslate nohighlight">\(1/\sigma^2\)</span> weight blows up. A few “lucky” timepoints can then pin the entire fit, because the optimizer will sacrifice a huge amount of fit quality elsewhere to gain a tiny improvement on the <span class="math notranslate nohighlight">\(1/\sigma^2 \to \infty\)</span> residuals.</p>
+<p>The shared base class sets <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span> <span class="pre">=</span> <span class="pre">0.25</span></code> (a class constant, not an <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwarg). The procedure is:</p>
+<ol class="arabic simple">
+<li><p>Collect all finite, positive <span class="math notranslate nohighlight">\(\sigma\)</span> values in the group.</p></li>
+<li><p>Compute the <span class="math notranslate nohighlight">\(q\)</span>-th quantile (default <span class="math notranslate nohighlight">\(q = 0.25\)</span>) of that set.</p></li>
+<li><p>Replace any <span class="math notranslate nohighlight">\(\sigma_i\)</span> below the quantile with the quantile value: <span class="math notranslate nohighlight">\(\sigma_i \leftarrow \max(\sigma_i, \sigma_q)\)</span>.</p></li>
+</ol>
+<p>The ratio between the stiffest and softest point in a group is therefore capped at <span class="math notranslate nohighlight">\(\sigma_{\max} / \sigma_q\)</span>, which at <span class="math notranslate nohighlight">\(q = 0.25\)</span> is at most a factor of about <span class="math notranslate nohighlight">\(16\)</span> under typical empirical <span class="math notranslate nohighlight">\(\sigma\)</span> distributions. That is large enough to preserve legitimate heteroskedasticity (orders-of-magnitude differences across time) but small enough that a coincidentally-agreeing replicate cannot dominate the fit.</p>
+<p>Two notes:</p>
+<ul class="simple">
+<li><p><strong>Disabling.</strong> Subclass <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> (or <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code>) and set <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span> <span class="pre">=</span> <span class="pre">None</span></code> to recover raw inverse- variance weighting. This is appropriate when the <code class="docutils literal notranslate"><span class="pre">stderr_label</span></code> column is trusted across its full range, or when you are deliberately probing the effect of the floor.</p></li>
+<li><p><strong>All-zero / all-NaN fallback.</strong> When a fit group has <em>no</em> finite positive <span class="math notranslate nohighlight">\(\sigma\)</span> at all (every timepoint has <span class="math notranslate nohighlight">\(n=1\)</span>, or noise-free synthetic replicates that all coincide), the model bypasses the weighted pathway entirely and falls back to unweighted residuals. The floor is inapplicable in that case by construction.</p></li>
+</ul>
+<p>The floor applies uniformly to both user-supplied <code class="docutils literal notranslate"><span class="pre">stderr_label</span></code> columns and the auto-derived replicate-SEM column, so the same calibration works across both paths.</p>
+</section>
+<section id="4.4-Pooled-Point-Level-Std-for-n=1-Timepoints">
+<h3>4.4 Pooled Point-Level Std for <span class="math notranslate nohighlight">\(n=1\)</span> Timepoints<a class="headerlink" href="#4.4-Pooled-Point-Level-Std-for-n=1-Timepoints" title="Link to this heading">#</a></h3>
+<p>A related pathology: if a fit group has a mix of multi-replicate and singleton (<span class="math notranslate nohighlight">\(n=1\)</span>) timepoints, the singletons get <span class="math notranslate nohighlight">\(\sigma = \mathrm{NaN}\)</span> from the SEM calculation. A naïve fix — filling the NaN with a tiny <span class="math notranslate nohighlight">\(\varepsilon\)</span> — would let the singleton point dominate the fit with <span class="math notranslate nohighlight">\(1/\varepsilon^2\)</span> weight, the same pathology the quantile floor addresses but arriving via a different route.</p>
+<p>The fitter’s auto-<span class="math notranslate nohighlight">\(\sigma\)</span> path pre-computes a <em>pooled point-level std</em> alongside the SEM column during <code class="docutils literal notranslate"><span class="pre">analyze</span></code>. Concretely:</p>
+<ol class="arabic">
+<li><p><code class="docutils literal notranslate"><span class="pre">{on}_stderr</span></code> — per-timepoint standard error, via <code class="docutils literal notranslate"><span class="pre">groupby(groupby</span> <span class="pre">+</span> <span class="pre">[time_label])[on].transform('sem')</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">{on}_std_pool</span></code> — per-timepoint <em>std</em> broadcast and then median-reduced across the fit group:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">std_pt</span>  <span class="o">=</span> <span class="n">groupby</span><span class="p">(</span><span class="n">groupby</span> <span class="o">+</span> <span class="p">[</span><span class="n">time_label</span><span class="p">])[</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s1">&#39;std&#39;</span><span class="p">)</span>
+<span class="n">pool</span>    <span class="o">=</span> <span class="n">std_pt</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groupby</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s1">&#39;median&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>So each fit group gets one scalar: the median of its multi-replicate timepoints’ per-timepoint stds.</p>
+</li>
+</ol>
+<p>Inside <code class="docutils literal notranslate"><span class="pre">_resolve_y_stderr</span></code>, NaN / zero entries in the SEM vector are filled with the pool value rather than <span class="math notranslate nohighlight">\(\varepsilon\)</span>. The <span class="math notranslate nohighlight">\(n=1\)</span> rows end up with <span class="math notranslate nohighlight">\(\sigma \approx\)</span> the typical per-timepoint noise level, so their weight is commensurate with — rather than dominant over — the multi-replicate rows.</p>
+<p>Accepted trade-off: median-of-transform ensures that timepoints with <em>more</em> replicates contribute <em>proportionally more rows</em> (and hence more weight) to the pool. This tends to enlarge the pool-<span class="math notranslate nohighlight">\(\sigma\)</span> relative to a simple unweighted median of per-timepoint stds, which is the safer direction — pool-filled <span class="math notranslate nohighlight">\(n=1\)</span> rows will never dominate over their better-supported <span class="math notranslate nohighlight">\(n \geq 2\)</span> neighbours.</p>
+<p>Three edge cases:</p>
+<ul class="simple">
+<li><p><strong>User-supplied ``stderr_label`` path.</strong> The pool is <em>not</em> used here; NaN / zero entries fall back to the <span class="math notranslate nohighlight">\(\varepsilon\)</span>-scaled fill. The user has committed to their own <span class="math notranslate nohighlight">\(\sigma\)</span> semantics, so the library doesn’t silently cross-contaminate them with replicate-derived pool values.</p></li>
+<li><p><strong>Fully-singleton fit group.</strong> If every timepoint has <span class="math notranslate nohighlight">\(n = 1\)</span>, the pool is itself NaN (std needs <span class="math notranslate nohighlight">\(n \geq 2\)</span>). <code class="docutils literal notranslate"><span class="pre">_resolve_y_stderr</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code> and the fit runs unweighted — the same fallback as the “no finite positive <span class="math notranslate nohighlight">\(\sigma\)</span>” case.</p></li>
+<li><p><strong>Quantile floor interaction.</strong> Pool-filled entries are <em>not</em> included in the set used to compute the floor quantile — the floor is derived from finite, positive, non-filled <span class="math notranslate nohighlight">\(\sigma\)</span> values only — but they <em>are</em> subsequently lifted to the floor via the final <code class="docutils literal notranslate"><span class="pre">np.maximum</span></code>. So pool-filled rows inherit both the pool baseline and any floor that is larger than the pool.</p></li>
+</ul>
+</section>
+<section id="4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)">
+<h3>4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus.prune_saturated</span></code>)<a class="headerlink" href="#4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)" title="Link to this heading">#</a></h3>
+<p>Pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> — <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> models the saturation explicitly and trimming the plateau would defeat the fit.</p>
+<p>Post-saturation points cause two problems for a non-saturating model. First, they are often where contamination overruns a colony or where segmentation confuses neighbour-colony merges, pulling the late-time values upward or downward in biologically meaningless ways. Second, even perfectly clean plateau points are <strong>uninformative</strong> about the lag-phase parameters <span class="math notranslate nohighlight">\((\lambda, \alpha, s_0)\)</span> — yet they contribute an equal share of residuals unless something trims them off.</p>
+<p><code class="docutils literal notranslate"><span class="pre">_prepare_group</span></code> implements a hybrid heuristic. A point is flagged as saturated when <strong>both</strong> of the following are true:</p>
+<ol class="arabic simple">
+<li><p><strong>Amplitude gate.</strong> <span class="math notranslate nohighlight">\(y \;\geq\; \min(y) + 0.90\,\bigl(\max(y) - \min(y)\bigr)\)</span>. The point has climbed into the upper <span class="math notranslate nohighlight">\(10\%\)</span> of the observed dynamic range.</p></li>
+<li><p><strong>Sustained derivative run.</strong> Three consecutive smoothed-gradient values below <code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span> <span class="pre">×</span> <span class="pre">peak_slope</span></code> (default <span class="math notranslate nohighlight">\(0.05 \times\)</span> peak). A point is part of a <em>sustained</em> low-slope run, not just an isolated dip.</p></li>
+</ol>
+<p>Both gates must agree before any trimming happens. Only rows past the latest index satisfying both — plus a small <code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code> class constant (default <span class="math notranslate nohighlight">\(2\)</span>) of rows kept after the cut so the fit still sees some plateau evidence — are removed.</p>
+<p>Why both gates?</p>
+<ul class="simple">
+<li><p>The <strong>amplitude gate</strong> is structurally immune to lag-phase noise. During the lag phase <span class="math notranslate nohighlight">\(y \approx s_0\)</span>, far below the <span class="math notranslate nohighlight">\(0.9 \times\)</span> amplitude target, so pruning can never fire on lag-phase points no matter how flat the derivative is.</p></li>
+<li><p>The <strong>sustained-run gate</strong> rejects transient mid-growth dips. A single low-slope point in the middle of the linear phase (e.g. a measurement where two consecutive timepoints happened to land at similar values) does not satisfy the “three in a row” requirement.</p></li>
+</ul>
+<p>Two additional guards:</p>
+<ul class="simple">
+<li><p><strong>Tail-growth short-circuit.</strong> If the mean of the tail-window smoothed slope is <em>still</em> above the threshold, pruning returns the group unchanged. Curves that never plateau within the observation window are not trimmed.</p></li>
+<li><p><strong>Degenerate-input guard.</strong> If the smoothed peak slope is non-finite or non-positive (all-NaN <span class="math notranslate nohighlight">\(y\)</span>, or a constant series), pruning returns the group unchanged.</p></li>
+</ul>
+<p>Set <code class="docutils literal notranslate"><span class="pre">prune_saturated=False</span></code> to disable pruning entirely. Subclass <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and override <code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span></code> / <code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code> for tuning; these are class constants, not <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs.</p>
+</section>
+<section id="4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)">
+<h3>4.6 Gaussian Prior on <span class="math notranslate nohighlight">\(s_0\)</span> (<code class="docutils literal notranslate"><span class="pre">s0_prior</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code>)<a class="headerlink" href="#4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)" title="Link to this heading">#</a></h3>
+<p>When the earliest observed timepoint is already well past the lag (e.g. the first capture is at <span class="math notranslate nohighlight">\(t = 12\)</span> hr and the lag was <span class="math notranslate nohighlight">\(\lambda = 4\)</span> hr), the fit is under-determined: <span class="math notranslate nohighlight">\(s_0\)</span> and <span class="math notranslate nohighlight">\(\lambda\)</span> trade off freely along an approximately linear manifold and the optimizer has no principled basis for choosing one point on the manifold over another. A weakly-informative Gaussian prior on <span class="math notranslate nohighlight">\(s_0\)</span> breaks the symmetry without driving the fit toward implausible regions — the
+standard weakly-informative-prior argument from <a class="reference external" href="https://doi.org/10.1214/08-AOAS191">Gelman et al., 2008</a>.</p>
+</section>
+<section id="Implementation-as-a-virtual-residual">
+<h3>Implementation as a virtual residual<a class="headerlink" href="#Implementation-as-a-virtual-residual" title="Link to this heading">#</a></h3>
+<p>The prior is added to the least-squares residual vector as a single extra row:</p>
+<div class="math notranslate nohighlight">
+\[r_{\mathrm{prior}} \;=\; \frac{s_0 - \mu_{\mathrm{prior}}}{\sigma_{\mathrm{prior}}} .\]</div>
+<p>Because least-squares with Gaussian noise is equivalent to maximum- likelihood under a Gaussian likelihood, appending a Gaussian-shaped virtual residual is equivalent to maximum <em>a posteriori</em> (MAP) estimation with a Gaussian prior on <span class="math notranslate nohighlight">\(s_0\)</span>. The optimizer sees no distinction between the prior residual and the data residuals; the prior simply adds <span class="math notranslate nohighlight">\((s_0 - \mu)^2 / \sigma^2\)</span> to the objective, which is exactly the negative log-density of a Gaussian prior up to additive constants.</p>
+</section>
+<section id="s0_prior-dispatch-(by-type)">
+<h3><code class="docutils literal notranslate"><span class="pre">s0_prior</span></code> dispatch (by type)<a class="headerlink" href="#s0_prior-dispatch-(by-type)" title="Link to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">s0_prior</span></code> argument is polymorphic — the type dispatches which <span class="math notranslate nohighlight">\(\mu\)</span>-estimation strategy is used.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Value</p></th>
+<th class="head"><p>Behaviour</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td><p>No prior (default). Residual vector is unchanged.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Data-ground on <code class="docutils literal notranslate"><span class="pre">self.on</span></code>. <span class="math notranslate nohighlight">\(\mu\)</span> is the median of the target column at the earliest observed timepoint within each effective group.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">str</span></code> (column name)</p></td>
+<td><p>Data-ground on the named column. <span class="math notranslate nohighlight">\(\mu\)</span> is the median of <code class="docutils literal notranslate"><span class="pre">data[s0_prior]</span></code> at the earliest observed timepoint within each effective group. Useful when the measurement column (e.g. <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>) is not a faithful inoculum estimate, but another column (e.g. a calibrated <code class="docutils literal notranslate"><span class="pre">Inoculum_Size</span></code>
+observation from a separate imaging step) is.</p></td>
+</tr>
+<tr class="row-odd"><td><p>positive <code class="docutils literal notranslate"><span class="pre">int</span></code> / <code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p>Scalar <span class="math notranslate nohighlight">\(\mu\)</span>, applied uniformly to every fit group.</p></td>
+</tr>
+<tr class="row-even"><td><p>anything else</p></td>
+<td><p>Raises :class:<code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>non-positive or non-finite scalar</p></td>
+<td><p>Raises :class:<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">bool</span></code> branch comes <em>before</em> the numeric branch in the underlying helper because <code class="docutils literal notranslate"><span class="pre">bool</span></code> is a subclass of <code class="docutils literal notranslate"><span class="pre">int</span></code> in Python — so <code class="docutils literal notranslate"><span class="pre">isinstance(True,</span> <span class="pre">int)</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and an unguarded numeric branch would consume the boolean inputs.</p>
+</section>
+<section id="Choosing-\sigma:-s0_prior_cv-vs-s0_prior_sigma">
+<h3>Choosing <span class="math notranslate nohighlight">\(\sigma\)</span>: <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code> vs <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code><a class="headerlink" href="#Choosing-\sigma:-s0_prior_cv-vs-s0_prior_sigma" title="Link to this heading">#</a></h3>
+<p>The prior <span class="math notranslate nohighlight">\(\sigma\)</span> is set by exactly one of two mutually exclusive knobs:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Behaviour</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code></p></td>
+<td><p>Coefficient of variation: <span class="math notranslate nohighlight">\(\sigma = \mathrm{cv} \times \mu\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code></p></td>
+<td><p>Absolute σ: <span class="math notranslate nohighlight">\(\sigma = \mathrm{sigma}\)</span>, independent of <span class="math notranslate nohighlight">\(\mu\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>If both are set, construction raises :class:<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. If neither is set and the prior is engaged, the helper applies CV <span class="math notranslate nohighlight">\(= 0.05\)</span> as a moderately informative default — the same effective default as the legacy <code class="docutils literal notranslate"><span class="pre">s0_prior_factor=0.05</span></code>. Pick CV when the prior strength should scale with magnitude (typical for biologically positive quantities); pick absolute σ when you have a hard tolerance budget.</p>
+</section>
+<section id="Empirical-Bayes-pooling-(s0_prior_groupby)">
+<h3>Empirical-Bayes pooling (<code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code>)<a class="headerlink" href="#Empirical-Bayes-pooling-(s0_prior_groupby)" title="Link to this heading">#</a></h3>
+<p>For column-backed priors (<code class="docutils literal notranslate"><span class="pre">s0_prior</span> <span class="pre">=</span> <span class="pre">True</span></code> or a string), <code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code> lets you pool <span class="math notranslate nohighlight">\(\mu\)</span> estimation over a <em>coarser</em> grouping than <code class="docutils literal notranslate"><span class="pre">groupby</span></code>. For example, if the fit grouping is <code class="docutils literal notranslate"><span class="pre">[&quot;Media&quot;,</span> <span class="pre">&quot;Strain&quot;,</span> <span class="pre">&quot;Plate&quot;]</span></code> but inoculation spread varies per-media and replicates within a media/strain combination are exchangeable, setting <code class="docutils literal notranslate"><span class="pre">s0_prior_groupby=[&quot;Media&quot;]</span></code> computes the prior <span class="math notranslate nohighlight">\(\mu\)</span> as the median of the earliest-timepoint observations <em>within each media</em>, then broadcasts
+that one <span class="math notranslate nohighlight">\(\mu\)</span> to every strain/plate within the media.</p>
+<p>This is the classical empirical-Bayes move — <a class="reference external" href="https://doi.org/10.1080/01621459.1975.10479864">Efron &amp; Morris, 1975</a> and the shrinkage literature that followed — for situations where per-fit-group <span class="math notranslate nohighlight">\(\mu\)</span> estimates would be noisy but the group-level average is stable.</p>
+<p>Constraints, verified at <code class="docutils literal notranslate"><span class="pre">analyze</span></code> time:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code> must be a strict subset of <code class="docutils literal notranslate"><span class="pre">groupby</span></code> (coarser, not different). Violating this raises :class:<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+<li><p>Columns referenced in <code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code> must exist in the data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code> must be non-empty if supplied. Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default) to fall back to using the full fit <code class="docutils literal notranslate"><span class="pre">groupby</span></code> for prior-<span class="math notranslate nohighlight">\(\mu\)</span> estimation.</p></li>
+</ul>
+</section>
+<section id="When-the-prior-does-(and-does-not)-engage">
+<h3>When the prior does (and does not) engage<a class="headerlink" href="#When-the-prior-does-(and-does-not)-engage" title="Link to this heading">#</a></h3>
+<p>The helper’s <code class="docutils literal notranslate"><span class="pre">is_configured</span></code> property summarises the engagement logic: the prior attempts to apply when either a column label is set (<code class="docutils literal notranslate"><span class="pre">s0_prior=True</span></code> or <code class="docutils literal notranslate"><span class="pre">s0_prior=&lt;str&gt;</span></code>) or a scalar <code class="docutils literal notranslate"><span class="pre">direct_mean</span></code> is set (<code class="docutils literal notranslate"><span class="pre">s0_prior</span></code> was a positive number). If neither applies, the prior is disabled.</p>
+<p>Even when configured, the prior can still skip a group when:</p>
+<ul class="simple">
+<li><p>The broadcast <span class="math notranslate nohighlight">\(\mu\)</span> column is missing for the group (the earliest timepoint had no usable column values — e.g. all NaN).</p></li>
+<li><p>The resulting <span class="math notranslate nohighlight">\(\mu\)</span> or <span class="math notranslate nohighlight">\(\sigma\)</span> is non-finite or non-positive.</p></li>
+</ul>
+<p>In either case, <code class="docutils literal notranslate"><span class="pre">_inoc_stats(group)</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code> and the fit runs without the prior residual for that group. Other groups in the same <code class="docutils literal notranslate"><span class="pre">analyze</span></code> call are unaffected.</p>
+</section>
+</section>
+<section id="5.-Putting-It-Together">
+<h2>5. Putting It Together<a class="headerlink" href="#5.-Putting-It-Together" title="Link to this heading">#</a></h2>
+<p>The mitigations are orthogonal axes of the fit. The library defaults already sit at the robust end of every dial:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Lives on</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Addresses</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">loss</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;huber&quot;</span></code></p></td>
+<td><p>Catastrophic outliers (spikes, mis-segmentation)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">f_scale</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td><p>Knee of the robust loss</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">prune_saturated</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Uninformative plateau points, tail contamination</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">stderr_label</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Auto-derives replicate SEM during aggregation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Opt-in; off by default because it changes the objective</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (defaults to <code class="docutils literal notranslate"><span class="pre">0.05</span></code> if prior engaged)</p></td>
+<td><p>Relative prior strength</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Absolute prior σ (mutually exclusive with cv)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code></p></td>
+<td><p>both</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Empirical-Bayes pooling (opt-in)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">smax</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (per-group max)</p></td>
+<td><p>Carrying capacity</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (mode dispatch)</p></td>
+<td><p>Saturation transition sharpness</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shoulder_slope_ratio</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
+<td><p>Shoulder-detection threshold for fitted_beta vs fixed_beta</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Class constants (subclass override; not <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs):</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Constant</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Lives on</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_V_UPPER</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50.0</span></code></p></td>
+<td><p>shared base</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.25</span></code></p></td>
+<td><p>shared base</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The per-group mode dispatch on <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> / <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>) runs on top of these and needs no configuration in the common case — <span class="math notranslate nohighlight">\(\beta\)</span> is fit when a shoulder is present, held at the default when no shoulder is detected.</p>
+</section>
+<section id="References">
+<h2>References<a class="headerlink" href="#References" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Efron, B., &amp; Morris, C. (1975). Data analysis using Stein’s estimator and its generalizations. <em>Journal of the American Statistical Association</em>, 70(350), 311–319. <a class="reference external" href="https://doi.org/10.1080/01621459.1975.10479864">https://doi.org/10.1080/01621459.1975.10479864</a></p></li>
+<li><p>Gelman, A., Jakulin, A., Pittau, M. G., &amp; Su, Y.-S. (2008). A weakly informative default prior distribution for logistic and other regression models. <em>The Annals of Applied Statistics</em>, 2(4), 1360–1383. <a class="reference external" href="https://doi.org/10.1214/08-AOAS191">https://doi.org/10.1214/08-AOAS191</a></p></li>
+<li><p>Huber, P. J. (1964). Robust estimation of a location parameter. <em>The Annals of Mathematical Statistics</em>, 35(1), 73–101. <a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">https://doi.org/10.1214/aoms/1177703732</a></p></li>
+<li><p>Zwietering, M. H., Jongenburger, I., Rombouts, F. M., &amp; van ‘t Riet, K. (1990). Modeling of the bacterial growth curve. <em>Applied and Environmental Microbiology</em>, 56(6), 1875–1881. <a class="reference external" href="https://doi.org/10.1128/aem.56.6.1875-1881.1990">https://doi.org/10.1128/aem.56.6.1875-1881.1990</a></p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#1.-The-Model-Equation">1. The Model Equation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Why-softplus-rather-than-a-piecewise-linear-lag?">Why softplus rather than a piecewise-linear lag?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Numerical-detail">Numerical detail</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#2.-Parameter-Cheat-Sheet">2. Parameter Cheat-Sheet</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-DoubleSoftplus:-Per-Group-Mode-Dispatch">3. DoubleSoftplus: Per-Group Mode Dispatch</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Shoulder-detection">Shoulder detection</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#When-to-pick-LinearSoftplus-vs-DoubleSoftplus">When to pick <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> vs <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.-Outlier-Mitigations">4. Outlier Mitigations</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.1-Robust-Loss-(loss,-f_scale)">4.1 Robust Loss (<code class="docutils literal notranslate"><span class="pre">loss</span></code>, <code class="docutils literal notranslate"><span class="pre">f_scale</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.2-Inverse-Variance-Weighting-(stderr_label)">4.2 Inverse-Variance Weighting (<code class="docutils literal notranslate"><span class="pre">stderr_label</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.3-Replicate-SEM-Quantile-Floor-(class-constant-_STDERR_FLOOR_QUANTILE)">4.3 Replicate-SEM Quantile Floor (class constant <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.4-Pooled-Point-Level-Std-for-n=1-Timepoints">4.4 Pooled Point-Level Std for <span class="math notranslate nohighlight">\(n=1\)</span> Timepoints</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)">4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus.prune_saturated</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)">4.6 Gaussian Prior on <span class="math notranslate nohighlight">\(s_0\)</span> (<code class="docutils literal notranslate"><span class="pre">s0_prior</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Implementation-as-a-virtual-residual">Implementation as a virtual residual</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#s0_prior-dispatch-(by-type)"><code class="docutils literal notranslate"><span class="pre">s0_prior</span></code> dispatch (by type)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Choosing-\sigma:-s0_prior_cv-vs-s0_prior_sigma">Choosing <span class="math notranslate nohighlight">\(\sigma\)</span>: <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code> vs <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Empirical-Bayes-pooling-(s0_prior_groupby)">Empirical-Bayes pooling (<code class="docutils literal notranslate"><span class="pre">s0_prior_groupby</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#When-the-prior-does-(and-does-not)-engage">When the prior does (and does not) engage</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#5.-Putting-It-Together">5. Putting It Together</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#References">References</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/explanation/notebooks/linear_softplus_model.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

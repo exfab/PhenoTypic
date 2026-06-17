@@ -1,0 +1,38 @@
+phenotypic.tune.ScreeningResult
+===============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: ScreeningResult
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ScreeningResult.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ScreeningResult.freeze_flagged
+      ~ScreeningResult.interactions_estimated
+      ~ScreeningResult.method
+      ~ScreeningResult.recommendation
+      ~ScreeningResult.reduced_space
+      ~ScreeningResult.screened
+      ~ScreeningResult.winner
+      ~ScreeningResult.frozen
+   
+   

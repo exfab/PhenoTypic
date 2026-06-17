@@ -1,0 +1,46 @@
+phenotypic.tools\_.DashboardManifestKey
+=======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: DashboardManifestKey
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DashboardManifestKey.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DashboardManifestKey.ANALYSIS_DATA_VERSION
+      ~DashboardManifestKey.COMPLETED
+      ~DashboardManifestKey.DATASETS
+      ~DashboardManifestKey.EXECUTION_MODE
+      ~DashboardManifestKey.FAILED
+      ~DashboardManifestKey.FAILURE_CATEGORIES
+      ~DashboardManifestKey.INPUT_PATH
+      ~DashboardManifestKey.IS_COMPLETE
+      ~DashboardManifestKey.LAST_UPDATED
+      ~DashboardManifestKey.PENDING
+      ~DashboardManifestKey.SLURM_INFO
+      ~DashboardManifestKey.STARTED
+      ~DashboardManifestKey.START_TIME
+      ~DashboardManifestKey.SUCCESS_RATE
+      ~DashboardManifestKey.TOTAL_IMAGES
+      ~DashboardManifestKey.VERSION
+   
+   

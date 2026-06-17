@@ -1,0 +1,62 @@
+phenotypic.enhance.FocusEdgeSobel
+=================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeSobel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeSobel.__init__
+      ~FocusEdgeSobel.apply
+      ~FocusEdgeSobel.construct
+      ~FocusEdgeSobel.copy
+      ~FocusEdgeSobel.dict
+      ~FocusEdgeSobel.from_json
+      ~FocusEdgeSobel.from_orm
+      ~FocusEdgeSobel.json
+      ~FocusEdgeSobel.model_construct
+      ~FocusEdgeSobel.model_copy
+      ~FocusEdgeSobel.model_dump
+      ~FocusEdgeSobel.model_dump_json
+      ~FocusEdgeSobel.model_json_schema
+      ~FocusEdgeSobel.model_parametrized_name
+      ~FocusEdgeSobel.model_post_init
+      ~FocusEdgeSobel.model_rebuild
+      ~FocusEdgeSobel.model_validate
+      ~FocusEdgeSobel.model_validate_json
+      ~FocusEdgeSobel.model_validate_strings
+      ~FocusEdgeSobel.parse_file
+      ~FocusEdgeSobel.parse_obj
+      ~FocusEdgeSobel.parse_raw
+      ~FocusEdgeSobel.schema
+      ~FocusEdgeSobel.schema_json
+      ~FocusEdgeSobel.to_json
+      ~FocusEdgeSobel.update_forward_refs
+      ~FocusEdgeSobel.validate
+      ~FocusEdgeSobel.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeSobel.model_computed_fields
+      ~FocusEdgeSobel.model_config
+      ~FocusEdgeSobel.model_extra
+      ~FocusEdgeSobel.model_fields
+      ~FocusEdgeSobel.model_fields_set
+   
+   

@@ -1,0 +1,962 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._threshold_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=ed622d3e"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_threshold_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0b2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0b2/_modules/phenotypic/abc_/_threshold_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0b2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._threshold_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._threshold_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._object_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+
+
+<span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
+<div class="viewcode-block" id="ThresholdDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ThresholdDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ThresholdDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Marker ABC for threshold-based colony detection strategies.</span>
+
+<span class="sd">    ThresholdDetector specializes ObjectDetector for algorithms that detect colonies</span>
+<span class="sd">    by converting grayscale intensity to a binary mask via thresholding. Unlike edge-based</span>
+<span class="sd">    (Canny) or peak-based (RoundPeaks) approaches, thresholding works by partitioning</span>
+<span class="sd">    intensity space: pixels above a threshold value become foreground (colonies), pixels</span>
+<span class="sd">    below become background.</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Choose your detection strategy based on image characteristics:</span>
+
+<span class="sd">    - **Threshold-based:** Clear intensity separation between colonies and background?</span>
+<span class="sd">      Try global threshold (Otsu, Yen) or local adaptive (block-based) thresholding.</span>
+<span class="sd">    - **Edge-based (CannyDetector):** Faint or merged colonies? Canny edge detection finds</span>
+<span class="sd">      boundaries where gradient is high; invert edges to label regions.</span>
+<span class="sd">    - **Peak-based (RoundPeaksDetector):** Well-separated round colonies? Peak detection</span>
+<span class="sd">      assumes circular shapes and grows from intensity maxima.</span>
+<span class="sd">    - **Subclass decision:** Is your algorithm threshold-based? Subclass ThresholdDetector.</span>
+<span class="sd">      Otherwise subclass ObjectDetector directly.</span>
+<span class="sd">    - **Local vs global threshold:** Uneven illumination? Local (adaptive) thresholding adjusts</span>
+<span class="sd">      per neighborhood; global methods fail on gradient-heavy plates.</span>
+<span class="sd">    - **Advanced strategy:** Need dual-threshold with edge tracking? See [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py).</span>
+
+<span class="sd">    **Why threshold-based detection?**</span>
+
+<span class="sd">    Thresholding is ideal when:</span>
+
+<span class="sd">    - **Clear intensity separation:** Colonies have distinctly different intensity than</span>
+<span class="sd">      background (common on high-contrast agar plates or with good lighting).</span>
+<span class="sd">    - **Simplicity and speed:** Single-pass algorithms (no iterative edge tracking or</span>
+<span class="sd">      distance computation).</span>
+<span class="sd">    - **Robustness to morphology:** Works equally well on round and irregular colonies</span>
+<span class="sd">      (unlike peak-based approaches that assume circular shapes).</span>
+<span class="sd">    - **Well-defined boundary:** Sharp transitions between foreground and background</span>
+<span class="sd">      (less effective on blurry or faded colonies).</span>
+
+<span class="sd">    **Thresholding strategies implemented in PhenoTypic**</span>
+
+<span class="sd">    - [OtsuDetector](src/phenotypic/detect/_otsu_detector.py): Minimizes within-class variance.</span>
+<span class="sd">      Automatic, global, works for balanced histograms.</span>
+<span class="sd">    - [LiDetector](src/phenotypic/detect/_li_detector.py): Minimizes Kullback-Leibler divergence.</span>
+<span class="sd">      Good for dark colonies on bright background.</span>
+<span class="sd">    - [YenDetector](src/phenotypic/detect/_yen_detector.py): Maximizes object variance.</span>
+<span class="sd">      Excellent for sharply defined colonies.</span>
+<span class="sd">    - [TriangleDetector](src/phenotypic/detect/_triangle_detector.py): Connects histogram</span>
+<span class="sd">      extrema. Works well for non-overlapping bimodal distributions.</span>
+<span class="sd">    - [IsodataDetector](src/phenotypic/detect/_isodata_detector.py): Iteratively refines based</span>
+<span class="sd">      on class means. Robust but slower.</span>
+<span class="sd">    - [MeanDetector](src/phenotypic/detect/_mean_detector.py) / [MinimumDetector](src/phenotypic/detect/_minimum_detector.py):</span>
+<span class="sd">      Simple heuristic thresholds. Fast, useful for baseline.</span>
+<span class="sd">    - [HysteresisDetector](src/phenotypic/detect/_hysteresis_detector.py): Advanced dual-threshold</span>
+<span class="sd">      with edge tracking. Handles variable colony intensity.</span>
+
+<span class="sd">    **When to subclass ThresholdDetector vs ObjectDetector directly**</span>
+
+<span class="sd">    Subclass ThresholdDetector if your algorithm uses threshold-based intensity partitioning:</span>
+
+<span class="sd">    - Converts intensity to binary mask via threshold comparison (``mask = enh &gt; threshold``).</span>
+<span class="sd">    - Uses automatic threshold selection (Otsu, Li, Yen, Triangle, Isodata, etc.).</span>
+<span class="sd">    - Uses simple heuristic thresholds (mean, minimum, percentile-based).</span>
+<span class="sd">    - Signals intent to other developers: &quot;this detector groups with thresholding methods.&quot;</span>
+<span class="sd">    - May share utility methods in future (e.g., post-processing filters).</span>
+
+<span class="sd">    Subclass ObjectDetector directly if your algorithm uses alternative strategies:</span>
+
+<span class="sd">    - Edge detection (find gradients, not intensity levels).</span>
+<span class="sd">    - Peak finding (assumes round shapes, grows from maxima).</span>
+<span class="sd">    - Watershed segmentation or other region-based approaches.</span>
+<span class="sd">    - Hybrid methods that don&#39;t fit threshold → binary mask → label pattern.</span>
+
+<span class="sd">    **Typical workflow: enhance → threshold → label → refine**</span>
+
+<span class="sd">    Most ThresholdDetector implementations follow this pipeline:</span>
+
+<span class="sd">    1. **Read detection matrix:** ``enh = image.detect_mat[:]`` (preprocessed for</span>
+<span class="sd">       contrast and noise suppression).</span>
+<span class="sd">    2. **Compute threshold:** Use chosen strategy (Otsu, Li, Yen, etc.) to find</span>
+<span class="sd">       optimal threshold value from histogram.</span>
+<span class="sd">    3. **Create binary mask:** ``mask = enh &gt; threshold`` or</span>
+<span class="sd">       ``mask = enh &gt;= threshold`` (test both if edge pixels ambiguous).</span>
+<span class="sd">    4. **Post-process (optional):** Remove small noise, clear borders, morphological</span>
+<span class="sd">       cleanup to improve mask quality.</span>
+<span class="sd">    5. **Label connected components:** Use ``scipy.ndimage.label()`` to assign</span>
+<span class="sd">       unique integer IDs to each colony (objmap).</span>
+<span class="sd">    6. **Set both outputs:** ``image.objmask = mask``, ``image.objmap = labeled_map``.</span>
+
+<span class="sd">    **Parameter tuning guidance**</span>
+
+<span class="sd">    Threshold-based detectors expose parameters affecting detection quality:</span>
+
+<span class="sd">    - **Threshold value (manual methods only):** Higher → fewer, larger colonies; lower → more,</span>
+<span class="sd">      noisier. Test range on representative images to find balance.</span>
+<span class="sd">    - **Block size (local/adaptive methods):** Larger blocks smooth mask but miss small colonies;</span>
+<span class="sd">      smaller blocks add detail but amplify noise. Start with 1/8 to 1/4 of image width.</span>
+<span class="sd">    - **ignore_zeros:** Skip pure black pixels in threshold computation. Useful when background</span>
+<span class="sd">      has significant black regions (shadows, vignetting).</span>
+<span class="sd">    - **ignore_borders:** Automatically remove objects touching image edges. Prevents partial</span>
+<span class="sd">      colonies at plate edges from skewing analysis.</span>
+<span class="sd">    - **min_size / max_size:** Post-processing filters. Remove objects below min (noise) or</span>
+<span class="sd">      above max (artifacts). Measure typical colony size on your plates first.</span>
+
+<span class="sd">    **Comparison with other detection strategies**</span>
+
+<span class="sd">    - [CannyDetector](src/phenotypic/detect/_canny_detector.py) (edge-based): Finds intensity</span>
+<span class="sd">      gradients to locate boundaries. Better for faint or merged colonies; requires tuning</span>
+<span class="sd">      gradient thresholds.</span>
+<span class="sd">    - [RoundPeaksDetector](src/phenotypic/detect/_round_peaks_detector.py) (peak-based): Assumes</span>
+<span class="sd">      round shapes, grows from maxima. Excellent for well-separated round colonies; fails on</span>
+<span class="sd">      irregular or merged shapes.</span>
+<span class="sd">    - **Threshold-based (this class):** Direct intensity partitioning. Robust, fast, works for</span>
+<span class="sd">      any shape; requires good intensity separation between colonies and background.</span>
+
+<span class="sd">    **Common pitfalls and remedies**</span>
+
+<span class="sd">    - **Over-segmentation (too many small objects):** Use ``ignore_zeros=True`` to skip dark</span>
+<span class="sd">      pixels, apply morphological opening (remove_small_objects), or refine with ObjectRefiner.</span>
+<span class="sd">    - **Under-segmentation (merged colonies):** Try local thresholding (adaptive block-based),</span>
+<span class="sd">      morphological closing, or watershed post-processing in ObjectRefiner.</span>
+<span class="sd">    - **False positives at edges:** Use ``ignore_borders=True`` parameter or ``clear_border()``</span>
+<span class="sd">      in ObjectRefiner to remove edge-touching objects.</span>
+<span class="sd">    - **Uneven illumination (vignetting, shadows):** Apply enhancement (EnhanceLocalContrast, illumination</span>
+<span class="sd">      correction) before detection, or switch to local adaptive thresholding.</span>
+<span class="sd">    - **Threshold too high/low:** Visualize objmask on sample images to diagnose. Adjust</span>
+<span class="sd">      parameters and re-test on representative plates before batch processing.</span>
+
+<span class="sd">    **Local thresholding pattern (adaptive to uneven illumination)**</span>
+
+<span class="sd">    When images have uneven illumination or vignetting, local (adaptive) thresholding computes</span>
+<span class="sd">    a threshold per neighborhood instead of globally. This handles gradual intensity changes:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from skimage import filters</span>
+<span class="sd">        from scipy import ndimage</span>
+<span class="sd">        import numpy as np</span>
+
+<span class="sd">        enh = image.detect_mat[:]</span>
+<span class="sd">        # Compute local threshold for each pixel</span>
+<span class="sd">        block_size = 31  # Neighborhood size (odd integer)</span>
+<span class="sd">        threshold_map = filters.threshold_local(enh, block_size=block_size)</span>
+<span class="sd">        # Create mask: pixel &gt; its local threshold</span>
+<span class="sd">        mask = enh &gt; threshold_map</span>
+<span class="sd">        # Label connected components</span>
+<span class="sd">        labeled, _ = ndimage.label(mask)</span>
+<span class="sd">        image.objmask[:] = mask</span>
+<span class="sd">        image.objmap[:] = labeled</span>
+<span class="sd">        return image</span>
+
+<span class="sd">    **Implementation pattern: Global automatic threshold**</span>
+
+<span class="sd">    For global automatic thresholding (Otsu, Li, Yen, Triangle, Isodata), follow this pattern:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from skimage import filters</span>
+<span class="sd">        from scipy import ndimage</span>
+
+<span class="sd">        def _operate(self, image):</span>
+<span class="sd">            enh = image.detect_mat[:]</span>
+<span class="sd">            # Compute threshold value via automatic method</span>
+<span class="sd">            threshold = filters.threshold_otsu(enh)  # or threshold_li, threshold_yen, etc.</span>
+<span class="sd">            # Create binary mask: pixels above threshold</span>
+<span class="sd">            mask = enh &gt; threshold</span>
+<span class="sd">            # Label connected components</span>
+<span class="sd">            labeled, num_objects = ndimage.label(mask)</span>
+<span class="sd">            # Set both outputs</span>
+<span class="sd">            image.objmask[:] = mask</span>
+<span class="sd">            image.objmap[:] = labeled</span>
+<span class="sd">            return image</span>
+
+<span class="sd">    Key points: Read preprocessed ``detect_mat``, compute single threshold, compare all pixels at</span>
+<span class="sd">    once, label result. This is fast and deterministic (same image always produces same result).</span>
+
+<span class="sd">    **Interface specification**</span>
+
+<span class="sd">    Subclasses of ThresholdDetector must:</span>
+
+<span class="sd">    1. Inherit from ThresholdDetector (which provides ObjectDetector&#39;s interface).</span>
+<span class="sd">    2. Implement ``_operate(image: Image) -&gt; Image`` as an instance method.</span>
+<span class="sd">    3. Within ``_operate()``:</span>
+
+<span class="sd">       - Read ``image.detect_mat[:]`` (and optionally ``image.rgb[:], image.gray[:]``).</span>
+<span class="sd">       - Compute threshold (automatically or from parameter).</span>
+<span class="sd">       - Generate binary mask via comparison: ``mask = enh &gt; threshold``.</span>
+<span class="sd">       - Label connected components: ``labeled, _ = ndimage.label(mask)``.</span>
+<span class="sd">       - Set both outputs: ``image.objmask = mask``, ``image.objmap = labeled``.</span>
+<span class="sd">       - Return modified image.</span>
+
+<span class="sd">    4. Add to ``phenotypic.detect.__init__.py`` exports for public discovery.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        This is a marker ABC with no additional methods. It exists to categorize</span>
+<span class="sd">        threshold-based detectors in the class hierarchy and enable flexible</span>
+<span class="sd">        discovery and code organization.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Detect colonies using Otsu&#39;s automatic threshold:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Load a plate image</span>
+<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Apply Otsu threshold detection</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector(ignore_zeros=True, ignore_borders=True)</span>
+<span class="sd">        &gt;&gt;&gt; detected = detector.apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; # Access results</span>
+<span class="sd">        &gt;&gt;&gt; mask = detected.objmask[:]  # Binary mask</span>
+<span class="sd">        &gt;&gt;&gt; objmap = detected.objmap[:]  # Labeled map</span>
+<span class="sd">        &gt;&gt;&gt; num_colonies = objmap.max()</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Detected {num_colonies} colonies&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Iterate over colonies</span>
+<span class="sd">        &gt;&gt;&gt; for colony in detected.objects:</span>
+<span class="sd">        ...     print(f&quot;Colony {colony.label}: area={colony.area} px&quot;)</span>
+
+<span class="sd">        Compare different threshold strategies:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import (</span>
+<span class="sd">        ...     OtsuDetector, LiDetector, YenDetector, TriangleDetector</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Test multiple threshold strategies</span>
+<span class="sd">        &gt;&gt;&gt; detectors = {</span>
+<span class="sd">        ...     &quot;Otsu&quot;: OtsuDetector(),</span>
+<span class="sd">        ...     &quot;Li&quot;: LiDetector(),</span>
+<span class="sd">        ...     &quot;Yen&quot;: YenDetector(),</span>
+<span class="sd">        ...     &quot;Triangle&quot;: TriangleDetector(),</span>
+<span class="sd">        ... }</span>
+<span class="sd">        &gt;&gt;&gt; for name, detector in detectors.items():</span>
+<span class="sd">        ...     result = detector.apply(plate)</span>
+<span class="sd">        ...     num = result.objmap[:].max()</span>
+<span class="sd">        ...     print(f&quot;{name}: detected {num} colonies&quot;)</span>
+
+<span class="sd">        Build a pipeline with thresholding and refinement:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import ContrastEnhancer</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import RemoveSmallObjectsRefiner</span>
+<span class="sd">        &gt;&gt;&gt; # Create pipeline</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(ContrastEnhancer(factor=1.5))  # Boost contrast</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector(ignore_zeros=True))  # Threshold</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveSmallObjectsRefiner(min_size=50))  # Cleanup</span>
+<span class="sd">        &gt;&gt;&gt; # Process image</span>
+<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;agar_plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; result = pipeline.operate([plate])[0]</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Final colonies: {result.objmap[:].max()}&quot;)</span>
+
+<span class="sd">        Tuning threshold detection on your plate images:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import (</span>
+<span class="sd">        ...     OtsuDetector, YenDetector, TriangleDetector</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; # Load a sample plate image</span>
+<span class="sd">        &gt;&gt;&gt; plate = Image.imread(&quot;sample_plate.jpg&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Test different threshold strategies</span>
+<span class="sd">        &gt;&gt;&gt; strategies = {</span>
+<span class="sd">        ...     &quot;Otsu&quot;: OtsuDetector(ignore_zeros=True),</span>
+<span class="sd">        ...     &quot;Yen&quot;: YenDetector(ignore_zeros=True),</span>
+<span class="sd">        ...     &quot;Triangle&quot;: TriangleDetector(ignore_zeros=True),</span>
+<span class="sd">        ... }</span>
+<span class="sd">        &gt;&gt;&gt; best_detector = None</span>
+<span class="sd">        &gt;&gt;&gt; best_count = 0</span>
+<span class="sd">        &gt;&gt;&gt; for name, detector in strategies.items():</span>
+<span class="sd">        ...     result = detector.apply(plate)</span>
+<span class="sd">        ...     num_colonies = result.objmap[:].max()</span>
+<span class="sd">        ...     print(f&quot;{name}: {num_colonies} colonies detected&quot;)</span>
+<span class="sd">        ...     # Choose detector that finds expected number of colonies</span>
+<span class="sd">        ...     if best_detector is None:</span>
+<span class="sd">        ...         best_detector = detector</span>
+<span class="sd">        ...         best_count = num_colonies</span>
+<span class="sd">        &gt;&gt;&gt; # Use best detector for batch processing</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Selected: {type(best_detector).__name__}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

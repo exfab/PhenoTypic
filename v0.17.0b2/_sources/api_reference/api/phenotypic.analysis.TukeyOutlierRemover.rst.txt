@@ -1,0 +1,67 @@
+phenotypic.analysis.TukeyOutlierRemover
+=======================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: TukeyOutlierRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TukeyOutlierRemover.__init__
+      ~TukeyOutlierRemover.analyze
+      ~TukeyOutlierRemover.construct
+      ~TukeyOutlierRemover.copy
+      ~TukeyOutlierRemover.dash
+      ~TukeyOutlierRemover.dict
+      ~TukeyOutlierRemover.from_orm
+      ~TukeyOutlierRemover.json
+      ~TukeyOutlierRemover.model_construct
+      ~TukeyOutlierRemover.model_copy
+      ~TukeyOutlierRemover.model_dump
+      ~TukeyOutlierRemover.model_dump_json
+      ~TukeyOutlierRemover.model_json_schema
+      ~TukeyOutlierRemover.model_parametrized_name
+      ~TukeyOutlierRemover.model_post_init
+      ~TukeyOutlierRemover.model_rebuild
+      ~TukeyOutlierRemover.model_validate
+      ~TukeyOutlierRemover.model_validate_json
+      ~TukeyOutlierRemover.model_validate_strings
+      ~TukeyOutlierRemover.parse_file
+      ~TukeyOutlierRemover.parse_obj
+      ~TukeyOutlierRemover.parse_raw
+      ~TukeyOutlierRemover.results
+      ~TukeyOutlierRemover.schema
+      ~TukeyOutlierRemover.schema_json
+      ~TukeyOutlierRemover.show
+      ~TukeyOutlierRemover.update_forward_refs
+      ~TukeyOutlierRemover.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TukeyOutlierRemover.model_computed_fields
+      ~TukeyOutlierRemover.model_config
+      ~TukeyOutlierRemover.model_extra
+      ~TukeyOutlierRemover.model_fields
+      ~TukeyOutlierRemover.model_fields_set
+      ~TukeyOutlierRemover.agg_func
+      ~TukeyOutlierRemover.k
+      ~TukeyOutlierRemover.on
+      ~TukeyOutlierRemover.groupby
+      ~TukeyOutlierRemover.n_jobs
+   
+   

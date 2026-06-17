@@ -1,0 +1,6 @@
+phenotypic.tune.compute\_generalization\_gap
+============================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: compute_generalization_gap

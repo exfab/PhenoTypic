@@ -1,0 +1,46 @@
+phenotypic.tune.GeneralizationReport
+====================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: GeneralizationReport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GeneralizationReport.__init__
+      ~GeneralizationReport.to_dict
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeneralizationReport.calibration_stability
+      ~GeneralizationReport.kind
+      ~GeneralizationReport.calibration_score
+      ~GeneralizationReport.heldout_score
+      ~GeneralizationReport.relative_drop
+      ~GeneralizationReport.absolute_drop
+      ~GeneralizationReport.gap
+      ~GeneralizationReport.flagged
+      ~GeneralizationReport.estimate
+      ~GeneralizationReport.cv_deferred
+      ~GeneralizationReport.within_group_caveat
+      ~GeneralizationReport.dataset_changed
+      ~GeneralizationReport.warning
+      ~GeneralizationReport.gap_margin_relative
+      ~GeneralizationReport.gap_margin_absolute
+   
+   

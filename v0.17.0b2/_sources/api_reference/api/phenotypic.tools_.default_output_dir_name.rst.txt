@@ -1,0 +1,6 @@
+phenotypic.tools\_.default\_output\_dir\_name
+=============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: default_output_dir_name

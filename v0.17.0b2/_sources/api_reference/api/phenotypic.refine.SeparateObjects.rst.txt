@@ -1,0 +1,63 @@
+phenotypic.refine.SeparateObjects
+=================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: SeparateObjects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SeparateObjects.__init__
+      ~SeparateObjects.apply
+      ~SeparateObjects.construct
+      ~SeparateObjects.copy
+      ~SeparateObjects.dict
+      ~SeparateObjects.from_json
+      ~SeparateObjects.from_orm
+      ~SeparateObjects.json
+      ~SeparateObjects.model_construct
+      ~SeparateObjects.model_copy
+      ~SeparateObjects.model_dump
+      ~SeparateObjects.model_dump_json
+      ~SeparateObjects.model_json_schema
+      ~SeparateObjects.model_parametrized_name
+      ~SeparateObjects.model_post_init
+      ~SeparateObjects.model_rebuild
+      ~SeparateObjects.model_validate
+      ~SeparateObjects.model_validate_json
+      ~SeparateObjects.model_validate_strings
+      ~SeparateObjects.parse_file
+      ~SeparateObjects.parse_obj
+      ~SeparateObjects.parse_raw
+      ~SeparateObjects.schema
+      ~SeparateObjects.schema_json
+      ~SeparateObjects.to_json
+      ~SeparateObjects.update_forward_refs
+      ~SeparateObjects.validate
+      ~SeparateObjects.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SeparateObjects.model_computed_fields
+      ~SeparateObjects.model_config
+      ~SeparateObjects.model_extra
+      ~SeparateObjects.model_fields
+      ~SeparateObjects.model_fields_set
+      ~SeparateObjects.min_distance
+   
+   

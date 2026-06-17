@@ -1,0 +1,35 @@
+phenotypic.tune.ScreeningConfig
+===============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: ScreeningConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ScreeningConfig.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ScreeningConfig.free_param_floor
+      ~ScreeningConfig.freeze_epsilon
+      ~ScreeningConfig.top_k
+      ~ScreeningConfig.warmup_c
+      ~ScreeningConfig.warmup_floor
+   
+   

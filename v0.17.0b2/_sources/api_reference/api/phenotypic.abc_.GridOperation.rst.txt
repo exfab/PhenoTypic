@@ -1,0 +1,62 @@
+phenotypic.abc\_.GridOperation
+==============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridOperation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridOperation.__init__
+      ~GridOperation.apply
+      ~GridOperation.construct
+      ~GridOperation.copy
+      ~GridOperation.dict
+      ~GridOperation.from_json
+      ~GridOperation.from_orm
+      ~GridOperation.json
+      ~GridOperation.model_construct
+      ~GridOperation.model_copy
+      ~GridOperation.model_dump
+      ~GridOperation.model_dump_json
+      ~GridOperation.model_json_schema
+      ~GridOperation.model_parametrized_name
+      ~GridOperation.model_post_init
+      ~GridOperation.model_rebuild
+      ~GridOperation.model_validate
+      ~GridOperation.model_validate_json
+      ~GridOperation.model_validate_strings
+      ~GridOperation.parse_file
+      ~GridOperation.parse_obj
+      ~GridOperation.parse_raw
+      ~GridOperation.schema
+      ~GridOperation.schema_json
+      ~GridOperation.to_json
+      ~GridOperation.update_forward_refs
+      ~GridOperation.validate
+      ~GridOperation.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridOperation.model_computed_fields
+      ~GridOperation.model_config
+      ~GridOperation.model_extra
+      ~GridOperation.model_fields
+      ~GridOperation.model_fields_set
+   
+   

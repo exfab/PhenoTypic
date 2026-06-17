@@ -1,0 +1,94 @@
+phenotypic.abc\_.PrefabPipeline
+===============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: PrefabPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PrefabPipeline.__init__
+      ~PrefabPipeline.analyze
+      ~PrefabPipeline.apply
+      ~PrefabPipeline.apply_and_measure
+      ~PrefabPipeline.apply_napari
+      ~PrefabPipeline.apply_with_intermediates
+      ~PrefabPipeline.benchmark_results
+      ~PrefabPipeline.construct
+      ~PrefabPipeline.copy
+      ~PrefabPipeline.dict
+      ~PrefabPipeline.from_json
+      ~PrefabPipeline.from_orm
+      ~PrefabPipeline.get_filters
+      ~PrefabPipeline.get_meas
+      ~PrefabPipeline.get_model
+      ~PrefabPipeline.get_ops
+      ~PrefabPipeline.get_post
+      ~PrefabPipeline.get_qc
+      ~PrefabPipeline.json
+      ~PrefabPipeline.measure
+      ~PrefabPipeline.model_construct
+      ~PrefabPipeline.model_copy
+      ~PrefabPipeline.model_dump
+      ~PrefabPipeline.model_dump_json
+      ~PrefabPipeline.model_json_schema
+      ~PrefabPipeline.model_parametrized_name
+      ~PrefabPipeline.model_post_init
+      ~PrefabPipeline.model_rebuild
+      ~PrefabPipeline.model_validate
+      ~PrefabPipeline.model_validate_json
+      ~PrefabPipeline.model_validate_strings
+      ~PrefabPipeline.parse_file
+      ~PrefabPipeline.parse_obj
+      ~PrefabPipeline.parse_raw
+      ~PrefabPipeline.schema
+      ~PrefabPipeline.schema_json
+      ~PrefabPipeline.set_filters
+      ~PrefabPipeline.set_meas
+      ~PrefabPipeline.set_model
+      ~PrefabPipeline.set_ops
+      ~PrefabPipeline.set_post
+      ~PrefabPipeline.set_qc
+      ~PrefabPipeline.to_json
+      ~PrefabPipeline.update_forward_refs
+      ~PrefabPipeline.validate
+      ~PrefabPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PrefabPipeline.desc
+      ~PrefabPipeline.model_computed_fields
+      ~PrefabPipeline.model_config
+      ~PrefabPipeline.model_extra
+      ~PrefabPipeline.model_fields
+      ~PrefabPipeline.model_fields_set
+      ~PrefabPipeline.name
+      ~PrefabPipeline.desc_value
+      ~PrefabPipeline.benchmark
+      ~PrefabPipeline.verbose
+      ~PrefabPipeline.reset
+      ~PrefabPipeline.nrows
+      ~PrefabPipeline.ncols
+      ~PrefabPipeline.ops
+      ~PrefabPipeline.meas
+      ~PrefabPipeline.post
+      ~PrefabPipeline.filters
+      ~PrefabPipeline.model
+      ~PrefabPipeline.qc
+   
+   

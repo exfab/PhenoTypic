@@ -1,0 +1,6 @@
+phenotypic.tools\_.slurm.generate\_dispatcher\_chain
+====================================================
+
+.. currentmodule:: phenotypic.tools_.slurm
+
+.. autofunction:: generate_dispatcher_chain

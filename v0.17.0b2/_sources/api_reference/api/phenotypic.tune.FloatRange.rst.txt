@@ -1,0 +1,64 @@
+phenotypic.tune.FloatRange
+==========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: FloatRange
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FloatRange.__init__
+      ~FloatRange.construct
+      ~FloatRange.copy
+      ~FloatRange.dict
+      ~FloatRange.from_orm
+      ~FloatRange.json
+      ~FloatRange.model_construct
+      ~FloatRange.model_copy
+      ~FloatRange.model_dump
+      ~FloatRange.model_dump_json
+      ~FloatRange.model_json_schema
+      ~FloatRange.model_parametrized_name
+      ~FloatRange.model_post_init
+      ~FloatRange.model_rebuild
+      ~FloatRange.model_validate
+      ~FloatRange.model_validate_json
+      ~FloatRange.model_validate_strings
+      ~FloatRange.parse_file
+      ~FloatRange.parse_obj
+      ~FloatRange.parse_raw
+      ~FloatRange.schema
+      ~FloatRange.schema_json
+      ~FloatRange.update_forward_refs
+      ~FloatRange.validate
+      ~FloatRange.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FloatRange.model_computed_fields
+      ~FloatRange.model_config
+      ~FloatRange.model_extra
+      ~FloatRange.model_fields
+      ~FloatRange.model_fields_set
+      ~FloatRange.kind
+      ~FloatRange.low
+      ~FloatRange.high
+      ~FloatRange.step
+      ~FloatRange.log
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.tools\_.best\_params\_path
+=====================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: best_params_path

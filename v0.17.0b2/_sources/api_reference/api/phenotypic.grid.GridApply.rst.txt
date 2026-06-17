@@ -1,0 +1,64 @@
+phenotypic.grid.GridApply
+=========================
+
+.. currentmodule:: phenotypic.grid
+
+.. autoclass:: GridApply
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridApply.__init__
+      ~GridApply.apply
+      ~GridApply.construct
+      ~GridApply.copy
+      ~GridApply.dict
+      ~GridApply.from_json
+      ~GridApply.from_orm
+      ~GridApply.json
+      ~GridApply.model_construct
+      ~GridApply.model_copy
+      ~GridApply.model_dump
+      ~GridApply.model_dump_json
+      ~GridApply.model_json_schema
+      ~GridApply.model_parametrized_name
+      ~GridApply.model_post_init
+      ~GridApply.model_rebuild
+      ~GridApply.model_validate
+      ~GridApply.model_validate_json
+      ~GridApply.model_validate_strings
+      ~GridApply.parse_file
+      ~GridApply.parse_obj
+      ~GridApply.parse_raw
+      ~GridApply.schema
+      ~GridApply.schema_json
+      ~GridApply.to_json
+      ~GridApply.update_forward_refs
+      ~GridApply.validate
+      ~GridApply.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridApply.model_computed_fields
+      ~GridApply.model_config
+      ~GridApply.model_extra
+      ~GridApply.model_fields
+      ~GridApply.model_fields_set
+      ~GridApply.image_op
+      ~GridApply.reset_enh_matrix
+   
+   

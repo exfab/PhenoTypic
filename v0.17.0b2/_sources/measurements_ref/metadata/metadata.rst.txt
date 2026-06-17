@@ -1,0 +1,37 @@
+METADATA
+========
+
+Python object: ``phenotypic.schema._metadata.METADATA``
+
+Framework-populated image metadata keys.
+
+These labels are set automatically by the image pipeline (not by the user) and
+name the bookkeeping entries on the ``image.metadata`` accessor. Members render
+as ``Metadata_<Label>`` (e.g. ``Metadata_ImageName``) so they share the
+``Metadata_`` namespace with the user-facing experimental tags in
+``phenotypic.schema`` (see ``SAMPLE_METADATA`` and siblings).
+
+For the standardized *biological/experimental* vocabulary users supply via the
+``--metadata`` CSV, use the experimental-tag enums instead.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Metadata_UUID``
+     - The unique identifier of the image.
+   * - ``Metadata_ImageName``
+     - The name of the image.
+   * - ``Metadata_ParentImageName``
+     - The name of the parent image.
+   * - ``Metadata_ParentUUID``
+     - The UUID of the parent image.
+   * - ``Metadata_ImageFormat``
+     - The format of the image.
+   * - ``Metadata_ImageType``
+     - The type of the image.
+   * - ``Metadata_BitDepth``
+     - The bit depth of the image.
+   * - ``Metadata_FileSuffix``
+     - The file suffix of the original file the image was imported from

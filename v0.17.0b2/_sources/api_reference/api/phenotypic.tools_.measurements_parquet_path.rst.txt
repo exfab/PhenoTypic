@@ -1,0 +1,6 @@
+phenotypic.tools\_.measurements\_parquet\_path
+==============================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: measurements_parquet_path

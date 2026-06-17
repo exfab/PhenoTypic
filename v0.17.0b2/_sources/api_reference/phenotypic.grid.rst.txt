@@ -1,0 +1,7 @@
+phenotypic.grid package
+=======================
+
+.. automodule:: phenotypic.grid
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,6 @@
+phenotypic.tools\_.chunk\_manifest\_path
+========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: chunk_manifest_path

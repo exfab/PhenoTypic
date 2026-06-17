@@ -1,0 +1,61 @@
+phenotypic.tune.GridConfig
+==========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: GridConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridConfig.__init__
+      ~GridConfig.build
+      ~GridConfig.construct
+      ~GridConfig.copy
+      ~GridConfig.dict
+      ~GridConfig.from_orm
+      ~GridConfig.json
+      ~GridConfig.model_construct
+      ~GridConfig.model_copy
+      ~GridConfig.model_dump
+      ~GridConfig.model_dump_json
+      ~GridConfig.model_json_schema
+      ~GridConfig.model_parametrized_name
+      ~GridConfig.model_post_init
+      ~GridConfig.model_rebuild
+      ~GridConfig.model_validate
+      ~GridConfig.model_validate_json
+      ~GridConfig.model_validate_strings
+      ~GridConfig.parse_file
+      ~GridConfig.parse_obj
+      ~GridConfig.parse_raw
+      ~GridConfig.schema
+      ~GridConfig.schema_json
+      ~GridConfig.update_forward_refs
+      ~GridConfig.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridConfig.model_computed_fields
+      ~GridConfig.model_config
+      ~GridConfig.model_extra
+      ~GridConfig.model_fields
+      ~GridConfig.model_fields_set
+      ~GridConfig.kind
+      ~GridConfig.seed
+   
+   

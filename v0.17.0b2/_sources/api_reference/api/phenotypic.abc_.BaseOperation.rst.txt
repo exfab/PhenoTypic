@@ -1,0 +1,60 @@
+phenotypic.abc\_.BaseOperation
+==============================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: BaseOperation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BaseOperation.__init__
+      ~BaseOperation.construct
+      ~BaseOperation.copy
+      ~BaseOperation.dict
+      ~BaseOperation.from_json
+      ~BaseOperation.from_orm
+      ~BaseOperation.json
+      ~BaseOperation.model_construct
+      ~BaseOperation.model_copy
+      ~BaseOperation.model_dump
+      ~BaseOperation.model_dump_json
+      ~BaseOperation.model_json_schema
+      ~BaseOperation.model_parametrized_name
+      ~BaseOperation.model_post_init
+      ~BaseOperation.model_rebuild
+      ~BaseOperation.model_validate
+      ~BaseOperation.model_validate_json
+      ~BaseOperation.model_validate_strings
+      ~BaseOperation.parse_file
+      ~BaseOperation.parse_obj
+      ~BaseOperation.parse_raw
+      ~BaseOperation.schema
+      ~BaseOperation.schema_json
+      ~BaseOperation.to_json
+      ~BaseOperation.update_forward_refs
+      ~BaseOperation.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BaseOperation.model_computed_fields
+      ~BaseOperation.model_config
+      ~BaseOperation.model_extra
+      ~BaseOperation.model_fields
+      ~BaseOperation.model_fields_set
+   
+   

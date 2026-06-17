@@ -1,0 +1,31 @@
+phenotypic.tools\_.HdfAttr
+==========================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autoclass:: HdfAttr
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~HdfAttr.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~HdfAttr.PHENOTYPIC_CLASS
+   
+   

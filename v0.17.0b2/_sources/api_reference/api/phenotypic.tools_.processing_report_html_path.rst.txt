@@ -1,0 +1,6 @@
+phenotypic.tools\_.processing\_report\_html\_path
+=================================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: processing_report_html_path

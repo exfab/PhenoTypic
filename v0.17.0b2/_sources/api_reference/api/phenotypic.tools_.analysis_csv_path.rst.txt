@@ -1,0 +1,6 @@
+phenotypic.tools\_.analysis\_csv\_path
+======================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: analysis_csv_path

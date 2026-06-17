@@ -1,0 +1,28 @@
+phenotypic.tools\_.register.AnalysisPluginRegistry
+==================================================
+
+.. currentmodule:: phenotypic.tools_.register
+
+.. autoclass:: AnalysisPluginRegistry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~AnalysisPluginRegistry.__init__
+      ~AnalysisPluginRegistry.available
+      ~AnalysisPluginRegistry.get
+      ~AnalysisPluginRegistry.register
+   
+   
+
+   
+   
+   

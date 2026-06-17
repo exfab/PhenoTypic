@@ -1,0 +1,65 @@
+phenotypic.tune.InferredSearchSpace
+===================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: InferredSearchSpace
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~InferredSearchSpace.__init__
+      ~InferredSearchSpace.construct
+      ~InferredSearchSpace.copy
+      ~InferredSearchSpace.dict
+      ~InferredSearchSpace.from_orm
+      ~InferredSearchSpace.json
+      ~InferredSearchSpace.model_construct
+      ~InferredSearchSpace.model_copy
+      ~InferredSearchSpace.model_dump
+      ~InferredSearchSpace.model_dump_json
+      ~InferredSearchSpace.model_json_schema
+      ~InferredSearchSpace.model_parametrized_name
+      ~InferredSearchSpace.model_post_init
+      ~InferredSearchSpace.model_rebuild
+      ~InferredSearchSpace.model_validate
+      ~InferredSearchSpace.model_validate_json
+      ~InferredSearchSpace.model_validate_strings
+      ~InferredSearchSpace.parse_file
+      ~InferredSearchSpace.parse_obj
+      ~InferredSearchSpace.parse_raw
+      ~InferredSearchSpace.schema
+      ~InferredSearchSpace.schema_json
+      ~InferredSearchSpace.to_search_space
+      ~InferredSearchSpace.update_forward_refs
+      ~InferredSearchSpace.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~InferredSearchSpace.model_computed_fields
+      ~InferredSearchSpace.model_config
+      ~InferredSearchSpace.model_extra
+      ~InferredSearchSpace.model_fields
+      ~InferredSearchSpace.model_fields_set
+      ~InferredSearchSpace.n_excluded
+      ~InferredSearchSpace.n_knobs
+      ~InferredSearchSpace.n_needs_review
+      ~InferredSearchSpace.needs_review
+      ~InferredSearchSpace.knobs
+      ~InferredSearchSpace.excluded
+   
+   

@@ -1,0 +1,67 @@
+phenotypic.tune.Evaluator
+=========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Evaluator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Evaluator.__init__
+      ~Evaluator.construct
+      ~Evaluator.copy
+      ~Evaluator.dict
+      ~Evaluator.evaluate
+      ~Evaluator.from_orm
+      ~Evaluator.json
+      ~Evaluator.model_construct
+      ~Evaluator.model_copy
+      ~Evaluator.model_dump
+      ~Evaluator.model_dump_json
+      ~Evaluator.model_json_schema
+      ~Evaluator.model_parametrized_name
+      ~Evaluator.model_post_init
+      ~Evaluator.model_rebuild
+      ~Evaluator.model_validate
+      ~Evaluator.model_validate_json
+      ~Evaluator.model_validate_strings
+      ~Evaluator.parse_file
+      ~Evaluator.parse_obj
+      ~Evaluator.parse_raw
+      ~Evaluator.schema
+      ~Evaluator.schema_json
+      ~Evaluator.update_forward_refs
+      ~Evaluator.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Evaluator.model_computed_fields
+      ~Evaluator.model_config
+      ~Evaluator.model_extra
+      ~Evaluator.model_fields
+      ~Evaluator.model_fields_set
+      ~Evaluator.stability_weight
+      ~Evaluator.failure_score
+      ~Evaluator.rung_floor
+      ~Evaluator.rung_factor
+      ~Evaluator.min_rungs
+      ~Evaluator.min_stability_n
+      ~Evaluator.suspicious_score_floor
+      ~Evaluator.suspicious_count_floor
+   
+   

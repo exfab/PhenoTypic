@@ -1,0 +1,48 @@
+phenotypic.util.StructureMetrics
+================================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: StructureMetrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~StructureMetrics.__init__
+      ~StructureMetrics.clear
+      ~StructureMetrics.copy
+      ~StructureMetrics.fromkeys
+      ~StructureMetrics.get
+      ~StructureMetrics.items
+      ~StructureMetrics.keys
+      ~StructureMetrics.pop
+      ~StructureMetrics.popitem
+      ~StructureMetrics.setdefault
+      ~StructureMetrics.update
+      ~StructureMetrics.values
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StructureMetrics.mean_coherence
+      ~StructureMetrics.optimal_scale
+      ~StructureMetrics.peak_response
+      ~StructureMetrics.ridge_responses
+      ~StructureMetrics.scales
+      ~StructureMetrics.ridge_method
+      ~StructureMetrics.coherence_map
+   
+   

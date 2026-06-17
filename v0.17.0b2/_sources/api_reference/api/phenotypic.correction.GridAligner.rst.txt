@@ -1,0 +1,64 @@
+phenotypic.correction.GridAligner
+=================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: GridAligner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridAligner.__init__
+      ~GridAligner.apply
+      ~GridAligner.construct
+      ~GridAligner.copy
+      ~GridAligner.dict
+      ~GridAligner.from_json
+      ~GridAligner.from_orm
+      ~GridAligner.json
+      ~GridAligner.model_construct
+      ~GridAligner.model_copy
+      ~GridAligner.model_dump
+      ~GridAligner.model_dump_json
+      ~GridAligner.model_json_schema
+      ~GridAligner.model_parametrized_name
+      ~GridAligner.model_post_init
+      ~GridAligner.model_rebuild
+      ~GridAligner.model_validate
+      ~GridAligner.model_validate_json
+      ~GridAligner.model_validate_strings
+      ~GridAligner.parse_file
+      ~GridAligner.parse_obj
+      ~GridAligner.parse_raw
+      ~GridAligner.schema
+      ~GridAligner.schema_json
+      ~GridAligner.to_json
+      ~GridAligner.update_forward_refs
+      ~GridAligner.validate
+      ~GridAligner.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridAligner.model_computed_fields
+      ~GridAligner.model_config
+      ~GridAligner.model_extra
+      ~GridAligner.model_fields
+      ~GridAligner.model_fields_set
+      ~GridAligner.axis
+      ~GridAligner.mode
+   
+   

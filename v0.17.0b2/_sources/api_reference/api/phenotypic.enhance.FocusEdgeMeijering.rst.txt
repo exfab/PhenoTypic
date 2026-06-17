@@ -1,0 +1,67 @@
+phenotypic.enhance.FocusEdgeMeijering
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeMeijering
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeMeijering.__init__
+      ~FocusEdgeMeijering.apply
+      ~FocusEdgeMeijering.construct
+      ~FocusEdgeMeijering.copy
+      ~FocusEdgeMeijering.dict
+      ~FocusEdgeMeijering.from_json
+      ~FocusEdgeMeijering.from_orm
+      ~FocusEdgeMeijering.json
+      ~FocusEdgeMeijering.model_construct
+      ~FocusEdgeMeijering.model_copy
+      ~FocusEdgeMeijering.model_dump
+      ~FocusEdgeMeijering.model_dump_json
+      ~FocusEdgeMeijering.model_json_schema
+      ~FocusEdgeMeijering.model_parametrized_name
+      ~FocusEdgeMeijering.model_post_init
+      ~FocusEdgeMeijering.model_rebuild
+      ~FocusEdgeMeijering.model_validate
+      ~FocusEdgeMeijering.model_validate_json
+      ~FocusEdgeMeijering.model_validate_strings
+      ~FocusEdgeMeijering.parse_file
+      ~FocusEdgeMeijering.parse_obj
+      ~FocusEdgeMeijering.parse_raw
+      ~FocusEdgeMeijering.schema
+      ~FocusEdgeMeijering.schema_json
+      ~FocusEdgeMeijering.to_json
+      ~FocusEdgeMeijering.update_forward_refs
+      ~FocusEdgeMeijering.validate
+      ~FocusEdgeMeijering.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeMeijering.model_computed_fields
+      ~FocusEdgeMeijering.model_config
+      ~FocusEdgeMeijering.model_extra
+      ~FocusEdgeMeijering.model_fields
+      ~FocusEdgeMeijering.model_fields_set
+      ~FocusEdgeMeijering.sigmas
+      ~FocusEdgeMeijering.alpha
+      ~FocusEdgeMeijering.black_ridges
+      ~FocusEdgeMeijering.mode
+      ~FocusEdgeMeijering.cval
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_progress\_dir
+=========================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_progress_dir

@@ -1,0 +1,40 @@
+phenotypic.abc\_.FigureSpec
+===========================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: FigureSpec
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FigureSpec.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FigureSpec.title
+      ~FigureSpec.section
+      ~FigureSpec.controls
+      ~FigureSpec.description
+      ~FigureSpec.primary
+      ~FigureSpec.name
+      ~FigureSpec.method
+      ~FigureSpec.wants_subject
+      ~FigureSpec.subject_param
+      ~FigureSpec.order
+   
+   

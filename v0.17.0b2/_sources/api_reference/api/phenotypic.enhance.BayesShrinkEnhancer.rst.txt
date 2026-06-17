@@ -1,0 +1,73 @@
+phenotypic.enhance.BayesShrinkEnhancer
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: BayesShrinkEnhancer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BayesShrinkEnhancer.__init__
+      ~BayesShrinkEnhancer.apply
+      ~BayesShrinkEnhancer.construct
+      ~BayesShrinkEnhancer.copy
+      ~BayesShrinkEnhancer.dict
+      ~BayesShrinkEnhancer.from_json
+      ~BayesShrinkEnhancer.from_orm
+      ~BayesShrinkEnhancer.json
+      ~BayesShrinkEnhancer.model_construct
+      ~BayesShrinkEnhancer.model_copy
+      ~BayesShrinkEnhancer.model_dump
+      ~BayesShrinkEnhancer.model_dump_json
+      ~BayesShrinkEnhancer.model_json_schema
+      ~BayesShrinkEnhancer.model_parametrized_name
+      ~BayesShrinkEnhancer.model_post_init
+      ~BayesShrinkEnhancer.model_rebuild
+      ~BayesShrinkEnhancer.model_validate
+      ~BayesShrinkEnhancer.model_validate_json
+      ~BayesShrinkEnhancer.model_validate_strings
+      ~BayesShrinkEnhancer.parse_file
+      ~BayesShrinkEnhancer.parse_obj
+      ~BayesShrinkEnhancer.parse_raw
+      ~BayesShrinkEnhancer.schema
+      ~BayesShrinkEnhancer.schema_json
+      ~BayesShrinkEnhancer.to_json
+      ~BayesShrinkEnhancer.update_forward_refs
+      ~BayesShrinkEnhancer.validate
+      ~BayesShrinkEnhancer.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BayesShrinkEnhancer.model_computed_fields
+      ~BayesShrinkEnhancer.model_config
+      ~BayesShrinkEnhancer.model_extra
+      ~BayesShrinkEnhancer.model_fields
+      ~BayesShrinkEnhancer.model_fields_set
+      ~BayesShrinkEnhancer.sigma
+      ~BayesShrinkEnhancer.wavelet
+      ~BayesShrinkEnhancer.mode
+      ~BayesShrinkEnhancer.wavelet_levels
+      ~BayesShrinkEnhancer.clip
+      ~BayesShrinkEnhancer.rescale_sigma
+      ~BayesShrinkEnhancer.use_gat
+      ~BayesShrinkEnhancer.gat_gain
+      ~BayesShrinkEnhancer.gat_mu
+      ~BayesShrinkEnhancer.gat_read_sigma
+      ~BayesShrinkEnhancer.gat_scale_factor
+   
+   

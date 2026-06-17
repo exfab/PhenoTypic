@@ -1,0 +1,942 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._scoring._gt_loader &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=ed622d3e"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_scoring/_gt_loader';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0b2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0b2/_modules/phenotypic/tune/_scoring/_gt_loader.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0b2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._scoring._gt_loader</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._scoring._gt_loader</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The path-configured ground-truth mask loader (supervised-scorers; DEFERRED §1).</span>
+
+<span class="sd">``GroundTruthMasks`` resolves per-image annotation masks from a configurable source,</span>
+<span class="sd">mirroring the path-config round-trip discipline of</span>
+<span class="sd">:class:`phenotypic.analysis.ExpectedVsDetectedCount` (its ``metadata_source`` field): a</span>
+<span class="sd">**serializable** ``gt_masks_source`` path survives ``model_dump`` / ``tuning_spec.json``,</span>
+<span class="sd">while the resolved frames/arrays live in an **excluded** in-memory cache. A loader</span>
+<span class="sd">constructed without a source path cannot resolve anything on reload and honestly reports</span>
+<span class="sd">``modality() == &quot;none&quot;`` (abstain) — the supervised scorer then degrades like the</span>
+<span class="sd">reference-free gate does.</span>
+
+<span class="sd">The source determines the **modality**:</span>
+
+<span class="sd">* a **directory** of per-image masks → ``&quot;mask&quot;`` (the object-overlap path);</span>
+<span class="sd">* a ``.csv`` / ``.parquet`` file of per-image counts → ``&quot;count&quot;`` (the count-MAE path,</span>
+<span class="sd">  consumed by chunk B&#39;s ``SupervisedScorer`` via ``ExpectedVsDetectedCount``);</span>
+<span class="sd">* ``None`` or an empty/absent directory → ``&quot;none&quot;`` (abstain).</span>
+
+<span class="sd">Filename match is **directory + image stem**: ``&quot;plate1.png&quot;`` (or bare ``&quot;plate1&quot;``)</span>
+<span class="sd">resolves to ``gt_masks_source/plate1.{npy,tif,png}`` in that **suffix-priority order**;</span>
+<span class="sd">a missing stem yields ``None``.</span>
+
+<span class="sd"># TODO(DEFERRED-WORK §1): validate against real annotated plates. v1 ships the</span>
+<span class="sd"># path-config + modality + abstain machinery and reads masks structurally; the</span>
+<span class="sd"># numeric correctness of resolved masks vs. a real annotated calibration set is</span>
+<span class="sd"># deferred until such a set exists. No numeric-vs-real-GT test runs here.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeAlias</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BaseModel</span><span class="p">,</span>
+    <span class="n">ConfigDict</span><span class="p">,</span>
+    <span class="n">PrivateAttr</span><span class="p">,</span>
+    <span class="n">model_validator</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1">#: The ground-truth source modalities — a type-only closed set (no documentation</span>
+<span class="c1">#: surface beyond this loader): ``&quot;mask&quot;`` (a directory of per-image masks),</span>
+<span class="c1">#: ``&quot;count&quot;`` (a CSV/Parquet of per-image expected counts), ``&quot;none&quot;`` (abstain).</span>
+<span class="n">Modality</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">]</span>
+
+<span class="c1">#: How the pixels of a **mask-modality** GT source are interpreted — a</span>
+<span class="c1">#: serializable closed set (it round-trips through ``model_dump`` /</span>
+<span class="c1">#: ``tuning_spec.json`` like ``gt_masks_source`` does):</span>
+<span class="c1">#:</span>
+<span class="c1">#: * ``&quot;instance&quot;`` — the on-disk mask is already an **integer instance-label**</span>
+<span class="c1">#:   array (each colony a distinct positive label); the matcher consumes it</span>
+<span class="c1">#:   directly.</span>
+<span class="c1">#: * ``&quot;binary&quot;`` — the on-disk mask is a **binary foreground** mask (any</span>
+<span class="c1">#:   non-zero pixel is colony); per-cell instances are derived from the grid at</span>
+<span class="c1">#:   scoring time (:mod:`._supervised`).</span>
+<span class="c1">#:</span>
+<span class="c1">#: Orthogonal to :data:`Modality`: ``gt_format`` only *interprets* a ``&quot;mask&quot;``</span>
+<span class="c1">#: source — it has no bearing on the ``&quot;count&quot;`` / ``&quot;none&quot;`` modalities.</span>
+<span class="n">GTFormat</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;instance&quot;</span><span class="p">,</span> <span class="s2">&quot;binary&quot;</span><span class="p">]</span>
+
+<span class="c1">#: A loaded GT mask array — integer instance labels **or** a binary/boolean</span>
+<span class="c1">#: foreground mask. The loader preserves the on-disk dtype (it no longer forces</span>
+<span class="c1">#: ``bool``), so instance labels survive to the matcher and only the</span>
+<span class="c1">#: :class:`~._supervised.SupervisedScorer` decides how to interpret them per</span>
+<span class="c1">#: :data:`GTFormat`.</span>
+<span class="n">GTMaskArray</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="s2">&quot;npt.NDArray[np.integer[Any]] | npt.NDArray[np.bool_]&quot;</span>
+
+<span class="c1">#: Mask file suffixes, in resolution priority order: a binary ``.npy`` array wins</span>
+<span class="c1">#: over a ``.tif``, which wins over a ``.png`` — the first existing one is used.</span>
+<span class="n">_MASK_SUFFIX_PRIORITY</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;.npy&quot;</span><span class="p">,</span> <span class="s2">&quot;.tif&quot;</span><span class="p">,</span> <span class="s2">&quot;.png&quot;</span><span class="p">)</span>
+
+<span class="c1">#: Count-source suffixes (a per-image expected-count table, not per-image masks).</span>
+<span class="n">_COUNT_SUFFIXES</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="s2">&quot;.parquet&quot;</span><span class="p">})</span>
+
+
+<div class="viewcode-block" id="GroundTruthMasks">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.GroundTruthMasks">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GroundTruthMasks</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve per-image ground-truth masks from a serializable source path.</span>
+
+<span class="sd">    Mirrors :class:`phenotypic.analysis.ExpectedVsDetectedCount`&#39;s</span>
+<span class="sd">    ``metadata_source`` round-trip: ``gt_masks_source`` is the JSON-serializable</span>
+<span class="sd">    handle (a directory of masks or a count table); the resolved masks are cached</span>
+<span class="sd">    in an **excluded** private attribute, never serialized, and re-resolved on</span>
+<span class="sd">    reload. A loader with ``gt_masks_source=None`` abstains</span>
+<span class="sd">    (``modality() == &quot;none&quot;``).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        gt_masks_source: Path to the ground-truth source — a **directory** of</span>
+<span class="sd">            per-image masks (``modality &quot;mask&quot;``), a ``.csv``/``.parquet`` count</span>
+<span class="sd">            table (``modality &quot;count&quot;``), or ``None`` to abstain</span>
+<span class="sd">            (``modality &quot;none&quot;``). Captured as a string in the serialized surface</span>
+<span class="sd">            so the source round-trips through ``tuning_spec.json``.</span>
+<span class="sd">        gt_format: How a **mask**-modality source&#39;s pixels are interpreted —</span>
+<span class="sd">            ``&quot;instance&quot;`` (an integer instance-label array, consumed directly by</span>
+<span class="sd">            the matcher) or ``&quot;binary&quot;`` (a foreground mask, default; per-cell</span>
+<span class="sd">            instances are derived from the grid by the supervised scorer).</span>
+<span class="sd">            Orthogonal to the modality and round-trips through</span>
+<span class="sd">            ``tuning_spec.json``. Ignored by the ``&quot;count&quot;`` / ``&quot;none&quot;``</span>
+<span class="sd">            modalities.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Construct from a directory of masks and round-trip the source path and</span>
+<span class="sd">        format. The loader **preserves the on-disk dtype** — a binary mask loads</span>
+<span class="sd">        as ``bool``, an integer-labeled mask stays integer:</span>
+
+<span class="sd">        &gt;&gt;&gt; import json, tempfile, numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; from pathlib import Path</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.tune._scoring._gt_loader import GroundTruthMasks</span>
+<span class="sd">        &gt;&gt;&gt; tmp = Path(tempfile.mkdtemp())</span>
+<span class="sd">        &gt;&gt;&gt; _ = np.save(tmp / &quot;plate1.npy&quot;, np.array([[True, False]]))</span>
+<span class="sd">        &gt;&gt;&gt; _ = np.save(tmp / &quot;labels.npy&quot;, np.array([[1, 0], [0, 2]]))</span>
+<span class="sd">        &gt;&gt;&gt; gt = GroundTruthMasks(gt_masks_source=tmp, gt_format=&quot;instance&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; gt.modality()</span>
+<span class="sd">        &#39;mask&#39;</span>
+<span class="sd">        &gt;&gt;&gt; sorted(gt.available_names())</span>
+<span class="sd">        [&#39;labels&#39;, &#39;plate1&#39;]</span>
+<span class="sd">        &gt;&gt;&gt; bool(gt.masks_for(&quot;plate1.png&quot;).dtype == bool)  # binary stays bool</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; int(gt.masks_for(&quot;labels&quot;).max())  # integer labels preserved</span>
+<span class="sd">        2</span>
+<span class="sd">        &gt;&gt;&gt; reloaded = GroundTruthMasks.model_validate_json(gt.model_dump_json())</span>
+<span class="sd">        &gt;&gt;&gt; str(reloaded.gt_masks_source) == str(tmp)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; reloaded.gt_format</span>
+<span class="sd">        &#39;instance&#39;</span>
+
+<span class="sd">        A sourceless loader abstains (and defaults ``gt_format`` to binary):</span>
+
+<span class="sd">        &gt;&gt;&gt; GroundTruthMasks(gt_masks_source=None).modality()</span>
+<span class="sd">        &#39;none&#39;</span>
+<span class="sd">        &gt;&gt;&gt; GroundTruthMasks(gt_masks_source=None).gt_format</span>
+<span class="sd">        &#39;binary&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">gt_masks_source</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">gt_format</span><span class="p">:</span> <span class="n">GTFormat</span> <span class="o">=</span> <span class="s2">&quot;binary&quot;</span>
+
+    <span class="c1">#: In-memory cache of resolved masks (image stem → integer/boolean array).</span>
+    <span class="c1">#: Excluded from serialization (arrays are not JSON-native) and rebuilt lazily</span>
+    <span class="c1">#: on demand from :attr:`gt_masks_source`, so a reloaded loader re-resolves.</span>
+    <span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">GTMaskArray</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_capture_source</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize an empty ``gt_masks_source`` to ``None`` (capture step).</span>
+
+<span class="sd">        Mirrors ``ExpectedVsDetectedCount._capture_metadata_source``: the</span>
+<span class="sd">        serializable handle is the source *path*. Pydantic natively coerces a</span>
+<span class="sd">        ``str`` (e.g. from ``tuning_spec.json``) into the ``Path`` field in both</span>
+<span class="sd">        Python and JSON modes, so this validator only canonicalizes an empty</span>
+<span class="sd">        string to ``None`` (abstain) — there is no resolved array to inject, since</span>
+<span class="sd">        masks are read lazily by :meth:`masks_for`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: The raw constructor input. Normally a kwargs mapping; pydantic</span>
+<span class="sd">                may hand a non-dict (a revalidated model), which passes through.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The input mapping with an empty ``gt_masks_source`` canonicalized to</span>
+<span class="sd">            ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">data</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;gt_masks_source&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;gt_masks_source&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+<div class="viewcode-block" id="GroundTruthMasks.modality">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.modality">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">modality</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Modality</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Report the ground-truth modality this source provides.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``&quot;mask&quot;`` when ``gt_masks_source`` is a directory holding at least one</span>
+<span class="sd">            recognized mask file; ``&quot;count&quot;`` when it is a ``.csv``/``.parquet``</span>
+<span class="sd">            count table; ``&quot;none&quot;`` when no source is configured, the directory is</span>
+<span class="sd">            empty/absent, or the path is otherwise unusable (abstain).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt_masks_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;none&quot;</span>
+        <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="s2">&quot;mask&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_names</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;none&quot;</span>
+        <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">source</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_COUNT_SUFFIXES</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;count&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;none&quot;</span></div>
+
+
+<div class="viewcode-block" id="GroundTruthMasks.available_names">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.available_names">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">available_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The image stems with a resolvable mask in the source directory.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The set of stems (e.g. ``&quot;plate1&quot;``) for which a mask file exists at</span>
+<span class="sd">            any recognized suffix. Empty when the source is not a mask directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt_masks_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">source</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">frozenset</span><span class="p">()</span>
+        <span class="n">stems</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">stem</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="n">entry</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_MASK_SUFFIX_PRIORITY</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">stems</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GroundTruthMasks.masks_for">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.GroundTruthMasks.masks_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">masks_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GTMaskArray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve the ground-truth mask for one image by its stem.</span>
+
+<span class="sd">        Strips any extension from ``image_name`` (so ``&quot;plate1.png&quot;`` and bare</span>
+<span class="sd">        ``&quot;plate1&quot;`` match the same stem) and looks for</span>
+<span class="sd">        ``gt_masks_source/&lt;stem&gt;.{npy,tif,png}`` in :data:`_MASK_SUFFIX_PRIORITY`</span>
+<span class="sd">        order, returning the first that exists **with its on-disk dtype</span>
+<span class="sd">        preserved** — integer instance labels stay integer, a binary mask stays</span>
+<span class="sd">        boolean. How those values are interpreted (instance vs. binary) is the</span>
+<span class="sd">        :attr:`gt_format` decision, applied by the supervised scorer, not here.</span>
+<span class="sd">        The result is cached in the excluded :attr:`_cache`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image_name: The image&#39;s name or filename; only its stem is matched.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The ground-truth mask (integer labels or a boolean foreground mask,</span>
+<span class="sd">            dtype preserved from disk), or ``None`` when no source directory is</span>
+<span class="sd">            configured or no mask file exists for the stem.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gt_masks_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">source</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">image_name</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+        <span class="k">if</span> <span class="n">stem</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">stem</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">_MASK_SUFFIX_PRIORITY</span><span class="p">:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">source</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_mask</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">stem</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask</span>
+                <span class="k">return</span> <span class="n">mask</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_mask</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GTMaskArray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read a mask file (``.npy`` / ``.tif`` / ``.png``), preserving dtype.</span>
+
+<span class="sd">        The on-disk dtype is **not** coerced: an integer instance-label array</span>
+<span class="sd">        stays integer (so per-object labels survive to the matcher) and a binary</span>
+<span class="sd">        mask stays boolean. The :attr:`gt_format` flag — not this reader — decides</span>
+<span class="sd">        whether the values are read as instance labels or as a binary foreground.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: An existing mask file with a recognized suffix.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The mask as loaded from disk: integer labels stay integer, a boolean</span>
+<span class="sd">            mask stays boolean (non-zero entries are foreground either way).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;.npy&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="c1"># Image masks (.tif/.png): read via skimage, guarded for headless/cross-</span>
+        <span class="c1"># platform installs where the imageio backend may be unavailable.</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">io</span> <span class="k">as</span> <span class="n">skio</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">skio</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">path</span><span class="p">))</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

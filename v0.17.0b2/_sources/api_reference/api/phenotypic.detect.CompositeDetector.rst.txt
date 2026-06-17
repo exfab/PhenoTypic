@@ -1,0 +1,65 @@
+phenotypic.detect.CompositeDetector
+===================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: CompositeDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CompositeDetector.__init__
+      ~CompositeDetector.apply
+      ~CompositeDetector.construct
+      ~CompositeDetector.copy
+      ~CompositeDetector.dict
+      ~CompositeDetector.from_json
+      ~CompositeDetector.from_orm
+      ~CompositeDetector.json
+      ~CompositeDetector.model_construct
+      ~CompositeDetector.model_copy
+      ~CompositeDetector.model_dump
+      ~CompositeDetector.model_dump_json
+      ~CompositeDetector.model_json_schema
+      ~CompositeDetector.model_parametrized_name
+      ~CompositeDetector.model_post_init
+      ~CompositeDetector.model_rebuild
+      ~CompositeDetector.model_validate
+      ~CompositeDetector.model_validate_json
+      ~CompositeDetector.model_validate_strings
+      ~CompositeDetector.parse_file
+      ~CompositeDetector.parse_obj
+      ~CompositeDetector.parse_raw
+      ~CompositeDetector.schema
+      ~CompositeDetector.schema_json
+      ~CompositeDetector.to_json
+      ~CompositeDetector.update_forward_refs
+      ~CompositeDetector.validate
+      ~CompositeDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CompositeDetector.model_computed_fields
+      ~CompositeDetector.model_config
+      ~CompositeDetector.model_extra
+      ~CompositeDetector.model_fields
+      ~CompositeDetector.model_fields_set
+      ~CompositeDetector.detectors
+      ~CompositeDetector.mode
+      ~CompositeDetector.min_overlap_ratio
+   
+   

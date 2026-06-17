@@ -1,0 +1,6 @@
+phenotypic.tools\_.resolve\_manifest\_json\_path
+================================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: resolve_manifest_json_path

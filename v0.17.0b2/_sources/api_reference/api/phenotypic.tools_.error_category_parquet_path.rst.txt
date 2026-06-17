@@ -1,0 +1,6 @@
+phenotypic.tools\_.error\_category\_parquet\_path
+=================================================
+
+.. currentmodule:: phenotypic.tools_
+
+.. autofunction:: error_category_parquet_path

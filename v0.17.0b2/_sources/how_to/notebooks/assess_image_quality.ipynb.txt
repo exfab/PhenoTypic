@@ -1,0 +1,89 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# How To: Assess Image Quality Before Pipeline Design\n",
+    "\n",
+    "Run diagnostics on a plate image to objectively assess noise, contrast,\n",
+    "and structure before choosing enhancers and detectors."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from phenotypic.data import load_yeast_plate\n",
+    "import matplotlib.pyplot as plt"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()\n",
+    "fig, metrics = plate.plot.diagnostics()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Decision Guide\n",
+    "\n",
+    "| Metric | Threshold | Action |\n",
+    "|--------|-----------|--------|\n",
+    "| Low SNR (< 10) | Noisy image | Add `StableDenoise` or `GaussianBlur` |\n",
+    "| Low RMS contrast | Faint colonies | Add `CLAHE` or `ContrastStretching` |\n",
+    "| Low dynamic range | Under-exposed | Add `ContrastStretching` |\n",
+    "| Low gradient mean | Soft edges | Add `UnsharpMask` or `FocusEdgeSobel` |\n",
+    "| Long correlation length | Uneven illumination | Add `HomomorphicFilter` |"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "for category, values in metrics.items():\n",
+    "    if not isinstance(values, dict):\n",
+    "        print(f\"\\n{category}: {values}\")\n",
+    "        continue\n",
+    "    print(f\"\\n{category}:\")\n",
+    "    for key, val in values.items():\n",
+    "        if isinstance(val, (int, float)):\n",
+    "            print(f\"  {key}: {val:.4f}\")\n",
+    "        else:\n",
+    "            print(f\"  {key}: {val}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plt.close(\"all\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
