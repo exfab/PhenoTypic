@@ -104,6 +104,18 @@ torch = [
     "sam2;sys_platform!='win32'",
 ]
 
+foundation = [
+    # SAM3 + every DINO backbone collapse to transformers + huggingface_hub.
+    # transformers>=5.2.0 is the first release shipping Sam3Model/Sam3Processor
+    # and the DINO AutoModel route (Spec 2 O3, verified). Both are pure-Python
+    # and permissive (Apache) — gated *weights* are fetched at runtime behind
+    # the license-acceptance gate (Spec 2 §7), never at install time.
+    "phenotypic[torch]",
+    "transformers>=5.2.0",
+    "huggingface_hub>=0.26",
+]
+gpu = ["phenotypic[torch,foundation]"]  # umbrella: every GPU detector
+
 tune = [
     # Optuna backend for the tune engine (Phase 2). Imported lazily inside
     # phenotypic.tune._strategies._optuna_support so the base package and the
@@ -253,5 +265,8 @@ module = [
     # micro_sam is conda-only (not on PyPI); habana_frameworks is Intel Gaudi.
     "micro_sam.*",
     "habana_frameworks.*",
+    # Foundation-model libs (Spec 2a): permissive but no first-party stubs.
+    "transformers.*",
+    "huggingface_hub.*",
 ]
 ignore_missing_imports = true

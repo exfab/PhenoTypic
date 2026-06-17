@@ -40,6 +40,15 @@ GpuInputLayer = Literal["rgb", "gray", "detect_mat"]
 #: "semantic" -> binary objmask (auto-labels into objmap, like a threshold detector).
 GpuOutputKind = Literal["instance", "semantic"]
 
+#: DINO backbone generation for DinoSam2Detector. 2 = DINOv2 (Apache, ungated,
+#: default); 3 = DINOv3 (gated, opt-in — routes through require_license_acceptance).
+#: Type-only closed set (no Enum / documentation surface needed).
+DinoVersion = Literal[2, 3]
+
+#: DINO backbone size for DinoSam2Detector. Maps with DinoVersion to the HF
+#: model id (e.g. (2, "base") -> "facebook/dinov2-base").
+DinoSize = Literal["small", "base", "large"]
+
 #: Public top-level CLI execution mode. ``full`` performs the normal
 #: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,
 #: ``recompile`` refreshes aggregate outputs from an existing output root, and
