@@ -335,9 +335,18 @@ class DinoSam2Detector(GpuDetector):
             return np.zeros(rgb.shape[:2], dtype=np.uint16)
 
         proposals = [m["segmentation"].astype(bool) for m in raw]
-        dense, grid_hw = self._dino_dense_features(rgb)
+        # Shared, register-token-aware dense features (C1 fix lives in one
+        # place — _dino_support.extract_patch_features — not duplicated here).
+        from phenotypic.detect.nn._dino_support import (
+            extract_patch_features,
+            pool_prototype,
+        )
+
+        dense = extract_patch_features(
+            self._dino_model, self._dino_processor, rgb, device=self._device
+        )
         features = np.stack(
-            [self._pool_feature(p, dense, grid_hw) for p in proposals]
+            [pool_prototype(dense, p).astype(np.float64) for p in proposals]
         )
         prototype = self._foreground_prototype(features, raw)
         scores = _score_by_prototype(features, prototype)
@@ -361,68 +370,6 @@ class DinoSam2Detector(GpuDetector):
             else:
                 rgb = np.zeros(rgb.shape, dtype=np.uint8)
         return rgb
-
-    def _dino_dense_features(
-        self, rgb: "np.ndarray"
-    ) -> tuple["np.ndarray", tuple[int, int]]:
-        """Return DINO patch features ``(Gh*Gw, D)`` + the patch grid ``(Gh, Gw)``.
-
-        The class token is dropped; only spatial patch tokens are pooled into
-        proposals.
-        """
-        import numpy as np
-        import torch
-
-        inputs = self._dino_processor(images=rgb, return_tensors="pt").to(
-            self._device
-        )
-        with torch.no_grad():
-            outputs = self._dino_model(**inputs)
-        # (1, 1 + Gh*Gw, D) — drop the leading CLS token.
-        tokens = outputs.last_hidden_state[0, 1:, :]
-        feats = tokens.detach().cpu().numpy().astype(np.float64)
-
-        pixel = inputs["pixel_values"]
-        in_h, in_w = int(pixel.shape[-2]), int(pixel.shape[-1])
-        patch = int(getattr(self._dino_model.config, "patch_size", 14))
-        grid_h, grid_w = in_h // patch, in_w // patch
-        n_patches = feats.shape[0]
-        if grid_h * grid_w != n_patches:
-            # Fall back to a square grid if registers/extra tokens shift counts.
-            side = int(round(n_patches ** 0.5))
-            grid_h, grid_w = side, n_patches // side
-        return feats, (grid_h, grid_w)
-
-    @staticmethod
-    def _pool_feature(
-        mask: "np.ndarray", dense: "np.ndarray", grid_hw: tuple[int, int]
-    ) -> "np.ndarray":
-        """Mean-pool patch features whose grid cell overlaps ``mask``.
-
-        Args:
-            mask: Full-resolution boolean proposal mask.
-            dense: ``(Gh*Gw, D)`` patch features.
-            grid_hw: ``(Gh, Gw)`` patch grid.
-
-        Returns:
-            ``(D,)`` mean-pooled feature (zero vector if no patch overlaps).
-        """
-        import numpy as np
-        from skimage.transform import resize
-
-        grid_h, grid_w = grid_hw
-        # Downsample the proposal mask onto the patch grid (order=0 → nearest).
-        small = resize(
-            mask.astype(np.float32),
-            (grid_h, grid_w),
-            order=0,
-            preserve_range=True,
-            anti_aliasing=False,
-        ) > 0.5
-        idx = np.flatnonzero(small.reshape(-1))
-        if idx.size == 0:
-            return np.zeros(dense.shape[1], dtype=np.float64)
-        return dense[idx].mean(axis=0)
 
     @staticmethod
     def _foreground_prototype(
