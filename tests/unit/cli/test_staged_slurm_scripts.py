@@ -85,3 +85,17 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
 
 def test_chain_uses_afterany_dependencies():
     assert STAGE_DEPENDENCY == "afterany"
+
+
+def test_stage2_script_carries_signal_directive(tmp_path):
+    scripts = generate_staged_scripts(
+        pipeline_path=tmp_path / "p.json",
+        datasets_manifest=[("ds", "a"), ("ds", "b")],
+        output_dir=tmp_path,
+        image_type="Image",
+        cpu_slurm_args={"slurm_partition": "batch"},
+        gpu_slurm_args={"slurm_partition": "gpu"},
+        n_shards=1,
+        signal_grace=120,
+    )
+    assert "--signal=B:TERM@120" in scripts["stage2"].read_text(encoding="utf-8")

@@ -16,10 +16,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal as _signal
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from phenotypic import ImagePipeline
+from phenotypic.tools_ import slurm_scripts_dir
+from phenotypic.tools_.slurm import _sbatch
 from phenotypic.tools_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
@@ -35,6 +39,52 @@ from ._cli_staged_workers import (
 # A manifest entry is [dataset, image_stem, image_path]; Stage 1 needs the path,
 # Stages 2/3 only the (dataset, stem).
 Manifest = Sequence[Sequence[str]]
+
+# --- Stage-2 walltime survival ------------------------------------------------
+# SLURM does NOT auto-requeue a TIMEOUT job. The durable half is already in
+# place (each sidecar write is atomic and the worker skips done images), so no
+# work is lost on a kill. This adds the TRIGGER: the Stage-2 script carries
+# ``--signal=B:TERM@<grace>`` so SLURM sends SIGTERM shortly before walltime;
+# the worker catches it and resubmits its shard (afterany on itself) to finish
+# the remainder. Content-defined skip makes the continuation re-run only the
+# sidecar-less images, so it converges.
+_STOP = False
+
+
+def _install_sigterm_handler() -> None:
+    def _handler(signum, frame):  # noqa: ANN001 - signal handler signature
+        global _STOP
+        _STOP = True
+
+    _signal.signal(_signal.SIGTERM, _handler)
+
+
+def _should_stop() -> bool:
+    return _STOP
+
+
+def resubmit_stage2_continuation(
+    *,
+    pipeline_path: Path,
+    output_dir: Path,
+    image_type: ImageTypeName,
+    manifest: Manifest,
+    shard_index: int,
+    n_shards: int,
+) -> None:
+    """Resubmit THIS shard's Stage-2 array task (afterany on the current job).
+
+    Re-runs the original ``stage2.sh`` restricted to this shard's array index;
+    the resident model reloads and content-defined skip means only the
+    remaining (sidecar-less) images are processed.
+    """
+    stage2_script = slurm_scripts_dir(output_dir) / "stage2.sh"
+    self_job = os.environ.get("SLURM_JOB_ID", "")
+    _sbatch.submit_script(
+        stage2_script,
+        dependency_job_id=self_job or None,
+        array_index=shard_index,
+    )
 
 
 def run_stage1_step(
@@ -62,15 +112,35 @@ def run_stage2_shard(
     shard_index: int,
     n_shards: int,
 ) -> None:
-    """Stage-2 array task: model loaded once, stream this shard of HDFs -> sidecars."""
+    """Stage-2 array task: model loaded once, stream this shard of HDFs -> sidecars.
+
+    Catches the pre-walltime SIGTERM and resubmits the shard for the remainder.
+    """
+    _install_sigterm_handler()
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     plan.gpu_detector._ensure_model_loaded()  # ONCE per worker
     my_shard = partition_shards(list(manifest), n_shards)[shard_index]
     for entry in my_shard:
+        if _should_stop():
+            break
         dataset, stem = entry[0], entry[1]
         if sidecar_exists(output_dir, dataset, stem):
             continue  # content-defined resume
         stage2_detect_core(plan.gpu_detector, output_dir, dataset, stem, image_type)
+
+    if _should_stop():
+        # Pre-walltime SIGTERM: resume the remainder. Guard on remaining work
+        # (NOT merely "stopped") so a deterministically-failing image never
+        # triggers an infinite resubmit loop.
+        remaining = [
+            e for e in my_shard if not sidecar_exists(output_dir, e[0], e[1])
+        ]
+        if remaining:
+            resubmit_stage2_continuation(
+                pipeline_path=pipeline_path, output_dir=output_dir,
+                image_type=image_type, manifest=manifest,
+                shard_index=shard_index, n_shards=n_shards,
+            )
 
 
 def run_stage3_step(

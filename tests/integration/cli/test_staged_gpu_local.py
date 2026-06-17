@@ -238,3 +238,60 @@ def test_stage2_shard_worker_processes_its_shard(tmp_path):
         manifest=[("ds", "img")], shard_index=0, n_shards=1,
     )
     assert sidecar_exists(out, "ds", "img")
+
+
+def _stage1_only(tmp_path):
+    """Shared setup: write an image and run Stage 1 so a staged HDF exists."""
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    stage1_preprocess_core(
+        split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path)),
+        image_path, "ds", "img", out, om, image_type="Image",
+    )
+    return out, pipe_path
+
+
+def test_shard_worker_resubmits_remaining_on_sigterm(tmp_path, monkeypatch):
+    import phenotypic._cli._cli_staged_slurm_worker as W
+
+    out, pipe_path = _stage1_only(tmp_path)
+    submitted = []
+    monkeypatch.setattr(
+        W, "resubmit_stage2_continuation", lambda **kw: submitted.append(kw)
+    )
+    monkeypatch.setattr(W, "_should_stop", lambda: True)  # SIGTERM before work
+    W.run_stage2_shard(
+        pipeline_path=pipe_path, output_dir=out, image_type="Image",
+        manifest=[("ds", "img")], shard_index=0, n_shards=1,
+    )
+    assert submitted and submitted[0]["shard_index"] == 0
+
+
+def test_shard_worker_no_resubmit_when_shard_complete(tmp_path, monkeypatch):
+    # S10: a SIGTERM after the shard is already done must NOT resubmit (would
+    # otherwise loop forever on a deterministically-failing image).
+    import phenotypic._cli._cli_staged_slurm_worker as W
+
+    out, pipe_path = _stage1_only(tmp_path)
+    W.run_stage2_shard(
+        pipeline_path=pipe_path, output_dir=out, image_type="Image",
+        manifest=[("ds", "img")], shard_index=0, n_shards=1,
+    )
+    assert sidecar_exists(out, "ds", "img")  # shard complete
+
+    submitted = []
+    monkeypatch.setattr(
+        W, "resubmit_stage2_continuation", lambda **kw: submitted.append(kw)
+    )
+    monkeypatch.setattr(W, "_should_stop", lambda: True)  # SIGTERM, but done
+    W.run_stage2_shard(
+        pipeline_path=pipe_path, output_dir=out, image_type="Image",
+        manifest=[("ds", "img")], shard_index=0, n_shards=1,
+    )
+    assert submitted == []
