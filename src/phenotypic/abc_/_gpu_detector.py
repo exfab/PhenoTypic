@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List
+
+import numpy as np
 
 from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
 
@@ -92,6 +94,18 @@ class GpuDetector(ObjectDetector, ABC):
     @abstractmethod
     def _ensure_model_loaded(self) -> None:
         """Build/load the GPU model on first use (idempotent)."""
+
+    def preprocess(self, array: np.ndarray) -> Any:
+        """Turn a raw ``input_layer`` array into a model-ready sample (CPU).
+
+        Default: a single-channel 2D layer (``gray``/``detect_mat``) is stacked
+        into an ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume
+        it unchanged; ``rgb`` passes through untouched. Subclasses may override
+        for model-specific normalization (e.g. uint8 coercion).
+        """
+        if array.ndim == 2:
+            return np.stack([array, array, array], axis=-1)
+        return array
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:

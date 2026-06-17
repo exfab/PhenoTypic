@@ -33,3 +33,21 @@ class TestCapabilityFields:
         assert "input_layer" in GpuDetector.model_fields
         assert "supports_batching" in GpuDetector.model_fields
         assert "output_kind" in GpuDetector.model_fields
+
+
+import numpy as np
+
+
+class TestPreprocess:
+    def test_2d_layer_stacked_to_3_channels(self):
+        det = Sam2Detector()
+        gray = np.zeros((4, 5), dtype=np.float32)
+        out = det.preprocess(gray)
+        assert out.shape == (4, 5, 3)
+
+    def test_rgb_passthrough(self):
+        det = Sam2Detector()
+        rgb = np.zeros((4, 5, 3), dtype=np.uint8)
+        out = det.preprocess(rgb)
+        assert out.shape == (4, 5, 3)
+        assert out is rgb  # no copy for already-3-channel input
