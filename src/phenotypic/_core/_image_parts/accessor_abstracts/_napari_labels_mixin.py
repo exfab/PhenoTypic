@@ -73,7 +73,7 @@ Comparing masks and maps in a single viewer:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 
@@ -81,6 +81,14 @@ from phenotypic._core._image_parts.accessor_abstracts import _image_accessor_bas
 
 if TYPE_CHECKING:
     import napari
+
+    from phenotypic._core._image import Image
+
+    # Alias so a second method can annotate the viewer type: under
+    # ``from __future__ import annotations`` a TYPE_CHECKING-only ``napari``
+    # resolves for the first method that references ``napari.Viewer`` but
+    # mypy reports name-defined on later ones; the alias sidesteps that.
+    NapariViewer: TypeAlias = napari.Viewer
 
 
 class NapariLabelsMixin:
@@ -306,3 +314,59 @@ class NapariLabelsMixin:
             active_viewer.layers[resolved_layer_name].contour = contour
 
         return active_viewer
+
+    def draw(
+        self,
+        *,
+        viewer: NapariViewer | None = None,
+    ) -> Image:
+        """Open a napari editor to hand-edit these labels and save them back.
+
+        Launches a blocking PyQt napari viewer showing ``rgb`` (when present),
+        ``gray``, and ``detect_mat`` as image layers plus this accessor's data
+        as an **editable** labels layer. Use napari's built-in paintbrush, fill,
+        and eraser tools to correct the segmentation, then click **Save to
+        Image** in the dock panel to commit the edits to the parent image
+        (or **Discard & Close** to abandon them).
+
+        Editing ``objmap`` preserves the original integer label IDs. Editing
+        ``objmask`` is strictly binary and **relabels** the object map on save
+        (``skimage.measure.label``), so original IDs are not retained — call
+        ``image.objmap.draw()`` instead when stable IDs matter. Preview the
+        existing detections with :meth:`show` or :meth:`napari` before editing.
+
+        Args:
+            viewer: Optional existing napari viewer to reuse instead of opening
+                a fresh one. Defaults to None.
+
+        Returns:
+            Image: The parent image, mutated in place if edits were saved.
+
+        Raises:
+            ImportError: If napari is not installed. Install with
+                ``pip install phenotypic[napari]``.
+
+        Examples:
+            Hand-correct an auto-detected object map:
+
+            >>> from phenotypic.data import load_synth_yeast_plate
+            >>> from phenotypic.detect import OtsuDetector
+            >>> image = OtsuDetector().apply(load_synth_yeast_plate())
+            >>> image = image.objmap.draw()  # doctest: +SKIP
+        """
+        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import (
+            _HAS_NAPARI,
+        )
+
+        if not _HAS_NAPARI:
+            raise ImportError(
+                "napari is required for interactive visualization. "
+                "Install with: pip install phenotypic[napari]"
+            )
+
+        from phenotypic.tools_.napari_ import LabelEditorWidget
+
+        LabelEditorWidget().run(
+            self._root_image, self._accessor_property_name, viewer=viewer
+        )
+        return self._root_image

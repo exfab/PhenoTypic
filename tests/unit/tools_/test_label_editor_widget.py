@@ -124,3 +124,47 @@ class TestDiscard:
         np.testing.assert_array_equal(detected_image.objmap[:], before)
         assert panel.saved_labels is None
         panel._viewer.close.assert_called_once()
+
+
+class TestDrawMethod:
+    """Tests for NapariLabelsMixin.draw()."""
+
+    def test_draw_raises_import_error_without_napari(self, detected_image):
+        with patch(
+            "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",
+            False,
+        ):
+            with pytest.raises(ImportError, match="napari is required"):
+                detected_image.objmap.draw()
+
+    def test_draw_delegates_and_returns_root_image(self, detected_image):
+        with patch(
+            "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",
+            True,
+        ), patch(
+            "phenotypic.tools_.napari_.LabelEditorWidget.run"
+        ) as mock_run:
+            mock_run.return_value = None
+
+            result = detected_image.objmap.draw()
+
+            mock_run.assert_called_once()
+            # First positional arg is the root image, second is the accessor name.
+            args, _ = mock_run.call_args
+            assert args[0] is detected_image
+            assert args[1] == "objmap"
+            assert result is detected_image
+
+    def test_draw_passes_objmask_accessor_name(self, detected_image):
+        with patch(
+            "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",
+            True,
+        ), patch(
+            "phenotypic.tools_.napari_.LabelEditorWidget.run"
+        ) as mock_run:
+            mock_run.return_value = None
+
+            detected_image.objmask.draw()
+
+            args, _ = mock_run.call_args
+            assert args[1] == "objmask"
