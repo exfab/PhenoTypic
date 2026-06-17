@@ -223,6 +223,9 @@ class Sam3Detector(GpuDetector):
             resolution).
         tile_overlap: Fractional overlap between neighbouring tiles.  Default
             0.15.
+        tile_merge_iou: IoU above which the same colony detected in the overlap
+            of two adjacent tiles is merged into one instance (cross-tile NMS).
+            Default 0.5.
         max_instances_per_tile: SAM3's hard 200-instance-per-forward cap;
             structural, not tuned.
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
@@ -292,6 +295,9 @@ class Sam3Detector(GpuDetector):
     # Tiling (Task 5) — fixed geometric tiles, no grid awareness.
     tile_px: Annotated[int, TuneSpec(512, 2048)] = 1008
     tile_overlap: Annotated[float, TuneSpec(0.0, 0.4)] = 0.15
+    # IoU above which the same colony detected in the overlap of two adjacent
+    # tiles is merged into one instance (cross-tile NMS).
+    tile_merge_iou: Annotated[float, TuneSpec(0.0, 1.0)] = 0.5
     # SAM3's hard num_queries cap per forward — structural, never tuned.
     max_instances_per_tile: Annotated[int, TuneSpec(tunable=False)] = 200
 
@@ -439,19 +445,21 @@ class Sam3Detector(GpuDetector):
 
         self._ensure_model_loaded()
 
-        # Plan tiles per sample; collect every crop into one flat batch.
+        # Plan tiles per sample; collect every crop into one flat batch. The
+        # uint8 coercion happens once per sample here (the later loops only need
+        # the full-image shape) to avoid re-allocating large plate images.
         plans: list[list[_Tile]] = []
+        full_shapes: list[tuple[int, int]] = []
         flat_crops: list[np.ndarray] = []
-        owner: list[int] = []  # which sample each flat crop belongs to
-        for s_idx, sample in enumerate(batch):
+        for sample in batch:
             arr = self._to_uint8(sample)
+            full_shapes.append((arr.shape[0], arr.shape[1]))
             tiles = _plan_tiles(
                 (arr.shape[0], arr.shape[1]), self.tile_px, self.tile_overlap
             )
             plans.append(tiles)
             for t in tiles:
                 flat_crops.append(arr[t.y0:t.y1, t.x0:t.x1])
-                owner.append(s_idx)
 
         # One true-batch forward over every crop.
         crop_objmaps = self._forward_tiles(flat_crops) if flat_crops else []
@@ -459,9 +467,8 @@ class Sam3Detector(GpuDetector):
         # Offset each crop objmap into full-image coords, group by sample.
         per_sample_full: list[list[np.ndarray]] = [[] for _ in batch]
         cursor = 0
-        for s_idx, sample in enumerate(batch):
-            arr = self._to_uint8(sample)
-            full_shape = (arr.shape[0], arr.shape[1])
+        for s_idx in range(len(batch)):
+            full_shape = full_shapes[s_idx]
             for t in plans[s_idx]:
                 crop_obj = crop_objmaps[cursor]
                 cursor += 1
@@ -470,9 +477,7 @@ class Sam3Detector(GpuDetector):
                 per_sample_full[s_idx].append(full)
 
         results: list[np.ndarray] = []
-        for s_idx, sample in enumerate(batch):
-            arr = self._to_uint8(sample)
-            full_shape = (arr.shape[0], arr.shape[1])
+        for s_idx in range(len(batch)):
             tile_objmaps = per_sample_full[s_idx]
             if len(tile_objmaps) == 1:
                 # Single-tile path — relabel contiguously, no merge needed.
@@ -480,10 +485,12 @@ class Sam3Detector(GpuDetector):
                     _merge_tiles_iou_nms(tile_objmaps, iou_thresh=1.0)
                 )
             elif not tile_objmaps:
-                results.append(np.zeros(full_shape, dtype=np.uint16))
+                results.append(np.zeros(full_shapes[s_idx], dtype=np.uint16))
             else:
                 results.append(
-                    _merge_tiles_iou_nms(tile_objmaps, iou_thresh=0.5)
+                    _merge_tiles_iou_nms(
+                        tile_objmaps, iou_thresh=self.tile_merge_iou
+                    )
                 )
         return results
 
