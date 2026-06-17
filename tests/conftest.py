@@ -11,10 +11,19 @@ import os
 import shutil
 from pathlib import Path
 
-import matplotlib
 import pytest
 
-matplotlib.use("Agg")
+# matplotlib/plotly are guarded so this conftest stays importable in
+# dependency-light pytest invocations (e.g. the packaging-integrity CI job,
+# which runs the build-artifact tests in a bare ``pytest``-only env). When the
+# plotting stack is absent there are no figures to redirect, so skipping the
+# headless-backend setup is a safe no-op.
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+except ImportError:
+    pass
 
 try:
     import plotly.io as pio
@@ -81,8 +90,14 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_slurm)
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_xdist_auto_num_workers(config) -> int:
-    """Use SLURM-allocated CPUs when available, else fall back to affinity mask."""
+    """Use SLURM-allocated CPUs when available, else fall back to affinity mask.
+
+    ``optionalhook=True`` keeps this conftest valid when pytest-xdist is not
+    installed (e.g. the packaging-integrity CI job's bare ``pytest``-only env),
+    where pluggy would otherwise reject the unknown ``pytest_xdist_*`` hook.
+    """
     slurm_cpus = os.environ.get("SLURM_CPUS_PER_TASK")
     if slurm_cpus is not None:
         return int(slurm_cpus)
