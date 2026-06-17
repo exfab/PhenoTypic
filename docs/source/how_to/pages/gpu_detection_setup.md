@@ -324,6 +324,52 @@ python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ 
 Pre-cache checkpoints on the login node before submitting (see
 "Downloading Model Checkpoints" above).
 
+### SLURM Staged GPU Detection
+
+A forward GPU run on SLURM (`--slurm ...` with a `GpuDetector` pipeline) runs as
+the staged engine above, submitted as a **3-link `afterany` dependency chain**
+with **per-stage resources**:
+
+- **Stage 1** — a CPU array over images (preprocess → staged HDF), on the
+  `--slurm` profile.
+- **Stage 2** — a GPU array over **shards** (`--gpu-shards N`): each task is one
+  whole GPU running a resident model that streams its shard of HDFs to objmap
+  sidecars, on the `--gpu-slurm` profile.
+- **Stage 3** — a CPU array over images (merge sidecar → measure), on the
+  `--slurm` profile.
+
+`afterany` between stages means a handful of per-image failures never block the
+next stage. Because Stage 2 writes a `.npy` sidecar with the HDF opened
+read-only, there is **no HDF5 write-locking on the GPU nodes**; Stages 1 & 3
+write the HDF atomically (temp + rename) on CPU nodes.
+
+```bash
+# CPU partition for Stages 1 & 3 (--slurm); GPU partition + 2 concurrent GPUs for Stage 2
+python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/ \
+    --slurm slurm_partition=batch --slurm slurm_time=02:00:00 \
+    --gpu-slurm slurm_partition=gpu --gpu-shards 2
+```
+
+The resource nesting is three levels: `--gpu-shards` (whole GPUs, across nodes)
+→ `--gpu-workers-per-gpu` (replicas packed per GPU for small models) →
+`--gpu-batch-size` (images per forward pass; batchable models, `auto` in
+Spec 2). `--gpu-slurm` inherits/deltas over `--slurm`, so shared keys
+(account, qos, time) carry over and only the GPU partition/account need
+restating; one GPU is requested automatically.
+
+**Walltime survival.** The Stage-2 script carries `#SBATCH --signal=B:TERM@120`,
+so SLURM sends `SIGTERM` shortly before the walltime. The shard-worker catches
+it and `sbatch`-resubmits its shard (`afterany` on itself); content-defined skip
+means the continuation processes only the remaining sidecar-less images, and it
+repeats until the shard is complete — so a `TIMEOUT` never loses work and never
+needs a manual restart.
+
+**Pre-staging gated weights.** For offline compute nodes, download checkpoints on
+the login node first and export `HF_HUB_OFFLINE=1` (and `hf auth login` for gated
+Hugging Face models). Gated foundation-model weights are never bundled; accept
+their license once via `PHENOTYPIC_ACCEPT_MODEL_LICENSE=<model>` (see the
+`require_license_acceptance` hook).
+
 ## Device Selection
 
 Both detectors accept a `device` parameter that controls where inference runs.

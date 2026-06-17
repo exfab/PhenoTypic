@@ -33,6 +33,18 @@
   final HDF, measures, and deletes the sidecar. The output folder is identical to a
   single-pass run; resume is content-defined (HDF → sidecar → parquet) and progress is
   stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
+  On SLURM, the three stages submit as a **3-link `afterany` dependency chain** with
+  per-stage resources: Stages 1 & 3 on the CPU `--slurm` profile, Stage 2 as a GPU array
+  of resident-model shard-workers. Stage 2 survives walltime — each sidecar write is
+  atomic and the worker SIGTERM-resubmits its shard, so a `TIMEOUT` never loses work.
+  Staged GPU flags (Spec 1 §10):
+  - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
+    `--slurm`** (put a separate GPU partition/account here); auto-adds
+    `slurm_gpus_per_node=1` (explicit `=0` runs the GPU stage on a CPU partition).
+  - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
+  - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model fill).
+  - `--gpu-batch-size N|auto` (default 1) — images/forward (batchable models; `auto`
+    VRAM-probe lands in Spec 2).
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/`--storage-url`
 
