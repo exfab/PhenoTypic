@@ -1,0 +1,6 @@
+{
+  "scenario_id": "detect.Insid3Detector",
+  "class_name": "Insid3Detector",
+  "structural_only": true,
+  "note": "model-backed detector; goldens record metadata only, equivalence is structural"
+}
