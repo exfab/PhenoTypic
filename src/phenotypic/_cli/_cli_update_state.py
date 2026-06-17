@@ -42,6 +42,7 @@ class ProcessingEvent:
     error_msg: str = ""
     slurm_job_id: str = ""
     slurm_array_task_id: str = ""
+    stage: str | None = None
 
 
 def append_event(
@@ -52,14 +53,18 @@ def append_event(
     error_msg: str = "",
     slurm_job_id: str = "",
     slurm_array_task_id: str = "",
+    stage: str | None = None,
 ) -> None:
     """
     Atomically append a processing event to the event log.
 
-    Event format: ``timestamp|dataset|image|status|error_msg|slurm_job_id|slurm_array_task_id``
+    Event format: ``timestamp|dataset|image|status|error_msg|slurm_job_id|slurm_array_task_id|stage``
 
     Trailing SLURM fields are omitted when empty for backward compatibility.
-    Old lines with 4-5 fields still parse correctly.
+    Old lines with 4-5 fields still parse correctly. The optional ``stage``
+    (``"stage1"``/``"stage2"``/``"stage3"`` for the staged GPU engine) is field 8;
+    when present, the SLURM fields 6-7 are always emitted (possibly empty) so the
+    positional parser can locate it. ``status`` stays the closed 3-value set.
 
     This operation uses file locking to ensure thread-safety and process-safety
     across parallel workers (local joblib and distributed SLURM jobs) on HPC
@@ -81,11 +86,16 @@ def append_event(
     # Escape pipe delimiters in error message
     error_msg_safe = error_msg.replace("|", "\\|").replace("\n", " ")
 
-    # Build event line — only include SLURM fields when non-empty
+    # Build event line — include the SLURM fields when non-empty OR when a
+    # ``stage`` follows them (stage is field 8; positional parsing needs its
+    # placeholder fields 6-7 present). Old 4-5 field lines and 7-field SLURM
+    # lines still parse.
     parts = [timestamp, dataset, image, status, error_msg_safe]
-    if slurm_job_id or slurm_array_task_id:
+    if slurm_job_id or slurm_array_task_id or stage is not None:
         parts.append(slurm_job_id)
         parts.append(slurm_array_task_id)
+    if stage is not None:
+        parts.append(stage)
     event_line = "|".join(parts) + "\n"
 
     try:
@@ -108,6 +118,7 @@ def append_completion_event(
     image: str,
     status: ProcessingStatus,
     error_msg: str = "",
+    stage: str | None = None,
 ) -> None:
     """
     Atomically append a completion event to the processing log.
@@ -120,8 +131,11 @@ def append_completion_event(
         image: Image filename.
         status: ``"completed"`` or ``"failed"``.
         error_msg: Error message if status is ``"failed"``.
+        stage: Optional staged-engine stage tag (``"stage1"``/``"stage2"``/``"stage3"``).
     """
-    append_event(event_log, dataset, image, status, error_msg=error_msg)
+    append_event(
+        event_log, dataset, image, status, error_msg=error_msg, stage=stage
+    )
 
 
 def parse_event_line(line: str) -> ProcessingEvent:
@@ -151,6 +165,7 @@ def parse_event_line(line: str) -> ProcessingEvent:
     error_msg = parts[4] if len(parts) > 4 else ""
     slurm_job_id = parts[5] if len(parts) > 5 else ""
     slurm_array_task_id = parts[6] if len(parts) > 6 else ""
+    stage = parts[7] if len(parts) > 7 and parts[7] else None
 
     # Validate + narrow to ProcessingStatus literal
     if status_raw not in ("started", "completed", "failed"):
@@ -177,6 +192,7 @@ def parse_event_line(line: str) -> ProcessingEvent:
         error_msg=error_msg,
         slurm_job_id=slurm_job_id,
         slurm_array_task_id=slurm_array_task_id,
+        stage=stage,
     )
 
 
