@@ -6,6 +6,13 @@ All tests construct detectors WITHOUT torch — the interface and the CPU
 
 from typing import get_args
 
+import numpy as np
+from pydantic import PrivateAttr
+from skimage.measure import label as _sk_label
+
+from phenotypic.abc_ import GpuDetector
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic.detect.nn import Sam2Detector
 from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
 
 
@@ -15,10 +22,6 @@ class TestTypingAliases:
 
     def test_output_kind_values(self):
         assert set(get_args(GpuOutputKind)) == {"instance", "semantic"}
-
-
-from phenotypic.abc_ import GpuDetector
-from phenotypic.detect.nn import Sam2Detector
 
 
 class TestCapabilityFields:
@@ -35,9 +38,6 @@ class TestCapabilityFields:
         assert "output_kind" in GpuDetector.model_fields
 
 
-import numpy as np
-
-
 class TestPreprocess:
     def test_2d_layer_stacked_to_3_channels(self):
         det = Sam2Detector()
@@ -51,10 +51,6 @@ class TestPreprocess:
         out = det.preprocess(rgb)
         assert out.shape == (4, 5, 3)
         assert out is rgb  # no copy for already-3-channel input
-
-
-from pydantic import PrivateAttr
-from skimage.measure import label as _sk_label
 
 
 class _FakeGpuDetector(GpuDetector):
@@ -99,9 +95,6 @@ class TestInferBatchDefault:
         det = _FakeGpuDetector()
         det.infer_batch([np.zeros((2, 2, 3))])
         assert det._loaded is True
-
-
-from phenotypic.data import load_synth_yeast_plate
 
 
 class TestOperateRoutes:
