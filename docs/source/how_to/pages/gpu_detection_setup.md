@@ -21,11 +21,18 @@ The GPU detectors have different packaging constraints:
 | SAM2          | Apache-2.0            | Apache-2.0                 | No     |
 | SAM3          | Apache-2.0 (`transformers`) | **SAM License** (commercial-OK) | **Yes** — accept on Hugging Face |
 | DINOv2        | Apache-2.0            | Apache-2.0                 | No     |
-| DINOv3 (opt-in) | Apache-2.0          | DINOv3 License (custom)    | **Yes** (reserved for a later release) |
+| DINOv3 (opt-in) | Apache-2.0          | **DINOv3 License** (custom Meta) | **Yes** — accept on Hugging Face |
+| INSID3 method (`Insid3Detector`) | Apache-2.0 (clean-room, no code vendored) | DINOv3-native backbone (gated) | **Yes** (via DINOv3) |
+| FSSDINO method (`FssDinoDetector`) | paper **CC BY-NC-SA** (clean-room, no code vendored) | DINOv2 default (ungated) / DINOv3 opt-in | No (DINOv2) / Yes (DINOv3) |
 
 PhenoTypic **does not redistribute model weights** — each weight is downloaded
 by you from the upstream source under that model's license, which you accept
-(see `NOTICE` and `licenses/`).
+(see `NOTICE` and `licenses/`). The two semantic detectors
+(`Insid3Detector`, `FssDinoDetector`) carry no vendored upstream code: INSID3 is
+clean-room-reimplemented from its Apache-2.0 method (attributed), and FSSDINO is
+clean-room-reimplemented from the paper only (the reference repo is
+all-rights-reserved). When `dino_version=3` is selected, PhenoTypic displays
+"Built with DINOv3" per the DINOv3 License.
 
 PhenoTypic itself is distributed via PyPI and managed with `uv`. `micro_sam`
 is not published on PyPI, so it is **not** included in any `phenotypic`
@@ -155,17 +162,18 @@ python -m phenotypic.detect.nn download --model-type microsam --all
 micro-sam stores checkpoints via `platformdirs`. Set `MICROSAM_CACHEDIR` to
 override the cache location.
 
-### Foundation-model weights (SAM3 gated, DINOv2 ungated)
+### Foundation-model weights (SAM3 + DINOv3 gated, DINOv2 ungated)
 
 SAM3 and the DINO backbones live on the Hugging Face Hub and are downloaded via
 `huggingface_hub.snapshot_download` into the HF cache. **SAM3 weights
-(~3.45 GB) are gated**; DINOv2 is ungated.
+(~3.45 GB) and DINOv3 weights are gated**; DINOv2 is ungated.
 
-**One-time human handshake for SAM3 (per user):**
+**One-time human handshake for a gated model (per user, per model):**
 
 1. Have a Hugging Face account.
-2. Accept the gate at <https://huggingface.co/facebook/sam3> (this *is* the
-   license acceptance).
+2. Accept the gate on the model page — <https://huggingface.co/facebook/sam3>
+   for SAM3, <https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m>
+   for DINOv3 (this *is* the license acceptance).
 3. Authenticate locally once: `uv run hf auth login` (stores a token), or
    export `HF_TOKEN`.
 
@@ -175,6 +183,10 @@ Then download with the extended `phenotypic.detect.nn` CLI:
 # SAM3 (gated): --accept-license acknowledges the SAM License non-interactively
 uv run python -m phenotypic.detect.nn download --model-type sam3 --accept-license
 
+# DINOv3 (gated): --accept-license acknowledges the DINOv3 License
+#   (required for Insid3Detector's native backbone + the dino_version=3 opt-in)
+uv run python -m phenotypic.detect.nn download --model-type dinov3 --dino-size base --accept-license
+
 # DINOv2 (ungated): no acceptance, no token
 uv run python -m phenotypic.detect.nn download --model-type dinov2 --dino-size base
 ```
@@ -182,9 +194,9 @@ uv run python -m phenotypic.detect.nn download --model-type dinov2 --dino-size b
 If the gate is not accepted or no token is present, the download fails with an
 actionable message ("Request access at <url>, then run `uv run hf auth
 login`"). The informational acceptance gate is also satisfied non-interactively
-by `PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3` (a comma list for several models) —
-this is the layer the `--accept-license` flag sets for you, on top of the
-binding Hugging Face gate.
+by `PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3,dinov3` (a comma list for several
+models) — this is the layer the `--accept-license` flag sets for you, on top of
+the binding Hugging Face gate.
 
 ### Foundation-model environment variables
 
@@ -362,8 +374,9 @@ det = DinoSam2Detector(dino_size="base", similarity_thresh=0.5)
 ```
 
 `dino_version` selects the backbone generation: `2` = DINOv2 (default, ungated),
-`3` = DINOv3 (gated opt-in, reserved for a later release — a `dino_version=3`
-detector constructs and serialises, but loading it raises `NotImplementedError`).
+`3` = DINOv3 (gated opt-in). Selecting `dino_version=3` routes the snapshot pull
+through the DINOv3-License acceptance gate (pre-stage it with the
+`download --model-type dinov3 --accept-license` command above).
 
 Key parameters:
 
@@ -371,6 +384,95 @@ Key parameters:
 - `sam2_model_size` — SAM2 variant for the proposal generator.
 - `similarity_thresh` — minimum cosine-to-prototype score to keep a proposal.
 - `merge_iou_thresh` — IoU above which two survivors are merged.
+
+## Semantic few-shot detectors (`Insid3Detector`, `FssDinoDetector`)
+
+`Insid3Detector` (one-shot, in-context) and `FssDinoDetector` (few-shot) are
+**semantic** detectors: they emit a binary `objmask` (`output_kind="semantic"`),
+not their own instance labels. The mask auto-labels into the shared `objmap`
+backend exactly like a threshold detector, so the repo's downstream watershed
+(`SeparateObjects`) turns it into instances — pair them with a separation step
+in your pipeline, just as you would `OtsuDetector`. Both run on a frozen DINO
+backbone and write only `objmask`; `objmap[:] > 0` then equals `objmask[:]`.
+
+Both ship a **curated colony exemplar** (a reference colony RGB + its mask,
+rendered once from `load_synth_yeast_plate()`) as the **default** reference /
+support set, so they work out of the box. Supply your own annotated exemplar to
+transfer to a new colony appearance.
+
+### `Insid3Detector` — one-shot in-context (DINOv3-native, gated)
+
+A faithful clean-room reimplementation of INSID3 (Apache-2.0). Given a single
+**reference image + reference mask**, it pools an in-context prototype and
+cosine-matches every query patch — but first removes DINOv3's **positional bias**
+(estimated by SVD and projected out, INSID3's defining step) so patches match on
+appearance, not position. It is DINOv3-native (gated, `dino_version=3` default);
+a `dino_version=2` opt-in runs gate-free (the debias is then a near-no-op).
+
+```python
+from phenotypic.detect.nn import Insid3Detector
+
+# Default: bundled exemplar + gated DINOv3 (accept the DINOv3 License first).
+det = Insid3Detector(similarity_thresh=0.5)
+
+# Override the in-context reference with your own annotated colony pair:
+det = Insid3Detector(
+    reference_image="ref_plate.tiff",
+    reference_mask="ref_plate_mask.png",
+    similarity_thresh=0.6,
+)
+
+# Gate-free DINOv2 variant (no Hugging Face token needed):
+det = Insid3Detector(dino_version=2, dino_size="small")
+```
+
+Key parameters:
+
+- `reference_image` / `reference_mask` — the in-context exemplar (defaults to
+  the bundled colony exemplar).
+- `dino_version` / `dino_size` — backbone (3 = DINOv3 default/gated, 2 = DINOv2).
+- `similarity_thresh` — cosine cutoff binarising the match map.
+- `svd_components` — INSID3's positional-debias strength (leading SVD directions
+  removed; default 4 ≈ DINOv3's register-token count; `0` disables the debias).
+- `tile_px` / `tile_overlap` — large-plate tiling (defaults 1024 / 0.15).
+
+### `FssDinoDetector` — few-shot (DINOv2 default, ungated)
+
+A clean-room reimplementation **from the paper only** of FSSDINO
+(arXiv:2602.07550, CC BY-NC-SA; the reference repo is all-rights-reserved and is
+not vendored). From a **support set** it builds `n_clusters` class-specific
+prototypes (k-means) plus a Gram matrix (channel co-occurrence), scores each
+query patch by cosine to the prototypes and a Gram-refined energy, combines the
+maps (mean ⊙ max) and assigns foreground vs background by `argmax`. It defaults
+to **DINOv2** (ungated), so it runs gate-free.
+
+```python
+from phenotypic.detect.nn import FssDinoDetector
+
+# Default: bundled one-shot exemplar + ungated DINOv2.
+det = FssDinoDetector(n_clusters=5)
+
+# A true few-shot support set:
+det = FssDinoDetector(
+    support_images=["s1.tiff", "s2.tiff", "s3.tiff"],
+    support_masks=["s1_mask.png", "s2_mask.png", "s3_mask.png"],
+    n_clusters=5,
+)
+```
+
+Key parameters:
+
+- `support_images` / `support_masks` — the few-shot support set (defaults to the
+  bundled one-shot colony exemplar).
+- `n_clusters` — class-specific prototypes per class (paper default 5).
+- `feature_layer` — transformer hidden-state layer for the dense features.
+  FSSDINO's "Semantic Selection Gap" finding is that intermediate layers often
+  beat the last, but cannot be reliably selected unsupervised — so the default
+  is `-1` (the last layer, the paper's safe default).
+- `dino_version` / `dino_size` — backbone (2 = DINOv2 default/ungated, 3 = DINOv3
+  gated opt-in).
+- `similarity_thresh` — foreground-score floor on top of the fg-vs-bg argmax.
+- `tile_px` / `tile_overlap` — large-plate tiling (defaults 512 / 0.15).
 
 ## Pipeline Integration
 
