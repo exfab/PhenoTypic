@@ -15,6 +15,15 @@ source under that model's own license, which the user must accept.
   Upstream:  https://github.com/computational-cell-analytics/micro-sam
   License:   licenses/micro-sam-LICENSE.txt
 
+- SAM3 (segment-anything-3), Meta — code via `transformers` (Apache-2.0);
+  weights under the SAM License (commercial-OK, GATED on Hugging Face).
+  Upstream:  https://huggingface.co/facebook/sam3
+  License:   licenses/sam3-SAM-License.txt
+
+- DINOv2, Meta — backbone for DinoSam2Detector; Apache-2.0, ungated.
+  Upstream:  https://github.com/facebookresearch/dinov2
+  License:   licenses/dinov2-Apache-2.0.txt
+
 Gated foundation-model weights introduced by later work (e.g. SAM3, DINOv3) are
 never bundled either; their downloads are gated behind an explicit
 license-acceptance step (see PHENOTYPIC_ACCEPT_MODEL_LICENSE and the
