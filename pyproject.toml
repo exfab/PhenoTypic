@@ -216,6 +216,7 @@ version = { attr = "phenotypic.__version__" }
     "_assets/vendor/*",
     "_assets/measurements/*",
     "_assets/measurements/*/*",
+    "_assets/exemplars/*",
 ]
 
 [tool.uv]

@@ -51,6 +51,14 @@ def __getattr__(name: str):  # type: ignore[misc]
         from ._dinosam2_detector import DinoSam2Detector
 
         return DinoSam2Detector
+    if name == "Insid3Detector":
+        from ._insid3_detector import Insid3Detector
+
+        return Insid3Detector
+    if name == "FssDinoDetector":
+        from ._fssdino_detector import FssDinoDetector
+
+        return FssDinoDetector
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -59,6 +67,8 @@ __all__ = [
     "MicroSamDetector",
     "Sam3Detector",
     "DinoSam2Detector",
+    "Insid3Detector",
+    "FssDinoDetector",
     "SAM2_AVAILABLE",
     "MICROSAM_AVAILABLE",
     "FOUNDATION_AVAILABLE",
