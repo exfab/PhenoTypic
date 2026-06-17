@@ -136,6 +136,58 @@ class TestSam3Tiling:
         assert merged.max() == 2  # two distinct instances survive
 
 
+class TestSam3TilingBatchInteraction:
+    """C4: tiles regroup by source image; per-tile target_sizes; offset back."""
+
+    def test_two_images_with_different_tile_counts_batch_correctly(
+        self, monkeypatch
+    ):
+        import numpy as np
+
+        det = Sam3Detector(tile_px=1008, tile_overlap=0.15)
+        # Avoid loading any model.
+        monkeypatch.setattr(det, "_ensure_model_loaded", lambda: None)
+
+        # One small image (1 tile) + one large image (multiple tiles). Each
+        # crop's forward returns a single full-crop instance so we can count
+        # crops and verify offset-back + per-image grouping.
+        forwarded_shapes: list[tuple[int, int]] = []
+
+        def fake_forward(images):
+            out = []
+            for img in images:
+                forwarded_shapes.append((img.shape[0], img.shape[1]))
+                obj = np.ones((img.shape[0], img.shape[1]), dtype=np.uint16)
+                out.append(obj)
+            return out
+
+        monkeypatch.setattr(det, "_forward_tiles", fake_forward)
+
+        small = np.zeros((400, 400, 3), dtype=np.uint8)
+        large = np.zeros((3000, 3000, 3), dtype=np.uint8)
+
+        from phenotypic.detect.nn._sam3_detector import _plan_tiles
+
+        n_small = len(_plan_tiles((400, 400), 1008, 0.15))
+        n_large = len(_plan_tiles((3000, 3000), 1008, 0.15))
+        assert n_small == 1 and n_large > 1  # different tile counts
+
+        results = det.infer_batch([small, large])
+
+        # One result per input image, each in that image's full shape.
+        assert len(results) == 2
+        assert results[0].shape == (400, 400)
+        assert results[1].shape == (3000, 3000)
+        # Every crop was forwarded (small's 1 + large's many).
+        assert len(forwarded_shapes) == n_small + n_large
+        # Each crop's forwarded size is the crop's OWN (H, W), never the full
+        # image (C4: per-tile target_sizes).
+        assert all(h <= 1008 and w <= 1008 for h, w in forwarded_shapes)
+        # Both images got instances painted (offset-back worked).
+        assert results[0].max() >= 1
+        assert results[1].max() >= 1
+
+
 # ---------------------------------------------------------------------------
 # Import smoke — requires phenotypic[foundation] (D-foundation-install)
 # ---------------------------------------------------------------------------
