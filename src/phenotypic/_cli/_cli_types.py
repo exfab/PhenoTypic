@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime
 
 from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName, ProcessOnlyLayer
@@ -136,6 +136,18 @@ class ExecutionConfig:
     # Process-only mode: run pipeline.apply() and export a single image layer
     # (no measurement / analysis output). None = normal forward/measure run.
     process_only_layer: Optional[ProcessOnlyLayer] = None
+
+    # --- Staged GPU detection (Spec 1 §7/§10) ---------------------------------
+    # Images per GPU forward pass (Stage 2). Int, or "auto" (VRAM-probe; the
+    # probe is effective only for batchable detectors and lands in Spec 2).
+    gpu_batch_size: Union[int, str] = 1
+    # Model replicas packed per physical GPU (Stage 2 fill for small models).
+    gpu_workers_per_gpu: int = 1
+    # Parallel Stage-2 GPU tasks (one whole GPU each; SLURM-only, ignored local).
+    gpu_shards: int = 1
+    # Stage-2 GPU SBATCH resources; inherits/deltas over slurm_args (the CPU
+    # profile used by Stages 1 & 3).
+    gpu_slurm_args: Dict[str, Any] = field(default_factory=dict)
 
     def is_slurm_mode(self) -> bool:
         """Check if SLURM mode should be used."""
