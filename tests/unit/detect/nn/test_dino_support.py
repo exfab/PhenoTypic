@@ -161,3 +161,34 @@ def test_resize_mask_to_grid_non_square():
     assert small.shape == (4, 9)
     assert small.dtype == bool
     assert small.any() and not small.all()
+
+
+def test_align_mask_to_grid_non_square_through_processed_geometry():
+    """W4: a non-square exemplar mask aligns via the (square) processed geom."""
+    from phenotypic.detect.nn._dino_support import align_mask_to_grid
+
+    # Non-square 220x300 exemplar; the processor squashes to a 224x224 square
+    # → a 16x16 patch grid (patch=14). The mask must follow the same path.
+    mask = np.zeros((220, 300), bool)
+    mask[40:180, 60:240] = True  # central block
+    grid = align_mask_to_grid(mask, proc_hw=(224, 224), grid_hw=(16, 16))
+    assert grid.shape == (16, 16)
+    assert grid.dtype == bool
+    assert grid.any() and not grid.all()  # central region survives, edges off
+    # Corners (always background) stay off after the two-step alignment.
+    assert not grid[0, 0] and not grid[15, 15]
+
+
+def test_pool_prototype_with_proc_hw_aligns_non_square():
+    """pool_prototype honours proc_hw for the W4 two-step alignment."""
+    from phenotypic.detect.nn._dino_support import pool_prototype
+
+    feats = np.zeros((16, 16, 4), np.float32)
+    feats[4:12, 4:12] = 1.0  # central patch-grid block is "foreground"
+    # A non-square full-res mask covering the central region of a 220x300 image.
+    mask = np.zeros((220, 300), bool)
+    mask[55:165, 75:225] = True
+    proto = pool_prototype(feats, mask, proc_hw=(224, 224))
+    assert proto.shape == (4,)
+    # Foreground patches are the all-ones block → prototype ≈ ones.
+    assert np.all(proto > 0.5)

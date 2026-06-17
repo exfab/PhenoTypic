@@ -185,6 +185,53 @@ def extract_patch_features(
     return reshape_patch_tokens(tokens, grid_hw, n_reg)
 
 
+def extract_reference_features(
+    model: Any,
+    processor: Any,
+    rgb_uint8: "np.ndarray",
+    *,
+    device: str,
+    layer: int | None = None,
+) -> Tuple["np.ndarray", Tuple[int, int]]:
+    """Dense features + the **processed** pixel geometry (for W4 mask alignment).
+
+    Like :func:`extract_patch_features` (or :func:`extract_hidden_layer_features`
+    when ``layer`` is given) but also returns ``(H_proc, W_proc)`` — the
+    geometry the processor resized the image to — so the caller can align a
+    reference/support mask through the same path via :func:`align_mask_to_grid`.
+
+    Args:
+        model: A loaded ``AutoModel`` on ``device``.
+        processor: The matching ``AutoImageProcessor``.
+        rgb_uint8: ``(H, W, 3)`` uint8 RGB image.
+        device: Resolved PyTorch device string.
+        layer: Optional ``hidden_states`` index (``None`` → ``last_hidden_state``).
+
+    Returns:
+        ``((Hp, Wp, D) features, (H_proc, W_proc))``.
+    """
+    import numpy as np
+    import torch
+
+    inputs = processor(images=rgb_uint8, return_tensors="pt").to(device)
+    with torch.no_grad():
+        if layer is None:
+            outputs = model(**inputs)
+            hidden = outputs.last_hidden_state
+        else:
+            outputs = model(**inputs, output_hidden_states=True)
+            hidden = outputs.hidden_states[layer]
+    tokens = hidden[0].detach().cpu().numpy().astype(np.float32)
+
+    pixel = inputs["pixel_values"]
+    proc_hw = (int(pixel.shape[-2]), int(pixel.shape[-1]))
+    patch = int(getattr(model.config, "patch_size", 16))
+    grid_hw = (proc_hw[0] // patch, proc_hw[1] // patch)
+    n_reg = int(getattr(model.config, "num_register_tokens", 0))
+    feats = reshape_patch_tokens(tokens, grid_hw, n_reg)
+    return feats, proc_hw
+
+
 def extract_hidden_layer_features(
     model: Any,
     processor: Any,
@@ -265,22 +312,70 @@ def resize_mask_to_grid(
     return small.astype(bool)
 
 
+def align_mask_to_grid(
+    mask: "np.ndarray",
+    proc_hw: Tuple[int, int],
+    grid_hw: Tuple[int, int],
+) -> "np.ndarray":
+    """Align a full-resolution mask to the patch grid via the processor geometry.
+
+    W4: the image is first resized by the processor to ``proc_hw`` (which for
+    DINOv2/DINOv3 is a fixed square, NOT aspect-preserving), then patchified to
+    ``grid_hw``. The mask must follow the **same** path — resize to ``proc_hw``,
+    then nearest-downsample to the grid — so a non-square exemplar's mask lines
+    up with its features. (For a clean non-aspect-preserving square resize the
+    one-step and two-step results coincide, but the explicit two-step stays
+    correct if a processor ever pads/crops.)
+
+    Args:
+        mask: ``(Hm, Wm)`` full-resolution boolean (or 0/1) mask.
+        proc_hw: ``(H_proc, W_proc)`` processed pixel geometry
+            (``inputs.pixel_values.shape[-2:]``).
+        grid_hw: ``(Hp, Wp)`` patch grid.
+
+    Returns:
+        ``(Hp, Wp)`` boolean mask aligned with the patch features.
+    """
+    import numpy as np
+    from skimage.transform import resize
+
+    ph, pw = int(proc_hw[0]), int(proc_hw[1])
+    processed = (
+        resize(
+            np.asarray(mask, dtype=np.float32),
+            (ph, pw),
+            order=0,
+            preserve_range=True,
+            anti_aliasing=False,
+        )
+        > 0.5
+    )
+    return resize_mask_to_grid(processed, grid_hw)
+
+
 # ---------------------------------------------------------------------------
 # Prototype pooling + cosine match (the shared core)
 # ---------------------------------------------------------------------------
 
 
 def pool_prototype(
-    features: "np.ndarray", mask: "np.ndarray"
+    features: "np.ndarray",
+    mask: "np.ndarray",
+    proc_hw: Tuple[int, int] | None = None,
 ) -> "np.ndarray":
     """Masked-mean an exemplar prototype from dense patch features.
 
-    The mask is resized to the patch grid (W4 — handles a full-resolution
-    exemplar mask), then the foreground patch features are averaged.
+    The mask is downsampled to the patch grid (W4 — handles a full-resolution
+    and/or non-square exemplar mask), then the foreground patch features are
+    averaged. When ``proc_hw`` is given the mask is aligned through the
+    processor's geometry first (:func:`align_mask_to_grid`); otherwise it is
+    resized straight to the grid.
 
     Args:
         features: ``(Hp, Wp, D)`` dense patch features.
         mask: ``(Hm, Wm)`` boolean mask (any resolution; resized to the grid).
+        proc_hw: Optional ``(H_proc, W_proc)`` processed geometry for the W4
+            two-step alignment (from :func:`extract_reference_features`).
 
     Returns:
         ``(D,)`` mean-pooled prototype (zero vector if the mask is empty —
@@ -290,7 +385,10 @@ def pool_prototype(
 
     feats = np.asarray(features, dtype=np.float32)
     hp, wp, d = feats.shape
-    small = resize_mask_to_grid(np.asarray(mask), (hp, wp))
+    if proc_hw is None:
+        small = resize_mask_to_grid(np.asarray(mask), (hp, wp))
+    else:
+        small = align_mask_to_grid(np.asarray(mask), proc_hw, (hp, wp))
     idx = small.reshape(-1)
     flat = feats.reshape(hp * wp, d)
     fg = flat[idx]

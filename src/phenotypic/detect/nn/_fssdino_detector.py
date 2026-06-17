@@ -436,9 +436,9 @@ class FssDinoDetector(GpuDetector):
 
         from phenotypic.detect.nn._checkpoint_manager import resolve_device
         from phenotypic.detect.nn._dino_support import (
-            extract_hidden_layer_features,
+            align_mask_to_grid,
+            extract_reference_features,
             load_dino_backbone,
-            resize_mask_to_grid,
         )
 
         self._device = resolve_device(self.device)
@@ -451,7 +451,9 @@ class FssDinoDetector(GpuDetector):
         for img_path, mask_path in zip(self.support_images, self.support_masks):
             rgb = self._read_rgb(img_path)
             mask = self._read_mask(mask_path)
-            dense = extract_hidden_layer_features(
+            # W4: capture the processed geometry so a (possibly non-square)
+            # support mask aligns through the same resize as the image.
+            dense, proc_hw = extract_reference_features(
                 self._model,
                 self._processor,
                 rgb,
@@ -459,7 +461,7 @@ class FssDinoDetector(GpuDetector):
                 layer=self.feature_layer,
             )
             hp, wp, _d = dense.shape
-            grid_mask = resize_mask_to_grid(mask, (hp, wp))
+            grid_mask = align_mask_to_grid(mask, proc_hw, (hp, wp))
             flat = dense.reshape(hp * wp, dense.shape[-1])
             fg_idx = grid_mask.reshape(-1)
             fg_feats.append(flat[fg_idx])

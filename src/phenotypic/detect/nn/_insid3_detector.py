@@ -312,7 +312,7 @@ class Insid3Detector(GpuDetector):
 
         from phenotypic.detect.nn._checkpoint_manager import resolve_device
         from phenotypic.detect.nn._dino_support import (
-            extract_patch_features,
+            extract_reference_features,
             load_dino_backbone,
             pool_prototype,
         )
@@ -324,7 +324,9 @@ class Insid3Detector(GpuDetector):
 
         ref_rgb = self._read_rgb(self.reference_image)
         ref_mask = self._read_mask(self.reference_mask)
-        ref_feats = extract_patch_features(
+        # W4: also capture the processed geometry so the (possibly non-square)
+        # reference mask aligns through the same resize the image went through.
+        ref_feats, ref_proc_hw = extract_reference_features(
             self._model, self._processor, ref_rgb, device=self._device
         )
         # INSID3: estimate the positional basis (here from the reference's own
@@ -332,7 +334,7 @@ class Insid3Detector(GpuDetector):
         # then debias before pooling the in-context prototype.
         self._basis = positional_basis(ref_feats, self.svd_components)
         ref_deb = debias_features(ref_feats, self._basis)
-        proto = pool_prototype(ref_deb, ref_mask)
+        proto = pool_prototype(ref_deb, ref_mask, proc_hw=ref_proc_hw)
         # L2-normalise the prototype (INSID3 normalises the prototype too).
         nrm = float(np.linalg.norm(proto))
         if nrm > 0:
