@@ -15,3 +15,21 @@ class TestTypingAliases:
 
     def test_output_kind_values(self):
         assert set(get_args(GpuOutputKind)) == {"instance", "semantic"}
+
+
+from phenotypic.abc_ import GpuDetector
+from phenotypic.detect.nn import Sam2Detector
+
+
+class TestCapabilityFields:
+    def test_defaults_on_existing_detector(self):
+        det = Sam2Detector()
+        assert det.input_layer == "rgb"
+        assert det.supports_batching is False
+        assert det.output_kind == "instance"
+
+    def test_fields_are_serializable_pydantic_fields(self):
+        # capability markers are real fields (not ClassVar) -> in model_fields
+        assert "input_layer" in GpuDetector.model_fields
+        assert "supports_batching" in GpuDetector.model_fields
+        assert "output_kind" in GpuDetector.model_fields

@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
+
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
@@ -79,6 +81,17 @@ class GpuDetector(ObjectDetector, ABC):
         GPU-requiring detectors in the class hierarchy and enable the
         CLI to make informed resource-allocation decisions.
     """
+
+    # Capability / routing markers — pydantic FIELDS (not ClassVar) so they
+    # serialize and round-trip (Spec 1 §4, review S4). Subclasses override the
+    # defaults; "instance" keeps existing SAM behavior unchanged.
+    input_layer: GpuInputLayer = "rgb"
+    supports_batching: bool = False
+    output_kind: GpuOutputKind = "instance"
+
+    @abstractmethod
+    def _ensure_model_loaded(self) -> None:
+        """Build/load the GPU model on first use (idempotent)."""
 
     @abstractmethod
     def _operate(self, image: Image) -> Image:
