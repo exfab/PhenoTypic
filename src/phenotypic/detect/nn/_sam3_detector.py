@@ -2,111 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, List
 
 from pydantic import PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device
+
+# Shared fixed-geometric tiling (extracted to _tiling.py so the semantic
+# detectors reuse it). Re-exported here for back-compat with callers/tests that
+# import _Tile / _plan_tiles from _sam3_detector.
+from phenotypic.detect.nn._tiling import _plan_tiles, _Tile, _tile_starts
 from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 
 if TYPE_CHECKING:
     import numpy as np
 
+__all__ = ["Sam3Detector"]
 
-# ---------------------------------------------------------------------------
-# Fixed geometric tiling (D-tiling: no grid awareness — a GpuDetector runs
-# before GridFinder and only ever sees a raw input_layer array).
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class _Tile:
-    """One axis-aligned crop rectangle in full-image coordinates.
-
-    Attributes:
-        y0: Top row (inclusive).
-        x0: Left column (inclusive).
-        y1: Bottom row (exclusive).
-        x1: Right column (exclusive).
-    """
-
-    y0: int
-    x0: int
-    y1: int
-    x1: int
-
-    @property
-    def h(self) -> int:
-        """Tile height in pixels (``y1 - y0``)."""
-        return self.y1 - self.y0
-
-    @property
-    def w(self) -> int:
-        """Tile width in pixels (``x1 - x0``)."""
-        return self.x1 - self.x0
-
-
-def _tile_starts(extent: int, tile_px: int, stride: int) -> list[int]:
-    """Return tile start offsets along one axis, covering ``[0, extent)``.
-
-    The final start is clamped so the last tile ends exactly at ``extent``
-    (overlapping the previous tile rather than spilling past the edge).
-
-    Args:
-        extent: Axis length in pixels.
-        tile_px: Nominal tile size along this axis.
-        stride: Step between consecutive tile starts (``tile_px`` minus overlap).
-
-    Returns:
-        Sorted, de-duplicated list of start offsets.
-    """
-    if extent <= tile_px:
-        return [0]
-    starts: list[int] = []
-    pos = 0
-    last_start = extent - tile_px
-    while pos < last_start:
-        starts.append(pos)
-        pos += stride
-    starts.append(last_start)
-    # De-dup while preserving order (the clamp can coincide with a step).
-    seen: set[int] = set()
-    unique: list[int] = []
-    for s in starts:
-        if s not in seen:
-            seen.add(s)
-            unique.append(s)
-    return unique
-
-
-def _plan_tiles(
-    shape: tuple[int, int], tile_px: int, overlap: float
-) -> list[_Tile]:
-    """Plan fixed ~``tile_px`` tiles with fractional ``overlap`` over an image.
-
-    The union of the returned tiles always covers the full image; tiles never
-    exceed ``tile_px`` on either axis and never spill past the image bounds.
-    An image that already fits one tile yields a single full-image tile.
-
-    Args:
-        shape: ``(H, W)`` of the full image.
-        tile_px: Nominal tile size in pixels (SAM3 runs at 1008 px internally).
-        overlap: Fractional overlap between neighbouring tiles, in ``[0, 1)``.
-
-    Returns:
-        List of :class:`_Tile` rectangles in full-image coordinates.
-    """
-    h, w = int(shape[0]), int(shape[1])
-    stride = max(1, int(round(tile_px * (1.0 - overlap))))
-    tiles: list[_Tile] = []
-    for y0 in _tile_starts(h, tile_px, stride):
-        for x0 in _tile_starts(w, tile_px, stride):
-            y1 = min(y0 + tile_px, h)
-            x1 = min(x0 + tile_px, w)
-            tiles.append(_Tile(y0, x0, y1, x1))
-    return tiles
+# Silence "imported but unused" — these are intentional back-compat re-exports.
+_ = (_Tile, _tile_starts)
 
 
 def _iou(mask_a: "np.ndarray", mask_b: "np.ndarray") -> float:
