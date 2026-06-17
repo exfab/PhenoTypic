@@ -9,14 +9,26 @@ from phenotypic.measure import MeasureSize
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_sidecar import sidecar_exists
+from phenotypic._cli._cli_staged_strategy import StagedGpuStrategy
 from phenotypic._cli._cli_staged_workers import (
     stage1_preprocess_core,
     stage2_detect_core,
     stage3_merge_measure_core,
 )
-from phenotypic._cli._cli_types import Dataset
+from phenotypic._cli._cli_types import Dataset, ExecutionConfig
 from phenotypic.tools_ import dataset_hdf_dir
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+
+def _config(out, pipe_path, resume=False):
+    return ExecutionConfig(
+        pipeline_json=pipe_path, input_path=out, output_dir=out,
+        image_type="Image", nrows=None, ncols=None, bit_depth=None,
+        n_jobs=1, slurm_args={}, force_local=True, wait=False, ext=".tiff",
+        overlay_alpha=0.5, include_dataset_column=False, dry_run=False,
+        sample=None, resume=resume, retry_failures=False, skip_validation=True,
+        save_overlays=False,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -69,3 +81,48 @@ def test_three_stage_cores_end_to_end(tmp_path):
     stage3_merge_measure_core(plan, out, "ds", "img", om, image_type="Image")
     assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
     assert not sidecar_exists(out, "ds", "img")  # mandatory cleanup
+
+
+def test_staged_strategy_runs_all_stages(tmp_path):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(output_kind="instance", threshold=0.3)],
+        meas=[MeasureSize()],
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+
+    strat = StagedGpuStrategy(_config(out, pipe_path), om)
+    results = strat.execute([Dataset("ds", [image_path], tmp_path, out)], out)
+
+    assert results.total_completed == 1
+    assert (out / "results" / "ds" / "measurements" / "img.parquet").is_file()
+    assert not sidecar_exists(out, "ds", "img")
+
+
+def test_staged_strategy_resumes_skipping_done_stages(tmp_path):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    ds = [Dataset("ds", [image_path], tmp_path, out)]
+
+    StagedGpuStrategy(_config(out, pipe_path), om).execute(ds, out)
+    parquet = out / "results" / "ds" / "measurements" / "img.parquet"
+    mtime = parquet.stat().st_mtime_ns
+
+    # second run with resume=True: every stage skips -> parquet untouched and
+    # no orphan sidecar is recreated.
+    StagedGpuStrategy(_config(out, pipe_path, resume=True), om).execute(ds, out)
+    assert parquet.stat().st_mtime_ns == mtime
+    assert not sidecar_exists(out, "ds", "img")
