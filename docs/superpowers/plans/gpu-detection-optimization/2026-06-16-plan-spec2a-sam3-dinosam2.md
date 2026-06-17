@@ -415,11 +415,65 @@ def test_how_to_documents_sam3_and_gated_install():
 **Out of scope (Spec 2b — separate plan):** `Insid3Detector`, `FssDinoDetector` (few-shot/semantic, clean-room, gated DINOv3, curated exemplar data), and the `Dinov3CheckpointManager` (stubbed/NotImplemented for the `dino_version=3` *load* path here).
 **Type consistency:** `DinoVersion`/`DinoSize` aliases used by `DinoSam2Detector`; `infer_batch(batch) -> List[np.ndarray]`, `_infer_one(sample) -> np.ndarray` match Spec 1's signatures.
 
-## Open questions to confirm before/after the plan review
-1. **Testing depth without weights:** `transformers`/HF not installed + SAM3 gated (~3.45 GB) → only construction/serialization/tiling-math are testable here; functional `.apply()` tests skip. Acceptable (mirrors SAM2/micro-sam), or should the env install `foundation` to smoke-test the import path?
-2. **DinoSam2 recipe latitude (O6):** the clean-room scoring/merge has algorithmic freedom (feature pooling, prototype definition, thresholds). The plan fixes a concrete version; confirm that's acceptable vs. a tighter spec.
-3. **`dino_version=3` in Spec 2a:** the field + HF-id routing ship now; the actual DINOv3 *load* is stubbed to `NotImplementedError` until Spec 2b. OK, or pull `Dinov3CheckpointManager` forward into 2a?
-4. **transformers v5 in the existing env:** torch is installed but transformers isn't; adding `transformers>=5.2.0` to an extra is install-time only (no default-dep change). Confirm no conflict with the pinned torch.
+## Plan-Review Resolutions (apply during implementation — supersedes the tasks where they conflict)
+
+Plan-reviewer pass (2026-06-17) verified the SAM3 transformers API, the DINO ids, the HF
+error hierarchy, and the AMG-reuse shape as **correct**. It found 2 blockers + should-fixes;
+the user resolved the design OQs. Apply all of the below.
+
+**User decisions (resolve the surfaced OQs):**
+- **D-tiling — FIXED GEOMETRIC TILES (drop grid-awareness).** O4's "per grid section" is
+  architecturally infeasible: a `GpuDetector` runs *before* GridFinder and `_operate` passes
+  only `getattr(image, input_layer)[:]` (a raw array) — the detector never sees the
+  `GridImage`/grid. **Task 5:** `_plan_tiles(shape, tile_px, overlap)` has **no `grid` param**;
+  always fixed ~`tile_px` tiles with `overlap`, IoU-NMS cross-tile merge. Drop the
+  `grid`-aware branch and the grid test.
+- **D-instance-only — NO semantic toggle.** Keep `Sam3Detector` instance-only
+  (`output_kind="instance"` fixed). SAM3's `semantic_seg` is left for a future 2b add.
+- **D-foundation-install — INSTALL the `foundation` extra in the env** (`uv sync --extra foundation`)
+  and smoke-test the **import path**: a new test asserts `transformers` + `Sam3Model`/`Sam3Processor`
+  symbols resolve and the detector modules import. Functional `.apply()` (gated ~3.45 GB weights)
+  still skips. Add a `FOUNDATION_AVAILABLE` flag to `detect/nn/__init__.py` (transformers
+  importable) beside `SAM2_AVAILABLE` (S4) and gate the import-smoke + functional tests on it.
+
+**Blocker fixes:**
+- **B1 — match the EXISTING checkpoint-manager + CLI shapes.** Read
+  `detect/nn/_checkpoint_manager.py` (`Sam2CheckpointManager.download` is a `@classmethod(model_size, *, force)`)
+  and `detect/nn/_cli.py` (`--model-type {sam2,microsam}` `click.Choice` + `--model-size`, **no**
+  `--model`/`--accept-license`). Task 3: make `Sam3CheckpointManager`/`Dinov2CheckpointManager`
+  consistent with the existing manager style, and **extend `_cli.py`** — add `sam3`/`dinov2` to the
+  `--model-type` `click.Choice` and add an `--accept-license` flag (sets
+  `PHENOTYPIC_ACCEPT_MODEL_LICENSE` for the call). Keep the module-level `snapshot_download`
+  indirection as the test patch point. The Task-3 test method names/signatures must match whatever
+  manager shape you choose (instance vs classmethod) — pick one and make the tests follow it.
+- **B2 — see D-tiling** (the O4 fix).
+
+**Should-fixes:**
+- **C1 — DinoSam2 AMG reuse:** there is NO public accessor for `Sam2Detector._generator`. **Rebuild**
+  the `SAM2AutomaticMaskGenerator` in `DinoSam2Detector._ensure_model_loaded` (same `build_sam2` +
+  generator construction as `Sam2Detector`); if the duplication is ugly, extract a small shared
+  `_build_sam2_generator(...)` helper. State which you did.
+- **C2 — drive the recipe with a test:** add ≥1 algorithmic unit test on **synthetic** features/masks
+  (e.g. prototype-cosine scoring + IoU merge on hand-built arrays, like the `_merge_tiles_iou_nms`
+  test) so the clean-room recipe body isn't construction-only. Keep the concrete recipe (SAM2 AMG →
+  per-proposal pooled DINO feature → cosine-to-prototype score → threshold filter → IoU merge).
+- **C3 — `min_mask_region_area` default = 100** (match `Sam2Detector`, not 0).
+- **C4 — spell out tiling↔batch interaction:** in Task 5, regroup tiles by source image, run the
+  Task-4 forward per tile-batch, set each tile's `target_sizes` to the **tile's own (H,W)** (not the
+  full image), offset each tile objmap back to full coords, then IoU-NMS. Add a test that two images
+  with different tile counts batch correctly.
+- **C5 — device:** resolve `self.device` via `resolve_device(...)` and cache `self._device` in
+  `_ensure_model_loaded` (mirror `Sam2Detector`); the `infer_batch` snippet's `self._device` must be
+  set there.
+- **S1 — annotation-gate denominator:** verify the two detectors are discoverable by the gate
+  (`detect/nn/__init__.__all__` / `iter_numeric_tunable_fields`). Make this an explicit Task-7 check,
+  not an assumption. (All new numeric fields already carry a `TuneSpec` — verified by the reviewer.)
+- **S2 — reuse `Sam2ModelSize`** for `DinoSam2Detector.sam2_model_size` (import the existing alias).
+- **D-dino3-stub (kept):** ship `dino_version=3` field + `_hf_dino_id()` routing now; the DINOv3
+  *load* raises `NotImplementedError("DINOv3 lands in Spec 2b")` (construction/serialization/`_hf_dino_id`
+  still work). Reviewer judged this clean (a `dino_version=3` pipeline serializes but fails only at
+  run time — deliberate, tested boundary).
 
 ## Execution Handoff
-Plan complete. Per the requested flow: a plan-review subagent runs next; surface any OQ that survives; if none, implement with a single Opus agent, then a code-review subagent.
+Plan + resolutions complete. Per the requested flow: implement with a **single Opus agent**
+(applying this resolutions section alongside the tasks), then a **code-review subagent**.
