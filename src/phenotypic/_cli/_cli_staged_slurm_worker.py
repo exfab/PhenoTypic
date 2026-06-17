@@ -4,12 +4,12 @@ One module invoked per SLURM array task as ``python -m
 phenotypic._cli._cli_staged_slurm_worker --stage {1|2|3} ...``:
 
 - Stage 1 / Stage 3 are arrays over **images**: ``$SLURM_ARRAY_TASK_ID`` indexes
-  the manifest and runs the matching CPU stage core.
+  the manifest and runs the matching CPU stage core (one image per task).
 - Stage 2 is an array over **shards**: ``$SLURM_ARRAY_TASK_ID`` is the shard
   index; the resident model streams that shard of HDFs to objmap sidecars.
 
-All stages are content-defined: a requeued/duplicate task is idempotent because
-each stage skips work whose durable artifact already exists.
+All stages are content-defined and emit stage-tagged events: a requeued/duplicate
+task is idempotent, and the per-stage dashboard view is populated for SLURM runs.
 """
 
 from __future__ import annotations
@@ -18,12 +18,12 @@ import argparse
 import json
 import os
 import signal as _signal
+import subprocess
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from phenotypic import ImagePipeline
-from phenotypic.tools_ import slurm_scripts_dir
-from phenotypic.tools_.slurm import _sbatch
+from phenotypic.tools_ import dataset_hdf_dir, event_log_path
 from phenotypic.tools_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
@@ -35,19 +35,20 @@ from ._cli_staged_workers import (
     stage2_detect_core,
     stage3_merge_measure_core,
 )
+from ._cli_update_state import append_completion_event, append_event
 
 # A manifest entry is [dataset, image_stem, image_path]; Stage 1 needs the path,
 # Stages 2/3 only the (dataset, stem).
 Manifest = Sequence[Sequence[str]]
 
 # --- Stage-2 walltime survival ------------------------------------------------
-# SLURM does NOT auto-requeue a TIMEOUT job. The durable half is already in
-# place (each sidecar write is atomic and the worker skips done images), so no
-# work is lost on a kill. This adds the TRIGGER: the Stage-2 script carries
-# ``--signal=B:TERM@<grace>`` so SLURM sends SIGTERM shortly before walltime;
-# the worker catches it and resubmits its shard (afterany on itself) to finish
-# the remainder. Content-defined skip makes the continuation re-run only the
-# sidecar-less images, so it converges.
+# SLURM does NOT auto-requeue a TIMEOUT job. The durable half is already in place
+# (each sidecar write is atomic and the worker skips done images), so no work is
+# lost on a kill. This adds the TRIGGER: the Stage-2 script carries
+# ``--signal=B:TERM@<grace>`` so SLURM sends SIGTERM shortly before walltime; the
+# worker catches it and REQUEUES its own array task (not a new job), so Stage 3's
+# ``afterany`` dependency on the Stage-2 array automatically waits for the
+# requeued run — no race where Stage 3 merges before the shard is complete.
 _STOP = False
 
 
@@ -72,19 +73,19 @@ def resubmit_stage2_continuation(
     shard_index: int,
     n_shards: int,
 ) -> None:
-    """Resubmit THIS shard's Stage-2 array task (afterany on the current job).
+    """Requeue THIS Stage-2 array task to finish its shard after a SIGTERM.
 
-    Re-runs the original ``stage2.sh`` restricted to this shard's array index;
-    the resident model reloads and content-defined skip means only the
-    remaining (sidecar-less) images are processed.
+    Requeuing (rather than submitting a NEW continuation job) keeps the Stage-2
+    array job alive, so Stage 3's ``afterany`` dependency on that array job
+    automatically waits for the requeued run to finish before merging — there is
+    no race where Stage 3 starts on a shard whose continuation is still detecting.
+    Content-defined skip means the requeued run reprocesses only the remaining
+    sidecar-less images. (Args beyond the job id are kept for the call contract /
+    test seam.)
     """
-    stage2_script = slurm_scripts_dir(output_dir) / "stage2.sh"
-    self_job = os.environ.get("SLURM_JOB_ID", "")
-    _sbatch.submit_script(
-        stage2_script,
-        dependency_job_id=self_job or None,
-        array_index=shard_index,
-    )
+    job = os.environ.get("SLURM_JOB_ID", "")
+    if job:
+        subprocess.run(["scontrol", "requeue", job], check=False)
 
 
 def run_stage1_step(
@@ -98,10 +99,22 @@ def run_stage1_step(
     """Stage-1 array task: preprocess one manifest image -> staged HDF."""
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     om = OutputManager.from_config(output_dir, ext, save_overlays=False)
-    dataset, stem, image_path = manifest[index][0], manifest[index][1], manifest[index][2]
-    stage1_preprocess_core(
-        plan, Path(image_path), dataset, stem, output_dir, om, image_type
+    dataset, stem, image_path = (
+        manifest[index][0], manifest[index][1], manifest[index][2]
     )
+    log = event_log_path(output_dir)
+    append_event(log, dataset, stem, "started", stage="stage1")
+    try:
+        stage1_preprocess_core(
+            plan, Path(image_path), dataset, stem, output_dir, om, image_type
+        )
+        append_completion_event(log, dataset, stem, "completed", stage="stage1")
+    except Exception as e:
+        append_event(
+            log, dataset, stem, "failed",
+            error_msg=f"{type(e).__name__}: {e}", stage="stage1",
+        )
+        raise  # fail the task (visible in sacct); afterany lets the chain go on
 
 
 def run_stage2_shard(
@@ -114,26 +127,53 @@ def run_stage2_shard(
 ) -> None:
     """Stage-2 array task: model loaded once, stream this shard of HDFs -> sidecars.
 
-    Catches the pre-walltime SIGTERM and resubmits the shard for the remainder.
+    Per-image isolation (S6): a missing staged HDF or an inference error skips
+    that image (recorded) instead of aborting the shard. Catches the pre-walltime
+    SIGTERM and requeues the shard for the remainder.
     """
     _install_sigterm_handler()
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     plan.gpu_detector._ensure_model_loaded()  # ONCE per worker
     my_shard = partition_shards(list(manifest), n_shards)[shard_index]
+    log = event_log_path(output_dir)
+    attempted: set[tuple[str, str]] = set()
+
     for entry in my_shard:
         if _should_stop():
             break
         dataset, stem = entry[0], entry[1]
         if sidecar_exists(output_dir, dataset, stem):
             continue  # content-defined resume
-        stage2_detect_core(plan.gpu_detector, output_dir, dataset, stem, image_type)
+        attempted.add((dataset, stem))
+        hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
+        if not hdf.is_file():
+            append_event(
+                log, dataset, stem, "failed",
+                error_msg="stage2 skipped: staged HDF missing", stage="stage2",
+            )
+            continue
+        append_event(log, dataset, stem, "started", stage="stage2")
+        try:
+            stage2_detect_core(
+                plan.gpu_detector, output_dir, dataset, stem, image_type
+            )
+            append_completion_event(
+                log, dataset, stem, "completed", stage="stage2"
+            )
+        except Exception as e:  # isolate one bad image from the rest of the shard
+            append_event(
+                log, dataset, stem, "failed",
+                error_msg=f"{type(e).__name__}: {e}", stage="stage2",
+            )
 
     if _should_stop():
-        # Pre-walltime SIGTERM: resume the remainder. Guard on remaining work
-        # (NOT merely "stopped") so a deterministically-failing image never
-        # triggers an infinite resubmit loop.
+        # Walltime SIGTERM: requeue only if images were NOT yet attempted (we ran
+        # out of time before reaching them). Images we attempted-and-failed are
+        # excluded, so a deterministic failure never requeues forever (S10).
         remaining = [
-            e for e in my_shard if not sidecar_exists(output_dir, e[0], e[1])
+            e for e in my_shard
+            if (e[0], e[1]) not in attempted
+            and not sidecar_exists(output_dir, e[0], e[1])
         ]
         if remaining:
             resubmit_stage2_continuation(
@@ -155,7 +195,27 @@ def run_stage3_step(
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     om = OutputManager.from_config(output_dir, ext, save_overlays=False)
     dataset, stem = manifest[index][0], manifest[index][1]
-    stage3_merge_measure_core(plan, output_dir, dataset, stem, om, image_type)
+    log = event_log_path(output_dir)
+    if not sidecar_exists(output_dir, dataset, stem):
+        # S6: Stage 2 failed/absent for this image — record + fail the task
+        # (rather than letting load_sidecar raise an opaque FileNotFoundError).
+        append_event(
+            log, dataset, stem, "failed",
+            error_msg="stage3 skipped: objmap sidecar missing", stage="stage3",
+        )
+        raise SystemExit(1)
+    append_event(log, dataset, stem, "started", stage="stage3")
+    try:
+        stage3_merge_measure_core(
+            plan, output_dir, dataset, stem, om, image_type
+        )
+        append_completion_event(log, dataset, stem, "completed", stage="stage3")
+    except Exception as e:
+        append_event(
+            log, dataset, stem, "failed",
+            error_msg=f"{type(e).__name__}: {e}", stage="stage3",
+        )
+        raise
 
 
 def _load_manifest(manifest_path: Path) -> List[Tuple[str, ...]]:
@@ -199,7 +259,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if args.stage == 1:
         run_stage1_step(
-            args.pipeline, args.output_dir, image_type, manifest, args.index, args.ext
+            args.pipeline, args.output_dir, image_type, manifest, args.index,
+            args.ext,
         )
     elif args.stage == 2:
         run_stage2_shard(
@@ -208,7 +269,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     else:
         run_stage3_step(
-            args.pipeline, args.output_dir, image_type, manifest, args.index, args.ext
+            args.pipeline, args.output_dir, image_type, manifest, args.index,
+            args.ext,
         )
     return 0
 

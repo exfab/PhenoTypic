@@ -295,3 +295,28 @@ def test_shard_worker_no_resubmit_when_shard_complete(tmp_path, monkeypatch):
         manifest=[("ds", "img")], shard_index=0, n_shards=1,
     )
     assert submitted == []
+
+
+def test_shard_worker_no_requeue_for_attempted_failure(tmp_path, monkeypatch):
+    # An image attempted-and-failed (missing staged HDF) must NOT be requeued
+    # forever — only UNattempted images (ran out of time) trigger a continuation.
+    import phenotypic._cli._cli_staged_slurm_worker as W
+
+    out, pipe_path = _stage1_only(tmp_path)  # "img" has a staged HDF
+    manifest = [("ds", "img"), ("ds", "ghost")]  # "ghost" has no HDF
+    submitted = []
+    monkeypatch.setattr(
+        W, "resubmit_stage2_continuation", lambda **kw: submitted.append(kw)
+    )
+    # Process both images (not stopped), then SIGTERM at the end.
+    flags = iter([False, False, True])
+    monkeypatch.setattr(W, "_should_stop", lambda: next(flags, True))
+    W.run_stage2_shard(
+        pipeline_path=pipe_path, output_dir=out, image_type="Image",
+        manifest=manifest, shard_index=0, n_shards=1,
+    )
+    # "img" has a sidecar; "ghost" was attempted-and-failed (no HDF). Neither is
+    # unattempted -> no requeue, no infinite loop.
+    assert sidecar_exists(out, "ds", "img")
+    assert not sidecar_exists(out, "ds", "ghost")
+    assert submitted == []

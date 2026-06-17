@@ -108,6 +108,7 @@ def _write_stage_script(
     array_size: int,
     body: str,
     signal_grace: int | None = None,
+    requeue: bool = False,
 ) -> Path:
     """Render + write one stage SBATCH array script (returns its path)."""
     out_log = log_dir / f"{stage_name}_%A_%a.log"
@@ -117,9 +118,12 @@ def _write_stage_script(
     signal_directive = (
         f"\n#SBATCH --signal=B:TERM@{signal_grace}" if signal_grace else ""
     )
+    # ``--requeue`` lets the Stage-2 worker requeue its own array task on the
+    # pre-walltime SIGTERM (so Stage 3's afterany dependency waits for it).
+    requeue_directive = "\n#SBATCH --requeue" if requeue else ""
     script_content = f"""#!/bin/bash
 {directives}
-{array_directive}{signal_directive}
+{array_directive}{signal_directive}{requeue_directive}
 
 set -e
 set -u
@@ -194,6 +198,7 @@ def generate_staged_scripts(
                 manifest_path, ext, n_shards=n_shards,
             ),
             signal_grace=signal_grace,
+            requeue=True,
         ),
         "stage3": _write_stage_script(
             script_dir, log_dir, "stage3", "phenotypic-stage3", cpu_slurm_args,

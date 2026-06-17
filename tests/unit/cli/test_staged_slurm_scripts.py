@@ -98,4 +98,10 @@ def test_stage2_script_carries_signal_directive(tmp_path):
         n_shards=1,
         signal_grace=120,
     )
-    assert "--signal=B:TERM@120" in scripts["stage2"].read_text(encoding="utf-8")
+    s2 = scripts["stage2"].read_text(encoding="utf-8")
+    assert "--signal=B:TERM@120" in s2
+    # --requeue lets the worker requeue its own array task on the SIGTERM, so
+    # Stage 3's afterany dependency waits for the continuation.
+    assert "--requeue" in s2
+    # only Stage 2 carries the walltime-survival directives
+    assert "--requeue" not in scripts["stage1"].read_text(encoding="utf-8")
