@@ -174,5 +174,38 @@ class TestMicroSamCheckpointManagerCacheDir:
         assert hasattr(path, "is_dir")
 
 
+class TestRequireLicenseAcceptance:
+    """The gated-weights license-acceptance hook (Spec 1 §12, Plan 3 Task 2)."""
+
+    def test_accepts_via_env(self, monkeypatch):
+        from phenotypic.detect.nn._checkpoint_manager import (
+            require_license_acceptance,
+        )
+
+        monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "sam3,dinov3")
+        # accepted via env -> returns without raising or prompting
+        require_license_acceptance("dinov3", "DINOv3 License", "https://example/lic")
+
+    def test_env_match_is_case_insensitive(self, monkeypatch):
+        from phenotypic.detect.nn._checkpoint_manager import (
+            require_license_acceptance,
+        )
+
+        monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "SAM3")
+        require_license_acceptance("sam3", "SAM3 License", "https://example/lic")
+
+    def test_blocks_without_acceptance(self, monkeypatch):
+        from phenotypic.detect.nn._checkpoint_manager import (
+            require_license_acceptance,
+        )
+
+        monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
+        with pytest.raises(RuntimeError, match="license"):
+            require_license_acceptance(
+                "dinov3", "DINOv3 License", "https://example/lic",
+                interactive=False,
+            )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

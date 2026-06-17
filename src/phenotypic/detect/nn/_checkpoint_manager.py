@@ -15,6 +15,7 @@ can be imported without PyTorch installed.
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal
@@ -542,3 +543,43 @@ class MicroSamCheckpointManager:
                     logger.info("Deleted %s", ckpt)
 
         return deleted
+
+
+def require_license_acceptance(
+    model: str, license_name: str, license_url: str, *, interactive: bool = True
+) -> None:
+    """Gate a gated-weights download on the user accepting the model's license.
+
+    Acceptance is satisfied by ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` (a comma list
+    of model names) for non-interactive / batch use, or by an interactive y/N
+    prompt. Ungated components (SAM2, micro-sam) never call this; the hook exists
+    for the gated foundation models added by later work (SAM3, DINOv3).
+
+    Args:
+        model: Model name to check against the accepted set (case-insensitive).
+        license_name: Human-readable license name shown in the prompt/error.
+        license_url: Where the user can read the license.
+        interactive: When True, fall back to a terminal y/N prompt if the env
+            var does not already grant acceptance.
+
+    Raises:
+        RuntimeError: If the license has not been accepted.
+    """
+    accepted = {
+        m.strip().lower()
+        for m in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
+        if m.strip()
+    }
+    if model.lower() in accepted:
+        return
+    if interactive:
+        print(f"\n{model} weights are under the {license_name}: {license_url}")
+        resp = input(f"Accept the {license_name} to download {model}? [y/N] ")
+        if resp.strip().lower() in ("y", "yes"):
+            return
+    raise RuntimeError(
+        f"{model} weights require accepting the {license_name} license "
+        f"({license_url}). Re-run after setting "
+        f"PHENOTYPIC_ACCEPT_MODEL_LICENSE={model} "
+        f"(and `hf auth login` for gated Hugging Face models)."
+    )
