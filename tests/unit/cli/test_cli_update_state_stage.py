@@ -1,6 +1,8 @@
 """The optional ``stage`` field on staged-engine events (Spec 1 §9, OQ1)."""
 
 from phenotypic._cli._cli_update_state import (
+    aggregate_stage_state_from_events,
+    aggregate_state_from_events,
     append_completion_event,
     append_event,
     parse_event_line,
@@ -42,3 +44,55 @@ def test_completion_event_forwards_stage(tmp_path):
     append_completion_event(log, "ds", "img.tiff", "completed", stage="stage3")
     ev = parse_event_line(log.read_text(encoding="utf-8").strip())
     assert ev.stage == "stage3"
+
+
+def test_intermediate_stage_completion_is_not_overall_complete(tmp_path):
+    log = tmp_path / "events.log"
+    append_completion_event(log, "ds", "img1.tiff", "completed", stage="stage1")
+    state = aggregate_state_from_events(log)
+    # stage1 done is NOT overall done — image is in progress, not completed
+    assert "img1.tiff" not in state["ds"].completed
+    assert "img1.tiff" in state["ds"].started
+
+
+def test_stage3_completion_is_overall_complete(tmp_path):
+    log = tmp_path / "events.log"
+    for st in ("stage1", "stage2", "stage3"):
+        append_completion_event(log, "ds", "img1.tiff", "completed", stage=st)
+    state = aggregate_state_from_events(log)
+    assert "img1.tiff" in state["ds"].completed
+
+
+def test_legacy_non_stage_completion_is_overall_complete(tmp_path):
+    # backward compatibility: a plain completion (no stage) is overall done
+    log = tmp_path / "events.log"
+    append_completion_event(log, "ds", "img1.tiff", "completed")
+    state = aggregate_state_from_events(log)
+    assert "img1.tiff" in state["ds"].completed
+
+
+def test_intermediate_stage_completion_clears_prior_failure(tmp_path):
+    log = tmp_path / "events.log"
+    append_event(log, "ds", "img1.tiff", "failed",
+                 error_msg="boom", stage="stage1")
+    append_completion_event(log, "ds", "img1.tiff", "completed", stage="stage1")
+    state = aggregate_state_from_events(log)
+    assert "img1.tiff" not in state["ds"].failed  # retry success cleared it
+    assert "img1.tiff" in state["ds"].started
+
+
+def test_per_stage_aggregation_buckets_by_stage(tmp_path):
+    log = tmp_path / "events.log"
+    append_completion_event(log, "ds", "img1.tiff", "completed", stage="stage1")
+    append_completion_event(log, "ds", "img1.tiff", "completed", stage="stage2")
+    per = aggregate_stage_state_from_events(log)
+    assert "img1.tiff" in per["ds"]["stage1"].completed
+    assert "img1.tiff" in per["ds"]["stage2"].completed
+    assert "stage3" not in per["ds"]  # not reached yet
+
+
+def test_per_stage_aggregation_ignores_legacy_events(tmp_path):
+    log = tmp_path / "events.log"
+    append_completion_event(log, "ds", "img1.tiff", "completed")  # no stage
+    per = aggregate_stage_state_from_events(log)
+    assert per == {}

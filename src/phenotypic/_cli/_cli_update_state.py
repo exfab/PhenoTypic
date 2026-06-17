@@ -212,7 +212,7 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     """
     def _parse_event_log(content: str) -> Dict[str, DatasetState]:
         """Inner parser function that processes event log content."""
-        datasets = {}
+        datasets: Dict[str, DatasetState] = {}
 
         if not content:
             return datasets
@@ -235,11 +235,24 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
 
             ds = datasets[event.dataset]
 
+            # Staged GPU events carry a ``stage`` tag. Overall completion
+            # requires the TERMINAL stage (stage3): an intermediate-stage
+            # completion means the image is still in progress, not done — so it
+            # is counted as ``started`` for the overall view (and cleared from
+            # ``failed`` on a retry-success). Legacy events (stage is None)
+            # keep the original semantics exactly.
+            intermediate_stage = (
+                event.stage is not None and event.stage != "stage3"
+            )
+
             # Update state based on event
             if event.status == "started":
                 ds.started.add(event.image)
             elif event.status == "completed":
-                ds.completed.add(event.image)
+                if intermediate_stage:
+                    ds.started.add(event.image)  # progressing, not done
+                else:
+                    ds.completed.add(event.image)
                 # Remove from failed if it was previously failed (retry success)
                 ds.failed.discard(event.image)
                 # Remove error if present
@@ -257,6 +270,66 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
     # Use atomic read with file locking
     try:
         return atomic_read(event_log, _parse_event_log, timeout=60.0)
+    except FileLockTimeout as e:
+        logger.error(f"Failed to acquire event log lock for reading after 60s: {e}")
+        raise RuntimeError(
+            "Cannot read event log - file lock timeout after 60s. "
+            "Check filesystem performance."
+        ) from e
+
+
+def aggregate_stage_state_from_events(
+    event_log: Path,
+) -> Dict[str, Dict[str, DatasetState]]:
+    """Per-(dataset, stage) processing state for the staged GPU engine (OQ5).
+
+    Returns ``{dataset: {stage: DatasetState}}`` where *stage* is one of
+    ``"stage1"``/``"stage2"``/``"stage3"``. Only stage-tagged events contribute;
+    legacy (``stage is None``) events are ignored. This is additive — the
+    overall per-dataset view from :func:`aggregate_state_from_events` is
+    unchanged — and lets a dashboard show how far each image has progressed
+    through the three stages.
+
+    Args:
+        event_log: Path to processing_events.log file.
+
+    Returns:
+        Mapping of dataset name to a mapping of stage tag to its DatasetState.
+    """
+    def _parse_stage_event_log(content: str) -> Dict[str, Dict[str, DatasetState]]:
+        out: Dict[str, Dict[str, DatasetState]] = {}
+        if not content:
+            return out
+
+        for line_num, line in enumerate(content.splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                event = parse_event_line(line)
+            except ValueError as e:
+                logger.debug(f"Skipping malformed line {line_num}: {e}")
+                continue
+            if event.stage is None:
+                continue
+
+            ds = out.setdefault(event.dataset, {}).setdefault(
+                event.stage, DatasetState()
+            )
+            if event.status == "started":
+                ds.started.add(event.image)
+            elif event.status == "completed":
+                ds.completed.add(event.image)
+                ds.failed.discard(event.image)
+                ds.errors.pop(event.image, None)
+            elif event.status == "failed":
+                ds.failed.add(event.image)
+                ds.completed.discard(event.image)
+                if event.error_msg:
+                    ds.errors[event.image] = event.error_msg
+        return out
+
+    try:
+        return atomic_read(event_log, _parse_stage_event_log, timeout=60.0)
     except FileLockTimeout as e:
         logger.error(f"Failed to acquire event log lock for reading after 60s: {e}")
         raise RuntimeError(

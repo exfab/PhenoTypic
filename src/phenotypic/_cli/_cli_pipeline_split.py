@@ -42,6 +42,8 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
         )
 
     gpu_key = gpu_keys[0]
+    gpu_detector = ops[gpu_key]
+    assert isinstance(gpu_detector, GpuDetector)  # guaranteed by gpu_keys filter
     keys = list(ops.keys())
     cut = keys.index(gpu_key)
     pre_ops = {k: ops[k] for k in keys[:cut]}
@@ -62,6 +64,6 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     )
     return StagePlan(
         pre_pipeline=pre_pipeline,
-        gpu_detector=ops[gpu_key],
+        gpu_detector=gpu_detector,
         post_pipeline=post_pipeline,
     )

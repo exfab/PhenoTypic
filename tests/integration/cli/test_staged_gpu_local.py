@@ -17,7 +17,8 @@ from phenotypic._cli._cli_staged_workers import (
     stage3_merge_measure_core,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
-from phenotypic.tools_ import dataset_hdf_dir
+from phenotypic._cli._cli_update_state import aggregate_stage_state_from_events
+from phenotypic.tools_ import dataset_hdf_dir, event_log_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 
@@ -152,3 +153,23 @@ def test_process_objmap_runs_stages_1_2_then_exports(tmp_path):
         out / "results" / "ds" / "measurements" / "img.parquet"
     ).exists()
     assert not sidecar_exists(out, "ds", "img")
+
+
+def test_stage_tagged_events_emitted(tmp_path):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(
+        ops=[FakeGpuDetector(threshold=0.3)], meas=[MeasureSize()]
+    )
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    StagedGpuStrategy(_config(out, pipe_path), om).execute(
+        [Dataset("ds", [image_path], tmp_path, out)], out
+    )
+
+    per_stage = aggregate_stage_state_from_events(event_log_path(out))
+    for stage in ("stage1", "stage2", "stage3"):
+        assert "img.tiff" in per_stage["ds"][stage].completed
