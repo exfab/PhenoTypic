@@ -1,6 +1,6 @@
 # Spec 2 — GPU Detector Models (SAM3, DINO+SAM2, INSID3, FSSDINO)
 
-- **Status:** Draft — plan-reviewer pass applied 2026-06-16 (S5/S6 → O6/O7); pending user review
+- **Status:** Draft — open questions O1–O7 resolved 2026-06-16 (see §10); pending user review
 - **Date:** 2026-06-16
 - **Feature folder:** `docs/superpowers/specs/gpu-detection-optimization/`
 - **Depends on:** Spec 1 — *Staged Batched GPU Detection Architecture*
@@ -13,6 +13,16 @@
 Add four new GPU detectors on top of Spec 1's `GpuDetector` interface — **no engine
 changes**, only `infer_batch` / `output_kind` / `supports_batching` implementations —
 plus the packaging, licensing, and gated-weights machinery they require.
+
+**Phasing (decision O2).** Spec 2 ships in two phases:
+- **Spec 2a — instance-native (first):** `Sam3Detector` + `DinoSam2Detector`. Both emit a
+  labeled `objmap`, have license-clean defaults (SAM3 commercial-OK; DinoSam2 on
+  DINOv2/Apache), and need no curated exemplars — fast, clean value.
+- **Spec 2b — few-shot / semantic (follow-on):** `Insid3Detector` + `FssDinoDetector`.
+  These add the new **few-shot exemplar interface** (annotated reference/support images at
+  inference), reuse the existing **semantic → `objmask` → downstream watershed** route
+  (already first-class in the repo via threshold detectors + `SeparateObjects`), and carry
+  the FSSDINO clean-room reimplementation + curated exemplar data.
 
 All facts below were verified against primary sources during brainstorming research
 (repos, HF model cards + LICENSE files, arXiv). Where a model is encumbered or a poor
@@ -51,13 +61,11 @@ serves the same feature-matching role with minimal accuracy cost.
 - **INSID3 / FSSDINO** (which are DINOv3-specific by construction) stay lower priority;
   if built, document the gated-DINOv3 requirement prominently.
 
-**Open decision O1 (carry into the plan):** ship `DinoSam2Detector` **DINOv2-default
-with DINOv3 opt-in**, vs. DINOv3-as-originally-named. Recommendation: DINOv2-default.
+**Decision O1 (resolved):** `DinoSam2Detector` defaults to **DINOv2** with **DINOv3
+opt-in**, selected by a `dino_version: Literal[2, 3] = 2` field (+ `dino_size`); see §4.2.
 
-**Open decision O2:** whether to include the semantic/few-shot pair **INSID3 + FSSDINO
-at all** in the first model cut, given they need curated exemplars, a gated backbone,
-and (FSSDINO) a clean-room reimplementation. Recommendation: land SAM3 + DinoSam2 first;
-treat INSID3/FSSDINO as a follow-on.
+**Decision O2 (resolved):** **instance-native first** — Spec 2a = SAM3 + DinoSam2;
+Spec 2b = INSID3 + FSSDINO (the few-shot/semantic pair), per the §1 phasing.
 
 ---
 
@@ -68,7 +76,7 @@ All four subclass `GpuDetector`, lazy-load in `_ensure_model_loaded()`, read
 mirror the existing `Sam2Detector` structure
 (`src/phenotypic/detect/nn/_sam2_detector.py`).
 
-### 4.1 `Sam3Detector` — instance, true-batch, gated
+### 4.1 `Sam3Detector` — instance, true-batch, gated (Spec 2a)
 
 - **Load (transformers route, preferred over the git repo):**
   `Sam3Model.from_pretrained("facebook/sam3")` + `Sam3Processor.from_pretrained(...)`.
@@ -89,11 +97,15 @@ mirror the existing `Sam2Detector` structure
   forward (`processor(images=[...], text=[prompt]*N)` → `model(**inputs)` →
   `post_process_instance_segmentation`), painting masks largest-first into `objmap`
   (same loop as `Sam2Detector`, sorting by `mask.sum()`).
-- **Constraints to handle:** **200-instance cap** per forward (`num_queries=200`) →
-  **tile dense plates** and merge; **gated weights** (§7); fixed **1008 px** internal
-  resolution (model resizes; map masks back via `target_sizes`).
+- **Constraints to handle (O4 resolved):** **200-instance cap** per forward
+  (`num_queries=200`) and fixed **1008 px** internal resolution → **tile dense plates**.
+  Recommended tiling is **grid-aware**: for a `GridImage`, tile per grid section / row-band
+  (each tile then holds well under 200 colonies and reuses the existing grid structure);
+  for non-grid images, fixed ~1008 px tiles with ~15 % overlap. Merge cross-tile instances
+  via **IoU-based NMS** on the overlaps; tile size/overlap are tunable fields. Plus **gated
+  weights** (§7); the model resizes internally and masks map back via `target_sizes`.
 
-### 4.2 `DinoSam2Detector` — instance, DINOv2-default
+### 4.2 `DinoSam2Detector` — instance, DINOv2-default (Spec 2a)
 
 - **Recipe (training-free, no Meta "DINOv3+SAM2" model exists — it's a composition):**
   run SAM2's `SAM2AutomaticMaskGenerator` to get class-agnostic mask proposals (already
@@ -102,15 +114,18 @@ mirror the existing `Sam2Detector` structure
   fix over-segmentation. Closest published referent: *"No time to train!"*
   (arXiv:2507.02798) — **reimplement the recipe**; do not vendor that repo (license
   unverified).
-- **Fields:** `dino_backbone: str = "facebook/dinov2-base"` (default DINOv2, ungated;
-  DINOv3 ids accepted as opt-in), `sam2_model_size`, `device`, similarity/merge
-  thresholds (numeric → `TuneSpec`). Optional `reference_images` / `reference_masks`
-  fields enable the few-shot variant.
+- **Fields (O1 resolved):** `dino_version: Literal[2, 3] = 2` (2 = DINOv2 Apache/ungated
+  default; 3 = DINOv3 gated) + `dino_size: Literal["small","base","large"] = "base"` — the
+  detector maps `(dino_version, dino_size)` to the HF id internally, and `dino_version=3`
+  auto-routes through the gated-weights flow (§7). `DinoVersion` is a `Literal[2,3]` alias
+  in `tools_/typing_.py` (type-only closed set). Plus `sam2_model_size`, `device`, and
+  similarity/merge thresholds (numeric → `TuneSpec`). Optional `reference_images` /
+  `reference_masks` fields enable the few-shot variant (Spec 2b).
 - **Capabilities:** `input_layer="rgb"`, `output_kind="instance"`,
   `supports_batching=False` (SAM2's per-image AMG bounds it) → use the default looped
   `infer_batch`; fill the GPU via `workers_per_gpu` packing (Spec 1 §7).
 
-### 4.3 `Insid3Detector` — semantic, in-context, gated backbone
+### 4.3 `Insid3Detector` — semantic, in-context, gated backbone (Spec 2b)
 
 - **Source:** `visinf/INSID3` (Apache-2.0 code) — **vendor the small module with
   attribution** or clean-room; backbone is a frozen **gated DINOv3**.
@@ -121,7 +136,7 @@ mirror the existing `Sam2Detector` structure
   user's downstream watershed instances it — Spec 1 §8), `supports_batching=False`,
   1024 px default → tiling for large plates.
 
-### 4.4 `FssDinoDetector` — semantic, few-shot, **clean-room only**
+### 4.4 `FssDinoDetector` — semantic, few-shot, **clean-room only** (Spec 2b)
 
 - **Source:** `hussni0997/fssdino` has **no license (all rights reserved)** → **do not
   vendor**. The algorithm (~150 lines: prototype-cosine + Gram-matrix matching over a
@@ -290,24 +305,30 @@ and (SAM3) the overrideable `prompt`.
 
 ---
 
-## 10. Open Questions
+## 10. Resolved Decisions
 
-- **O1:** `DinoSam2Detector` DINOv2-default + DINOv3 opt-in (recommended) vs.
-  DINOv3-as-named.
-- **O2:** include INSID3 + FSSDINO in the first model cut, or land SAM3 + DinoSam2
-  first and defer the semantic/few-shot pair (recommended).
-- **O3:** exact `transformers` minimum version (pin against the changelog at
-  implementation time — must include `Sam3Model` + DINOv3).
-- **O4:** SAM3 dense-plate tiling strategy (tile size / overlap / instance merge) given
-  the 200-query cap.
-- **O5:** commercial-distribution posture for PhenoTypic — confirms whether the
-  DINOv3-gated models are acceptable to document as first-class or as advanced opt-ins.
-- **O6 (review S5):** verify the *"No time to train!"* (arXiv:2507.02798) recipe is
-  freely clean-room reimplementable — the building blocks (SAM2, DINOv2) are Apache, but
-  confirm the composition isn't patent-encumbered before building `DinoSam2Detector`.
-- **O7 (review S6):** re-verify the SAM3 `transformers` API at implementation time — if
-  an automatic-mask-generator ("segment everything") variant ships, the `prompt` field
-  and the 200-query tiling (O4) may be partly unnecessary.
+- **O1 — DinoSam2 backbone:** **resolved** — `dino_version: Literal[2,3] = 2` (DINOv2
+  default, ungated) + `dino_size`; DINOv3 (`=3`) is the gated opt-in (§4.2).
+- **O2 — phasing:** **resolved** — instance-native first (Spec 2a = SAM3 + DinoSam2),
+  few-shot/semantic pair next (Spec 2b = INSID3 + FSSDINO) (§1).
+- **O3 — `transformers` pin:** **deferred to implementation** — pin
+  `transformers>=<first release shipping Sam3Model + DINOv3 AutoModel>` against the
+  changelog at build time.
+- **O4 — SAM3 tiling:** **resolved** — grid-aware tiling (per grid section/band for
+  `GridImage`; ~1008 px fixed tiles + ~15 % overlap otherwise) with IoU-NMS cross-tile
+  merge; tunable (§4.1).
+- **O5 — distribution posture:** **resolved by PhenoTypic's Apache-2.0 license** — the
+  package stays permissive, so gated/non-permissive **weights are never bundled** and are
+  fetched per-user under their own licenses (§5–§7). All four models permit commercial use.
+  **Framing:** SAM2/micro-sam + DinoSam2-on-DINOv2 are **first-class**; SAM3 and any
+  **DINOv3-based** detector are **advanced opt-ins** (flagged with gating/license
+  requirements).
+- **O6 — DinoSam2 recipe IP:** **resolved (low risk)** — published methods are free to
+  reimplement (copyright protects code, not algorithms); **clean-room from the paper, do
+  not vendor** the repo. A cheap patent search at implementation is the due-diligence step.
+- **O7 — SAM3 API re-verify:** **deferred to implementation** — confirm the actual
+  `transformers` SAM3 API (in case an AMG "segment everything" variant changes the
+  `prompt`/tiling design) before building.
 
 ---
 
