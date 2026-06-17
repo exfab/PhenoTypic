@@ -15,10 +15,19 @@ from ._object_detector import ObjectDetector
 
 # <<Interface>>
 class GpuDetector(ObjectDetector, ABC):
-    """Marker ABC for object detectors that require GPU acceleration.
+    """Interface ABC for GPU-accelerated object detectors (batched/streaming).
 
     Subclass GpuDetector when your detection algorithm depends on a GPU
     (e.g., deep-learning foundation models like SAM2 or micro-sam).
+
+    GpuDetector provides a concrete ``_operate`` built from a small set of
+    overridable hooks — ``preprocess`` (raw ``input_layer`` array → model-ready
+    sample), ``collate`` (samples → batch), ``infer_batch`` (batch → per-sample
+    results), and ``_write_object_output`` (result → ``objmap``/``objmask``).
+    The single-image notebook path and the batched CLI engine drive the *same*
+    hooks, so a detector implemented once runs in both. Capability is declared
+    via three fields — ``input_layer`` (``rgb``/``gray``/``detect_mat``),
+    ``supports_batching``, and ``output_kind`` (``instance``/``semantic``).
 
     When a pipeline contains a GpuDetector, the CLI enforces:
 
@@ -72,16 +81,22 @@ class GpuDetector(ObjectDetector, ABC):
                 import torch  # lazy import
                 # ... build model ...
 
-            def _operate(self, image):
-                self._ensure_model_loaded()
+            def _infer_one(self, sample):
+                # ``sample`` is a preprocessed (H, W, 3) array. Return a uint16
+                # labeled objmap (output_kind="instance") or a bool mask
+                # (output_kind="semantic"). The base _operate/infer_batch wire
+                # this into the image; do NOT override _operate.
                 # ... run inference ...
-                return image
+                return objmap
 
     Notes:
-        This is a marker ABC with no additional methods beyond those
-        inherited from ObjectDetector. It exists to categorize
-        GPU-requiring detectors in the class hierarchy and enable the
-        CLI to make informed resource-allocation decisions.
+        ``_operate`` is concrete here and should not be overridden. Non-batchable
+        subclasses (SAM2, micro-sam) implement just ``_ensure_model_loaded`` +
+        ``_infer_one``; the default ``infer_batch`` loops ``_infer_one`` and is
+        the sole caller of ``_ensure_model_loaded``. Batchable subclasses
+        (Spec 2 foundation models) instead override ``infer_batch`` with a true
+        ``(N, C, H, W)`` forward — no engine changes needed. The class also lets
+        the CLI make informed GPU resource-allocation decisions.
     """
 
     # Capability / routing markers — pydantic FIELDS (not ClassVar) so they
