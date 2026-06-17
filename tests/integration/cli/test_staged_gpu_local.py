@@ -214,3 +214,27 @@ def test_process_objmap_resume_skips_gpu_stage2(tmp_path):
     StagedGpuStrategy(cfg2, om).execute(ds, out)
     stage2_after = _count_stage_started(log.read_text(encoding="utf-8"), "stage2")
     assert stage2_after == stage2_before  # no re-detection on resume
+
+
+def test_stage2_shard_worker_processes_its_shard(tmp_path):
+    # Stage 1 first (reuse the core), then run the Stage-2 shard worker over shard 0.
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    stage1_preprocess_core(
+        split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path)),
+        image_path, "ds", "img", out, om, image_type="Image",
+    )
+
+    from phenotypic._cli._cli_staged_slurm_worker import run_stage2_shard
+
+    run_stage2_shard(
+        pipeline_path=pipe_path, output_dir=out, image_type="Image",
+        manifest=[("ds", "img")], shard_index=0, n_shards=1,
+    )
+    assert sidecar_exists(out, "ds", "img")
