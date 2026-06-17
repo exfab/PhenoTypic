@@ -364,11 +364,27 @@ parquets.
 
 No new *mode* flag (batched is simply *how* a `GpuDetector` runs). New options:
 
-- `--gpu-batch-size` (default 1)
-- `--gpu-workers-per-gpu` (default 1)
-- `--gpu-shards` (Stage-2 array size; default auto from image count / worker count)
-- per-stage SLURM resources: `--gpu-partition` / `--gpu-gres` (distinct from the CPU
-  `--slurm` args used for stages 1 & 3)
+- **`--gpu-slurm key=value`** (repeatable; mirrors `--slurm`) — the **GPU-stage (Stage 2)**
+  SBATCH profile. **Inherit/delta:** effective Stage-2 args =
+  `{**slurm_args, **gpu_slurm_args}` (+ auto `slurm_gpus_per_node=1` if absent). Shared
+  keys (account, qos, time) set once in `--slurm` carry over; stage-specific keys — a
+  **separate GPU partition and its own account/gres/time** — are overridden in
+  `--gpu-slurm`. Stages 1 & 3 use `--slurm` (the CPU profile).
+- **`--gpu-shards N`** (default **1**) — number of parallel **Stage-2 GPU tasks** (each
+  shard = one whole-GPU array task; ≈ the GPUs to spread images across). **SLURM-only —
+  ignored locally** (locally `--gpu-workers-per-gpu` is the parallelism lever). Set to your
+  concurrent-GPU count for real runs.
+- **`--gpu-workers-per-gpu W`** (default 1) — model replicas packed onto **one** GPU
+  (MPS/time-slice) to fill it for small/under-utilizing models. VRAM-bounded.
+- **`--gpu-batch-size N|auto`** (default 1) — images per forward pass within one replica
+  (**effective only for batchable detectors** — SAM2/micro-sam are one-image-at-a-time).
+  `auto` runs a one-time **VRAM-probe warmup** (try 1,2,4,… on a representative tile, pick
+  the largest fitting under a safety margin of free VRAM ÷ `workers_per_gpu`, OOM-backoff).
+  The probe is **implemented in Spec 2** (where batchable detectors arrive); in Spec 1 it
+  is parsed but inert.
+
+The three fill knobs nest outer→inner: **`--gpu-shards`** (across GPUs) →
+**`--gpu-workers-per-gpu`** (within a GPU) → **`--gpu-batch-size`** (within a replica).
 
 `--mode process --layer objmap` requires no new flags; it routes through Stages 1–2
 automatically when a `GpuDetector` is present.
