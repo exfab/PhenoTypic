@@ -160,9 +160,9 @@ class DinoSam2Detector(GpuDetector):
 
     The recommended configuration is **fully ungated and permissive** — SAM2
     (Apache-2.0) plus DINOv2 (Apache-2.0). ``dino_version=3`` selects the gated
-    DINOv3 backbone as an explicit opt-in; that load path is reserved for a
-    later release and raises ``NotImplementedError`` here (construction and
-    serialisation of a ``dino_version=3`` detector still work).
+    DINOv3 backbone as an explicit opt-in; that load path routes the snapshot
+    pull through ``Dinov3CheckpointManager`` (honouring the DINOv3-License
+    acceptance gate) before loading the backbone.
 
     Because the recipe runs SAM2's per-image AMG, it is **not** batchable
     (``supports_batching=False``); the engine fills the GPU via worker packing.
@@ -173,8 +173,8 @@ class DinoSam2Detector(GpuDetector):
 
     Args:
         dino_version: DINO backbone generation.  ``2`` = DINOv2 (Apache,
-            ungated, default); ``3`` = DINOv3 (gated opt-in, reserved for a
-            later release).
+            ungated, default); ``3`` = DINOv3 (gated opt-in — routes through the
+            DINOv3-License acceptance gate).
         dino_size: DINO backbone size (``"small"``/``"base"``/``"large"``),
             mapped with *dino_version* to the Hugging Face model id.
         sam2_model_size: SAM2 variant for the proposal generator
@@ -196,9 +196,9 @@ class DinoSam2Detector(GpuDetector):
     Raises:
         ImportError: If ``sam2`` / ``transformers`` / ``torch`` are not
             installed.  Install with ``pip install phenotypic[foundation]``.
-        NotImplementedError: If ``dino_version=3`` is loaded (the gated DINOv3
-            backbone lands in a later release).
-        RuntimeError: If ``device="auto"`` and no accelerator is available.
+        RuntimeError: If ``device="auto"`` and no accelerator is available, or
+            (``dino_version=3``) the gated DINOv3 license was not accepted /
+            no token is present.
 
     Best For:
         * Ungated, license-clean instance detection where SAM2 over-segments
@@ -265,13 +265,12 @@ class DinoSam2Detector(GpuDetector):
         """Map ``(dino_version, dino_size)`` to the Hugging Face backbone id.
 
         Returns:
-            ``"facebook/dinov2-{size}"`` for v2, or the gated DINOv3 ViT-B id
-            for v3 (the v3 *load* is stubbed; the id resolves for inspection).
+            ``"facebook/dinov2-{size}"`` for v2 (ungated), or the gated
+            ``"facebook/dinov3-vit{s|b|l}16-pretrain-lvd1689m"`` id for v3.
         """
-        if self.dino_version == 2:
-            return f"facebook/dinov2-{self.dino_size}"
-        # DINOv3 — only the ViT-B/16 LVD-1689M id is wired for the 2a stub.
-        return "facebook/dinov3-vitb16-pretrain-lvd1689m"
+        from phenotypic.detect.nn._dino_support import hf_dino_id
+
+        return hf_dino_id(self.dino_version, self.dino_size)
 
     def _ensure_model_loaded(self) -> None:
         """Build the SAM2 AMG + DINO backbone on first use (idempotent).
@@ -279,18 +278,12 @@ class DinoSam2Detector(GpuDetector):
         Rebuilds the SAM2 ``SAM2AutomaticMaskGenerator`` via the shared
         ``build_sam2_generator`` helper (C1 — there is no public accessor for
         another detector's generator) and loads the DINO backbone through
-        ``transformers.AutoModel``. ``dino_version=3`` raises
-        ``NotImplementedError`` (the gated DINOv3 path lands in a later
-        release).
+        ``transformers.AutoModel``. ``dino_version=3`` routes the gated DINOv3
+        snapshot pull through :class:`Dinov3CheckpointManager` (honouring the
+        license-acceptance gate) before loading the backbone.
         """
         if getattr(self, "_generator", None) is not None:
             return
-
-        if self.dino_version == 3:
-            raise NotImplementedError(
-                "DINOv3 lands in Spec 2b. Use dino_version=2 (DINOv2, ungated) "
-                "for now."
-            )
 
         try:
             from transformers import AutoImageProcessor, AutoModel
@@ -300,8 +293,15 @@ class DinoSam2Detector(GpuDetector):
                 "Install with: pip install phenotypic[foundation]"
             ) from None
 
-        from phenotypic.detect.nn._checkpoint_manager import resolve_device
+        from phenotypic.detect.nn._checkpoint_manager import (
+            Dinov3CheckpointManager,
+            resolve_device,
+        )
         from phenotypic.detect.nn._sam2_detector import build_sam2_generator
+
+        # DINOv3 is gated — accept + pre-stage the snapshot before the load.
+        if self.dino_version == 3:
+            Dinov3CheckpointManager(size=self.dino_size).download()
 
         self._device = resolve_device(self.device)
         self._generator = build_sam2_generator(

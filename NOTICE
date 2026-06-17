@@ -24,7 +24,31 @@ source under that model's own license, which the user must accept.
   Upstream:  https://github.com/facebookresearch/dinov2
   License:   licenses/dinov2-Apache-2.0.txt
 
-Gated foundation-model weights introduced by later work (e.g. SAM3, DINOv3) are
-never bundled either; their downloads are gated behind an explicit
-license-acceptance step (see PHENOTYPIC_ACCEPT_MODEL_LICENSE and the
-require_license_acceptance hook in src/phenotypic/detect/nn/_checkpoint_manager.py).
+- DINOv3, Meta — frozen backbone for Insid3Detector (native) and the optional
+  DINOv3 path of DinoSam2Detector / FssDinoDetector; weights under the DINOv3
+  License (commercial-OK, redistributable only under that license, GATED on
+  Hugging Face). Per the DINOv3 License §1.b.i, PhenoTypic prominently displays
+  "Built with DINOv3" wherever DINOv3 features are produced.
+  Upstream:  https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m
+  License:   licenses/dinov3-License.txt
+
+- INSID3 (visinf/INSID3) — training-free in-context (one-shot) semantic
+  segmentation on a frozen DINOv3 backbone; code under Apache-2.0. PhenoTypic's
+  Insid3Detector is a clean-room reimplementation of its positional-bias-removal
+  + prototype-matching method, attributed here; no upstream code is vendored.
+  Upstream:  https://github.com/visinf/INSID3
+  License:   licenses/insid3-Apache-2.0.txt
+
+- FSSDINO (Zakir & Ho, "Revealing the Semantic Selection Gap in DINOv3 through
+  Training-Free Few-Shot Segmentation", arXiv:2602.07550) — few-shot semantic
+  segmentation (class-specific prototypes + Gram-matrix refinement) on a frozen
+  DINO backbone. The reference code repository carries NO license (all rights
+  reserved) and is NOT vendored; PhenoTypic's FssDinoDetector is a CLEAN-ROOM
+  reimplementation FROM THE PAPER ONLY. The paper is licensed CC BY-NC-SA and is
+  attributed here. No FSSDINO code is bundled or redistributed.
+  Paper:     https://arxiv.org/abs/2602.07550
+
+Gated foundation-model weights (SAM3, DINOv3) are never bundled; their downloads
+are gated behind an explicit license-acceptance step (see
+PHENOTYPIC_ACCEPT_MODEL_LICENSE and the require_license_acceptance hook in
+src/phenotypic/detect/nn/_checkpoint_manager.py).

@@ -728,6 +728,77 @@ class Dinov2CheckpointManager:
         return snapshot_download(repo_id=self.repo_id)
 
 
+class Dinov3CheckpointManager:
+    """Download and cache Meta's **gated** DINOv3 backbone from the Hub.
+
+    DINOv3 is a hybrid of the two existing managers: it carries the
+    ``Dinov2CheckpointManager``'s size-parameterised constructor
+    (``__init__(self, *, size)`` mapping to the three
+    ``dinov3-vit{s|b|l}16-pretrain-lvd1689m`` ids), but — unlike the ungated
+    DINOv2 — it is **gated** under the DINOv3 License, so it runs SAM3's
+    acceptance gate (:func:`require_license_acceptance`) before any network
+    call and reworries a 401/403 into an actionable message.
+
+    All ``huggingface_hub`` imports are deferred to :func:`snapshot_download`
+    so this class can be imported and inspected without ``huggingface_hub``.
+    """
+
+    _SIZE_TO_REPO: dict[str, str] = {
+        "small": "facebook/dinov3-vits16-pretrain-lvd1689m",
+        "base": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        "large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    }
+
+    license_key = "dinov3"
+    license_name = "DINOv3 License"
+    license_url = (
+        "https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m"
+    )
+
+    def __init__(self, *, size: str = "base") -> None:
+        if size not in self._SIZE_TO_REPO:
+            raise ValueError(
+                f"Unknown DINOv3 size {size!r}; expected one of "
+                f"{sorted(self._SIZE_TO_REPO)}."
+            )
+        self.size = size
+
+    @property
+    def repo_id(self) -> str:
+        """The Hugging Face repo id for this manager's ``size``."""
+        return self._SIZE_TO_REPO[self.size]
+
+    def download(self, *, interactive: bool = True) -> str:
+        """Download the DINOv3 snapshot, gated on license acceptance.
+
+        Args:
+            interactive: When *True*, fall back to a terminal y/N prompt if
+                ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` does not already grant
+                acceptance. SLURM/batch callers pass ``False``.
+
+        Returns:
+            The local cache path of the downloaded snapshot.
+
+        Raises:
+            RuntimeError: If the license has not been accepted, or if the pull
+                fails because access was not granted / no token is present.
+        """
+        require_license_acceptance(
+            self.license_key, self.license_name, self.license_url,
+            interactive=interactive,
+        )
+        try:
+            return snapshot_download(repo_id=self.repo_id)
+        except Exception as exc:
+            if _is_gated_or_auth_error(exc):
+                raise RuntimeError(
+                    f"Cannot download {self.repo_id}: access not granted or no "
+                    f"token. Request access at {self.license_url}, then run "
+                    f"`uv run hf auth login` (or export HF_TOKEN)."
+                ) from exc
+            raise
+
+
 def require_license_acceptance(
     model: str, license_name: str, license_url: str, *, interactive: bool = True
 ) -> None:

@@ -87,15 +87,64 @@ class TestDinoSam2Serialization:
 
 
 # ---------------------------------------------------------------------------
-# dino_version=3 load stub (D-dino3-stub)
+# dino_version=3 load path (W2 — Spec 2b completes the v3 route; the 2a
+# NotImplementedError stub is removed). Mock the gated snapshot pull + the
+# SAM2 generator + transformers AutoModel so no weights / GPU are needed.
 # ---------------------------------------------------------------------------
 
 
-class TestDinoV3LoadStub:
-    def test_dinov3_load_raises_not_implemented(self):
-        det = DinoSam2Detector(dino_version=3)
-        with pytest.raises(NotImplementedError, match="Spec 2b"):
-            det._ensure_model_loaded()
+class TestDinoV3LoadPath:
+    def test_dinov3_load_routes_through_gated_manager(self, monkeypatch):
+        import transformers
+
+        from phenotypic.detect.nn import _checkpoint_manager as cm
+        from phenotypic.detect.nn import _sam2_detector as sam2_mod
+
+        # Accept the gate; stub the gated snapshot pull (no network).
+        monkeypatch.setenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "dinov3")
+        pulled: dict = {}
+        monkeypatch.setattr(
+            cm, "snapshot_download",
+            lambda **kw: pulled.update(kw) or "/fake/cache/dinov3",
+        )
+        monkeypatch.setattr(cm, "resolve_device", lambda device: "cpu")
+
+        # Stub the SAM2 generator + transformers load at their real homes so
+        # nothing real loads (the detector imports both inside the method).
+        monkeypatch.setattr(
+            sam2_mod, "build_sam2_generator", lambda *a, **k: object()
+        )
+
+        class _FakeModel:
+            def to(self, device):
+                return self
+
+        seen: dict = {}
+
+        # Patch ``from_pretrained`` on the real Auto* classes so the
+        # ``from transformers import AutoModel`` inside the method picks up the
+        # stub (no network, gated repo never actually hit).
+        monkeypatch.setattr(
+            transformers.AutoModel,
+            "from_pretrained",
+            classmethod(
+                lambda cls, repo_id: seen.update(model=repo_id) or _FakeModel()
+            ),
+        )
+        monkeypatch.setattr(
+            transformers.AutoImageProcessor,
+            "from_pretrained",
+            classmethod(lambda cls, repo_id: object()),
+        )
+
+        det = DinoSam2Detector(dino_version=3, dino_size="base", device="cpu")
+        det._ensure_model_loaded()  # no NotImplementedError, no network
+
+        # The gated DINOv3 snapshot was pulled for the right repo id, and the
+        # backbone was loaded from that id.
+        assert pulled["repo_id"] == "facebook/dinov3-vitb16-pretrain-lvd1689m"
+        assert seen["model"] == "facebook/dinov3-vitb16-pretrain-lvd1689m"
+        assert det._dino_model is not None
 
 
 # ---------------------------------------------------------------------------
