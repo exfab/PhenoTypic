@@ -5,8 +5,10 @@ using napari viewers. These are dev-time tools, not user-facing GUI
 components.
 """
 
+from ._label_editor_widget import LabelEditorWidget
 from ._point_picker_widget import PointPickerWidget
 
 __all__ = [
+    "LabelEditorWidget",
     "PointPickerWidget",
 ]
