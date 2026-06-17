@@ -17,7 +17,10 @@ from phenotypic._cli._cli_staged_workers import (
     stage3_merge_measure_core,
 )
 from phenotypic._cli._cli_types import Dataset, ExecutionConfig
-from phenotypic._cli._cli_update_state import aggregate_stage_state_from_events
+from phenotypic._cli._cli_update_state import (
+    aggregate_stage_state_from_events,
+    parse_event_line,
+)
 from phenotypic.tools_ import dataset_hdf_dir, event_log_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
@@ -173,3 +176,41 @@ def test_stage_tagged_events_emitted(tmp_path):
     per_stage = aggregate_stage_state_from_events(event_log_path(out))
     for stage in ("stage1", "stage2", "stage3"):
         assert "img.tiff" in per_stage["ds"][stage].completed
+
+
+def _count_stage_started(log_text, stage):
+    n = 0
+    for line in log_text.splitlines():
+        if not line.strip():
+            continue
+        ev = parse_event_line(line)
+        if ev.status == "started" and ev.stage == stage:
+            n += 1
+    return n
+
+
+def test_process_objmap_resume_skips_gpu_stage2(tmp_path):
+    image_path = _write_image(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    pipe_path = out / "pipeline.json"
+    pipe_path.write_text(pipe.to_json(), encoding="utf-8")
+    om = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    om.create_structure([Dataset("ds", [image_path], tmp_path, out)])
+    ds = [Dataset("ds", [image_path], tmp_path, out)]
+
+    cfg1 = _config(out, pipe_path)
+    cfg1.process_only_layer = "objmap"
+    StagedGpuStrategy(cfg1, om).execute(ds, out)
+    log = event_log_path(out)
+    stage2_before = _count_stage_started(log.read_text(encoding="utf-8"), "stage2")
+    assert stage2_before == 1
+
+    # resume: the exported objmap PNG is the durable Stage-2 done-marker, so the
+    # GPU stage must NOT re-run (no new stage2 'started' event).
+    cfg2 = _config(out, pipe_path, resume=True)
+    cfg2.process_only_layer = "objmap"
+    StagedGpuStrategy(cfg2, om).execute(ds, out)
+    stage2_after = _count_stage_started(log.read_text(encoding="utf-8"), "stage2")
+    assert stage2_after == stage2_before  # no re-detection on resume

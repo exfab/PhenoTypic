@@ -142,7 +142,9 @@ def parse_event_line(line: str) -> ProcessingEvent:
     """
     Parse a single event log line into a ProcessingEvent.
 
-    Supports both old 4-5 field format and new 7-field format with SLURM fields.
+    Supports the old 4-5 field format, the 7-field format with SLURM fields,
+    and the 8-field staged format (field 8 = ``stage``). Missing trailing
+    fields default to empty / ``None``.
 
     Args:
         line: Raw line from event log.

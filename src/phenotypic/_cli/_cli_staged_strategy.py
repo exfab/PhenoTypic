@@ -53,6 +53,20 @@ class StagedGpuStrategy(ExecutionStrategy):
                 ds_name, "measurements", stem
             )
 
+        def _terminal_output_exists(ds_name: str, img: Path) -> bool:
+            """Durable "fully done" marker for Stage 2 resume: the run's terminal
+            artifact survives a completed run even though Stage 3 deletes the
+            sidecar. Full mode -> measurement parquet; objmap process-mode ->
+            the exported objmap layer file (objmap mode writes no parquet).
+            """
+            if cfg.process_only_layer == "objmap":
+                from ._cli_process_only import process_only_output_path
+
+                return process_only_output_path(
+                    output_dir, img, cfg.input_path, "objmap"
+                ).is_file()
+            return _parquet_path(ds_name, img.stem).is_file()
+
         # ---- Stage 1: CPU preprocess -> staged HDF (parallel, resumable) ----
         def _stage1(ds: Dataset, img: Path) -> None:
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
@@ -83,11 +97,15 @@ class StagedGpuStrategy(ExecutionStrategy):
             hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
             if cfg.resume and (
                 sidecar_exists(output_dir, ds.name, img.stem)
-                or _parquet_path(ds.name, img.stem).is_file()
+                or _terminal_output_exists(ds.name, img)
             ):
                 continue
             if not hdf.is_file():
-                # Stage 1 failed/absent for this image (S6): skip + record.
+                # Stage 1 failed/absent for this image (S6): skip + record. A
+                # cascade (stage1 failed -> stage2/stage3 prereq missing)
+                # deliberately records a failed event per stage so the per-stage
+                # view shows where each image is blocked; overall totals still
+                # count the image exactly once (via Stage 3's return value).
                 append_event(
                     event_log, ds.name, img.name, "failed",
                     error_msg="stage2 skipped: staged HDF missing",
