@@ -1,0 +1,21 @@
+PhenoTypic — third-party component notices
+==========================================
+
+PhenoTypic is licensed under Apache-2.0 (see LICENSE). It optionally depends on
+the third-party GPU-detection components below. PhenoTypic does NOT redistribute
+any model weights: model weights are downloaded by the user from the upstream
+source under that model's own license, which the user must accept.
+
+- SAM2 (segment-anything-2), Meta — code & weights under Apache-2.0.
+  Upstream:  https://github.com/facebookresearch/sam2
+  License:   licenses/sam2-Apache-2.0.txt
+
+- micro-sam (computational-cell-analytics) — code under the MIT License;
+  checkpoints are distributed via its own channels under their respective terms.
+  Upstream:  https://github.com/computational-cell-analytics/micro-sam
+  License:   licenses/micro-sam-LICENSE.txt
+
+Gated foundation-model weights introduced by later work (e.g. SAM3, DINOv3) are
+never bundled either; their downloads are gated behind an explicit
+license-acceptance step (see PHENOTYPIC_ACCEPT_MODEL_LICENSE and the
+require_license_acceptance hook in src/phenotypic/detect/nn/_checkpoint_manager.py).
