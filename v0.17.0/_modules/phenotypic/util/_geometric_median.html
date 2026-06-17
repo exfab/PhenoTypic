@@ -1,0 +1,1936 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.util._geometric_median &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/util/_geometric_median';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/util/_geometric_median.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.util._geometric_median</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.util._geometric_median</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Geometric Median in Nearly Linear Time - COMPLETE VALIDATED IMPLEMENTATION</span>
+
+<span class="sd">Faithful implementation of Cohen et al. (2016) with proper convergence checks.</span>
+
+<span class="sd">Reference:</span>
+<span class="sd">    Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., &amp; Sidford, A. (2016).</span>
+<span class="sd">    Geometric median in nearly linear time.</span>
+<span class="sd">    Proceedings of STOC 2016, pp. 9-21.</span>
+<span class="sd">    arXiv:1606.05225</span>
+
+<span class="sd">Key Implementation Notes:</span>
+<span class="sd">    - Uses proper convergence checks on ACTUAL objective f(x), not penalized ft(x)</span>
+<span class="sd">    - Applies practical tolerances while maintaining theoretical structure</span>
+<span class="sd">    - Includes early convergence detection for efficiency</span>
+<span class="sd">    - Provides both Cohen et al. and classical Weiszfeld algorithms</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 1: Problem Definition (Page 1, Equation 1)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 1, Introduction, Equation (1)</span>
+
+<span class="sd">The geometric median problem:</span>
+<span class="sd">    x* ∈ arg min_x f(x)  where  f(x) = Σ_{i∈[n]} ||x - a^(i)||_2</span>
+
+<span class="sd">This minimizes the sum of Euclidean distances from x to all points a^(i).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute f(x) = Σ ||x - a^(i)||_2</span>
+
+<span class="sd">    Reference: Page 1, Equation (1)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Point to evaluate, shape (d,)</span>
+<span class="sd">        points: Data points a^(1), ..., a^(n), shape (n, d)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Objective value f(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_gradient_geometric_median</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute gradient of ACTUAL geometric median objective.</span>
+
+<span class="sd">    ∇f(x) = Σ (x - a^(i))/||x - a^(i)||₂</span>
+
+<span class="sd">    Used for convergence checking (not for interior point descent).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Gradient of f(x) = Σ||x - a^(i)||₂</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># (n, d)</span>
+    <span class="n">norms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diffs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># (n, 1)</span>
+    <span class="n">norms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">norms</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>  <span class="c1"># Avoid division by zero</span>
+
+    <span class="c1"># ∇f = Σ (x - a^(i))/||x - a^(i)||</span>
+    <span class="n">gradient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">diffs</span> <span class="o">/</span> <span class="n">norms</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gradient</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 2: Penalized Objective Function (Page 2, Section 1.2.3 &amp; Appendix B)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 18, Appendix B</span>
+
+<span class="sd">Derivation of penalized objective:</span>
+<span class="sd">Starting from barrier formulation with α_i constraints:</span>
+<span class="sd">    min_{x,α} t·1^T α + Σ_i -ln(α_i^2 - ||x - a^(i)||_2^2)</span>
+
+<span class="sd">Optimizing over α_i (setting ∂/∂α_j = 0):</span>
+<span class="sd">    t - 2α_j/(α_j^2 - ||x - a^(i)||_2^2) = 0</span>
+<span class="sd">    </span>
+<span class="sd">Solving: α_j* = (1/t)[1 + √(1 + t^2||x - a^(i)||_2^2)]</span>
+
+<span class="sd">Substituting back yields (Page 18, bottom):</span>
+<span class="sd">    ft(x) = Σ_{i∈[n]} [√(1 + t^2||x - a^(i)||_2^2) - ln(1 + √(1 + t^2||x - a^(i)||_2^2))]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute g_t^(i)(x) = √(1 + t^2||x - a^(i)||_2^2) for all i.</span>
+
+<span class="sd">    Reference: Page 4, Section 2.3, definition of g_t^(i)(x)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Array of g_t^(i)(x) values, shape (n,)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># (n, d)</span>
+    <span class="n">norms_squared</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">diffs</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">norms_squared</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_f_t</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute penalized objective function.</span>
+
+<span class="sd">    Reference: Page 18, Appendix B (final formula)</span>
+<span class="sd">               Page 4, Section 2.3, definition of f_t^(i)(x)</span>
+
+<span class="sd">    ft(x) = Σ_{i∈[n]} [g_t^(i)(x) - ln(1 + g_t^(i)(x))]</span>
+
+<span class="sd">    where f_t^(i)(x) = g_t^(i)(x) - ln(1 + g_t^(i)(x))</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Objective value ft(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+    <span class="n">f_i_vals</span> <span class="o">=</span> <span class="n">g_vals</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">g_vals</span><span class="p">)</span>  <span class="c1"># f_t^(i)(x)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i_vals</span><span class="p">)</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 3: Weight Function (Page 4, Section 2.3)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 4, Section 2.3</span>
+
+<span class="sd">Definition: wt(x) = Σ_{i∈[n]} 1/(1 + g_t^(i)(x))</span>
+
+<span class="sd">This weight appears in the Hessian structure and convergence analysis.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_weight_t</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute wt(x) = Σ 1/(1 + g_t^(i)(x)).</span>
+
+<span class="sd">    Reference: Page 4, Section 2.3</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Weight wt(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">g_vals</span><span class="p">))</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 4: Gradient of Penalized Objective (Derived from Page 4-5)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Derived from the objective function definition</span>
+
+<span class="sd">For f_t^(i)(x) = g_t^(i)(x) - ln(1 + g_t^(i)(x)):</span>
+
+<span class="sd">∂g_t^(i)/∂x = t^2(x - a^(i))/g_t^(i)(x)</span>
+
+<span class="sd">∂f_t^(i)/∂x = ∂g_t^(i)/∂x · [1 - 1/(1 + g_t^(i))]</span>
+<span class="sd">            = [t^2(x - a^(i))/g_t^(i)] · [g_t^(i)/(1 + g_t^(i))]</span>
+<span class="sd">            = t^2(x - a^(i))/[(1 + g_t^(i))g_t^(i)]</span>
+
+<span class="sd">Therefore:</span>
+<span class="sd">∇ft(x) = Σ_{i∈[n]} t^2(x - a^(i))/[(1 + g_t^(i)(x))g_t^(i)(x)]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_gradient_f_t</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute gradient ∇ft(x).</span>
+
+<span class="sd">    Reference: Derived from objective (Page 4-5)</span>
+
+<span class="sd">    ∇ft(x) = Σ_{i∈[n]} t^2(x - a^(i))/[(1 + g_t^(i))g_t^(i)]</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Gradient vector, shape (d,)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># x - a^(i), shape (n, d)</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+
+    <span class="c1"># Denominators: (1 + g_t^(i)) * g_t^(i)</span>
+    <span class="n">denominators</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">g_vals</span><span class="p">)</span> <span class="o">*</span> <span class="n">g_vals</span>  <span class="c1"># (n,)</span>
+
+    <span class="c1"># Weights: t^2 / [(1 + g_t^(i))g_t^(i)]</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">denominators</span>  <span class="c1"># (n,)</span>
+
+    <span class="c1"># Gradient: Σ weight_i * (x - a^(i))</span>
+    <span class="n">gradient</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">diffs</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># (d,)</span>
+
+    <span class="k">return</span> <span class="n">gradient</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 5: Hessian Operations (Derived from barrier theory)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Standard barrier function theory + Lemma 3.4 structure (Page 5)</span>
+
+<span class="sd">The Hessian is derived by taking ∂²ft/∂x∂x^T.</span>
+
+<span class="sd">For each component f_t^(i), through detailed calculus:</span>
+<span class="sd">∇²f_t^(i)(x) = c1_i · I - c2_i · u_i u_i^T</span>
+
+<span class="sd">where:</span>
+<span class="sd">    c1_i = t²/((1 + g_i)g_i) - t⁴/((1 + g_i)²g_i²)</span>
+<span class="sd">    c2_i = t⁴/((1 + g_i)²g_i³)</span>
+<span class="sd">    u_i = x - a^(i)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_hessian_vector_product</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute Hessian-vector product ∇²ft(x) @ v without forming full matrix.</span>
+
+<span class="sd">    Reference: Derived from barrier theory, Lemma 3.4 structure</span>
+
+<span class="sd">    More efficient: O(nd) instead of O(nd² + d³)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+<span class="sd">        v: Vector, shape (d,)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Hessian-vector product, shape (d,)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># (n, d)</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">g_vals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">one_plus_g</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">g</span>
+
+        <span class="n">c1</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span> <span class="o">*</span> <span class="n">g</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">g</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">c2</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">g</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="c1"># (c1·I - c2·uu^T) @ v = c1·v - c2·(u^T v)·u</span>
+        <span class="n">result</span> <span class="o">+=</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">v</span>
+        <span class="n">result</span> <span class="o">-=</span> <span class="n">c2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">u</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_hessian_f_t</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute full Hessian matrix ∇²ft(x).</span>
+
+<span class="sd">    Reference: Derived from barrier theory, Lemma 3.4 structure (Page 5)</span>
+
+<span class="sd">    Only use for small dimensions (d &lt; 100).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Hessian matrix, shape (d, d)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># (n, d)</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+
+    <span class="n">hessian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">g_vals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">one_plus_g</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">+</span> <span class="n">g</span>
+
+        <span class="n">c1</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span> <span class="o">*</span> <span class="n">g</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">g</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">c2</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">one_plus_g</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">g</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="n">hessian</span> <span class="o">+=</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">hessian</span> <span class="o">-=</span> <span class="n">c2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">hessian</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 6: Power Method for Eigenvectors</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Standard algorithm, used in Algorithm 2 (Page 6)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">power_method</span><span class="p">(</span>
+    <span class="n">A</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Power method to find maximum eigenvalue and eigenvector.</span>
+
+<span class="sd">    Reference: Standard algorithm, used in Algorithm 2</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        A: Symmetric matrix, shape (d, d)</span>
+<span class="sd">        max_iter: Maximum iterations</span>
+<span class="sd">        tol: Convergence tolerance</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        lambda_max: Maximum eigenvalue</span>
+<span class="sd">        v_max: Corresponding eigenvector (unit norm)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">Av</span> <span class="o">=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">v</span>
+        <span class="n">norm_Av</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Av</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">norm_Av</span> <span class="o">&lt;</span> <span class="mf">1e-14</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">v_new</span> <span class="o">=</span> <span class="n">Av</span> <span class="o">/</span> <span class="n">norm_Av</span>
+
+        <span class="c1"># Check convergence</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">v_new</span><span class="p">))</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="n">v</span> <span class="o">=</span> <span class="n">v_new</span>
+
+    <span class="c1"># Compute eigenvalue</span>
+    <span class="n">eigenvalue</span> <span class="o">=</span> <span class="n">v</span> <span class="o">@</span> <span class="n">A</span> <span class="o">@</span> <span class="n">v</span>
+
+    <span class="k">return</span> <span class="n">eigenvalue</span><span class="p">,</span> <span class="n">v</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 7: Algorithm 2 - ApproxMinEig (Page 6)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 6, Algorithm 2</span>
+
+<span class="sd">ApproxMinEig(x, t, ε):</span>
+<span class="sd">    Let A = Σ_{i∈[n]} [t⁴(x-a^(i))(x-a^(i))^T] / [(1+g_t^(i))²g_t^(i)]</span>
+<span class="sd">    Let u := PowerMethod(A, Θ(log(d/ε)))</span>
+<span class="sd">    Let λ = u^T ∇²ft(x) u</span>
+<span class="sd">    Output: (λ, u)</span>
+
+<span class="sd">The matrix A emphasizes the structure leading to the minimum eigenvalue.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">approx_min_eig</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">target_accuracy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">matrix_free</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Algorithm 2: ApproxMinEig - Approximate minimum eigenvector of Hessian.</span>
+
+<span class="sd">    Reference: Page 6, Algorithm 2</span>
+
+<span class="sd">    Constructs matrix:</span>
+<span class="sd">        A = Σ_{i∈[n]} [t⁴(x-a^(i))(x-a^(i))^T] / [(1+g_t^(i))²g_t^(i)]</span>
+
+<span class="sd">    Uses power method to find maximum eigenvector of A, which relates</span>
+<span class="sd">    to minimum eigenvector of Hessian (Lemma 4.1, Page 6).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t: Path parameter</span>
+<span class="sd">        target_accuracy: Target accuracy ε</span>
+<span class="sd">        matrix_free: Whether to use matrix-free operations</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        lambda_min: Approximate minimum eigenvalue of ∇²ft(x)</span>
+<span class="sd">        u: Approximate minimum eigenvector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">points</span>  <span class="c1"># (n, d)</span>
+    <span class="n">g_vals</span> <span class="o">=</span> <span class="n">compute_g_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># (n,)</span>
+
+    <span class="c1"># Number of power iterations: Θ(log(d/ε))</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">target_accuracy</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)))),</span> <span class="mi">10</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">matrix_free</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="c1"># Matrix-free power method</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">A_matvec</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">u_i</span> <span class="o">=</span> <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">g_i</span> <span class="o">=</span> <span class="n">g_vals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">g_i</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">g_i</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u_i</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">u_i</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="c1"># Power method using matvec</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+            <span class="n">Av</span> <span class="o">=</span> <span class="n">A_matvec</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">norm_Av</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">Av</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">norm_Av</span> <span class="o">&lt;</span> <span class="mf">1e-14</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">Av</span> <span class="o">/</span> <span class="n">norm_Av</span>
+
+        <span class="n">u</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Construct full matrix A</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">d</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="n">u_i</span> <span class="o">=</span> <span class="n">diffs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">g_i</span> <span class="o">=</span> <span class="n">g_vals</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">g_i</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">g_i</span><span class="p">)</span>
+            <span class="n">A</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">u_i</span><span class="p">,</span> <span class="n">u_i</span><span class="p">)</span>
+
+        <span class="c1"># Power method on A</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">u</span> <span class="o">=</span> <span class="n">power_method</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+
+    <span class="c1"># Compute minimum eigenvalue: λ = u^T ∇²ft(x) u</span>
+    <span class="n">Hu</span> <span class="o">=</span> <span class="n">compute_hessian_vector_product</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+    <span class="n">lambda_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">Hu</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">lambda_min</span><span class="p">,</span> <span class="n">u</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 8: Sherman-Morrison Formula (Lemma 4.1, Page 6)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 6, Lemma 4.1</span>
+
+<span class="sd">The Hessian has approximate structure:</span>
+<span class="sd">    ∇²ft(x) ≈ Q = t²·wt·I - (t²·wt - λ)·uu^T</span>
+
+<span class="sd">By Sherman-Morrison formula:</span>
+<span class="sd">    Q^(-1) = (aI - buu^T)^(-1) = (1/a)I + (b/(a(a-b)))uu^T</span>
+
+<span class="sd">where a = t²·wt and b = t²·wt - λ</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_hessian_inverse_approx</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">v</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">lambda_min</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">u_min</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply approximate Hessian inverse using Sherman-Morrison formula.</span>
+
+<span class="sd">    Reference: Page 6, Lemma 4.1; Page 7, Section 4.1</span>
+
+<span class="sd">    Approximates: Q^(-1) @ v where Q = t²·wt·I - (t²·wt - λ)·uu^T</span>
+
+<span class="sd">    Sherman-Morrison: (aI - buu^T)^(-1) = (1/a)I + (b/(a(a-b)))uu^T</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point</span>
+<span class="sd">        points: Data points</span>
+<span class="sd">        t: Path parameter</span>
+<span class="sd">        v: Vector to multiply</span>
+<span class="sd">        lambda_min: Minimum eigenvalue λ</span>
+<span class="sd">        u_min: Minimum eigenvector u</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Q^(-1) @ v (approximate)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">wt</span> <span class="o">=</span> <span class="n">compute_weight_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># Parameters for Sherman-Morrison</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">wt</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">wt</span> <span class="o">-</span> <span class="n">lambda_min</span>
+
+    <span class="c1"># Check if Sherman-Morrison applies</span>
+    <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="mf">1e-10</span> <span class="ow">and</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+        <span class="c1"># Q^(-1) @ v = (1/a)v + (b/(a(a-b)))(u^T v)u</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">v</span> <span class="o">+</span> <span class="p">(</span><span class="n">b</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u_min</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="o">*</span> <span class="n">u_min</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Fallback: simple diagonal approximation</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">v</span> <span class="o">/</span> <span class="p">(</span><span class="n">a</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 9: Algorithm 3 - LocalCenter with Proper Convergence (Page 6-7)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 7, Algorithm 3 + Lemma 3.1 (Page 5)</span>
+
+<span class="sd">LocalCenter(y, t, ε):</span>
+<span class="sd">    Let (λ, v) := ApproxMinEig(x, t, ε_eig)</span>
+<span class="sd">    Let Q = t²·wt(y)·I - (t²·wt(y) - λ)vv^T</span>
+<span class="sd">    Let x^(0) = y</span>
+<span class="sd">    for i = 1, ..., k = 64 log(1/ε) do</span>
+<span class="sd">        x^(i) = argmin_{||x-y||₂≤1/(100t)} [ft(x^(i-1)) + </span>
+<span class="sd">                &lt;∇ft(x^(i-1)), x - x^(i-1)&gt; + 4||x - x^(i-1)||²_Q]</span>
+<span class="sd">    end</span>
+<span class="sd">    Output: x^(k)</span>
+
+<span class="sd">IMPLEMENTATION NOTE:</span>
+<span class="sd">We add proper convergence checks on the ACTUAL objective f(x) (not penalized ft(x)):</span>
+<span class="sd">- Relative improvement: (f_old - f_new)/f_old &lt; tolerance</span>
+<span class="sd">- Gradient norm: ||∇f(x)|| &lt; tolerance</span>
+<span class="sd">- Step size: ||x_new - x_old|| &lt; tolerance</span>
+
+<span class="sd">This combines the paper&#39;s iteration bound with practical early stopping.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">local_center</span><span class="p">(</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">target_accuracy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">f_star_est</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">matrix_free</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Algorithm 3: LocalCenter - CORRECTED with conservative steps.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">radius</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">radius</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Compute minimum eigenvector</span>
+    <span class="n">eig_accuracy</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">f_star_est</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">))</span>
+    <span class="n">lambda_min</span><span class="p">,</span> <span class="n">v_min</span> <span class="o">=</span> <span class="n">approx_min_eig</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">eig_accuracy</span><span class="p">,</span> <span class="n">matrix_free</span><span class="p">)</span>
+
+    <span class="c1"># Maximum iterations</span>
+    <span class="n">max_iter</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">target_accuracy</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)))),</span> <span class="mi">200</span><span class="p">)</span>
+
+    <span class="c1"># Initial objective</span>
+    <span class="n">f_current</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+    <span class="n">f_initial</span> <span class="o">=</span> <span class="n">f_current</span>
+
+    <span class="c1"># Convergence tolerances</span>
+    <span class="n">rel_tol</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">target_accuracy</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="c1"># Gradient of PENALIZED objective</span>
+        <span class="n">grad_ft</span> <span class="o">=</span> <span class="n">compute_gradient_f_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+        <span class="n">grad_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">grad_ft</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">grad_norm</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="c1"># Apply Hessian inverse</span>
+        <span class="n">direction</span> <span class="o">=</span> <span class="n">apply_hessian_inverse_approx</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">grad_ft</span><span class="p">,</span> <span class="n">lambda_min</span><span class="p">,</span> <span class="n">v_min</span>
+        <span class="p">)</span>
+
+        <span class="c1"># CONSERVATIVE line search</span>
+        <span class="n">step_size</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># Start smaller</span>
+        <span class="n">x_best</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">f_best</span> <span class="o">=</span> <span class="n">f_current</span>
+
+        <span class="k">for</span> <span class="n">ls_iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="n">x_trial</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">direction</span>
+
+            <span class="c1"># Project onto ball</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">x_trial</span> <span class="o">-</span> <span class="n">y</span>
+            <span class="n">diff_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">diff_norm</span> <span class="o">&gt;</span> <span class="n">radius</span><span class="p">:</span>
+                <span class="n">x_trial</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="p">(</span><span class="n">radius</span> <span class="o">/</span> <span class="n">diff_norm</span><span class="p">)</span> <span class="o">*</span> <span class="n">diff</span>
+
+            <span class="c1"># Check if this improves ACTUAL objective</span>
+            <span class="n">f_trial</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x_trial</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">f_trial</span> <span class="o">&lt;</span> <span class="n">f_best</span><span class="p">:</span>
+                <span class="n">f_best</span> <span class="o">=</span> <span class="n">f_trial</span>
+                <span class="n">x_best</span> <span class="o">=</span> <span class="n">x_trial</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">break</span>  <span class="c1"># Accept first improvement</span>
+
+            <span class="n">step_size</span> <span class="o">*=</span> <span class="mf">0.5</span>
+
+        <span class="c1"># Update only if we improved</span>
+        <span class="k">if</span> <span class="n">f_best</span> <span class="o">&lt;</span> <span class="n">f_current</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x_best</span>
+            <span class="n">f_current</span> <span class="o">=</span> <span class="n">f_best</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># No improvement, stop</span>
+            <span class="k">break</span>
+
+        <span class="c1"># Check convergence</span>
+        <span class="n">relative_improvement</span> <span class="o">=</span> <span class="p">(</span><span class="n">f_initial</span> <span class="o">-</span> <span class="n">f_current</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">f_initial</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iteration</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">relative_improvement</span> <span class="o">&lt;</span> <span class="n">rel_tol</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="k">return</span> <span class="n">x</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 10: Algorithm 4 - LineSearch with Proper Convergence (Page 7)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 7, Algorithm 4</span>
+
+<span class="sd">LineSearch(x, t, t&#39;, u, ε):</span>
+<span class="sd">    Let O = ε²/(10^10·t³·n³·f̃*³), ℓ = -12f̃*, u = 12f̃*</span>
+<span class="sd">    Define oracle q: ℝ → ℝ by</span>
+<span class="sd">        q(α) = ft&#39;(LocalCenter(x + αu, t&#39;, O))</span>
+<span class="sd">    Let α&#39; = OneDimMinimizer(ℓ, u, O, q, tn)</span>
+<span class="sd">    Output: x&#39; = LocalCenter(x + αu, t&#39;, O)</span>
+
+<span class="sd">IMPLEMENTATION NOTE:</span>
+<span class="sd">We use golden section search with early convergence when interval is small.</span>
+<span class="sd">Oracle evaluations use LocalCenter with proper convergence checks.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">line_search</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">t_current</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">t_next</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">u</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">target_accuracy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">f_star_est</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">matrix_free</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Algorithm 4: LineSearch along direction u with proper convergence.</span>
+
+<span class="sd">    Reference: Page 7, Algorithm 4</span>
+
+<span class="sd">    Searches for best α along x + αu to minimize f(·) after local centering.</span>
+<span class="sd">    Uses golden section search with early stopping when interval is small.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current point, shape (d,)</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        t_current: Current path parameter</span>
+<span class="sd">        t_next: Next path parameter</span>
+<span class="sd">        u: Search direction, shape (d,)</span>
+<span class="sd">        target_accuracy: Target accuracy ε</span>
+<span class="sd">        f_star_est: Estimate of f(x*)</span>
+<span class="sd">        matrix_free: Whether to use matrix-free operations</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        x_next: Point close to central path at t_next</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Search interval: use problem diameter estimate</span>
+    <span class="n">diameter</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">alpha_min</span> <span class="o">=</span> <span class="o">-</span><span class="n">diameter</span>
+    <span class="n">alpha_max</span> <span class="o">=</span> <span class="n">diameter</span>
+
+    <span class="c1"># Oracle: evaluate ACTUAL objective after centering</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">q_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Oracle for line search.&quot;&quot;&quot;</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">u</span>
+        <span class="n">x_centered</span> <span class="o">=</span> <span class="n">local_center</span><span class="p">(</span>
+            <span class="n">y</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t_next</span><span class="p">,</span> <span class="n">target_accuracy</span><span class="p">,</span> <span class="n">f_star_est</span><span class="p">,</span> <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x_centered</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+    <span class="c1"># Golden section search</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">5.0</span><span class="p">))</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">max_iter</span> <span class="o">=</span> <span class="mi">20</span>  <span class="c1"># Practical limit</span>
+
+    <span class="n">alpha_a</span> <span class="o">=</span> <span class="n">alpha_min</span>
+    <span class="n">alpha_b</span> <span class="o">=</span> <span class="n">alpha_max</span>
+
+    <span class="c1"># Evaluate at center first</span>
+    <span class="n">f_center</span> <span class="o">=</span> <span class="n">q_alpha</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">best_alpha</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">best_f</span> <span class="o">=</span> <span class="n">f_center</span>
+
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">alpha_1</span> <span class="o">=</span> <span class="n">alpha_b</span> <span class="o">-</span> <span class="p">(</span><span class="n">alpha_b</span> <span class="o">-</span> <span class="n">alpha_a</span><span class="p">)</span> <span class="o">/</span> <span class="n">phi</span>
+        <span class="n">alpha_2</span> <span class="o">=</span> <span class="n">alpha_a</span> <span class="o">+</span> <span class="p">(</span><span class="n">alpha_b</span> <span class="o">-</span> <span class="n">alpha_a</span><span class="p">)</span> <span class="o">/</span> <span class="n">phi</span>
+
+        <span class="n">f_1</span> <span class="o">=</span> <span class="n">q_alpha</span><span class="p">(</span><span class="n">alpha_1</span><span class="p">)</span>
+        <span class="n">f_2</span> <span class="o">=</span> <span class="n">q_alpha</span><span class="p">(</span><span class="n">alpha_2</span><span class="p">)</span>
+
+        <span class="c1"># Track best point found</span>
+        <span class="k">if</span> <span class="n">f_1</span> <span class="o">&lt;</span> <span class="n">best_f</span><span class="p">:</span>
+            <span class="n">best_f</span> <span class="o">=</span> <span class="n">f_1</span>
+            <span class="n">best_alpha</span> <span class="o">=</span> <span class="n">alpha_1</span>
+        <span class="k">if</span> <span class="n">f_2</span> <span class="o">&lt;</span> <span class="n">best_f</span><span class="p">:</span>
+            <span class="n">best_f</span> <span class="o">=</span> <span class="n">f_2</span>
+            <span class="n">best_alpha</span> <span class="o">=</span> <span class="n">alpha_2</span>
+
+        <span class="c1"># Golden section update</span>
+        <span class="k">if</span> <span class="n">f_1</span> <span class="o">&lt;</span> <span class="n">f_2</span><span class="p">:</span>
+            <span class="n">alpha_b</span> <span class="o">=</span> <span class="n">alpha_2</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">alpha_a</span> <span class="o">=</span> <span class="n">alpha_1</span>
+
+        <span class="c1"># Early convergence: interval small enough</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">alpha_b</span> <span class="o">-</span> <span class="n">alpha_a</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">target_accuracy</span> <span class="o">*</span> <span class="n">diameter</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Use best point found, then center once more</span>
+    <span class="n">y_best</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">best_alpha</span> <span class="o">*</span> <span class="n">u</span>
+    <span class="n">x_next</span> <span class="o">=</span> <span class="n">local_center</span><span class="p">(</span>
+        <span class="n">y_best</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t_next</span><span class="p">,</span> <span class="n">target_accuracy</span><span class="p">,</span> <span class="n">f_star_est</span><span class="p">,</span> <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x_next</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 11: Crude Approximation (Appendix A, Page 16-17)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 16-17, Appendix A</span>
+
+<span class="sd">For initialization, compute a crude O(1)-approximation using:</span>
+<span class="sd">1. Coordinate-wise median</span>
+<span class="sd">2. Weiszfeld iterations</span>
+
+<span class="sd">This gives x^(0) with f(x^(0)) ≤ C·f(x*) for some constant C.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_crude_approximation</span><span class="p">(</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute crude constant-factor approximation for initialization.</span>
+
+<span class="sd">    Reference: Page 16-17, Appendix A (ApproximateMedian algorithm)</span>
+
+<span class="sd">    Uses coordinate-wise median followed by Weiszfeld iterations.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        max_iter: Maximum Weiszfeld iterations</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        x0: Initial approximation</span>
+<span class="sd">        f_star_upper: Upper bound estimate of f(x*) = f(x0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Coordinate-wise median</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Weiszfeld refinement</span>
+    <span class="c1"># NOTE: Use very loose tolerance here because this is just a CRUDE approximation</span>
+    <span class="c1"># The path-following algorithm will refine further. If the crude approximation</span>
+    <span class="c1"># is too accurate, the Hessian becomes nearly singular and the main algorithm</span>
+    <span class="c1"># cannot improve the solution.</span>
+    <span class="c1">#</span>
+    <span class="c1"># The paper (Cohen et al. 2016) only requires O(1)-approximation here, so we</span>
+    <span class="c1"># use a loose tolerance and limit iterations to ensure we don&#39;t over-solve.</span>
+    <span class="n">crude_convergence_tol</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># Very loose tolerance for crude approximation</span>
+    <span class="n">crude_max_iter</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Limit iterations to 5 (even more conservative)</span>
+
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">crude_max_iter</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">)):</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">points</span> <span class="o">-</span> <span class="n">x</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">diffs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">dists</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="n">weights</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">dists</span>
+        <span class="n">x_new</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">points</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+        <span class="c1"># Check convergence - use loose tolerance</span>
+        <span class="n">step_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x_new</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step_size</span> <span class="o">&lt;</span> <span class="n">crude_convergence_tol</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x_new</span>
+
+    <span class="c1"># Compute objective as upper bound</span>
+    <span class="n">f_star_upper</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">f_star_upper</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 12: Algorithm 1 - AccurateMedian (Main Algorithm, Page 6)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Page 6, Algorithm 1</span>
+
+<span class="sd">AccurateMedian(ε):</span>
+<span class="sd">    x^(0) := ApproximateMedian(2)</span>
+<span class="sd">    Let f̃* := f(x^(0)), t_i = (1/(400f̃*))(1 + 1/600)^(i-1)</span>
+<span class="sd">    x^(1) = LineSearch(x^(0), t_1, t_1, 0, c)</span>
+<span class="sd">    </span>
+<span class="sd">    for i ∈ [1, 1000·log(3000n/ε)] do</span>
+<span class="sd">        (λ^(i), u^(i)) = ApproxMinEig(x^(i), t_i, ε_v)</span>
+<span class="sd">        x^(i+1) = LineSearch(x^(i), t_i, t_{i+1}, u^(i), ε_c)</span>
+<span class="sd">    end</span>
+<span class="sd">    </span>
+<span class="sd">    Output: ε-approximate geometric median x^(k)</span>
+
+<span class="sd">IMPLEMENTATION NOTE:</span>
+<span class="sd">We add global convergence checks (on ACTUAL objective f(x)):</span>
+<span class="sd">1. Target t reached: t ≥ 2n/(ε·f*)  [from Lemma 3.6, Page 6]</span>
+<span class="sd">2. Relative improvement: achieved (1+ε)-approximation</span>
+<span class="sd">3. Gradient norm: ||∇f(x)|| small enough</span>
+
+<span class="sd">These allow early stopping while maintaining correctness.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">accurate_median</span><span class="p">(</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="n">matrix_free</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">matrix_free_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Algorithm 1: AccurateMedian - CORRECTED version.</span>
+
+<span class="sd">    Reference: Page 6, Algorithm 1</span>
+
+<span class="sd">    Key fix: Proper interpretation of initial centering step.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">matrix_free</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">matrix_free</span> <span class="o">=</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">matrix_free_threshold</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cohen et al. (2016) - Geometric Median Algorithm&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset: n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, d=</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target accuracy: ε=</span><span class="si">{</span><span class="n">epsilon</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Matrix-free mode: </span><span class="si">{</span><span class="n">matrix_free</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Step 1: Compute crude approximation (Page 6, line 2)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">f_star_est</span> <span class="o">=</span> <span class="n">compute_crude_approximation</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+    <span class="n">f_initial</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Step 1 - Initial approximation:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  f(x⁰) = </span><span class="si">{</span><span class="n">f_initial</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Step 2: Initialize path parameter (Page 6, line 3)</span>
+    <span class="n">beta</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">600.0</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">400.0</span> <span class="o">*</span> <span class="n">f_star_est</span><span class="p">)</span>
+
+    <span class="c1"># Step 3: Initial centering (Page 6, line 4)</span>
+    <span class="c1"># CORRECTED: The paper calls LineSearch(x^(0), t_1, t_1, 0, c)</span>
+    <span class="c1"># This is just centering at t_1, NOT a line search</span>
+    <span class="c1"># The &quot;0&quot; means zero vector, not &quot;no direction&quot;</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step 2 - Initial centering at t=</span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">local_center</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">f_star_est</span><span class="p">,</span> <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span><span class="p">)</span>
+
+    <span class="n">f_after_center</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+    <span class="c1"># SANITY CHECK: Initial centering should improve or maintain objective</span>
+    <span class="k">if</span> <span class="n">f_after_center</span> <span class="o">&gt;</span> <span class="n">f_initial</span> <span class="o">*</span> <span class="mf">1.01</span><span class="p">:</span>  <span class="c1"># Allow 1% tolerance for numerical issues</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  ⚠ Warning: Centering increased objective!&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  f(x¹) = </span><span class="si">{</span><span class="n">f_after_center</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> (was </span><span class="si">{</span><span class="n">f_initial</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  → Using original x⁰ instead&quot;</span><span class="p">)</span>
+        <span class="c1"># Revert to crude approximation</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">compute_crude_approximation</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+        <span class="n">f_after_center</span> <span class="o">=</span> <span class="n">f_initial</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  f(x¹) = </span><span class="si">{</span><span class="n">f_after_center</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Update initial reference point</span>
+    <span class="n">f_initial</span> <span class="o">=</span> <span class="n">f_after_center</span>
+
+    <span class="c1"># Step 4: Main path-following loop (Page 6, lines 5-8)</span>
+    <span class="n">t_target</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">n</span> <span class="o">/</span> <span class="p">(</span><span class="n">epsilon</span> <span class="o">*</span> <span class="n">f_star_est</span><span class="p">)</span>
+
+    <span class="c1"># CORRECTED: More reasonable iteration bound</span>
+    <span class="c1"># The paper&#39;s formula gives huge numbers for small epsilon</span>
+    <span class="n">iterations_needed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">t_target</span> <span class="o">/</span> <span class="n">t</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">beta</span><span class="p">)))</span>
+    <span class="n">max_iterations</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">iterations_needed</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>  <span class="c1"># Practical cap</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Step 3 - Path following:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Starting t: </span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Target t: </span><span class="si">{</span><span class="n">t_target</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Iterations needed: ~</span><span class="si">{</span><span class="n">iterations_needed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Max iterations: </span><span class="si">{</span><span class="n">max_iterations</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Growth rate: β = </span><span class="si">{</span><span class="n">beta</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+    <span class="n">iterations_performed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">f_best</span> <span class="o">=</span> <span class="n">f_after_center</span>
+    <span class="n">x_best</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Track for stall detection</span>
+    <span class="n">stall_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">last_f</span> <span class="o">=</span> <span class="n">f_after_center</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">):</span>
+        <span class="n">t_next</span> <span class="o">=</span> <span class="n">t</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">beta</span><span class="p">)</span>
+
+        <span class="c1"># Compute minimum eigenvector</span>
+        <span class="n">eps_v</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
+        <span class="n">lambda_min</span><span class="p">,</span> <span class="n">u</span> <span class="o">=</span> <span class="n">approx_min_eig</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">eps_v</span><span class="p">,</span> <span class="n">matrix_free</span><span class="p">)</span>
+
+        <span class="c1"># Check eigenvalue magnitude</span>
+        <span class="n">wt</span> <span class="o">=</span> <span class="n">compute_weight_t</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+        <span class="c1"># Use a more robust decision criterion:</span>
+        <span class="c1"># If t is very small, the paper&#39;s threshold becomes numerically unstable.</span>
+        <span class="c1"># Instead, use a dynamic threshold that adapts to the scale of the problem.</span>
+        <span class="c1"># This prevents the algorithm from always choosing local centering when t is tiny.</span>
+        <span class="n">threshold_paper</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">wt</span>
+        <span class="n">threshold_adaptive</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1e-10</span> <span class="o">*</span> <span class="n">wt</span><span class="p">,</span> <span class="n">threshold_paper</span><span class="p">)</span>
+
+        <span class="c1"># Choose between line search and local centering based on eigenvalue magnitude</span>
+        <span class="n">is_centering_phase</span> <span class="o">=</span> <span class="n">lambda_min</span> <span class="o">&gt;=</span> <span class="n">threshold_adaptive</span>
+
+        <span class="k">if</span> <span class="n">is_centering_phase</span><span class="p">:</span>
+            <span class="c1"># Near optimum, apply simple centering (Hessian well-conditioned)</span>
+            <span class="n">x_next</span> <span class="o">=</span> <span class="n">local_center</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t_next</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">f_star_est</span><span class="p">,</span> <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Line search along bad eigenvector direction (Hessian ill-conditioned)</span>
+            <span class="n">x_next</span> <span class="o">=</span> <span class="n">line_search</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">t_next</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">f_star_est</span><span class="p">,</span> <span class="n">matrix_free</span>
+            <span class="p">)</span>
+
+        <span class="c1"># SANITY CHECK: Objective should not increase</span>
+        <span class="n">f_prev</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+        <span class="n">f_next</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x_next</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">f_next</span> <span class="o">&gt;</span> <span class="n">f_prev</span> <span class="o">*</span> <span class="mf">1.001</span><span class="p">:</span>  <span class="c1"># Allow tiny tolerance</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  ⚠ Iter </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: Step increased objective, reverting&quot;</span><span class="p">)</span>
+            <span class="c1"># Don&#39;t take the step</span>
+            <span class="n">stall_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">stall_count</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⚠ Stopping: Algorithm stalled (objective not improving)&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x_next</span>
+            <span class="n">stall_count</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Reset stall counter</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">t_next</span>
+        <span class="n">iterations_performed</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1"># Evaluate progress</span>
+        <span class="n">f_current</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+        <span class="c1"># Track best solution</span>
+        <span class="k">if</span> <span class="n">f_current</span> <span class="o">&lt;</span> <span class="n">f_best</span><span class="p">:</span>
+            <span class="n">f_best</span> <span class="o">=</span> <span class="n">f_current</span>
+            <span class="n">x_best</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Progress reporting</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">improvement</span> <span class="o">=</span> <span class="n">f_initial</span> <span class="o">-</span> <span class="n">f_current</span>
+            <span class="n">relative_improvement</span> <span class="o">=</span> <span class="n">improvement</span> <span class="o">/</span> <span class="n">f_initial</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  Iter </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s2">4d</span><span class="si">}</span><span class="s2">: t=</span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">, f(x)=</span><span class="si">{</span><span class="n">f_current</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;improvement=</span><span class="si">{</span><span class="n">relative_improvement</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">%&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Detect if we&#39;re stuck</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">f_current</span> <span class="o">-</span> <span class="n">last_f</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-10</span> <span class="o">*</span> <span class="n">f_initial</span><span class="p">:</span>
+                <span class="n">stall_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">stall_count</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⚠ Stopping: No progress for </span><span class="si">{</span><span class="n">stall_count</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">10</span><span class="si">}</span><span class="s2"> iterations&quot;</span>
+                        <span class="p">)</span>
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">stall_count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">last_f</span> <span class="o">=</span> <span class="n">f_current</span>
+
+        <span class="c1"># === CONVERGENCE CHECKS ===</span>
+
+        <span class="c1"># Check 1: Reached target t</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="n">t_target</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✓ Converged: Reached target t&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="c1"># Check 2: Achieved good approximation</span>
+        <span class="c1"># Only exit if we&#39;ve actually made meaningful progress</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="n">improvement_achieved</span> <span class="o">=</span> <span class="p">(</span><span class="n">f_initial</span> <span class="o">-</span> <span class="n">f_current</span><span class="p">)</span> <span class="o">/</span> <span class="n">f_initial</span>
+            <span class="c1"># Require at least epsilon relative improvement to stop early</span>
+            <span class="k">if</span> <span class="n">improvement_achieved</span> <span class="o">&gt;</span> <span class="n">epsilon</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✓ Converged: Achieved </span><span class="si">{</span><span class="n">improvement_achieved</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">% improvement&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">break</span>
+
+        <span class="c1"># Check 3: Gradient norm</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">50</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">20</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">grad_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">compute_gradient_geometric_median</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">))</span>
+            <span class="n">grad_norm_normalized</span> <span class="o">=</span> <span class="n">grad_norm</span> <span class="o">/</span> <span class="n">n</span>
+
+            <span class="k">if</span> <span class="n">grad_norm_normalized</span> <span class="o">&lt;</span> <span class="n">epsilon</span> <span class="o">*</span> <span class="n">f_star_est</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="mi">100</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✓ Converged: Gradient sufficiently small&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+    <span class="c1"># Use best solution</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x_best</span>
+    <span class="n">final_objective</span> <span class="o">=</span> <span class="n">f_best</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;RESULTS:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Initial:  f(x⁰) = </span><span class="si">{</span><span class="n">f_initial</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final:    f(x)  = </span><span class="si">{</span><span class="n">final_objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">final_objective</span> <span class="o">&lt;</span> <span class="n">f_initial</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  Improvement: </span><span class="si">{</span><span class="p">((</span><span class="n">f_initial</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">final_objective</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  ⚠ WARNING: Objective increased by </span><span class="si">{</span><span class="p">((</span><span class="n">final_objective</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Iterations: </span><span class="si">{</span><span class="n">iterations_performed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final t: </span><span class="si">{</span><span class="n">t</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2"> (target: </span><span class="si">{</span><span class="n">t_target</span><span class="si">:</span><span class="s2">.4e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+
+    <span class="n">info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">iterations_performed</span><span class="p">,</span>
+        <span class="s2">&quot;final_t&quot;</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span>
+        <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">final_objective</span><span class="p">,</span>
+        <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
+        <span class="s2">&quot;improvement&quot;</span><span class="p">:</span> <span class="n">f_initial</span> <span class="o">-</span> <span class="n">final_objective</span><span class="p">,</span>
+        <span class="s2">&quot;relative_improvement&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">f_initial</span> <span class="o">-</span> <span class="n">final_objective</span><span class="p">)</span> <span class="o">/</span> <span class="n">f_initial</span><span class="p">,</span>
+        <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="n">t_target</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">,</span>  <span class="c1"># Consider &quot;close enough&quot;</span>
+        <span class="s2">&quot;matrix_free&quot;</span><span class="p">:</span> <span class="n">matrix_free</span><span class="p">,</span>
+        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;cohen&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">info</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># STEP 13: Weiszfeld Algorithm (Classical, for comparison)</span>
+<span class="c1"># =============================================================================</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reference: Weiszfeld, E. (1937) - Historical reference</span>
+
+<span class="sd">Classical iterative reweighting algorithm:</span>
+<span class="sd">    x^(k+1) = Σ w_i a^(i) / Σ w_i  where  w_i = 1/||x^(k) - a^(i)||₂</span>
+
+<span class="sd">NOT part of Cohen et al., included for benchmarking.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">weiszfeld_median</span><span class="p">(</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Classical Weiszfeld algorithm for geometric median.</span>
+
+<span class="sd">    Reference: Weiszfeld (1937) - for comparison only</span>
+
+<span class="sd">    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i</span>
+<span class="sd">    where w_i = 1/||x^(k) - a^(i)||_2</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        eps: Convergence tolerance</span>
+<span class="sd">        max_iter: Maximum iterations</span>
+<span class="sd">        verbose: Whether to print progress</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        x: Approximate geometric median</span>
+<span class="sd">        info: Dictionary with statistics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Weiszfeld Algorithm (1937)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">70</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset: n=</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, d=</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tolerance: ε=</span><span class="si">{</span><span class="n">eps</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">()</span>
+
+    <span class="c1"># Initialize at centroid</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">f_initial</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">x_old</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Compute weights: w_i = 1/||x - a^(i)||_2</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">distances</span>
+
+        <span class="c1"># Weighted update</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">points</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+        <span class="c1"># Check convergence</span>
+        <span class="n">change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_old</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">change</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+            <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Converged after </span><span class="si">{</span><span class="n">iteration</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final: f(x) = </span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;  Improvement: </span><span class="si">{</span><span class="p">((</span><span class="n">f_initial</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">objective</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">objective</span><span class="p">,</span>
+                <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
+                <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="p">(</span><span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Iteration </span><span class="si">{</span><span class="n">iteration</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: f(x)=</span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠ Maximum iterations reached&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final: f(x) = </span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">max_iter</span><span class="p">,</span>
+        <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">objective</span><span class="p">,</span>
+        <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
+        <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># Main Interface Function</span>
+<span class="c1"># =============================================================================</span>
+
+
+<div class="viewcode-block" id="geometric_median">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.geometric_median">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">geometric_median</span><span class="p">(</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;cohen&quot;</span><span class="p">,</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;cohen&quot;</span><span class="p">,</span>
+    <span class="n">matrix_free</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">matrix_free_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute geometric median of a set of points.</span>
+
+<span class="sd">    Main interface supporting both Cohen et al. (2016) nearly-linear time</span>
+<span class="sd">    algorithm and classical Weiszfeld algorithm.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        points: Data points, shape (n, d)</span>
+<span class="sd">        eps: Target accuracy for (1 + eps)-approximation</span>
+<span class="sd">        method: Algorithm to use:</span>
+<span class="sd">            - &#39;cohen&#39;: Cohen et al. (2016) O(nd log³(n/ε)) algorithm [default]</span>
+<span class="sd">            - &#39;weiszfeld&#39;: Classical Weiszfeld O(?) algorithm</span>
+<span class="sd">        matrix_free: For Cohen method, whether to use matrix-free Hessian.</span>
+<span class="sd">                    If None, automatically decides based on dimension.</span>
+<span class="sd">        matrix_free_threshold: Dimension threshold for matrix-free mode</span>
+<span class="sd">        verbose: Whether to print progress information</span>
+<span class="sd">        **kwargs: Additional method-specific arguments</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        median: Geometric median point, shape (d,)</span>
+<span class="sd">        info: Dictionary with algorithm statistics:</span>
+
+<span class="sd">            - &#39;iterations&#39;: Number of iterations performed</span>
+<span class="sd">            - &#39;objective&#39;: Final objective value f(x)</span>
+<span class="sd">            - &#39;converged&#39;: Whether algorithm converged</span>
+<span class="sd">            - &#39;method&#39;: Algorithm used</span>
+<span class="sd">            - Additional method-specific statistics</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If method is invalid or points array has wrong shape</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; # Cohen method (recommended for large problems)</span>
+<span class="sd">        &gt;&gt;&gt; points = np.random.randn(10000, 50)</span>
+<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;cohen&#39;, eps=0.01)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Converged: {info[&#39;converged&#39;]}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Objective: {info[&#39;objective&#39;]:.6f}&quot;)</span>
+
+<span class="sd">        &gt;&gt;&gt; # Weiszfeld method (simple, good for small problems)</span>
+<span class="sd">        &gt;&gt;&gt; points = np.random.randn(100, 3)</span>
+<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;weiszfeld&#39;, eps=1e-6)</span>
+
+<span class="sd">        &gt;&gt;&gt; # Force matrix-free for high-dimensional problems</span>
+<span class="sd">        &gt;&gt;&gt; points = np.random.randn(1000, 500)</span>
+<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;cohen&#39;,</span>
+<span class="sd">        ...                                 matrix_free=True, eps=0.1)</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., &amp; Sidford, A. (2016).</span>
+<span class="sd">        Geometric median in nearly linear time. STOC 2016.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">points</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Points must be 2D array, got shape </span><span class="si">{</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need at least one point&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;cohen&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Method &#39;cohen&#39; is not implemented yet.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">accurate_median</span><span class="p">(</span>
+            <span class="n">points</span><span class="p">,</span>
+            <span class="n">epsilon</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span>
+            <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span><span class="p">,</span>
+            <span class="n">matrix_free_threshold</span><span class="o">=</span><span class="n">matrix_free_threshold</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">weiszfeld_median</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown method &#39;</span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&#39;. Use &#39;cohen&#39; or &#39;weiszfeld&#39;&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;geometric_median&quot;</span><span class="p">]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

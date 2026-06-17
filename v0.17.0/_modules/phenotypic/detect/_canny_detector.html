@@ -1,0 +1,872 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.detect._canny_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/detect/_canny_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/detect/_canny_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect._canny_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.detect._canny_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">feature</span><span class="p">,</span> <span class="n">morphology</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
+
+
+<div class="viewcode-block" id="CannyDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.CannyDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CannyDetector</span><span class="p">(</span><span class="n">ThresholdDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by tracing edges and labelling connected regions.</span>
+
+<span class="sd">    Applies multi-stage Canny edge detection — Gaussian smoothing, gradient</span>
+<span class="sd">    estimation, non-maximum suppression, and dual-threshold hysteresis — to</span>
+<span class="sd">    produce thin edge pixels, then labels connected components of either the</span>
+<span class="sd">    inverted edge map or the edge map itself. This does not explicitly close</span>
+<span class="sd">    contours or fill interiors; colony-sized regions are recovered only when</span>
+<span class="sd">    edges form useful barriers and size filtering removes background regions.</span>
+<span class="sd">    Because detection relies on boundary contrast rather than absolute</span>
+<span class="sd">    intensity, it can remain useful on plates with uneven illumination or</span>
+<span class="sd">    translucent colonies. For a full comparison of detection strategies, see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Well-separated colonies on solid media where colony edges are sharper</span>
+<span class="sd">          than the intensity difference relative to background.</span>
+<span class="sd">        - Translucent or lightly pigmented colonies that lack sufficient</span>
+<span class="sd">          intensity contrast for threshold-based methods.</span>
+<span class="sd">        - Plates with heterogeneous colony texture or pigmentation that cause</span>
+<span class="sd">          intensity-based methods to fragment objects.</span>
+<span class="sd">        - Images with moderate vignetting where edge contrast is preserved even</span>
+<span class="sd">          though absolute intensity varies across the plate.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`OtsuDetector` when colonies differ from background primarily</span>
+<span class="sd">          in brightness rather than edge contrast.</span>
+<span class="sd">        - :class:`WatershedDetector` when touching colonies must be separated</span>
+<span class="sd">          by region-growing from interior distance-transform seeds.</span>
+<span class="sd">        - :class:`HysteresisDetector` when dual-threshold intensity</span>
+<span class="sd">          segmentation is preferred over edge-based detection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sigma: Standard deviation of the Gaussian pre-smoothing kernel in</span>
+<span class="sd">            pixels. Larger values suppress high-frequency noise but broaden</span>
+<span class="sd">            edge profiles and may merge boundaries of closely spaced colonies.</span>
+<span class="sd">            Typical range: 0.5--3.0. Default: 1.0. A reasonable starting point</span>
+<span class="sd">            for noisy CCD images or plates with fine colony texture is 2.0--3.0.</span>
+<span class="sd">        low_threshold: Lower hysteresis gate. When ``use_quantiles`` is</span>
+<span class="sd">            ``True``, interpreted as a fractional rank of gradient magnitudes</span>
+<span class="sd">            (0.1 retains edges stronger than 10 % of all measured gradients).</span>
+<span class="sd">            When ``False``, an absolute gradient value requiring per-setup</span>
+<span class="sd">            calibration. Raise to prune weak noise-driven edge fragments;</span>
+<span class="sd">            lower to recover faint boundaries on low-contrast colonies.</span>
+<span class="sd">            Typical quantile range: 0.05--0.2. Default: 0.1.</span>
+<span class="sd">        high_threshold: Upper hysteresis gate that seeds new edge chains. Must</span>
+<span class="sd">            exceed ``low_threshold``. A higher value seeds fewer but more</span>
+<span class="sd">            confident edge segments; a lower value seeds more chains at the</span>
+<span class="sd">            risk of noise-seeded spurious regions. A 2:1 to 3:1 high-to-low</span>
+<span class="sd">            ratio is effective for moderately noisy images. Typical quantile</span>
+<span class="sd">            range: 0.1--0.4. Default: 0.2.</span>
+<span class="sd">        use_quantiles: When ``True`` (default), thresholds are interpreted as</span>
+<span class="sd">            gradient-magnitude percentile ranks, adapting automatically to</span>
+<span class="sd">            image contrast across batches with variable scanner gain or</span>
+<span class="sd">            illumination. When ``False``, thresholds are absolute gradient</span>
+<span class="sd">            values for tightly controlled imaging conditions. Default: True.</span>
+<span class="sd">        min_size: Minimum connected-region area in pixels. Regions smaller than</span>
+<span class="sd">            this are discarded as dust, debris, or condensation droplets after</span>
+<span class="sd">            labelling. Typical range: 20--500 px, scaling with image</span>
+<span class="sd">            resolution. Default: 50.</span>
+<span class="sd">        invert_edges: When ``True`` (default), the binary edge map is inverted</span>
+<span class="sd">            before labelling so that non-edge regions can become colony objects.</span>
+<span class="sd">            Set to ``False`` to label the edge pixels themselves, which is</span>
+<span class="sd">            useful for inspecting edge closure and gap locations during</span>
+<span class="sd">            parameter tuning. Default: True.</span>
+<span class="sd">        connectivity: Pixel connectivity for connected-component labelling.</span>
+<span class="sd">            ``1`` for 4-connectivity; ``2`` for 8-connectivity. Use ``2``</span>
+<span class="sd">            (default) to bridge single-pixel diagonal gaps in Canny edge</span>
+<span class="sd">            contours, preventing spurious region splits at diagonal steps.</span>
+<span class="sd">            Default: 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmap`` set to a labelled colony map where</span>
+<span class="sd">        each retained connected region receives a unique integer label, and ``objmask``</span>
+<span class="sd">        derived from the non-zero entries of that map.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``high_threshold`` is less than ``low_threshold``.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        [1] J. Canny, &quot;A computational approach to edge detection,&quot; *IEEE</span>
+<span class="sd">        Trans. Pattern Anal. Mach. Intell.*, vol. 8, no. 6, pp. 679--698,</span>
+<span class="sd">        Nov. 1986.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies` for a step-by-step</span>
+<span class="sd">        tutorial demonstrating colony detection on real plate images.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm` for a guide to</span>
+<span class="sd">        selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared` for an in-depth</span>
+<span class="sd">        comparison of all detection strategies and their failure modes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="c1"># Mode-dependent: a fraction when use_quantiles=True, an absolute gradient</span>
+    <span class="c1"># value otherwise — so a TuneSpec search window only, no tight Field bound.</span>
+    <span class="n">low_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="c1"># Search windows are deliberately NON-OVERLAPPING (low ≤ 0.2 ≤ high) so the</span>
+    <span class="c1"># optimizer can never sample ``low &gt; high`` — a degenerate Canny config. The</span>
+    <span class="c1"># constructor params are unchanged (no derived/delta field), so serialized</span>
+    <span class="c1"># pipelines keep round-tripping; the ``_check_threshold_order`` validator is a</span>
+    <span class="c1"># belt-and-suspenders guard for manually-constructed detectors.</span>
+    <span class="n">high_threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">use_quantiles</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># TODO: review bound (unverified vs literature)</span>
+    <span class="n">min_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">500</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">invert_edges</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">connectivity</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_threshold_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CannyDetector&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a configuration where ``high_threshold &lt;= low_threshold``.</span>
+
+<span class="sd">        Canny hysteresis requires the upper threshold to strictly exceed the</span>
+<span class="sd">        lower one; a crossed pair produces a degenerate edge map. The tuning</span>
+<span class="sd">        search windows are already non-overlapping (``low ≤ 0.2 ≤ high``), so the</span>
+<span class="sd">        optimizer can never reach this state — this guard only fires for a</span>
+<span class="sd">        hand-constructed detector. The defaults (low ``0.1``, high ``0.2``) pass.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` unchanged when the thresholds are correctly ordered.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ``high_threshold &lt;= low_threshold``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">high_threshold</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">low_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;high_threshold (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">high_threshold</span><span class="si">}</span><span class="s2">) must be greater than &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;low_threshold (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">low_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+
+        <span class="n">enhanced_matrix</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:]</span>
+
+        <span class="c1"># Apply Canny edge detection</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">canny</span><span class="p">(</span>
+                <span class="n">image</span><span class="o">=</span><span class="n">enhanced_matrix</span><span class="p">,</span>
+                <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
+                <span class="n">low_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">low_threshold</span><span class="p">,</span>
+                <span class="n">high_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">high_threshold</span><span class="p">,</span>
+                <span class="n">use_quantiles</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">use_quantiles</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Invert edges to get regions (colonies) if requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">invert_edges</span><span class="p">:</span>
+            <span class="n">regions</span> <span class="o">=</span> <span class="o">~</span><span class="n">edges</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">regions</span> <span class="o">=</span> <span class="n">edges</span>
+
+        <span class="c1"># Label connected components. ``ndimage.label`` returns</span>
+        <span class="c1"># ``(labels, count)`` here (default ``output=None``); the cast pins the</span>
+        <span class="c1"># tuple branch of its overloaded return for the type checker.</span>
+        <span class="n">labeled</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="s2">&quot;tuple[Any, int]&quot;</span><span class="p">,</span>
+                <span class="n">ndimage</span><span class="o">.</span><span class="n">label</span><span class="p">(</span>
+                        <span class="n">regions</span><span class="p">,</span>
+                        <span class="n">structure</span><span class="o">=</span><span class="n">ndimage</span><span class="o">.</span><span class="n">generate_binary_structure</span><span class="p">(</span>
+                                <span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span>
+                        <span class="p">),</span>
+                <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">labeled</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Remove small objects (pass a boolean array when only one label</span>
+        <span class="c1"># exists to avoid skimage&#39;s &quot;single-label&quot; ambiguity warning).</span>
+        <span class="k">if</span> <span class="n">objmap</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">objmap</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span>
+                    <span class="n">objmap</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">),</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">objmap</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">objmap</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">remove_small_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">min_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_size</span><span class="p">)</span>
+
+        <span class="c1"># Ensure correct dtype</span>
+        <span class="k">if</span> <span class="n">objmap</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">:</span>
+            <span class="n">objmap</span> <span class="o">=</span> <span class="n">objmap</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">)</span>
+
+        <span class="c1"># Relabel to ensure consecutive labels</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">objmap</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">relabel</span><span class="p">(</span><span class="n">connectivity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connectivity</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">image</span></div>
+
+
+
+<span class="c1"># Set the docstring so that it appears in the sphinx documentation</span>
+<span class="n">CannyDetector</span><span class="o">.</span><span class="n">apply</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">CannyDetector</span><span class="o">.</span><span class="n">_operate</span><span class="o">.</span><span class="vm">__doc__</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

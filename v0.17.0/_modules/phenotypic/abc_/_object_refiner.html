@@ -1,0 +1,1289 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._object_refiner &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_object_refiner';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/abc_/_object_refiner.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._object_refiner</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._object_refiner</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._image_operation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_operation_integrity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+
+<span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
+<div class="viewcode-block" id="ObjectRefiner">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ObjectRefiner</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for post-detection refinement operations that modify object masks and maps.</span>
+
+<span class="sd">    ObjectRefiner is the foundation for all post-detection cleanup algorithms that refine colony</span>
+<span class="sd">    detections through morphological operations, filtering, and merging. Unlike ObjectDetector</span>
+<span class="sd">    (which analyzes image data to create initial detections), ObjectRefiner only modifies the</span>
+<span class="sd">    object mask and labeled map, leaving preprocessing data untouched.</span>
+
+<span class="sd">    **Quick Decision Guide: ObjectRefiner vs Alternatives**</span>
+
+<span class="sd">    - **Use ObjectRefiner if:** Detector produces mostly correct detections with manageable noise/artifacts</span>
+<span class="sd">      (small objects, fragmented regions, holes, low circularity) that can be characterized and filtered.</span>
+<span class="sd">    - **Use ObjectDetector if:** Detector fundamentally fails to detect colonies or produces too much noise</span>
+<span class="sd">      to salvage via post-hoc cleanup.</span>
+<span class="sd">    - **Use ImageEnhancer if:** Problem is image quality (blur, contrast, noise) affecting detection;</span>
+<span class="sd">      improve input before detection rather than refining output.</span>
+<span class="sd">    - **ObjectRefiner vs ObjectDetector:** Refiners work on existing masks (objmask/objmap), detectors create</span>
+<span class="sd">      masks from image data. Refiners are for cleanup, detectors are for initial analysis.</span>
+<span class="sd">    - **Size filtering:** Use for removing dust, noise, agar artifacts (too small) or unrealistic regions</span>
+<span class="sd">      (too large). Example: [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py).</span>
+<span class="sd">    - **Morphological cleanup:** Use for fragmented edges, thin protrusions, internal gaps. Example:</span>
+<span class="sd">      [MaskDilation](src/phenotypic/refine/_mask_dilation.py) (uses FootprintMixin).</span>
+<span class="sd">    - **Hole filling:** Use for voids from uneven illumination or pigment patterns within colonies.</span>
+<span class="sd">    - **Shape filtering:** Use for removing elongated artifacts, merged colonies, low-circularity debris.</span>
+<span class="sd">    - **Merging operations:** Use for bridging fragmented colonies or combining nearby regions. Example:</span>
+<span class="sd">      [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py).</span>
+<span class="sd">    - **When to chain:** Combine multiple refiners in ImagePipeline (remove small noise before filling holes,</span>
+<span class="sd">      filter shapes before morphological operations) for clearer, divide-and-conquer approach.</span>
+
+<span class="sd">    **What is ObjectRefiner?**</span>
+
+<span class="sd">    ObjectRefiner operates on the principle of **non-destructive post-processing**: all modifications</span>
+<span class="sd">    are applied only to `image.objmask` (binary mask) and `image.objmap` (labeled map), while original</span>
+<span class="sd">    image components (`image.rgb`, `image.gray`, `image.detect_mat`) remain protected and unchanged.</span>
+<span class="sd">    This allows you to experiment with multiple refinement chains without affecting raw or enhanced</span>
+<span class="sd">    image data, ensuring reproducibility and enabling comparison of different cleanup strategies.</span>
+
+<span class="sd">    **Key Principle: ObjectRefiner Modifies Only Detection Results**</span>
+
+<span class="sd">    ObjectRefiner operations:</span>
+
+<span class="sd">    - **Read** `image.objmask[:]` (binary mask) and `image.objmap[:]` (labeled map) from prior detection.</span>
+<span class="sd">    - **Write** only `image.objmask[:]` and `image.objmap[:]` with refined results.</span>
+<span class="sd">    - **Protect** `image.rgb`, `image.gray`, and `image.detect_mat` via automatic integrity validation</span>
+<span class="sd">      (`@validate_operation_integrity` decorator).</span>
+
+<span class="sd">    Any attempt to modify protected image components raises `OperationIntegrityError` when</span>
+<span class="sd">    `VALIDATE_OPS=True` in the environment (enabled during development/testing).</span>
+
+<span class="sd">    **Role in the Detection-to-Measurement Pipeline**</span>
+
+<span class="sd">    ObjectRefiner sits after detection but before measurement:</span>
+
+<span class="sd">    .. code-block:: text</span>
+
+<span class="sd">        Raw Image (rgb, gray, detect_mat)</span>
+<span class="sd">              ↓</span>
+<span class="sd">        ImageEnhancer(s) → Improve visibility, reduce noise</span>
+<span class="sd">              ↓</span>
+<span class="sd">        ObjectDetector → Detect colonies/objects (initial, often noisy)</span>
+<span class="sd">              ↓</span>
+<span class="sd">        ObjectRefiner(s) → Clean up detections (optional but recommended)</span>
+<span class="sd">              ↓</span>
+<span class="sd">        MeasureFeatures → Extract colony properties</span>
+<span class="sd">              ↓</span>
+<span class="sd">        Analysis → Statistical phenotyping, clustering, growth curves</span>
+
+<span class="sd">    When you call `refiner.apply(image)`, you get back an Image with refined `objmask` and `objmap`</span>
+<span class="sd">    but identical preprocessing and image data—ready for downstream measurement and analysis.</span>
+
+<span class="sd">    **Why Refinement Matters for Colony Phenotyping**</span>
+
+<span class="sd">    Raw detections from ObjectDetector often contain artifacts:</span>
+
+<span class="sd">    - **Spurious small objects:** Dust, sensor noise, agar texture, or salt-and-pepper thresholding</span>
+<span class="sd">      artifacts create false-positive detections that bias colony counts and statistics.</span>
+<span class="sd">    - **Fragmented colonies:** Uneven lighting, pigment heterogeneity, or aggressive thresholding</span>
+<span class="sd">      fragments a single colony into multiple disconnected regions, inflating counts and distorting</span>
+<span class="sd">      area measurements.</span>
+<span class="sd">    - **Merged colonies:** In dense plates or when colonies touch, thresholding may merge adjacent</span>
+<span class="sd">      colonies into a single detection, losing individuality and requiring post-hoc separation.</span>
+<span class="sd">    - **Holes in masks:** Internal voids within colony masks (from glare or non-uniform pigmentation)</span>
+<span class="sd">      create discontinuous shapes that confuse morphological measurements or downstream analysis.</span>
+<span class="sd">    - **Border artifacts:** Colonies touching plate or well boundaries may be incomplete, biasing</span>
+<span class="sd">      per-well phenotyping in high-throughput formats.</span>
+
+<span class="sd">    Refinement operations target these issues with **domain-specific strategies**: morphological</span>
+<span class="sd">    operations (erosion, dilation, opening, closing), shape filtering (circularity, solidity),</span>
+<span class="sd">    size thresholding, and boundary enforcement to produce clean, valid detection results.</span>
+
+<span class="sd">    **Differences: ObjectDetector vs ObjectRefiner**</span>
+
+<span class="sd">    - **ObjectDetector:** Analyzes image data (grayscale, RGB, color spaces) and produces initial</span>
+<span class="sd">      `objmask` and `objmap`. Input: enhanced image. Output: detection results. Typical use:</span>
+<span class="sd">      thresholding, edge detection, peak finding, watershed segmentation.</span>
+
+<span class="sd">    - **ObjectRefiner:** Modifies existing `objmask` and `objmap` without analyzing image data.</span>
+<span class="sd">      Input: detection results. Output: refined detection results. Typical use: size filtering,</span>
+<span class="sd">      morphological cleanup, shape filtering, merging/splitting objects, border removal.</span>
+
+<span class="sd">    **When to Use ObjectRefiner vs Building Better ObjectDetector**</span>
+
+<span class="sd">    Should you refine or improve the detector? Consider:</span>
+
+<span class="sd">    - **Use ObjectRefiner if:**</span>
+<span class="sd">      - The detector produces mostly correct detections but with manageable noise/artifacts</span>
+<span class="sd">      - You can characterize the artifacts (small, fragmented, low-circularity, etc.)</span>
+<span class="sd">      - Chaining simple refinement operations is clearer than tuning detector parameters</span>
+<span class="sd">      - You want to compare cleanup strategies or enable parameter sweeps</span>
+
+<span class="sd">    - **Improve ObjectDetector if:**</span>
+<span class="sd">      - The detector fundamentally fails (misses most colonies, detects at wrong threshold)</span>
+<span class="sd">      - Raw detections are too noisy to salvage through simple refinement</span>
+<span class="sd">      - The problem is best solved through domain-specific detection logic, not post-hoc cleanup</span>
+<span class="sd">      - You have labeled ground truth for detector optimization</span>
+
+<span class="sd">    **Typical Refinement Strategies**</span>
+
+<span class="sd">    Common ObjectRefiner implementations address specific issues:</span>
+
+<span class="sd">    - **Size filtering:** [SmallObjectRemover](src/phenotypic/refine/_small_object_remover.py) removes</span>
+<span class="sd">      objects below/above thresholds. Targets: spurious noise, dust, agar artifacts, oversized regions.</span>
+
+<span class="sd">    - **Shape filtering:** Remove objects with poor morphology (low circularity, low solidity, high</span>
+<span class="sd">      aspect ratio). Targets: elongated artifacts, merged colonies, debris.</span>
+
+<span class="sd">    - **Hole filling:** Fill interior voids within colony masks for solid shape representation.</span>
+<span class="sd">      Targets: voids from uneven illumination, pigment heterogeneity. Improves area measurements.</span>
+
+<span class="sd">    - **Morphological operations:** Erosion, dilation, opening, closing with [MaskDilation](src/phenotypic/refine/_mask_dilation.py),</span>
+<span class="sd">      [MaskErosion](src/phenotypic/refine/_mask_erosion.py), [MaskOpening](src/phenotypic/refine/_mask_opening.py).</span>
+<span class="sd">      Targets: fragmented edges, thin protrusions, internal gaps. Uses FootprintMixin for shape control.</span>
+
+<span class="sd">    - **Border removal:** Remove or exclude objects touching image/well boundaries.</span>
+<span class="sd">      Targets: incomplete colonies in arrayed formats.</span>
+
+<span class="sd">    - **Merging/splitting:** [NearestNeighborMerger](src/phenotypic/refine/_nearest_neighbor_merger.py)</span>
+<span class="sd">      combines nearby objects via dilation and relabeling. Targets: fragmented colonies, nearby regions.</span>
+
+<span class="sd">    **Integrity Validation: Protection of Core Data**</span>
+
+<span class="sd">    ObjectRefiner uses the ``@validate_operation_integrity`` decorator on the ``apply()`` method</span>
+<span class="sd">    to guarantee that preprocessing data are never modified:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        @validate_operation_integrity(&#39;image.rgb&#39;, &#39;image.gray&#39;, &#39;image.detect_mat&#39;)</span>
+<span class="sd">        def apply(self, image: Image, inplace: bool = False) -&gt; Image:</span>
+<span class="sd">            return super().apply(image=image, inplace=inplace)</span>
+
+<span class="sd">    This decorator:</span>
+
+<span class="sd">    1. Calculates cryptographic signatures of `image.rgb`, `image.gray`, and `image.detect_mat`</span>
+<span class="sd">       **before** processing</span>
+<span class="sd">    2. Calls the parent `apply()` method to execute your `_operate()` implementation</span>
+<span class="sd">    3. Recalculates signatures **after** operation completes</span>
+<span class="sd">    4. Raises ``OperationIntegrityError`` if any protected component was modified</span>
+
+<span class="sd">    **Note:** Integrity validation only runs if the ``VALIDATE_OPS=True`` environment variable</span>
+<span class="sd">    is set (development-time safety; disabled in production for performance).</span>
+
+<span class="sd">    **Implementing a Custom ObjectRefiner**</span>
+
+<span class="sd">    Subclass ObjectRefiner and implement a single method:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        from phenotypic import Image</span>
+<span class="sd">        from skimage.morphology import remove_small_objects</span>
+
+<span class="sd">        class MyCustomRefiner(ObjectRefiner):</span>
+<span class="sd">            min_size: int = 50  # Annotated class-level field</span>
+
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">                # Modify ONLY objmap; read, process, write back</span>
+<span class="sd">                # objmask will be auto-updated from objmap via relabel()</span>
+<span class="sd">                refined_map = remove_small_objects(</span>
+<span class="sd">                    image.objmap[:], min_size=self.min_size</span>
+<span class="sd">                )</span>
+<span class="sd">                image.objmap[:] = refined_map</span>
+<span class="sd">                return image</span>
+
+<span class="sd">    **Morphological Operations with FootprintMixin**</span>
+
+<span class="sd">    For operations requiring morphological structuring elements (dilation, erosion, opening, closing),</span>
+<span class="sd">    inherit from FootprintMixin. See [MaskDilation](src/phenotypic/refine/_mask_dilation.py) for example:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        from phenotypic.tools_ import FootprintMixin</span>
+<span class="sd">        from phenotypic import Image</span>
+<span class="sd">        from skimage.morphology import dilation</span>
+
+<span class="sd">        class MyMorphRefiner(ObjectRefiner, FootprintMixin):</span>
+<span class="sd">            footprint_shape: str = &#39;disk&#39;  # Annotated class-level fields</span>
+<span class="sd">            footprint_width: int = 2</span>
+
+<span class="sd">            def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">                # Use _make_footprint from ObjectRefiner or FootprintMixin</span>
+<span class="sd">                fp = ObjectRefiner._make_footprint(</span>
+<span class="sd">                    self.footprint_shape, self.footprint_width</span>
+<span class="sd">                )</span>
+<span class="sd">                dilated = dilation(image.objmask[:], footprint=fp)</span>
+<span class="sd">                image.objmask[:] = dilated</span>
+<span class="sd">                # Reconstruct objmap from dilated mask</span>
+<span class="sd">                from scipy.ndimage import label as ndi_label</span>
+<span class="sd">                relabeled, _ = ndi_label(dilated)</span>
+<span class="sd">                image.objmap[:] = relabeled</span>
+<span class="sd">                return image</span>
+
+<span class="sd">    **Key Rules for Implementation:**</span>
+
+<span class="sd">    1. ``_operate()`` must be an **instance method** (access parameters via ``self``).</span>
+<span class="sd">    2. All parameters except `image` must be declared as annotated class-level fields.</span>
+<span class="sd">    3. **Only modify ``image.objmask[:]`` and ``image.objmap[:]``**—all other components are</span>
+<span class="sd">       protected. Reading image data is allowed but modifications will trigger integrity errors.</span>
+<span class="sd">    4. Always use the accessor pattern: ``image.objmap[:] = new_data`` (never direct attribute</span>
+<span class="sd">       assignment).</span>
+<span class="sd">    5. Return the modified Image object.</span>
+
+<span class="sd">    **Modifying objmask and objmap**</span>
+
+<span class="sd">    Within your `_operate()` method, use the accessor interface to read and write detection results:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        # Reading detection data</span>
+<span class="sd">        mask = image.objmask[:]          # Binary mask (True = object)</span>
+<span class="sd">        objmap = image.objmap[:]         # Labeled map (0 = background, 1+ = object label)</span>
+<span class="sd">        objects = image.objects          # High-level ObjectCollection interface</span>
+
+<span class="sd">        # Modifying detection data</span>
+<span class="sd">        image.objmask[:] = refined_mask  # Full replacement of binary mask</span>
+<span class="sd">        image.objmap[:] = refined_map    # Full replacement of labeled map</span>
+
+<span class="sd">        # Partial updates (boolean indexing)</span>
+<span class="sd">        # Mark certain labels as background (set to 0)</span>
+<span class="sd">        keep_labels = [1, 3, 5]  # Labels to retain</span>
+<span class="sd">        filtered_map = np.where(np.isin(objmap, keep_labels), objmap, 0)</span>
+<span class="sd">        image.objmap[:] = filtered_map</span>
+
+<span class="sd">    **Relationship Between objmask and objmap**</span>
+
+<span class="sd">    - **objmap (labeled map):** Each pixel contains the object label (0 = background, 1+ = object ID).</span>
+<span class="sd">      Authoritative source of truth; defines which pixels belong to which colony.</span>
+
+<span class="sd">    - **objmask (binary mask):** Simple binary version of objmap; True where objmap &gt; 0, False elsewhere.</span>
+<span class="sd">      Derived from objmap via `image.objmap.relabel()`.</span>
+
+<span class="sd">    When you modify objmap, objmask is automatically updated. When you modify objmask directly,</span>
+<span class="sd">    call `image.objmap.relabel()` to ensure consistency (or reconstruct objmap from objmask via</span>
+<span class="sd">    connected-component labeling).</span>
+
+<span class="sd">    **The _make_footprint() Static Utility**</span>
+
+<span class="sd">    ObjectRefiner provides a static helper for generating morphological structuring elements</span>
+<span class="sd">    (footprints) used in erosion, dilation, and other morphological operations:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        @staticmethod</span>
+<span class="sd">        def _make_footprint(shape: Literal[&quot;square&quot;, &quot;diamond&quot;, &quot;disk&quot;], width: int) -&gt; np.ndarray:</span>
+<span class="sd">            &#39;&#39;&#39;Creates a binary morphological shape for image processing.&#39;&#39;&#39;</span>
+
+<span class="sd">    **Footprint Shapes and When to Use Each**</span>
+
+<span class="sd">    - **&quot;disk&quot;:** Circular/isotropic shape. Best for preserving rounded colony shapes and</span>
+<span class="sd">      applying uniform processing in all directions. Use for: general-purpose morphology (dilation</span>
+<span class="sd">      to merge fragments, erosion to remove noise), operations that respect colony roundness.</span>
+
+<span class="sd">    - **&quot;square&quot;:** Square shape with 8-connectivity. Emphasizes horizontal/vertical edges</span>
+<span class="sd">      and aligns with pixel grid. Use for: grid-aligned artifacts, operations aligned with imaging</span>
+<span class="sd">      hardware, when processing speed matters (slightly faster than disk).</span>
+
+<span class="sd">    - **&quot;diamond&quot;:** Diamond-shaped (rotated square) shape with 4-connectivity. Creates a</span>
+<span class="sd">      cross-like neighborhood pattern. Use for: specialized cases where diagonal connections should</span>
+<span class="sd">      be de-emphasized; less common in practice.</span>
+
+<span class="sd">    **The width parameter** controls the neighborhood size (in pixels). Larger radii affect more</span>
+<span class="sd">    neighbors and produce broader morphological effects (merge more fragments, remove larger noise,</span>
+<span class="sd">    but risk bridging adjacent colonies). Choose width smaller than minimum inter-colony spacing</span>
+<span class="sd">    to avoid creating false merges.</span>
+
+<span class="sd">    **Common Morphological Refinement Patterns**</span>
+
+<span class="sd">    Use `_make_footprint()` with morphological operations from `skimage.morphology`:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from skimage.morphology import dilation, erosion, closing, opening</span>
+<span class="sd">        from phenotypic.abc_ import ObjectRefiner</span>
+
+<span class="sd">        disk_fp = ObjectRefiner._make_footprint(&#39;disk&#39;, width=3)</span>
+
+<span class="sd">        # Dilation: expand object regions (merge fragmented colonies)</span>
+<span class="sd">        dilated_mask = dilation(binary_mask, footprint=disk_fp)</span>
+
+<span class="sd">        # Erosion: shrink object regions (remove thin protrusions, small noise)</span>
+<span class="sd">        eroded_mask = erosion(binary_mask, footprint=disk_fp)</span>
+
+<span class="sd">        # Closing: dilation then erosion (fill small holes)</span>
+<span class="sd">        closed_mask = closing(binary_mask, footprint=disk_fp)</span>
+
+<span class="sd">        # Opening: erosion then dilation (remove small noise)</span>
+<span class="sd">        opened_mask = opening(binary_mask, footprint=disk_fp)</span>
+
+<span class="sd">    **Chaining Multiple Refinements**</span>
+
+<span class="sd">    Refinement operations are typically chained to address multiple issues in sequence:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic import Image, ImagePipeline</span>
+<span class="sd">        from phenotypic.refine import SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
+
+<span class="sd">        # Build a refinement pipeline</span>
+<span class="sd">        pipeline = ImagePipeline()</span>
+<span class="sd">        pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust/noise</span>
+<span class="sd">        pipeline.add(MaskFill())                                 # Fill holes in colonies</span>
+<span class="sd">        pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove elongated artifacts</span>
+
+<span class="sd">        # Apply to detected image</span>
+<span class="sd">        image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        detected = OtsuDetector().apply(image)</span>
+
+<span class="sd">        # Refine</span>
+<span class="sd">        refined = pipeline.operate([detected])[0]</span>
+<span class="sd">        colonies = refined.objects</span>
+<span class="sd">        print(f&quot;After refinement: {len(colonies)} colonies&quot;)</span>
+
+<span class="sd">    **Rationale for chaining:**</span>
+
+<span class="sd">    - **Order matters:** Remove small noise before filling holes (no point filling tiny artifacts).</span>
+<span class="sd">      Remove low-circularity objects before morphological operations (cleaner starting point).</span>
+<span class="sd">    - **Divide and conquer:** One refiner per issue (size, shape, holes, borders) is clearer than</span>
+<span class="sd">      monolithic operations.</span>
+<span class="sd">    - **No data loss:** Original detection and image data are preserved, so intermediate steps can</span>
+<span class="sd">      be inspected and validated.</span>
+<span class="sd">    - **Reproducibility:** Chained operations can be serialized to YAML for documentation and reuse.</span>
+
+<span class="sd">    **Methods and Attributes**</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        None at the ObjectRefiner level; subclasses define refinement parameters</span>
+<span class="sd">        as instance attributes (e.g., min_size, cutoff, width).</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        apply(image, inplace=False): Applies the refinement to an image. Returns a modified</span>
+<span class="sd">            Image with refined `objmask` and `objmap` but unchanged RGB/gray/detect_mat. Handles</span>
+<span class="sd">            copy/inplace logic and validates data integrity.</span>
+<span class="sd">        _operate(image, **kwargs): Abstract instance method implemented by subclasses.</span>
+<span class="sd">            Performs the actual refinement algorithm. Access parameters via ``self``.</span>
+<span class="sd">        _make_footprint(shape, width): Static utility that creates a binary morphological</span>
+<span class="sd">            shape (disk, square, or diamond) for use in morphological operations.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - **Protected components:** The ``@validate_operation_integrity`` decorator ensures</span>
+<span class="sd">          that ``image.rgb``, ``image.gray``, and ``image.detect_mat`` cannot be modified.</span>
+<span class="sd">          Only ``image.objmask`` and ``image.objmap`` can be changed.</span>
+
+<span class="sd">        - **Immutability by default:** ``apply(image)`` returns a modified copy by default.</span>
+<span class="sd">          Set ``inplace=True`` for memory-efficient in-place modification.</span>
+
+<span class="sd">        - **Instance _operate() method:** The ``_operate()`` method is an instance method;</span>
+<span class="sd">          access parameters via ``self``.</span>
+
+<span class="sd">        - **Field-based parameters:** All ``_operate()`` parameters except ``image``</span>
+<span class="sd">          are declared as annotated class-level fields. ``_operate()`` accesses them</span>
+<span class="sd">          via ``self``; pydantic handles construction and serialization.</span>
+
+<span class="sd">        - **Accessor pattern:** Always use ``image.objmap[:] = new_data`` to modify</span>
+<span class="sd">          object maps. Never use direct attribute assignment.</span>
+
+<span class="sd">        - **objmap/objmask consistency:** When modifying objmap, call `image.objmap.relabel()`</span>
+<span class="sd">          to ensure objmask is updated. When modifying objmask directly, reconstruct objmap</span>
+<span class="sd">          via connected-component labeling.</span>
+
+<span class="sd">        - **Boolean indexing for filtering:** Use numpy boolean arrays to filter labels:</span>
+<span class="sd">          ``mask = np.isin(objmap, keep_labels); filtered_map = objmap * mask``</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Removing small spurious objects below minimum size:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from skimage.morphology import remove_small_objects</span>
+<span class="sd">        &gt;&gt;&gt; from scipy import ndimage</span>
+<span class="sd">        &gt;&gt;&gt; class SimpleSmallObjectRemover(ObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Remove objects smaller than a minimum size threshold.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     min_size: int = 50</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">        ...         &#39;&#39;&#39;Remove small objects from labeled map.&#39;&#39;&#39;</span>
+<span class="sd">        ...         # Get current labeled map</span>
+<span class="sd">        ...         objmap = image.objmap[:]</span>
+<span class="sd">        ...         # Remove small objects (automatically updates objmap)</span>
+<span class="sd">        ...         refined = remove_small_objects(objmap, min_size=self.min_size)</span>
+<span class="sd">        ...         # Set refined result</span>
+<span class="sd">        ...         image.objmap[:] = refined</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Remove noise below 100 pixels</span>
+<span class="sd">        &gt;&gt;&gt; refiner = SimpleSmallObjectRemover(min_size=100)</span>
+<span class="sd">        &gt;&gt;&gt; cleaned = refiner.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Before: {detected.objmap[:].max()} objects&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;After: {cleaned.objmap[:].max()} objects&quot;)</span>
+
+<span class="sd">        Removing low-circularity objects (merged colonies, artifacts):</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from skimage.measure import regionprops_table</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import math</span>
+<span class="sd">        &gt;&gt;&gt; class CircularityFilter(ObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Remove objects with low circularity (merged colonies, artifacts).&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     min_circularity: float = 0.7</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">        ...         &#39;&#39;&#39;Filter objects by circularity using Polsby-Popper metric.&#39;&#39;&#39;</span>
+<span class="sd">        ...         objmap = image.objmap[:]</span>
+<span class="sd">        ...         # Measure shape properties</span>
+<span class="sd">        ...         props = regionprops_table(</span>
+<span class="sd">        ...             label_image=objmap,</span>
+<span class="sd">        ...             properties=[&#39;label&#39;, &#39;area&#39;, &#39;perimeter&#39;]</span>
+<span class="sd">        ...         )</span>
+<span class="sd">        ...         df = pd.DataFrame(props)</span>
+<span class="sd">        ...         # Calculate circularity (Polsby-Popper: 4*pi*area / perimeter^2)</span>
+<span class="sd">        ...         df[&#39;circularity&#39;] = (4 * math.pi * df[&#39;area&#39;]) / (df[&#39;perimeter&#39;] ** 2)</span>
+<span class="sd">        ...         # Keep only circular objects</span>
+<span class="sd">        ...         keep_labels = df[</span>
+<span class="sd">        ...             df[&#39;circularity&#39;] &gt;= self.min_circularity</span>
+<span class="sd">        ...         ][&#39;label&#39;].values</span>
+<span class="sd">        ...         # Filter map: keep only selected labels</span>
+<span class="sd">        ...         refined_map = np.where(np.isin(objmap, keep_labels), objmap, 0)</span>
+<span class="sd">        ...         image.objmap[:] = refined_map</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage</span>
+<span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Keep only well-formed circular colonies</span>
+<span class="sd">        &gt;&gt;&gt; refiner = CircularityFilter(min_circularity=0.75)</span>
+<span class="sd">        &gt;&gt;&gt; refined = refiner.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Removed elongated artifacts: {detected.objmap[:].max()} -&gt; {refined.objmap[:].max()}&quot;)</span>
+
+<span class="sd">        Filling holes in colony masks for solid shape representation:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from scipy.ndimage import binary_fill_holes</span>
+<span class="sd">        &gt;&gt;&gt; class HoleFiller(ObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Fill holes within colony masks for solid shape representation.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">        ...         &#39;&#39;&#39;Fill holes in binary mask.&#39;&#39;&#39;</span>
+<span class="sd">        ...         mask = image.objmask[:]</span>
+<span class="sd">        ...         # Fill holes (interior voids within objects)</span>
+<span class="sd">        ...         filled = binary_fill_holes(mask)</span>
+<span class="sd">        ...         # Update mask</span>
+<span class="sd">        ...         image.objmask[:] = filled</span>
+<span class="sd">        ...         # Reconstruct labeled map from filled mask</span>
+<span class="sd">        ...         from scipy import ndimage</span>
+<span class="sd">        ...         labeled, _ = ndimage.label(filled)</span>
+<span class="sd">        ...         image.objmap[:] = labeled</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage</span>
+<span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Fill holes from uneven illumination or pigmentation</span>
+<span class="sd">        &gt;&gt;&gt; refiner = HoleFiller()</span>
+<span class="sd">        &gt;&gt;&gt; refined = refiner.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; # Result: solid, contiguous colony shapes better for area measurements</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Holes filled; colonies now solid&quot;)</span>
+
+<span class="sd">        Morphological refinement with dilation to merge fragmented colonies:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from scipy.ndimage import label as ndi_label</span>
+<span class="sd">        &gt;&gt;&gt; from skimage.morphology import dilation</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; class FragmentMerger(ObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Merge fragmented colonies via morphological dilation and relabeling.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     dilation_radius: int = 2</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">        ...         &#39;&#39;&#39;Dilate mask and relabel to merge nearby fragments.&#39;&#39;&#39;</span>
+<span class="sd">        ...         mask = image.objmask[:]</span>
+<span class="sd">        ...         # Create disk shape for isotropic dilation</span>
+<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, self.dilation_radius)</span>
+<span class="sd">        ...         # Dilate to bridge fragmented regions</span>
+<span class="sd">        ...         dilated = dilation(mask, footprint=fp)</span>
+<span class="sd">        ...         # Relabel connected components</span>
+<span class="sd">        ...         relabeled, _ = ndi_label(dilated)</span>
+<span class="sd">        ...         # Set refined results</span>
+<span class="sd">        ...         image.objmask[:] = dilated</span>
+<span class="sd">        ...         image.objmap[:] = relabeled</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage</span>
+<span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Merge fragments from uneven lighting</span>
+<span class="sd">        &gt;&gt;&gt; refiner = FragmentMerger(dilation_radius=3)</span>
+<span class="sd">        &gt;&gt;&gt; merged = refiner.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Merged fragments: {detected.objmap[:].max()} -&gt; {merged.objmap[:].max()} objects&quot;)</span>
+
+<span class="sd">        Merging nearby objects via nearest-neighbor distance:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ObjectRefiner</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from scipy.ndimage import label as ndi_label, distance_transform_edt</span>
+<span class="sd">        &gt;&gt;&gt; from skimage.morphology import dilation</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; class MergeFragmentChains(ObjectRefiner):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Merge objects within specified distance via distance transform.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     merge_distance: int = 5</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: Image) -&gt; Image:</span>
+<span class="sd">        ...         &#39;&#39;&#39;Merge objects closer than merge_distance via dilation of distance map.&#39;&#39;&#39;</span>
+<span class="sd">        ...         mask = image.objmask[:]</span>
+<span class="sd">        ...         # Compute distance transform from object interior</span>
+<span class="sd">        ...         dist_map = distance_transform_edt(mask)</span>
+<span class="sd">        ...         # Dilate distance map to bridge nearby objects</span>
+<span class="sd">        ...         fp = ObjectRefiner._make_footprint(&#39;disk&#39;, self.merge_distance)</span>
+<span class="sd">        ...         dilated_dist = dilation(dist_map &gt; 0, footprint=fp)</span>
+<span class="sd">        ...         # Relabel connected components in dilated region</span>
+<span class="sd">        ...         relabeled, _ = ndi_label(dilated_dist)</span>
+<span class="sd">        ...         # Set refined results</span>
+<span class="sd">        ...         image.objmask[:] = dilated_dist</span>
+<span class="sd">        ...         image.objmap[:] = relabeled</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage: merge nearby fragments from partial colonies</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Merge fragments within 10-pixel distance</span>
+<span class="sd">        &gt;&gt;&gt; merger = MergeFragmentChains(merge_distance=10)</span>
+<span class="sd">        &gt;&gt;&gt; merged = merger.apply(detected)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Merged nearby objects: {detected.objmap[:].max()} -&gt; {merged.objmap[:].max()}&quot;)</span>
+
+<span class="sd">        Chaining multiple refinements in a pipeline:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, ImagePipeline</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.refine import (</span>
+<span class="sd">        ...     SmallObjectRemover, MaskFill, RemoveLowCircularity</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureColor</span>
+<span class="sd">        &gt;&gt;&gt; # Build complete processing pipeline with enhancement, detection, and refinement</span>
+<span class="sd">        &gt;&gt;&gt; pipeline = ImagePipeline()</span>
+<span class="sd">        &gt;&gt;&gt; # Preprocessing</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(GaussianBlur(sigma=1.5))</span>
+<span class="sd">        &gt;&gt;&gt; # Detection</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(OtsuDetector())</span>
+<span class="sd">        &gt;&gt;&gt; # Refinement (chain multiple cleanup operations)</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(SmallObjectRemover(min_size=100))          # Remove dust</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(MaskFill())                                 # Fill internal holes</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(RemoveLowCircularity(cutoff=0.75))        # Remove merged/irregular</span>
+<span class="sd">        &gt;&gt;&gt; # Measurement</span>
+<span class="sd">        &gt;&gt;&gt; pipeline.add(MeasureColor())</span>
+<span class="sd">        &gt;&gt;&gt; # Load images and process</span>
+<span class="sd">        &gt;&gt;&gt; image = Image.imread(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; results = pipeline.operate([image])</span>
+<span class="sd">        &gt;&gt;&gt; final = results[0]</span>
+<span class="sd">        &gt;&gt;&gt; # Access final clean detection results</span>
+<span class="sd">        &gt;&gt;&gt; colonies = final.objects</span>
+<span class="sd">        &gt;&gt;&gt; measurements = final.measurements</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Detected and cleaned: {len(colonies)} colonies&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Color measurements: {measurements.shape}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_footprint_shapes</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">,</span> <span class="s2">&quot;disk&quot;</span><span class="p">}</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ObjectRefiner.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner.apply">[docs]</a>
+    <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectRefiner._operate">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner._operate">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

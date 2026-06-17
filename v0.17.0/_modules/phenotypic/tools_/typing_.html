@@ -1,0 +1,1162 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tools_.typing_ &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tools_/typing_';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/tools_/typing_.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tools_.typing_</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tools_.typing_</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TYPE_CHECKING</span><span class="p">,</span>
+    <span class="n">Annotated</span><span class="p">,</span>
+    <span class="n">Any</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Literal</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">Tuple</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AfterValidator</span><span class="p">,</span>
+    <span class="n">BeforeValidator</span><span class="p">,</span>
+    <span class="n">PlainSerializer</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+
+<span class="n">FootprintShape</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;disk&quot;</span><span class="p">,</span> <span class="s2">&quot;square&quot;</span><span class="p">,</span> <span class="s2">&quot;diamond&quot;</span><span class="p">]</span>
+
+<span class="n">DetectMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;MinRGB&quot;</span><span class="p">,</span> <span class="s2">&quot;LabL&quot;</span><span class="p">,</span> <span class="s2">&quot;LabA&quot;</span><span class="p">,</span> <span class="s2">&quot;LabB&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvS&quot;</span><span class="p">,</span> <span class="s2">&quot;HsvV&quot;</span><span class="p">,</span> <span class="s2">&quot;InvS&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Image layer a process-mode CLI run exports. A closed</span>
+<span class="c1">#: subset of the layers exposed as Image accessors; ``rgb``/``gray``/</span>
+<span class="c1">#: ``detect_mat`` save as TIFF, ``objmap`` as a raw-label PNG.</span>
+<span class="n">ProcessOnlyLayer</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Image layer a GpuDetector consumes as model input. Single-channel layers</span>
+<span class="c1">#: (gray/detect_mat) are stacked to (H, W, 3) by GpuDetector.preprocess.</span>
+<span class="n">GpuInputLayer</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Object output a GpuDetector produces. &quot;instance&quot; -&gt; labeled objmap;</span>
+<span class="c1">#: &quot;semantic&quot; -&gt; binary objmask (auto-labels into objmap, like a threshold detector).</span>
+<span class="n">GpuOutputKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;instance&quot;</span><span class="p">,</span> <span class="s2">&quot;semantic&quot;</span><span class="p">]</span>
+
+<span class="c1">#: DINO backbone generation for DinoSam2Detector. 2 = DINOv2 (Apache, ungated,</span>
+<span class="c1">#: default); 3 = DINOv3 (gated, opt-in — routes through require_license_acceptance).</span>
+<span class="c1">#: Type-only closed set (no Enum / documentation surface needed).</span>
+<span class="n">DinoVersion</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+
+<span class="c1">#: DINO backbone size for DinoSam2Detector. Maps with DinoVersion to the HF</span>
+<span class="c1">#: model id (e.g. (2, &quot;base&quot;) -&gt; &quot;facebook/dinov2-base&quot;).</span>
+<span class="n">DinoSize</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;small&quot;</span><span class="p">,</span> <span class="s2">&quot;base&quot;</span><span class="p">,</span> <span class="s2">&quot;large&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Public top-level CLI execution mode. ``full`` performs the normal</span>
+<span class="c1">#: apply-and-measure run, ``measure`` reruns measurement from existing HDFs,</span>
+<span class="c1">#: ``recompile`` refreshes aggregate outputs from an existing output root, and</span>
+<span class="c1">#: ``process`` performs the apply-only single-layer export selected by</span>
+<span class="c1">#: ``--layer``.</span>
+<span class="n">CliMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;measure&quot;</span><span class="p">,</span> <span class="s2">&quot;recompile&quot;</span><span class="p">,</span> <span class="s2">&quot;process&quot;</span><span class="p">]</span>
+
+<span class="n">GridSearchSaveData</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span>
+    <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;objmap&quot;</span><span class="p">,</span> <span class="s2">&quot;objmask&quot;</span><span class="p">,</span> <span class="s2">&quot;map2rgb&quot;</span><span class="p">]</span>
+<span class="p">]</span>
+
+<span class="n">GridSearchConfig</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="s2">&quot;ImageOperation&quot;</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]]</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># CLI / GUI closed value sets — single source of truth, imported by callers</span>
+<span class="c1"># rather than re-spelled. Pair with phenotypic.tools_.constants_.IMAGE_TYPES</span>
+<span class="c1"># (paired Enum + Literal alignment is asserted in tests/unit/tools_/test_io_constants.py).</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Forward-run / recompile execution backend. Bare-string carrier for</span>
+<span class="c1">#: serialization (``progress/job_metadata.json``); callers convert to/from the</span>
+<span class="c1">#: dataclass field of the same name on ``ProcessingState`` / ``ExecutionResults``.</span>
+<span class="n">ExecutionMode</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm&quot;</span><span class="p">]</span>
+
+<span class="c1">#: String form of the ``IMAGE_TYPES`` Enum&#39;s ``BASE`` and ``GRID`` members,</span>
+<span class="c1">#: which are the only two image-type values that cross CLI / GUI boundary</span>
+<span class="c1">#: code today. Other ``IMAGE_TYPES`` members (CROP / OBJECT / GRID_SECTION)</span>
+<span class="c1">#: are internal to the core library and don&#39;t need a Literal partner yet.</span>
+<span class="n">ImageTypeName</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;Image&quot;</span><span class="p">,</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Per-image processing-events log statuses. Used by ``_cli_update_state``</span>
+<span class="c1">#: and consumed by the dashboard generator.</span>
+<span class="n">ProcessingStatus</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;started&quot;</span><span class="p">,</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">]</span>
+
+<span class="c1">#: ``--recompile-task`` flag values for the SLURM recompile worker. Mirrors</span>
+<span class="c1">#: the bare-string ``TASK_*`` constants in ``_cli_recompile_slurm_scripts.py``.</span>
+<span class="n">RecompileTaskType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;measurements&quot;</span><span class="p">,</span> <span class="s2">&quot;overlay&quot;</span><span class="p">,</span> <span class="s2">&quot;finalize&quot;</span><span class="p">]</span>
+
+<span class="c1">#: ``--checkpoint-type`` flag values for the SLURM sentinel handler.</span>
+<span class="n">CheckpointType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;manifest&quot;</span><span class="p">,</span> <span class="s2">&quot;finalize&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Tag attached to each row of ``progress/failures.jsonl`` distinguishing</span>
+<span class="c1">#: Python-side exceptions from SLURM sbatch failures.</span>
+<span class="n">FailureSource</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;slurm&quot;</span><span class="p">]</span>
+
+<span class="c1">#: The single-objective composite blend selector — the serialized value of</span>
+<span class="c1">#: ``CompositeScorer.blend``. ``&quot;tchebycheff&quot;`` (default) is conjunctive</span>
+<span class="c1">#: (worst-axis-dominant, augmented Tchebycheff over per-child cost);</span>
+<span class="c1">#: ``&quot;weighted_mean&quot;`` is the compensatory opt-out. No Enum partner is needed —</span>
+<span class="c1">#: this is a serialized field value with no separate documentation surface</span>
+<span class="c1">#: (mirrors ``DetectMode`` / ``ExecutionMode``). The geometric-mean-of-cost</span>
+<span class="c1">#: blend is intentionally NOT offered (it inverts the conjunctive property).</span>
+<span class="n">CompositeBlend</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;tchebycheff&quot;</span><span class="p">,</span> <span class="s2">&quot;weighted_mean&quot;</span><span class="p">]</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Pydantic-friendly array field — reusable annotated type for operation</span>
+<span class="c1"># parameters that carry a raw ``np.ndarray`` (kernels, footprints, masks,</span>
+<span class="c1"># coordinate grids). pydantic cannot validate or serialize a bare</span>
+<span class="c1"># ``np.ndarray``, so this bundles the three pieces it needs:</span>
+<span class="c1">#   - ``BeforeValidator`` coerces list / nested-list input to an ndarray,</span>
+<span class="c1">#   - ``PlainSerializer`` emits a JSON-native nested list on ``model_dump``,</span>
+<span class="c1">#   - ``WithJsonSchema`` supplies an &quot;array&quot; entry for ``model_json_schema``.</span>
+<span class="c1"># Host models must still set ``model_config`` with</span>
+<span class="c1"># ``arbitrary_types_allowed=True`` because the underlying field type is</span>
+<span class="c1"># ``np.ndarray`` (an arbitrary, non-pydantic type).</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coerce_to_ndarray</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coerce list / nested-list / ndarray input to an ``np.ndarray``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: A ``list`` (possibly nested), an existing ``np.ndarray``,</span>
+<span class="sd">            or any other array-like accepted by ``np.asarray``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: ``value`` itself if already an ndarray, otherwise the</span>
+<span class="sd">        result of ``np.asarray(value)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ndarray_to_list</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize an ``np.ndarray`` to a JSON-native nested list.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: The array to serialize.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list: ``value.tolist()`` — a nested list of Python scalars.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+
+<span class="c1">#: Annotated ``np.ndarray`` usable as a pydantic field annotation.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Accepts a ``list`` / nested list or an ``np.ndarray`` as input,</span>
+<span class="c1">#: serializes to a JSON-native nested list, and reports an ``&quot;array&quot;``</span>
+<span class="c1">#: JSON schema. The host model **must** declare ``model_config`` with</span>
+<span class="c1">#: ``arbitrary_types_allowed=True`` (the field type is the arbitrary,</span>
+<span class="c1">#: non-pydantic ``np.ndarray``).</span>
+<span class="c1">#:</span>
+<span class="c1">#: Example:</span>
+<span class="c1">#:     &gt;&gt;&gt; import numpy as np</span>
+<span class="c1">#:     &gt;&gt;&gt; from pydantic import BaseModel, ConfigDict</span>
+<span class="c1">#:     &gt;&gt;&gt; from phenotypic.tools_.typing_ import NdArrayField</span>
+<span class="c1">#:     &gt;&gt;&gt; class KernelOp(BaseModel):</span>
+<span class="c1">#:     ...     model_config = ConfigDict(arbitrary_types_allowed=True)</span>
+<span class="c1">#:     ...     kernel: NdArrayField</span>
+<span class="c1">#:     &gt;&gt;&gt; op = KernelOp(kernel=[[1, 0], [0, 1]])</span>
+<span class="c1">#:     &gt;&gt;&gt; isinstance(op.kernel, np.ndarray)</span>
+<span class="c1">#:     True</span>
+<span class="c1">#:     &gt;&gt;&gt; op.model_dump(mode=&quot;json&quot;)[&quot;kernel&quot;]</span>
+<span class="c1">#:     [[1, 0], [0, 1]]</span>
+<span class="c1">#:     &gt;&gt;&gt; KernelOp.model_json_schema()[&quot;properties&quot;][&quot;kernel&quot;][&quot;type&quot;]</span>
+<span class="c1">#:     &#39;array&#39;</span>
+<span class="n">NdArrayField</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">BeforeValidator</span><span class="p">(</span><span class="n">_coerce_to_ndarray</span><span class="p">),</span>
+    <span class="n">PlainSerializer</span><span class="p">(</span><span class="n">_ndarray_to_list</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">list</span><span class="p">),</span>
+    <span class="n">WithJsonSchema</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span><span class="p">,</span> <span class="s2">&quot;items&quot;</span><span class="p">:</span> <span class="p">{}}),</span>
+<span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Pydantic-friendly operation field — reusable annotated type for operation</span>
+<span class="c1"># parameters that hold *another* operation (or a nested pipeline) whose</span>
+<span class="c1"># concrete class must survive a JSON round-trip.</span>
+<span class="c1">#</span>
+<span class="c1"># A plain ``model_dump`` of a field typed ``ObjectDetector | ImagePipeline``</span>
+<span class="c1"># would dump only the *base-class* fields, silently losing the concrete</span>
+<span class="c1"># subclass identity (an ``OtsuDetector`` would dump as an empty</span>
+<span class="c1"># ``ImageOperation``). ``OperationField`` bundles:</span>
+<span class="c1">#   - a ``PlainSerializer`` that tags each value with its class so the</span>
+<span class="c1">#     concrete type can be rebuilt — ``{&quot;class&quot;, &quot;params&quot;}`` for an</span>
+<span class="c1">#     operation, ``{&quot;__type__&quot;: &quot;pipeline&quot;, &quot;config&quot;: ...}`` for a pipeline,</span>
+<span class="c1">#   - a ``BeforeValidator`` that reconstructs the operation/pipeline from</span>
+<span class="c1">#     that tagged dict via the ``phenotypic`` class registry, while passing</span>
+<span class="c1">#     an already-live operation instance straight through.</span>
+<span class="c1">#</span>
+<span class="c1"># Used by ``CompositeDetector.detectors`` and</span>
+<span class="c1"># ``FilamentousFungiDetector.inoculum_detector``. The serialized shape is</span>
+<span class="c1"># byte-compatible with what ``SerializablePipeline._serialize_*`` emits, so</span>
+<span class="c1"># the two code paths agree and nested operations round-trip losslessly.</span>
+<span class="c1">#</span>
+<span class="c1"># Host models must declare ``arbitrary_types_allowed=True`` (inherited from</span>
+<span class="c1"># ``BaseOperation``) because the underlying field type is an arbitrary</span>
+<span class="c1"># (non-pydantic-by-this-annotation) operation class.</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_serialize_operation_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize one operation/pipeline value to a class-tagged dict.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: An ``ImageOperation`` instance or an ``ImagePipeline``</span>
+<span class="sd">            (which is itself an ``ImageOperation``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A JSON-native dict carrying the concrete class identity:</span>
+<span class="sd">        ``{&quot;__type__&quot;: &quot;pipeline&quot;, &quot;config&quot;: {...}}`` for a pipeline,</span>
+<span class="sd">        otherwise ``{&quot;class&quot;: &lt;name&gt;, &quot;params&quot;: {...}}`` for an operation.</span>
+<span class="sd">        Any other input is returned unchanged (pydantic reports the</span>
+<span class="sd">        type error).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Lazy import: the serializer module imports operation classes, so a</span>
+    <span class="c1"># top-level import here would create a cycle through ``tools_``.</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._pipeline_parts._serializable_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">SerializablePipeline</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">SerializablePipeline</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;__type__&quot;</span><span class="p">:</span> <span class="s2">&quot;pipeline&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">SerializablePipeline</span><span class="o">.</span><span class="n">_serialize_pipeline_config</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;model_dump&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;class&quot;</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s2">&quot;params&quot;</span><span class="p">:</span> <span class="n">value</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_deserialize_operation_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct one operation/pipeline value from a class-tagged dict.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        value: Either an already-live operation/pipeline instance (passed</span>
+<span class="sd">            straight through), or a class-tagged dict produced by</span>
+<span class="sd">            :func:`_serialize_operation_value`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The reconstructed ``ImageOperation`` / ``ImagePipeline`` instance,</span>
+<span class="sd">        or ``value`` unchanged when it is not a recognised tagged dict.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        AttributeError: If a tagged dict names a class that cannot be</span>
+<span class="sd">            resolved in the ``phenotypic`` namespace.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._pipeline_parts._serializable_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">SerializablePipeline</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Already a live operation/pipeline — nothing to reconstruct.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="c1"># Nested pipeline entry.</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;__type__&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;pipeline&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SerializablePipeline</span><span class="o">.</span><span class="n">_deserialize_pipeline_config</span><span class="p">(</span>
+            <span class="n">value</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Plain operation entry — ``{&quot;class&quot;: ..., &quot;params&quot;: {...}}``.</span>
+    <span class="k">if</span> <span class="s2">&quot;class&quot;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">SerializablePipeline</span><span class="o">.</span><span class="n">_find_class_in_phenotypic</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="s2">&quot;class&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Class &#39;</span><span class="si">{</span><span class="n">value</span><span class="p">[</span><span class="s1">&#39;class&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; not found in phenotypic &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;namespace. Make sure it&#39;s properly imported in &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;phenotypic.__init__.py&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span>
+
+    <span class="k">return</span> <span class="n">value</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_require_value</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="s2">&quot;type | Callable[[], type]&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an ``AfterValidator`` guard asserting a value is a ``base`` instance.</span>
+
+<span class="sd">    ``base`` may be a concrete type or a zero-arg callable that returns the</span>
+<span class="sd">    type (resolved lazily, so ``OperationField`` can name ``BaseOperation``</span>
+<span class="sd">    without importing it at ``tools_`` load time — avoiding the import cycle).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base: The class the value must be an instance of, or a zero-arg</span>
+<span class="sd">            callable returning that class (resolved on first validation).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A validator ``_require(value)`` that returns ``value`` unchanged when</span>
+<span class="sd">        it is a ``base`` instance, and raises ``ValueError`` otherwise. The</span>
+<span class="sd">        error is a ``ValueError`` (not ``TypeError``) so pydantic wraps it</span>
+<span class="sd">        into a :class:`pydantic.ValidationError`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">resolved</span> <span class="o">=</span> <span class="n">base</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="k">else</span> <span class="n">base</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">resolved</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;expected an instance of </span><span class="si">{</span><span class="n">resolved</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, got &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">return</span> <span class="n">_require</span>
+
+
+<div class="viewcode-block" id="polymorphic_field">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tools_.typing_.html#phenotypic.tune.polymorphic_field">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">polymorphic_field</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="s2">&quot;type | Callable[[], type]&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">marker</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A pydantic field for a polymorphic model subtree.</span>
+
+<span class="sd">    The concrete subclass survives a JSON round-trip via the ``phenotypic``</span>
+<span class="sd">    class registry: the field serializes to ``{&quot;class&quot;: &lt;name&gt;, &quot;params&quot;:</span>
+<span class="sd">    {...}}`` (or the pipeline-tagged form for an ``ImagePipeline``) and</span>
+<span class="sd">    reconstructs the concrete subclass on load.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base: Constrains the accepted/validated type — a class or a zero-arg</span>
+<span class="sd">            callable returning the class (the lazy form avoids import cycles,</span>
+<span class="sd">            e.g. ``OperationField`` naming ``BaseOperation``).</span>
+<span class="sd">        marker: Optional sentinel attached to the ``Annotated`` chain (e.g.</span>
+<span class="sd">            the GUI&#39;s :class:`_OperationFieldMarker`) so introspecting tools</span>
+<span class="sd">            can recognise the field despite the ``Any`` core erasure.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        An ``Annotated`` type usable as a pydantic field annotation. Host</span>
+<span class="sd">        models must set ``model_config`` with ``arbitrary_types_allowed=True``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">core</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+        <span class="n">Any</span><span class="p">,</span>
+        <span class="n">BeforeValidator</span><span class="p">(</span><span class="n">_deserialize_operation_value</span><span class="p">),</span>
+        <span class="n">AfterValidator</span><span class="p">(</span><span class="n">_make_require_value</span><span class="p">(</span><span class="n">base</span><span class="p">)),</span>
+        <span class="n">PlainSerializer</span><span class="p">(</span><span class="n">_serialize_operation_value</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">marker</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">core</span>
+    <span class="c1"># Annotated flattens a nested Annotated (PEP 593): the marker joins the chain.</span>
+    <span class="k">return</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">core</span><span class="p">,</span> <span class="n">marker</span><span class="p">]</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_OperationFieldMarker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sentinel attached to :data:`OperationField`&#39;s ``Annotated`` chain.</span>
+
+<span class="sd">    :data:`OperationField` erases its core type to ``Any`` (it cannot</span>
+<span class="sd">    name the operation base classes without an import cycle through</span>
+<span class="sd">    ``tools_``). That erasure also hides the field from the GUI&#39;s</span>
+<span class="sd">    ``OperationRegistry``, which detects operation-valued parameters by</span>
+<span class="sd">    inspecting the annotation. This marker is the distinguishing token</span>
+<span class="sd">    the registry scans for — analogous to</span>
+<span class="sd">    :class:`~phenotypic.tools_._column_ref._ColumnRefMarker` — so a</span>
+<span class="sd">    field typed ``OperationField`` (or ``list[OperationField]`` /</span>
+<span class="sd">    ``OperationField | None``) is still recognised as accepting an</span>
+<span class="sd">    operation **or** a nested pipeline.</span>
+
+<span class="sd">    Singleton-like: all instances compare equal so a duplicate marker in</span>
+<span class="sd">    an ``Annotated`` chain de-dupes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;_OperationFieldMarker()&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">_OperationFieldMarker</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="s2">&quot;_OperationFieldMarker&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_lazy_base_operation</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseOperation</span>
+
+    <span class="k">return</span> <span class="n">BaseOperation</span>
+
+
+<span class="c1">#: Annotated operation type usable as a pydantic field annotation for a</span>
+<span class="c1">#: parameter that holds another operation or a nested pipeline.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Back-compat alias — an operation/pipeline-valued field built by</span>
+<span class="c1">#: :func:`polymorphic_field`. Serializes to a class-tagged dict so the</span>
+<span class="c1">#: concrete subclass survives a JSON round-trip; deserializes by resolving</span>
+<span class="c1">#: the class through the ``phenotypic`` registry. Use it directly</span>
+<span class="c1">#: (``OperationField``) or inside a container — e.g. ``list[OperationField]``</span>
+<span class="c1">#: — when the field must accept several operation types and round-trip each</span>
+<span class="c1">#: losslessly.</span>
+<span class="c1">#:</span>
+<span class="c1">#: The core type is ``Any`` (naming the operation base classes here would</span>
+<span class="c1">#: create an import cycle through ``tools_``); an ``AfterValidator``</span>
+<span class="c1">#: restores the operation/pipeline type guard. The trailing</span>
+<span class="c1">#: :class:`_OperationFieldMarker` lets the GUI ``OperationRegistry``</span>
+<span class="c1">#: recognise the field despite the ``Any`` erasure.</span>
+<span class="n">OperationField</span> <span class="o">=</span> <span class="n">polymorphic_field</span><span class="p">(</span>
+    <span class="n">base</span><span class="o">=</span><span class="n">_lazy_base_operation</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="n">_OperationFieldMarker</span><span class="p">()</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TuneSpec">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.TuneSpec">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TuneSpec</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-field tuning-search metadata (Tier-1 inference override).</span>
+
+<span class="sd">    ``TuneSpec`` mirrors the existing field-marker pattern (``_ColumnRefMarker``,</span>
+<span class="sd">    ``_OperationFieldMarker``): a frozen, slotted, **non-pydantic** sentinel that</span>
+<span class="sd">    is a complete no-op at runtime and is read *only* by ``infer_search_space``,</span>
+<span class="sd">    via ``op.model_fields[name].metadata`` (where pydantic v2 stores</span>
+<span class="sd">    ``Annotated`` extras). It rides in an ``Annotated[T, TuneSpec(...)]`` chain::</span>
+
+<span class="sd">        class GaussianBlur(ImageEnhancer):</span>
+<span class="sd">            sigma:    Annotated[float, TuneSpec(0.5, 5.0, log=True)] = 2.0</span>
+<span class="sd">            truncate: Annotated[float, TuneSpec(tunable=False)]      = 4.0</span>
+
+<span class="sd">    At runtime ``sigma`` is still a plain ``float``; ``GaussianBlur(sigma=999.0)``</span>
+<span class="sd">    constructs exactly as before. The marker is the **search** domain, never the</span>
+<span class="sd">    **valid** domain — validity stays the job of pydantic ``Field(ge=, le=)``.</span>
+
+<span class="sd">    It lives here (not in ``phenotypic.tune``) so operation modules can import it</span>
+<span class="sd">    without dragging in the tune engine — the public re-export</span>
+<span class="sd">    ``from phenotypic.tune import TuneSpec`` still works.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        low: Inclusive lower search bound (positional). ``None`` leaves the</span>
+<span class="sd">            bound to Tier-2 inference / the co-located ``Field`` constraint.</span>
+<span class="sd">        high: Inclusive upper search bound (positional). ``None`` as ``low``.</span>
+<span class="sd">        step: Discretization stride — integer step or quantized float.</span>
+<span class="sd">            ``None`` means continuous (or unit-step for integers).</span>
+<span class="sd">        log: Whether to sample on a logarithmic scale (default ``False``).</span>
+<span class="sd">        categories: Override / subset the auto-derived categorical choices.</span>
+<span class="sd">            A list is coerced to a tuple so the marker stays hashable.</span>
+<span class="sd">        tunable: ``False`` excludes the field from tuning outright and</span>
+<span class="sd">            short-circuits Tier-2 (default ``True``).</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        This is **not** a pydantic model — it is a plain slotted sentinel so it</span>
+<span class="sd">        can sit in an ``Annotated`` chain without pydantic trying to validate</span>
+<span class="sd">        it. It carries ``__eq__``/``__hash__`` over the full field tuple so a</span>
+<span class="sd">        duplicate in an ``Annotated`` chain de-dupes (PEP 593 chain semantics).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;step&quot;</span><span class="p">,</span> <span class="s2">&quot;log&quot;</span><span class="p">,</span> <span class="s2">&quot;categories&quot;</span><span class="p">,</span> <span class="s2">&quot;tunable&quot;</span><span class="p">)</span>
+
+    <span class="n">low</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">high</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">categories</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span>
+    <span class="n">tunable</span><span class="p">:</span> <span class="nb">bool</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">low</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">high</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">categories</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tunable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">low</span> <span class="o">=</span> <span class="n">low</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">high</span> <span class="o">=</span> <span class="n">high</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="n">step</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categories</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">categories</span><span class="p">)</span> <span class="k">if</span> <span class="n">categories</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tunable</span> <span class="o">=</span> <span class="n">tunable</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_as_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tunable</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_tuple</span><span class="p">()</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_as_tuple</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_as_tuple</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;TuneSpec(low=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">low</span><span class="si">!r}</span><span class="s2">, high=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">high</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;step=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="si">!r}</span><span class="s2">, log=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;categories=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">categories</span><span class="si">!r}</span><span class="s2">, tunable=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tunable</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

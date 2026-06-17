@@ -1,0 +1,931 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.correction._color_correction._color_corrector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/correction/_color_correction/_color_corrector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/correction/_color_correction/_color_corrector.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._color_correction._color_corrector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.correction._color_correction._color_corrector</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Color corrector applying a fitted ColorCheckerProfile to images.</span>
+
+<span class="sd">Implements the root-polynomial colour correction (Finlayson 2015) as an</span>
+<span class="sd">:class:`~phenotypic.abc_.ImageCorrector` operation, transforming RGB, gray,</span>
+<span class="sd">and detect_mat in a single pass.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._color_checker_profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCheckerProfile</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+
+<div class="viewcode-block" id="ColorCorrector">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorCorrector</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial color correction using a fitted ColorCheckerProfile.</span>
+
+<span class="sd">    Decodes sRGB gamma to linear light, applies the root-polynomial expansion</span>
+<span class="sd">    and the profile&#39;s correction matrix, re-encodes to sRGB, and recomputes</span>
+<span class="sd">    grayscale and detect_mat from the corrected RGB. The correction matrix is</span>
+<span class="sd">    derived from a color checker captured under the same imaging conditions, so</span>
+<span class="sd">    colony color becomes comparable across batches and acquisition setups.</span>
+
+<span class="sd">    For algorithm details, see :doc:`/explanation/color_spaces_for_phenotyping`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Multi-batch studies imaged across sessions or scanners where colony</span>
+<span class="sd">          color must be cross-batch comparable.</span>
+<span class="sd">        - Plates with pigmented yeast or bacterial colonies where chromatic</span>
+<span class="sd">          phenotype is the primary readout.</span>
+<span class="sd">        - Publication workflows needing perceptually accurate color</span>
+<span class="sd">          reproduction.</span>
+<span class="sd">        - Removing color casts from DSLR or flatbed-scanner illuminants that</span>
+<span class="sd">          shift colony hue relative to the agar background.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`FlattenIllumination` when the artifact is a spatial</span>
+<span class="sd">          brightness gradient rather than a chromatic cast.</span>
+<span class="sd">        - :class:`ColorDenoise` when high-ISO color noise obscures colony</span>
+<span class="sd">          boundaries without a systematic color-cast problem.</span>
+<span class="sd">        - :class:`BayesShrinkCorrector` or :class:`VisuShrinkCorrector` when</span>
+<span class="sd">          the goal is noise reduction rather than color accuracy.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        profile: A fitted :class:`ColorCheckerProfile` supplying the</span>
+<span class="sd">            root-polynomial correction matrix and expansion degree. An</span>
+<span class="sd">            unfitted profile is rejected with a ``ValueError``.</span>
+<span class="sd">        output_illuminant: Target illuminant label used when reporting the</span>
+<span class="sd">            corrected color space (informational only; does not alter the</span>
+<span class="sd">            matrix computation). Default: ``&quot;D65&quot;``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: ``rgb`` mapped through the correction matrix; ``gray`` and</span>
+<span class="sd">        ``detect_mat`` recomputed from the corrected RGB. All three components</span>
+<span class="sd">        are updated in a single pass.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``profile`` is not yet fitted.</span>
+<span class="sd">        UserWarning: If the image&#39;s camera EXIF indicates a different camera</span>
+<span class="sd">            body or lens than the one used when the profile was fitted.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/01_your_first_plate_image` for an</span>
+<span class="sd">        introduction to loading and correcting full-plate images.</span>
+<span class="sd">        :doc:`/explanation/color_spaces_for_phenotyping` for a discussion of</span>
+<span class="sd">        root-polynomial color correction in phenotyping.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span>
+    <span class="n">output_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
+
+    <span class="c1">#: Float64 view of the profile&#39;s correction matrix, materialised once</span>
+    <span class="c1">#: in :meth:`model_post_init` and read by :meth:`_operate`.</span>
+    <span class="n">_ccm</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">()</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;profile&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_fitted_profile</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject an unfitted profile (pre-migration ``__init__`` guard).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">profile</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ColorCheckerProfile must be fitted before use.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">profile</span>
+
+<div class="viewcode-block" id="ColorCorrector.model_post_init">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.model_post_init">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Materialise the float64 correction matrix after construction.</span>
+
+<span class="sd">        Extends :meth:`BaseOperation.model_post_init` (which sets up the</span>
+<span class="sd">        logger): caches a ``float64`` copy of the fitted profile&#39;s</span>
+<span class="sd">        correction matrix so :meth:`_operate` does not rebuild it per call.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">correction_matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correction_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The root-polynomial correction matrix as a nested list.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">degree</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Polynomial expansion degree, matching the profile.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">degree</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="ColorCorrector.apply">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the correction, first checking capture-metadata compatibility.</span>
+
+<span class="sd">        The compatibility check runs against the *input* image (before the</span>
+<span class="sd">        defensive copy ``apply`` makes for ``inplace=False``), because</span>
+<span class="sd">        :meth:`Image.copy` does not carry imported EXIF forward.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Image to correct.</span>
+<span class="sd">            inplace: When ``False`` (default) operate on a copy.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The corrected image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_on_metadata_mismatch</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warn_on_metadata_mismatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Warn when *image* was captured on different optics than the profile.</span>
+
+<span class="sd">        Compares the image&#39;s camera EXIF against the</span>
+<span class="sd">        :attr:`~ColorCheckerProfile.capture_metadata` recorded when the profile</span>
+<span class="sd">        was fitted.  Camera-body or lens differences raise a</span>
+<span class="sd">        :class:`UserWarning` (the correction may be invalid); exposure-setting</span>
+<span class="sd">        differences (ISO, exposure time, F-number, focal length) are only</span>
+<span class="sd">        logged at info level.  Does nothing when the profile carries no capture</span>
+<span class="sd">        metadata (e.g. an old serialised profile or one fitted from</span>
+<span class="sd">        pre-measured patch colours).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The image about to be corrected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">capture_metadata</span>
+        <span class="k">if</span> <span class="n">expected</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="n">CaptureMetadata</span><span class="o">.</span><span class="n">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">critical</span><span class="p">,</span> <span class="n">informational</span> <span class="o">=</span> <span class="n">expected</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">critical</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Image &#39;</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; was captured on a different &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;camera/lens than the colour-correction profile &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="s1">&#39;; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">critical</span><span class="p">)</span><span class="si">}</span><span class="s2">). The correction may be invalid.&quot;</span><span class="p">,</span>
+                <span class="ne">UserWarning</span><span class="p">,</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># _warn_on_metadata_mismatch -&gt; apply -&gt; caller</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">informational</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Capture-setting differences for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">informational</span><span class="p">),</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial colour correction to the image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Input image to correct.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image with corrected RGB, gray, and detect_mat.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ccm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span>
+        <span class="n">rgb_raw</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:]</span>
+        <span class="n">original_dtype</span> <span class="o">=</span> <span class="n">rgb_raw</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="c1"># 1. Normalise to [0, 1] float.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="n">max_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">max_val</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">rgb_normed</span> <span class="o">=</span> <span class="n">rgb_raw</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">/</span> <span class="n">max_val</span>
+
+        <span class="c1"># 2. Decode sRGB gamma to linear light.</span>
+        <span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="n">rgb_normed</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">rgb_linear</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_decoding</span><span class="p">(</span>
+            <span class="n">rgb_normed</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 3-4. Build root-polynomial features and apply correction matrix.</span>
+        <span class="n">corrected_linear</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">apply_matrix_colour_correction_Finlayson2015</span><span class="p">(</span>
+                <span class="n">rgb_linear</span><span class="p">,</span>
+                <span class="n">ccm</span><span class="p">,</span>
+                <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">corrected_linear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_linear</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># 5. Re-encode to sRGB gamma.</span>
+        <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_encoding</span><span class="p">(</span><span class="n">corrected_linear</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span><span class="p">)</span>
+        <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>  <span class="c1"># type: ignore[assignment]</span>
+            <span class="n">corrected_srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span>
+
+        <span class="c1"># 6. Scale back to original dtype.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="n">corrected_int</span> <span class="o">=</span> <span class="p">(</span><span class="n">corrected_srgb</span> <span class="o">*</span> <span class="n">max_val</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">corrected_int</span> <span class="o">=</span> <span class="n">corrected_srgb</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">original_dtype</span><span class="p">)</span>
+
+        <span class="c1"># 7. Update image data.</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">corrected_int</span>
+
+        <span class="c1"># 8. Recompute grayscale from corrected sRGB.</span>
+        <span class="n">corrected_gray</span> <span class="o">=</span> <span class="n">rgb2gray</span><span class="p">(</span><span class="n">corrected_srgb</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">gray</span> <span class="o">=</span> <span class="n">corrected_gray</span>
+
+        <span class="c1"># 9. Update detect_mat to match corrected grayscale.</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">detect_mat</span> <span class="o">=</span> <span class="n">corrected_gray</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">image</span>
+
+<div class="viewcode-block" id="ColorCorrector.dashboard">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.dashboard">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
+
+<span class="sd">        Delegates to the underlying profile&#39;s :meth:`ColorCheckerProfile.dashboard`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
+<span class="sd">                the figure inline before returning it.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``plotly.graph_objects.Figure`` (always returned, even after an</span>
+<span class="sd">            inline display).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">dashboard</span><span class="p">(</span><span class="n">show</span><span class="o">=</span><span class="n">show</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,1009 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.qc._icc &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/qc/_icc';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/analysis/qc/_icc.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.qc._icc</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.qc._icc</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Intraclass-correlation-coefficient replicate-reliability quality check.</span>
+
+<span class="sd">Flags ``groupby`` groups whose replicates fail to reproduce one another&#39;s</span>
+<span class="sd">measurements. Each group is modeled as a two-way random-effects design —</span>
+<span class="sd">**subjects are the repeated-measure axis** (``Metadata_Time`` by default) and</span>
+<span class="sd">**raters are the replicates that should agree** (``Metadata_Replicate`` by</span>
+<span class="sd">default) — and the ICC(2,1) (single-measurement, absolute-agreement)</span>
+<span class="sd">coefficient quantifies how consistently the replicates reproduce each subject.</span>
+<span class="sd">A single scalar is computed per group and broadcast back to every member row</span>
+<span class="sd">so downstream curation can pick up the flag from any row.</span>
+
+<span class="sd">It treats ``Metadata_Time`` as the repeated-measure subject axis and replicates</span>
+<span class="sd">as raters; with growth over time, between-timepoint variance dominates, so the</span>
+<span class="sd">ICC primarily flags replicate disagreement that is large relative to the growth</span>
+<span class="sd">signal. The ICC is computed with NumPy only (no ``pingouin`` dependency) from</span>
+<span class="sd">the classic two-way mean-square decomposition. The subject/rater axes are</span>
+<span class="sd">configurable, so the same check serves snapshot designs (e.g.</span>
+<span class="sd">subject=``Metadata_StrainID``) by overriding ``subject_label``.</span>
+
+<span class="sd">``_HIGHER_IS_BAD`` is ``False``: the ICC is an agreement *score* in roughly</span>
+<span class="sd">``[0, 1]`` where higher is better, so a group fails when its ICC falls to or</span>
+<span class="sd">below ``fail_threshold``. This is the project&#39;s reference implementation of</span>
+<span class="sd">the lower-is-bad direction.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ICC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
+
+
+<div class="viewcode-block" id="ICC">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ICC">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ICC</span><span class="p">(</span><span class="n">QualityCheck</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag ``groupby`` groups whose replicates have low ICC(2,1) agreement.</span>
+
+<span class="sd">    For each combination of ``self.groupby`` columns, this check builds a</span>
+<span class="sd">    complete ``subjects × raters`` matrix — one row per ``subject_label``</span>
+<span class="sd">    value (the repeated-measure axis, by default ``&quot;Metadata_Time&quot;``) and</span>
+<span class="sd">    one column per ``rater_label`` value (the replicates that *should*</span>
+<span class="sd">    agree, by default ``&quot;Metadata_Replicate&quot;``) — and computes the</span>
+<span class="sd">    ICC(2,1) two-way random, absolute-agreement coefficient over it. With</span>
+<span class="sd">    ``Metadata_Time`` as the subject axis the between-timepoint (growth)</span>
+<span class="sd">    variance dominates, so the ICC primarily flags replicate disagreement</span>
+<span class="sd">    that is large relative to the growth signal. The single per-group ICC</span>
+<span class="sd">    is the metric, broadcast to every member row so the GUI can pick up the</span>
+<span class="sd">    flag from any row.</span>
+
+<span class="sd">    The estimator is the classic two-way mean-square decomposition::</span>
+
+<span class="sd">        ICC = (MSR - MSE)</span>
+<span class="sd">              / (MSR + (k - 1) * MSE + (k / n) * (MSC - MSE))</span>
+
+<span class="sd">    where ``n`` is the subject count, ``k`` the rater count, ``MSR`` the</span>
+<span class="sd">    between-subjects mean square, ``MSC`` the between-raters mean square,</span>
+<span class="sd">    and ``MSE`` the residual mean square. Computed with NumPy only — no</span>
+<span class="sd">    ``pingouin`` dependency.</span>
+
+<span class="sd">    ``_HIGHER_IS_BAD`` is ``False``: the ICC is an agreement score where a</span>
+<span class="sd">    *smaller* value is worse, so the base class flags rows whose metric is</span>
+<span class="sd">    less than or equal to ``fail_threshold`` and warns at or below</span>
+<span class="sd">    ``warn_threshold`` (with ``fail_threshold &lt;= warn_threshold``). This</span>
+<span class="sd">    check is the reference implementation of the lower-is-bad direction.</span>
+<span class="sd">    A **negative ICC is a valid result**, not an error: it signals</span>
+<span class="sd">    agreement worse than chance (e.g. raters that anti-correlate across</span>
+<span class="sd">    subjects) and correctly lands well inside the ``&quot;fail&quot;`` band.</span>
+
+<span class="sd">    Several guard paths short-circuit to ``metric = NaN`` so under-powered</span>
+<span class="sd">    or degenerate groups never gate curation. ``NaN`` here means</span>
+<span class="sd">    **&quot;insufficient data to estimate agreement&quot;** — it is *not* a passing</span>
+<span class="sd">    grade of good agreement. The base class maps ``NaN`` to</span>
+<span class="sd">    ``Status=&quot;pass&quot;`` only so degenerate groups never *gate* curation; a</span>
+<span class="sd">    reviewer reading the metric should treat ``NaN`` as &quot;could not be</span>
+<span class="sd">    computed&quot;, never as &quot;agreement is fine&quot;. The guards are:</span>
+
+<span class="sd">    1. **Missing axis column (LOUD)** — ``subject_label`` or</span>
+<span class="sd">       ``rater_label`` is absent from the input frame, so the two-way</span>
+<span class="sd">       model cannot be built. The metric is ``NaN``, but the group key is</span>
+<span class="sd">       **also recorded in** :attr:`unmatched_groups` (mirroring</span>
+<span class="sd">       :class:`ExpectedVsDetectedCount`) so a not-evaluated check is</span>
+<span class="sd">       visibly &quot;could not run&quot;, never a silent green pass. The other</span>
+<span class="sd">       guards below are genuine &quot;insufficient data&quot; cases and do *not*</span>
+<span class="sd">       populate :attr:`unmatched_groups`.</span>
+<span class="sd">    2. **Incomplete matrix** — at least one ``(subject, rater)`` cell is</span>
+<span class="sd">       missing or duplicated after pivoting; a balanced two-way ANOVA</span>
+<span class="sd">       requires exactly one observation per cell. A single missing cell</span>
+<span class="sd">       NaNs the **whole group** — subjects and raters are never silently</span>
+<span class="sd">       dropped to complete the design, and no rows are removed.</span>
+<span class="sd">    3. **``n &lt; 2`` subjects or ``k &lt; 2`` raters** — at least two of each</span>
+<span class="sd">       are required for the between-source mean squares.</span>
+<span class="sd">    4. **Zero variance** — the total mean square is zero (all values</span>
+<span class="sd">       identical), so the ICC is mathematically undefined. This is</span>
+<span class="sd">       insufficient signal, explicitly **not** a perfect ``1.0``.</span>
+
+<span class="sd">    The check does **not** aggregate measurement values — it builds the</span>
+<span class="sd">    two-way matrix inside :meth:`_compute` — so :attr:`_exposes_agg_func`</span>
+<span class="sd">    is ``False`` and the GUI parameter-form rendering driver hides the</span>
+<span class="sd">    ``agg_func`` field. The base ``SetAnalyzer.agg_func`` is preserved on</span>
+<span class="sd">    the signature for parity only.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        subject_label: Column whose distinct values index the *subject*</span>
+<span class="sd">            (row) axis of the two-way model — the repeated-measure axis.</span>
+<span class="sd">            Defaults to ``&quot;Metadata_Time&quot;`` so each timepoint is a subject</span>
+<span class="sd">            and the ICC flags replicates that disagree relative to the</span>
+<span class="sd">            growth trend. Override (e.g. ``&quot;Metadata_StrainID&quot;``) for a</span>
+<span class="sd">            snapshot reliability design.</span>
+<span class="sd">        rater_label: Column whose distinct values index the *rater*</span>
+<span class="sd">            (column) axis of the two-way model — the replicates that</span>
+<span class="sd">            should agree. Defaults to ``&quot;Metadata_Replicate&quot;``.</span>
+<span class="sd">        warn_threshold: ICC at or below which ``Status`` becomes</span>
+<span class="sd">            ``&quot;warn&quot;``. Defaults to ``0.75``.</span>
+<span class="sd">        fail_threshold: ICC at or below which ``Status`` becomes</span>
+<span class="sd">            ``&quot;fail&quot;`` and ``Flag=True``. Defaults to ``0.50``.</span>
+<span class="sd">        unmatched_groups: Group keys whose ``subject_label`` or</span>
+<span class="sd">            ``rater_label`` axis column was absent, so the check could not</span>
+<span class="sd">            be evaluated. Reset at the top of each :meth:`analyze`.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Basic — three timepoints (subjects) × three replicates (raters)</span>
+<span class="sd">        with tight replicate agreement at each timepoint; the check adds</span>
+<span class="sd">        ``QC_ICC_Metric`` plus the per-group summary columns:</span>
+
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import ICC</span>
+<span class="sd">        &gt;&gt;&gt; data = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Plate&quot;: [&quot;P1&quot;] * 9,</span>
+<span class="sd">        ...     &quot;Metadata_Time&quot;: [0, 0, 0, 1, 1, 1, 2, 2, 2],</span>
+<span class="sd">        ...     &quot;Metadata_Replicate&quot;: [1, 2, 3] * 3,</span>
+<span class="sd">        ...     &quot;Size_Area&quot;: [</span>
+<span class="sd">        ...         10.0, 10.1, 9.9,</span>
+<span class="sd">        ...         20.0, 20.2, 19.8,</span>
+<span class="sd">        ...         40.0, 40.1, 39.9,</span>
+<span class="sd">        ...     ],</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = ICC(on=&quot;Size_Area&quot;, groupby=[&quot;Plate&quot;])</span>
+<span class="sd">        &gt;&gt;&gt; result = chk.analyze(data)</span>
+<span class="sd">        &gt;&gt;&gt; &quot;QC_ICC_Metric&quot; in result.columns</span>
+<span class="sd">        True</span>
+
+<span class="sd">        Advanced — when the rater axis column is absent the two-way model</span>
+<span class="sd">        cannot be built: the metric is NaN *and* the group is recorded as</span>
+<span class="sd">        unmatched so the not-evaluated check is loud, not a silent pass:</span>
+
+<span class="sd">        &gt;&gt;&gt; no_rater = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Plate&quot;: [&quot;P1&quot;] * 3,</span>
+<span class="sd">        ...     &quot;Metadata_Time&quot;: [0, 1, 2],</span>
+<span class="sd">        ...     &quot;Size_Area&quot;: [10.0, 20.0, 40.0],</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = ICC(on=&quot;Size_Area&quot;, groupby=[&quot;Plate&quot;])</span>
+<span class="sd">        &gt;&gt;&gt; result = chk.analyze(no_rater)</span>
+<span class="sd">        &gt;&gt;&gt; bool(result[&quot;QC_ICC_Metric&quot;].isna().all())</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; chk.unmatched_groups</span>
+<span class="sd">        [(&#39;P1&#39;,)]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ICC&quot;</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">QUALITY_ICC</span>
+
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.50</span>
+
+    <span class="n">subject_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span>
+    <span class="n">rater_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Replicate&quot;</span>
+
+<div class="viewcode-block" id="ICC.analyze">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ICC.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset :attr:`unmatched_groups` and run the base ``analyze``.</span>
+
+<span class="sd">        Re-running the check on a different measurement frame must not</span>
+<span class="sd">        carry over groups flagged as unmatched (missing axis column) from</span>
+<span class="sd">        a previous run, so the list is cleared before delegating to the</span>
+<span class="sd">        base class.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Measurement frame to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The augmented frame from :meth:`QualityCheck.analyze`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the per-group ICC(2,1) and broadcast it to every row.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group as produced by</span>
+<span class="sd">                ``data.groupby(self.groupby, dropna=False)``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group frame (a copy) with four new columns appended:</span>
+<span class="sd">            ``QC_ICC_NumSubjects``, ``QC_ICC_NumRaters``,</span>
+<span class="sd">            ``QC_ICC_NumMembers``, ``QC_ICC_Metric``. The metric column is</span>
+<span class="sd">            ``NaN`` for groups that hit any of the guard paths documented</span>
+<span class="sd">            on the class. When an axis column is absent the group key is</span>
+<span class="sd">            additionally recorded in :attr:`unmatched_groups`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">n_subjects_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_ICC</span><span class="o">.</span><span class="n">NUM_SUBJECTS</span><span class="p">)</span>
+        <span class="n">n_raters_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_ICC</span><span class="o">.</span><span class="n">NUM_RATERS</span><span class="p">)</span>
+        <span class="n">n_members_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_ICC</span><span class="o">.</span><span class="n">NUM_MEMBERS</span><span class="p">)</span>
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
+
+        <span class="n">out</span><span class="p">[</span><span class="n">n_subjects_col</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">n_raters_col</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">n_members_col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="c1"># LOUD missing-axis guard: a not-evaluated check must be visible,</span>
+        <span class="c1"># not a silent green pass. Record the group key so the GUI/CLI can</span>
+        <span class="c1"># show &quot;could not run&quot;, then fall through to the NaN metric.</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">subject_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">columns</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">rater_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_group_key</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="n">matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_matrix</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">out</span>
+
+        <span class="n">n_subjects</span><span class="p">,</span> <span class="n">n_raters</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">n_subjects_col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_subjects</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">n_raters_col</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_raters</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_icc_2_1</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_group_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract the ``groupby`` key for a single group as a tuple.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group frame. The ``self.groupby`` columns are</span>
+<span class="sd">                constant within the group, so the first row suffices.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A tuple of the group&#39;s ``groupby`` values, regardless of</span>
+<span class="sd">            whether ``groupby`` has one or many columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pivot the group into a complete ``subjects × raters`` matrix.</span>
+
+<span class="sd">        The missing-axis-column case is handled by :meth:`_compute` (which</span>
+<span class="sd">        records the group as unmatched); by the time this runs both axis</span>
+<span class="sd">        columns are present, so a ``None`` here means a genuine</span>
+<span class="sd">        insufficient-data case (empty, duplicated/incomplete cell, or</span>
+<span class="sd">        ``n_subjects &lt; 2`` / ``n_raters &lt; 2``).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group frame whose axis columns are both present.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``(n_subjects, n_raters)`` float matrix with one observation</span>
+<span class="sd">            per cell, or ``None`` when the matrix is empty,</span>
+<span class="sd">            incomplete/duplicated, or too small for a two-way ANOVA</span>
+<span class="sd">            (``n_subjects &lt; 2`` or ``n_raters &lt; 2``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">group</span><span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">subject_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rater_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># A balanced two-way design needs exactly one observation per</span>
+        <span class="c1"># (subject, rater) cell; a duplicate makes the pivot ambiguous.</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">duplicated</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">subject_label</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rater_label</span><span class="p">])</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">pivot</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span>
+            <span class="n">index</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subject_label</span><span class="p">,</span>
+            <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rater_label</span><span class="p">,</span>
+            <span class="n">values</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Any NaN cell means the (subject, rater) combination was missing.</span>
+        <span class="k">if</span> <span class="n">pivot</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">matrix</span> <span class="o">=</span> <span class="n">pivot</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">n_subjects</span><span class="p">,</span> <span class="n">n_raters</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="n">n_subjects</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">n_raters</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">matrix</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_icc_2_1</span><span class="p">(</span><span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute ICC(2,1) two-way random, absolute agreement.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            matrix: A complete ``(n_subjects, n_raters)`` observation</span>
+<span class="sd">                matrix with at least two rows and two columns.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The ICC(2,1) coefficient as a float, or ``NaN`` when the total</span>
+<span class="sd">            variance is zero (all values identical).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># subjects</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># raters</span>
+
+        <span class="n">grand_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">matrix</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+        <span class="n">row_means</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">col_means</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">ss_total</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(((</span><span class="n">matrix</span> <span class="o">-</span> <span class="n">grand_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">ss_total</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Two-way ANOVA sums of squares.</span>
+        <span class="n">ss_rows</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="p">((</span><span class="n">row_means</span> <span class="o">-</span> <span class="n">grand_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">ss_cols</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="p">((</span><span class="n">col_means</span> <span class="o">-</span> <span class="n">grand_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="n">ss_error</span> <span class="o">=</span> <span class="n">ss_total</span> <span class="o">-</span> <span class="n">ss_rows</span> <span class="o">-</span> <span class="n">ss_cols</span>
+
+        <span class="n">ms_rows</span> <span class="o">=</span> <span class="n">ss_rows</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">ms_cols</span> <span class="o">=</span> <span class="n">ss_cols</span> <span class="o">/</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">ms_error</span> <span class="o">=</span> <span class="n">ss_error</span> <span class="o">/</span> <span class="p">((</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">denominator</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ms_rows</span> <span class="o">+</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">ms_error</span> <span class="o">+</span> <span class="p">(</span><span class="n">k</span> <span class="o">/</span> <span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">ms_cols</span> <span class="o">-</span> <span class="n">ms_error</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">denominator</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">float</span><span class="p">((</span><span class="n">ms_rows</span> <span class="o">-</span> <span class="n">ms_error</span><span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

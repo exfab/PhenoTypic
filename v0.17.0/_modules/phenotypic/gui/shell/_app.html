@@ -1,0 +1,1127 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.gui.shell._app &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/gui/shell/_app';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/gui/shell/_app.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../gui.html" class="nav-link">phenotypic.gui</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.gui.shell._app</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.gui.shell._app</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Shell Dash factory + DispatcherMiddleware composer.</span>
+
+<span class="sd">Phase 5 ships the unified hub: ``create_app(sandbox)`` returns a</span>
+<span class="sd">:class:`dash.Dash` whose ``server.wsgi_app`` is wrapped in a</span>
+<span class="sd">:class:`werkzeug.middleware.dispatcher.DispatcherMiddleware`. The</span>
+<span class="sd">dispatcher routes:</span>
+
+<span class="sd">    * ``/builder/...``  → builder Dash factory (eager — small).</span>
+<span class="sd">    * ``/results/...``  → :class:`_ViewerProxy` over a viewer</span>
+<span class="sd">      :class:`ToolSession` (lazy — viewer is heavy).</span>
+<span class="sd">    * ``/run/...``      → run-console Dash factory (eager — small,</span>
+<span class="sd">      Phase 5 placeholder; Phase 6 fills in the form/iframe/log/recents).</span>
+<span class="sd">    * everything else   → the shell&#39;s Flask server. Flask blueprints</span>
+<span class="sd">      (``/sandbox/api/*``, ``/runs/*``) are registered on that server</span>
+<span class="sd">      so they answer regardless of which sub-app is active.</span>
+
+<span class="sd">The viewer is wrapped in a :class:`ToolSession` because it loads heavy</span>
+<span class="sd">parquet tables on every build; the session lets the user release+rebuild</span>
+<span class="sd">to reclaim object-graph memory between explorations. Each Dash app gets</span>
+<span class="sd">its chrome wrapped via :func:`wrap_in_chrome` so the top-bar tabs and</span>
+<span class="sd">sidebar appear identically across mounts.</span>
+
+<span class="sd">Standalone shell mode (Phase 3 backwards-compat): the same</span>
+<span class="sd">``create_app(sandbox)`` is used by Phase 3 tests; the dispatcher&#39;s</span>
+<span class="sd">fallback is the shell Flask, so every Phase 3 endpoint (``/``,</span>
+<span class="sd">``/_dash-layout``, ``/sandbox/api/*``, ``/runs/*``) keeps working.</span>
+<span class="sd">The sub-app mounts simply add new routable prefixes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dash</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dash_bootstrap_components</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dbc</span>  <span class="c1"># type: ignore[import-untyped]</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dash</span><span class="w"> </span><span class="kn">import</span> <span class="n">html</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">werkzeug.middleware.dispatcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">DispatcherMiddleware</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CFG_RUN_REGISTRY</span><span class="p">,</span>
+    <span class="n">CFG_RUNNER</span><span class="p">,</span>
+    <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
+    <span class="n">MOUNT_BROWSE</span><span class="p">,</span>
+    <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
+    <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">MOUNT_RUN</span><span class="p">,</span>
+    <span class="n">MOUNT_TUNE</span><span class="p">,</span>
+    <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
+    <span class="n">TITLE_HUB</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._home</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_home_layout</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_BROWSE</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_HOME</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_RUN</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_TUNE</span><span class="p">,</span>
+    <span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">wrap_in_chrome</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_sandbox_api</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._runs_blueprint</span><span class="w"> </span><span class="kn">import</span> <span class="n">register</span> <span class="k">as</span> <span class="n">register_runs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._sandbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">SandboxRoot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._session</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolSession</span><span class="p">,</span> <span class="n">start_idle_release_thread</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;create_app&quot;</span><span class="p">,</span> <span class="s2">&quot;compose_hub&quot;</span><span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># _ViewerProxy — per-request resolution of the viewer&#39;s WSGI app</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_SessionProxy</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;WSGI callable that resolves a tool&#39;s Dash app per request.</span>
+
+<span class="sd">    The dispatcher&#39;s mount point is fixed at composition time, but the</span>
+<span class="sd">    underlying Dash instance changes whenever the :class:`ToolSession`</span>
+<span class="sd">    rebuilds (release + first ``get`` after release). Going through a</span>
+<span class="sd">    proxy keeps the dispatcher&#39;s mount stable while the wrapped state</span>
+<span class="sd">    floats: each request asks the session for the current Dash app and</span>
+<span class="sd">    forwards the WSGI tuple to its Flask ``wsgi_app``.</span>
+
+<span class="sd">    ``ToolSession.get()`` is itself thread-safe and updates</span>
+<span class="sd">    ``_last_access`` so a steady stream of requests prevents the idle</span>
+<span class="sd">    daemon from releasing the tool mid-session.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[dash.Dash]&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">session</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">environ</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">start_response</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">app</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">wsgi_app</span><span class="p">(</span><span class="n">environ</span><span class="p">,</span> <span class="n">start_response</span><span class="p">)</span>
+
+
+<span class="c1"># Back-compat alias — the analysis sub-app reuses the same proxy machinery,</span>
+<span class="c1"># so the historical ``_ViewerProxy`` name now points at the generic class.</span>
+<span class="n">_ViewerProxy</span> <span class="o">=</span> <span class="n">_SessionProxy</span>
+<span class="n">_AnalysisProxy</span> <span class="o">=</span> <span class="n">_SessionProxy</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Shell-only Dash builder (used as the dispatcher&#39;s default fallback app)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_build_shell_dash_app</span><span class="p">(</span>
+    <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">viewer_session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">viewer_state</span><span class="p">:</span> <span class="s2">&quot;dict[str, Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">extra_release_sessions</span><span class="p">:</span> <span class="s2">&quot;tuple[ToolSession[Any], ...] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the shell&#39;s home Dash (chrome + home pane + Flask blueprints).</span>
+
+<span class="sd">    The returned Dash app is the dispatcher&#39;s default fallback in the</span>
+<span class="sd">    composed hub: any path that doesn&#39;t start with ``/builder``,</span>
+<span class="sd">    ``/results``, or ``/run`` reaches its Flask server, which carries</span>
+<span class="sd">    the ``/sandbox/api/*`` and ``/runs/*`` blueprints alongside the</span>
+<span class="sd">    home Dash routes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sandbox: Frozen-at-launch sandbox root.</span>
+<span class="sd">        url_prefix: Mount prefix. Hub uses ``&quot;/&quot;`` (the shell IS the</span>
+<span class="sd">            fallback, so it serves the root); standalone same.</span>
+<span class="sd">        viewer_session: Optional :class:`ToolSession` for the viewer.</span>
+<span class="sd">            The Phase 2 blueprints call ``viewer_session.touch()``</span>
+<span class="sd">            on each request so iframe-driven dashboard polls keep</span>
+<span class="sd">            the viewer alive even when no Dash callback fires.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">assets_folder</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;_assets&quot;</span><span class="p">)</span>
+
+    <span class="n">app</span> <span class="o">=</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">(</span>
+        <span class="vm">__name__</span><span class="p">,</span>
+        <span class="n">external_stylesheets</span><span class="o">=</span><span class="p">[</span><span class="n">dbc</span><span class="o">.</span><span class="n">themes</span><span class="o">.</span><span class="n">BOOTSTRAP</span><span class="p">],</span>
+        <span class="n">suppress_callback_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">assets_folder</span><span class="o">=</span><span class="n">assets_folder</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span>
+        <span class="n">requests_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+        <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">Div</span><span class="p">(</span><span class="n">build_home_layout</span><span class="p">(</span><span class="n">sandbox</span><span class="p">),</span> <span class="n">className</span><span class="o">=</span><span class="s2">&quot;shell-page&quot;</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_HOME</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="n">register_sandbox_api</span><span class="p">(</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span><span class="p">,</span>
+        <span class="n">viewer_state</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">,</span>
+        <span class="n">extra_release_sessions</span><span class="o">=</span><span class="n">extra_release_sessions</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">register_runs</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span> <span class="n">sandbox</span><span class="p">,</span> <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span><span class="p">)</span>
+    <span class="n">register_shared_static</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Composer — the full hub</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compose_hub</span><span class="p">(</span>
+    <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span> <span class="n">ToolSession</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the shell + builder + viewer-session + run console; mount via DispatcherMiddleware.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of ``(shell_app, viewer_session)``. The shell Dash&#39;s</span>
+<span class="sd">        ``server.wsgi_app`` has been replaced with a</span>
+<span class="sd">        :class:`DispatcherMiddleware` so HTTP requests through any of</span>
+<span class="sd">        ``/``, ``/builder/...``, ``/results/...``, ``/run/...``,</span>
+<span class="sd">        ``/sandbox/api/...``, ``/runs/...`` resolve correctly.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sandbox: Frozen-at-launch sandbox root.</span>
+<span class="sd">        idle_release_seconds: How long the viewer session may go without</span>
+<span class="sd">            a ``get`` or ``touch`` before the daemon releases it. The</span>
+<span class="sd">            default (15 minutes) matches the spec.</span>
+<span class="sd">        start_idle_thread: When ``True`` (default), spawn the daemon</span>
+<span class="sd">            thread that releases idle sessions. Tests pass ``False``</span>
+<span class="sd">            so they don&#39;t leak background threads.</span>
+<span class="sd">        progress: Optional callback invoked with a short label before each</span>
+<span class="sd">            eager sub-app is built (``&quot;sub-app modules&quot;``, ``&quot;shell&quot;``,</span>
+<span class="sd">            ``&quot;builder&quot;``, …). The launcher passes</span>
+<span class="sd">            :meth:`StartupReporter.detail` so the startup bar reflects which</span>
+<span class="sd">            sub-app is currently being composed. ``None`` (default) is a</span>
+<span class="sd">            no-op for non-interactive / test callers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tick</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">progress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">progress</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+    <span class="c1"># Local imports to keep boot-time cycles minimal.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;sub-app modules&quot;</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">analysis</span><span class="p">,</span>
+        <span class="n">browse</span><span class="p">,</span>
+        <span class="n">builder</span><span class="p">,</span>
+        <span class="n">results_viewer</span><span class="p">,</span>
+        <span class="n">run_console</span><span class="p">,</span>
+        <span class="n">tune</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._output_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">OutputRoot</span>
+
+    <span class="c1"># Mutable handoff slot so the sidebar can hand a CLI output path to the</span>
+    <span class="c1"># viewer without changing the ToolSession&#39;s build identity. The</span>
+    <span class="c1"># ``/sandbox/api/viewer/output-root`` endpoint validates an incoming</span>
+    <span class="c1"># path with ``OutputRoot.discover``, stamps the result here, and calls</span>
+    <span class="c1"># ``viewer_session.release()``; the next GET to ``/results/`` rebuilds</span>
+    <span class="c1"># the viewer with this OutputRoot.</span>
+    <span class="n">viewer_state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;OutputRoot | None&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;output_root&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+
+    <span class="c1"># 1. Viewer session (lazy — heavy parquet load deferred to first GET).</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_viewer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
+        <span class="n">viewer_app</span> <span class="o">=</span> <span class="n">results_viewer</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_VIEWER</span>
+        <span class="p">)</span>
+        <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">viewer_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">viewer_app</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_teardown_viewer</span><span class="p">(</span><span class="n">viewer_app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Intentionally a no-op: the released ``viewer_app`` is dropped</span>
+        <span class="c1"># by ``ToolSession.release()`` and reaches GC once all in-flight</span>
+        <span class="c1"># requests through ``_ViewerProxy`` finish. Eagerly popping</span>
+        <span class="c1"># ``filtered_state`` / ``output_root`` from ``app.server.config``</span>
+        <span class="c1"># would race in-flight callbacks reading those keys (a Phase-6</span>
+        <span class="c1"># callback issuing ``current_app.config[&quot;filtered_state&quot;]`` could</span>
+        <span class="c1"># see ``KeyError``). Letting GC reclaim the heavy state via the</span>
+        <span class="c1"># config-dict-of-the-released-app is one cycle slower but</span>
+        <span class="c1"># race-free; Phase 6 can add an in-flight ref counter if eager</span>
+        <span class="c1"># reclamation becomes a hard requirement.</span>
+        <span class="k">del</span> <span class="n">viewer_app</span>  <span class="c1"># pragma: no cover - intentional no-op</span>
+
+    <span class="n">viewer_session</span><span class="p">:</span> <span class="n">ToolSession</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">]</span> <span class="o">=</span> <span class="n">ToolSession</span><span class="p">(</span>
+        <span class="s2">&quot;viewer&quot;</span><span class="p">,</span>
+        <span class="n">build</span><span class="o">=</span><span class="n">_build_viewer</span><span class="p">,</span>
+        <span class="n">teardown</span><span class="o">=</span><span class="n">_teardown_viewer</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 1b. Analysis session built up front so the bind endpoint in step 2</span>
+    <span class="c1">#     can release it alongside the viewer when the sidebar hands off</span>
+    <span class="c1">#     a CLI output. The session&#39;s build closure reads</span>
+    <span class="c1">#     ``viewer_state[&quot;output_root&quot;]`` lazily, so the order between</span>
+    <span class="c1">#     this and the analysis layout factory doesn&#39;t matter.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_analysis</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
+        <span class="n">analysis_app</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">wrap_in_chrome</span><span class="p">(</span>
+            <span class="n">analysis_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">analysis_app</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_teardown_analysis</span><span class="p">(</span><span class="n">_app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">_app</span>  <span class="c1"># pragma: no cover</span>
+
+    <span class="n">analysis_session</span><span class="p">:</span> <span class="n">ToolSession</span><span class="p">[</span><span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">]</span> <span class="o">=</span> <span class="n">ToolSession</span><span class="p">(</span>
+        <span class="s2">&quot;analysis&quot;</span><span class="p">,</span>
+        <span class="n">build</span><span class="o">=</span><span class="n">_build_analysis</span><span class="p">,</span>
+        <span class="n">teardown</span><span class="o">=</span><span class="n">_teardown_analysis</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 2. Shell Dash (registers the API + runs blueprints with the</span>
+    <span class="c1">#    viewer-session touch hook + analysis-session release hook).</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;shell&quot;</span><span class="p">)</span>
+    <span class="n">shell_app</span> <span class="o">=</span> <span class="n">_build_shell_dash_app</span><span class="p">(</span>
+        <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span><span class="p">,</span>
+        <span class="n">viewer_state</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">,</span>
+        <span class="n">extra_release_sessions</span><span class="o">=</span><span class="p">(</span><span class="n">analysis_session</span><span class="p">,),</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 3. Builder Dash (eager — single-process registry build).</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;builder&quot;</span><span class="p">)</span>
+    <span class="n">builder_app</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BUILDER</span>
+    <span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">builder_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="c1"># 4. Run console Dash (eager). Build the process-wide runner +</span>
+    <span class="c1">#    registry HERE so the shell&#39;s ``/runs/`` blueprint, the Recent</span>
+    <span class="c1">#    Runs panel, and the run-console callbacks all share the same</span>
+    <span class="c1">#    state. Rehydrate the registry from disk so historical runs are</span>
+    <span class="c1">#    visible immediately without waiting for a refresh.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;run console&quot;</span><span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.run_console._runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalRunner</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._runs_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunRegistry</span>
+
+    <span class="n">registry</span> <span class="o">=</span> <span class="n">RunRegistry</span><span class="p">()</span>
+    <span class="n">registry</span><span class="o">.</span><span class="n">rehydrate_from_sandbox</span><span class="p">(</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">LocalRunner</span><span class="p">()</span>
+
+    <span class="n">run_app</span> <span class="o">=</span> <span class="n">run_console</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_RUN</span><span class="p">,</span>
+        <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
+        <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">run_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_RUN</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="c1"># 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy</span>
+    <span class="c1">#     parquet load, so no ToolSession is needed. Mounted empty-state: the</span>
+    <span class="c1">#     user binds a tune run from the sidebar (Chunk C), at which point the</span>
+    <span class="c1">#     page re-reads the bound run. The factory stays optuna-free; the live</span>
+    <span class="c1">#     study is opened lazily inside the Monitor poll callback only.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;tune&quot;</span><span class="p">)</span>
+    <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
+        <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">tune_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="c1"># 4c. Browse Dash (eager — lightweight source-image viewer). No</span>
+    <span class="c1">#     ToolSession: it loads no heavy parquet, just lists files + serves</span>
+    <span class="c1">#     ephemeral tiles.</span>
+    <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;browse&quot;</span><span class="p">)</span>
+    <span class="n">browse_app</span> <span class="o">=</span> <span class="n">browse</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BROWSE</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">browse_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BROWSE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+
+    <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>
+    <span class="c1"># (e.g. the sidebar&#39;s &quot;open in run console&quot; hand-off) can reach the</span>
+    <span class="c1"># same singletons.</span>
+    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_RUNNER</span><span class="p">]</span> <span class="o">=</span> <span class="n">runner</span>
+    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_RUN_REGISTRY</span><span class="p">]</span> <span class="o">=</span> <span class="n">registry</span>
+
+    <span class="c1"># 5. Compose at the WSGI layer. The dispatcher receives the shell&#39;s</span>
+    <span class="c1">#    Flask app as its default; any path not matching a mount prefix</span>
+    <span class="c1">#    falls through to it (which carries the API + runs blueprints).</span>
+    <span class="n">viewer_proxy</span> <span class="o">=</span> <span class="n">_ViewerProxy</span><span class="p">(</span><span class="n">viewer_session</span><span class="p">)</span>
+    <span class="n">analysis_proxy</span> <span class="o">=</span> <span class="n">_AnalysisProxy</span><span class="p">(</span><span class="n">analysis_session</span><span class="p">)</span>
+    <span class="c1"># ``wsgi_app`` is the standard Flask seam for WSGI middleware</span>
+    <span class="c1"># injection (this is the same recipe Werkzeug docs recommend).</span>
+    <span class="c1"># DispatcherMiddleware mount keys are prefixes WITHOUT the trailing &quot;/&quot;</span>
+    <span class="c1"># (e.g. &quot;/builder&quot;, not &quot;/builder/&quot;). Strip the trailing slash from</span>
+    <span class="c1"># the MOUNT_* constants by index.</span>
+    <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">wsgi_app</span> <span class="o">=</span> <span class="n">DispatcherMiddleware</span><span class="p">(</span>  <span class="c1"># type: ignore[method-assign]</span>
+        <span class="n">shell_app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">wsgi_app</span><span class="p">,</span>
+        <span class="p">{</span>
+            <span class="n">MOUNT_BUILDER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">builder_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_VIEWER</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">viewer_proxy</span><span class="p">,</span>
+            <span class="n">MOUNT_RUN</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">run_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_TUNE</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">tune_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+            <span class="n">MOUNT_ANALYSIS</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">analysis_proxy</span><span class="p">,</span>
+            <span class="n">MOUNT_BROWSE</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">):</span> <span class="n">browse_app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="s2">&quot;GUI hub composed: sandbox=</span><span class="si">%s</span><span class="s2"> mounts=</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+        <span class="n">MOUNT_BUILDER</span><span class="p">,</span>
+        <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
+        <span class="n">MOUNT_RUN</span><span class="p">,</span>
+        <span class="n">MOUNT_TUNE</span><span class="p">,</span>
+        <span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
+        <span class="n">MOUNT_BROWSE</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start_idle_thread</span><span class="p">:</span>
+        <span class="n">start_idle_release_thread</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">viewer_session</span><span class="p">,</span> <span class="n">analysis_session</span><span class="p">],</span>  <span class="c1"># type: ignore[list-item]</span>
+            <span class="n">idle_release_seconds</span><span class="o">=</span><span class="n">idle_release_seconds</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">shell_app</span><span class="p">,</span> <span class="n">viewer_session</span>
+
+
+<div class="viewcode-block" id="create_app">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.gui.shell.html#phenotypic.gui.shell.create_app">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_app</span><span class="p">(</span>
+    <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">viewer_session</span><span class="p">:</span> <span class="s2">&quot;ToolSession[Any] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
+    <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the unified GUI hub Dash app.</span>
+
+<span class="sd">    Phase 5 default: composes the full hub (shell + builder + viewer</span>
+<span class="sd">    via :class:`ToolSession` + run console) and returns the shell&#39;s</span>
+<span class="sd">    Dash app with its ``server.wsgi_app`` replaced by a</span>
+<span class="sd">    :class:`DispatcherMiddleware`. Tests can hit any HTTP route through</span>
+<span class="sd">    ``app.server.test_client()`` (which goes through ``wsgi_app``).</span>
+
+<span class="sd">    Backwards-compat for Phase 3 tests: passing ``viewer_session``</span>
+<span class="sd">    explicitly opts out of full composition — the call returns just</span>
+<span class="sd">    the shell Dash app with the API + runs blueprints registered</span>
+<span class="sd">    against the supplied session. Phase 3 lifecycle tests rely on this</span>
+<span class="sd">    to inject a stub session and assert ``touch()`` is called.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sandbox: Frozen-at-launch sandbox root.</span>
+<span class="sd">        url_prefix: Reserved for future composer nesting. Hub keeps</span>
+<span class="sd">            it at ``&quot;/&quot;`` since the shell Dash is itself the dispatcher&#39;s</span>
+<span class="sd">            fallback. Standalone shell launches accept any value.</span>
+<span class="sd">        viewer_session: Phase 3 escape hatch — pass to test the shell</span>
+<span class="sd">            in isolation against a specific session. When set,</span>
+<span class="sd">            ``create_app`` returns just the shell Dash without composing</span>
+<span class="sd">            the sub-apps. ``None`` (default) triggers the full hub</span>
+<span class="sd">            composition.</span>
+<span class="sd">        idle_release_seconds: Forwarded to :func:`compose_hub`.</span>
+<span class="sd">        start_idle_thread: Forwarded to :func:`compose_hub`. When</span>
+<span class="sd">            ``None`` (default) the daemon is started under production</span>
+<span class="sd">            launch but skipped under pytest (``PYTEST_CURRENT_TEST``</span>
+<span class="sd">            in env). Tests that want the daemon explicitly should</span>
+<span class="sd">            pass ``True``.</span>
+<span class="sd">        progress: Optional per-sub-app progress callback forwarded to</span>
+<span class="sd">            :func:`compose_hub` (the launcher passes</span>
+<span class="sd">            :meth:`StartupReporter.detail`). Ignored on the Phase 3</span>
+<span class="sd">            ``viewer_session`` escape-hatch path.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Configured :class:`dash.Dash` instance. ``app.run()`` (or</span>
+<span class="sd">        Werkzeug ``run_simple``) starts the unified server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">viewer_session</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Phase 3 backwards-compat: test path injects a stub session</span>
+        <span class="c1"># and stops at the shell Dash (no sub-app composition).</span>
+        <span class="k">return</span> <span class="n">_build_shell_dash_app</span><span class="p">(</span>
+            <span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span> <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start_idle_thread</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Don&#39;t leak daemon threads in pytest unless the test asks.</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+        <span class="n">start_idle_thread</span> <span class="o">=</span> <span class="s2">&quot;PYTEST_CURRENT_TEST&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span>
+
+    <span class="n">shell_app</span><span class="p">,</span> <span class="n">_viewer_session</span> <span class="o">=</span> <span class="n">compose_hub</span><span class="p">(</span>
+        <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">idle_release_seconds</span><span class="o">=</span><span class="n">idle_release_seconds</span><span class="p">,</span>
+        <span class="n">start_idle_thread</span><span class="o">=</span><span class="n">start_idle_thread</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">progress</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">shell_app</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

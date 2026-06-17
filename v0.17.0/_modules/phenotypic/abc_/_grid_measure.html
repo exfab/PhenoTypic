@@ -1,0 +1,942 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._grid_measure &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_grid_measure';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.0/_modules/phenotypic/abc_/_grid_measure.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._grid_measure</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._grid_measure</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImageInputError</span><span class="p">,</span> <span class="n">OutputValueError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_measure_integrity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+
+
+<div class="viewcode-block" id="GridMeasureFeatures">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridMeasureFeatures">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridMeasureFeatures</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract feature measurements from detected colonies in GridImage objects.</span>
+
+<span class="sd">    GridMeasureFeatures is a type-safe wrapper around MeasureFeatures that enforces</span>
+<span class="sd">    GridImage input type. It is to MeasureFeatures what GridOperation is to ImageOperation:</span>
+<span class="sd">    a specialization for grid-aware (arrayed plate) analysis.</span>
+
+<span class="sd">    **What is GridMeasureFeatures?**</span>
+
+<span class="sd">    GridMeasureFeatures enables measurements that leverage well structure in arrayed plate images:</span>
+
+<span class="sd">    - **Type-safe wrapper:** Enforces GridImage input (guaranteed valid grid structure with rows, cols, well positions).</span>
+<span class="sd">    - **Grid-aware measurements:** Access per-well positions, row/column layout via image.grid.info(), enabling</span>
+<span class="sd">      well-normalized and position-aware metrics.</span>
+<span class="sd">    - **Per-well metrics:** Compute measurements per colony but with awareness of which well it belongs to, well size,</span>
+<span class="sd">      and row/column position.</span>
+<span class="sd">    - **Relationship to MeasureFeatures:** Inherits all methods from MeasureFeatures (parent class). Only difference</span>
+<span class="sd">      is stricter input type validation (GridImage required) plus guaranteed access to grid information.</span>
+<span class="sd">    - **Output format:** Returns pandas.DataFrame with one row per detected colony, matching image.objmap labels.</span>
+<span class="sd">      Can easily map back to grid layout.</span>
+<span class="sd">    - **Well-normalized analysis:** Enables computing metrics relative to well size/position (e.g., colony area as</span>
+<span class="sd">      fraction of well area, normalized by well position on plate).</span>
+
+<span class="sd">    **Purpose**</span>
+
+<span class="sd">    Use GridMeasureFeatures when implementing measurement operations that extract</span>
+<span class="sd">    quantitative metrics from colonies in grid-structured agar plate images. Like</span>
+<span class="sd">    MeasureFeatures, it returns pandas DataFrames with one row per detected colony.</span>
+<span class="sd">    The only difference is that it requires GridImage input, making explicit that your</span>
+<span class="sd">    measurement may leverage grid structure (well positions, row/column layout) if desired.</span>
+
+<span class="sd">    **GridImage vs Image**</span>
+
+<span class="sd">    - **Image:** Generic image with optional, unvalidated grid information.</span>
+<span class="sd">    - **GridImage:** Specialized Image subclass with validated grid structure (row/column</span>
+<span class="sd">      layout, well positions, grid alignment). Suitable for 96-well, 384-well, or other</span>
+<span class="sd">      arrayed plate formats.</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Choose GridMeasureFeatures vs MeasureFeatures:</span>
+
+<span class="sd">    - **GridMeasureFeatures:** Measurement depends on or benefits from well structure. Examples: per-well</span>
+<span class="sd">      metrics, well-normalized values, measurements filtered by well position, edge well exclusion.</span>
+<span class="sd">    - **MeasureFeatures:** Measurement works equally well on any Image. Examples: colony size, color,</span>
+<span class="sd">      morphology computed globally without well awareness or position dependency.</span>
+<span class="sd">    - **Type safety:** GridMeasureFeatures enforces GridImage; MeasureFeatures accepts any Image (grid optional).</span>
+<span class="sd">    - **Well-level data:** Use GridMeasureFeatures when you need image.grid.info() for per-well analysis and</span>
+<span class="sd">      when grid structure is essential to your measurement.</span>
+<span class="sd">    - **Multi-well experiments:** GridMeasureFeatures simplifies tracking which well each colony belongs to,</span>
+<span class="sd">      row/column position, and inter-well comparisons.</span>
+<span class="sd">    - **Subclass reference:** Both GridMeasureSize and GridMeasureShape inherit from GridMeasureFeatures.</span>
+<span class="sd">    - **Performance:** GridMeasureFeatures has minimal overhead vs MeasureFeatures; use it when grid structure matters.</span>
+<span class="sd">    - **Flexibility:** If uncertain whether you need grid structure, start with MeasureFeatures; upgrade to</span>
+<span class="sd">      GridMeasureFeatures if well-aware logic becomes necessary.</span>
+
+<span class="sd">    **Implementation Pattern**</span>
+
+<span class="sd">    Inherit from GridMeasureFeatures and implement ``_operate()`` as an instance method:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import GridMeasureFeatures</span>
+<span class="sd">        from phenotypic import GridImage</span>
+<span class="sd">        from phenotypic.schema import OBJECT</span>
+<span class="sd">        import pandas as pd</span>
+
+<span class="sd">        class GridMeasureWellOccupancy(GridMeasureFeatures):</span>
+<span class="sd">            &#39;&#39;&#39;Measure fraction of well area occupied by colonies.&#39;&#39;&#39;</span>
+
+<span class="sd">            normalize: bool = True  # Annotated class-level field</span>
+
+<span class="sd">            def _operate(self, image: GridImage) -&gt; pd.DataFrame:</span>
+<span class="sd">                # image is guaranteed to be GridImage with validated grid structure</span>
+<span class="sd">                grid_info = image.grid.info()  # Access well positions and layout</span>
+<span class="sd">                # grid_info contains: &#39;grid_shape&#39;, &#39;well_centers&#39;, &#39;well_size&#39;, etc.</span>
+
+<span class="sd">                nrows, ncols = grid_info[&#39;grid_shape&#39;]</span>
+<span class="sd">                well_size = grid_info[&#39;well_size&#39;]</span>
+
+<span class="sd">                # Calculate area occupied by colonies using MeasureFeatures methods</span>
+<span class="sd">                area = self._calculate_sum(image.objmask[:], image.objmap[:])</span>
+
+<span class="sd">                # Optional: normalize by well size for grid-aware analysis</span>
+<span class="sd">                if self.normalize and well_size &gt; 0:</span>
+<span class="sd">                    area = area / (well_size ** 2)</span>
+
+<span class="sd">                # Build results DataFrame with colony labels (required by contract)</span>
+<span class="sd">                results = pd.DataFrame({&#39;WellArea&#39;: area})</span>
+<span class="sd">                results.insert(0, OBJECT.LABEL, image.objects.labels2series())</span>
+<span class="sd">                return results</span>
+
+<span class="sd">    **Typical Use Cases**</span>
+
+<span class="sd">    - **Per-well phenotypic analysis:** Extract growth metrics where well position and size matter for normalization</span>
+<span class="sd">      (e.g., center wells may grow differently from edge wells due to evaporation).</span>
+<span class="sd">    - **Grid-based filtering:** Measure only colonies in specific well regions (e.g., measure only center wells in</span>
+<span class="sd">      high-variance experiments, exclude border wells due to contamination risk).</span>
+<span class="sd">    - **Well-normalized metrics:** Compute colony area relative to well size, colony density within well boundaries,</span>
+<span class="sd">      or occupancy rates per well in a 96-well or 384-well plate.</span>
+<span class="sd">    - **Multi-well experiments:** Track which well each colony occupies via grid.info(), enabling growth curve fitting</span>
+<span class="sd">      per well and inter-well statistical comparisons.</span>
+<span class="sd">    - **Quality control filtering:** Exclude edge wells from analysis where plate handling artifacts are common, or</span>
+<span class="sd">      normalize measurements by well position.</span>
+
+<span class="sd">    **Helper Methods Available**</span>
+
+<span class="sd">    Inherit all measurement methods from MeasureFeatures parent class:</span>
+
+<span class="sd">    - ``_calculate_sum()`` - Total measurement per object (e.g., total area)</span>
+<span class="sd">    - ``_calculate_mean()`` - Average measurement per object (e.g., mean intensity)</span>
+<span class="sd">    - ``_calculate_median()`` - Median measurement per object</span>
+<span class="sd">    - ``_calculate_std()`` - Standard deviation per object</span>
+<span class="sd">    - ``_calculate_percentile()`` - Percentile-based measurements (e.g., 95th percentile size)</span>
+<span class="sd">    - ``_extract_properties_per_object()`` - Extract properties from regionprops or similar</span>
+
+<span class="sd">    **Grid Information Available**</span>
+
+<span class="sd">    Access grid structure via ``image.grid.info()`` in _operate():</span>
+
+<span class="sd">    - ``&#39;grid_shape&#39;`` - Tuple (nrows, ncols) of well layout</span>
+<span class="sd">    - ``&#39;well_centers&#39;`` - List of (row_px, col_px) well center coordinates in pixel space</span>
+<span class="sd">    - ``&#39;well_size&#39;`` - Typical well size in pixels (varies by format: 96-well vs 384-well)</span>
+<span class="sd">    - ``&#39;rotation_angle&#39;`` - Current grid rotation angle in degrees</span>
+<span class="sd">    - ``&#39;alignment&#39;`` - Alignment state/quality metrics</span>
+
+<span class="sd">    **Notes**</span>
+
+<span class="sd">    - The ``measure()`` method is inherited from MeasureFeatures; the only difference</span>
+<span class="sd">      is input type validation (GridImage required).</span>
+<span class="sd">    - Returns pandas.DataFrame with one row per detected object, first column is</span>
+<span class="sd">      OBJECT.LABEL (matching image.objmap labels).</span>
+<span class="sd">    - GridImage must have valid grid structure set before measuring. Typically set</span>
+<span class="sd">      by GridFinder or GridCorrector operations in the pipeline.</span>
+<span class="sd">    - All helper methods from MeasureFeatures (mean, median, sum, etc.) are available.</span>
+<span class="sd">    - DataFrame returned can be easily mapped back to grid layout using image.grid.info().</span>
+
+<span class="sd">    **Relationship to MeasureFeatures and GridOperation**</span>
+
+<span class="sd">    - **MeasureFeatures:** Parent class providing all measurement logic. GridMeasureFeatures enforces</span>
+<span class="sd">      GridImage input and guarantees grid structure is available via image.grid.info().</span>
+<span class="sd">    - **GridOperation:** Base class for all grid-aware operations. GridMeasureFeatures is a specialized</span>
+<span class="sd">      subclass combining measurement functionality with grid awareness.</span>
+<span class="sd">    - **Pipeline integration:** Typical order: detect_colonies (ObjectDetector) → measure_features (GridMeasureFeatures) →</span>
+<span class="sd">      analyze_growth (e.g., growth curve fitting per well).</span>
+
+<span class="sd">    **Well-to-Colony Mapping Patterns**</span>
+
+<span class="sd">    Common workflows for mapping measurements back to grid:</span>
+
+<span class="sd">    - **Per-well aggregation:** Group colonies by well position; compute statistics per well (mean, std, count).</span>
+<span class="sd">    - **Well-position filtering:** Exclude edge wells, measure only center wells, or apply position-dependent normalization.</span>
+<span class="sd">    - **Row/column analysis:** Group by row or column; detect spatial patterns or plate gradients.</span>
+<span class="sd">    - **Multi-well comparisons:** Compare growth metrics across wells for identification of outliers or resistance.</span>
+
+<span class="sd">    **Output DataFrame Structure**</span>
+
+<span class="sd">    Standard format returned by GridMeasureFeatures._operate():</span>
+
+<span class="sd">    - **First column:** OBJECT.LABEL (int) - Matches image.objmap labels, one row per colony</span>
+<span class="sd">    - **Measurement columns:** Your custom measurements (Area, Intensity, Circularity, etc.)</span>
+<span class="sd">    - **Mapping to grid:** Use image.grid.info()[&#39;well_centers&#39;] + label → pixel position → well assignment</span>
+
+<span class="sd">    **Validation Checklist**</span>
+
+<span class="sd">    Before shipping GridMeasureFeatures subclass:</span>
+
+<span class="sd">    - Verify grid.info() call succeeds and returns expected keys</span>
+<span class="sd">    - Test on GridImage with known grid (use load_synth_yeast_plate())</span>
+<span class="sd">    - Ensure DataFrame output matches expected column structure (OBJECT.LABEL first, then measurements)</span>
+<span class="sd">    - Check that measurements make sense (e.g., area &gt; 0, intensity in expected range)</span>
+<span class="sd">    - Validate on both small (96-well) and large (384-well) plates if possible</span>
+
+<span class="sd">    **Known Implementations**</span>
+
+<span class="sd">    Reference implementations in the PhenoTypic framework:</span>
+
+<span class="sd">    - **GridMeasureSize:** Measures colony size and morphological features per detected object in GridImage.</span>
+<span class="sd">      Extends GridMeasureFeatures with size-specific methods and grid-aware normalization.</span>
+<span class="sd">    - **GridMeasureShape:** Measures colony shape/circularity/symmetry features. Demonstrates how grid structure</span>
+<span class="sd">      can influence shape interpretation (e.g., elongation along grid rows).</span>
+<span class="sd">    - **MeasureSize (MeasureFeatures):** Parent class implementation. GridMeasureSize extends this with grid awareness.</span>
+
+<span class="sd">    **Testing GridMeasureFeatures Implementations**</span>
+
+<span class="sd">    Best practices for testing new GridMeasureFeatures subclasses:</span>
+
+<span class="sd">    - Use ``load_synth_yeast_plate()`` from phenotypic.data (creates GridImage with detected colonies).</span>
+<span class="sd">    - Verify DataFrame output structure: first column OBJECT.LABEL, subsequent columns are measurements.</span>
+<span class="sd">    - Test with edge cases: image with no colonies detected, single large colony, multiple overlapping colonies.</span>
+<span class="sd">    - Check well-mapping: ensure measurements map correctly to grid positions via image.grid.info().</span>
+<span class="sd">    - Validate row/column filtering logic if using position-aware filtering (center wells, edge exclusion).</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Grid-aware measurement of colony size per well:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridMeasureFeatures</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.schema import OBJECT</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; class MeasureWellOccupancy(GridMeasureFeatures):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Measure total area occupied in each well.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: GridImage) -&gt; pd.DataFrame:</span>
+<span class="sd">        ...         # Use grid accessor to calculate per-well metrics</span>
+<span class="sd">        ...         area = self._calculate_sum(image.objmask[:], image.objmap[:])</span>
+<span class="sd">        ...         well_info = image.grid.info()  # Get well assignments</span>
+<span class="sd">        ...         # Combine area with well location</span>
+<span class="sd">        ...         results = pd.DataFrame({</span>
+<span class="sd">        ...             &#39;WellArea&#39;: area,</span>
+<span class="sd">        ...         })</span>
+<span class="sd">        ...         results.insert(0, OBJECT.LABEL, image.objects.labels2series())</span>
+<span class="sd">        ...         return results</span>
+<span class="sd">        &gt;&gt;&gt; # Usage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; image = Image(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; image = OtsuDetector().operate(image)</span>
+<span class="sd">        &gt;&gt;&gt; grid_image = GridImage(image)</span>
+<span class="sd">        &gt;&gt;&gt; grid_image.detect_grid()  # Establish grid structure</span>
+<span class="sd">        &gt;&gt;&gt; measurer = MeasureWellOccupancy()</span>
+<span class="sd">        &gt;&gt;&gt; df = measurer.measure(grid_image)  # Returns grid-aware measurements</span>
+
+<span class="sd">        Grid-aware filtering: measure only center wells:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridMeasureFeatures</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; class MeasureCenterWells(GridMeasureFeatures):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Measure size only for colonies in center wells (exclude edge wells).&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: GridImage) -&gt; pd.DataFrame:</span>
+<span class="sd">        ...         grid_info = image.grid.info()</span>
+<span class="sd">        ...         nrows, ncols = grid_info[&#39;grid_shape&#39;]</span>
+<span class="sd">        ...         # Get all measurements first</span>
+<span class="sd">        ...         all_areas = self._calculate_sum(image.objmask[:], image.objmap[:])</span>
+<span class="sd">        ...         labels = image.objects.labels2series()</span>
+<span class="sd">        ...         # Filter: keep only colonies in center wells</span>
+<span class="sd">        ...         center_mask = self._get_center_well_mask(grid_info, nrows, ncols)</span>
+<span class="sd">        ...         # Return measurements for center-well colonies only</span>
+<span class="sd">        ...         results = pd.DataFrame({&#39;Area&#39;: all_areas[center_mask]})</span>
+<span class="sd">        ...         results.insert(0, &#39;OBJECT.LABEL&#39;, labels[center_mask])</span>
+<span class="sd">        ...         return results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridMeasureFeatures.measure">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridMeasureFeatures.measure">[docs]</a>
+    <span class="nd">@validate_measure_integrity</span><span class="p">()</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">OutputValueError</span><span class="p">(</span><span class="s2">&quot;pandas.DataFrame&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
