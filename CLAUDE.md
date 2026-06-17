@@ -162,6 +162,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 ## Module Guides
 
 - [_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) — Image class, accessors
+- [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — execution strategies, staged GPU engine, SLURM chaining
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
 - [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (`MeasurementInfo` base + header enums)
 - [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
@@ -178,6 +179,9 @@ operations copy data; avoid unnecessary intermediate allocations.
 - `src/phenotypic/_core/_image_pipeline.py` — Pipeline implementation
 - `src/phenotypic/abc_/` — Operation interfaces
 - `src/phenotypic/__main__.py` — CLI entry point
+- `src/phenotypic/_cli/_cli_execution_strategies.py` — strategy dispatch (`create_execution_strategy`)
+- `src/phenotypic/_cli/_cli_staged_strategy.py`, `_cli_staged_slurm.py`,
+  `_cli_staged_workers.py` — staged GPU engine (local + SLURM); see [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)
 
 ## Code Style
 
@@ -243,6 +247,15 @@ the gate:
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
   engine (preprocess → GPU → measure) with a per-image objmap **sidecar**, not per-image
   processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
+  See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch + stages.
+- **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker resolve
+  custom op classes defined outside the `phenotypic` namespace (a self-registering module
+  it imports before `from_json`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` + `require_license_acceptance`
+  (`detect/nn/_checkpoint_manager.py`) gate gated-weight downloads — the hook for Spec 2's
+  SAM3/DINOv3. Third-party licensing scaffolding: root `NOTICE` + `licenses/` + `MANIFEST.in`.
+- **HPCC SLURM CPU heterogeneity:** on a mixed partition, pre-AVX CPU nodes can SIGILL
+  ("Illegal instruction (core dumped)") the modern numpy/scipy wheels — this affects ALL
+  phenotypic SLURM runs, not just the staged engine. Pin to a modern partition/constraint.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.

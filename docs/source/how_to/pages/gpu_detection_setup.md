@@ -370,6 +370,15 @@ Hugging Face models). Gated foundation-model weights are never bundled; accept
 their license once via `PHENOTYPIC_ACCEPT_MODEL_LICENSE=<model>` (see the
 `require_license_acceptance` hook).
 
+**Custom detectors on SLURM.** Each SLURM stage worker is a fresh process that
+deserializes the pipeline with `ImagePipeline.from_json`, which resolves operation
+classes from the `phenotypic` namespace. If your pipeline uses a detector defined
+**outside** the package, set
+`PHENOTYPIC_PRELOAD_MODULES=your.module[,another.module]` — the worker imports
+each before deserializing, so a self-registering module can make its class
+resolvable on the compute node. `sbatch --export=ALL` (the default) propagates the
+variable.
+
 ## Device Selection
 
 Both detectors accept a `device` parameter that controls where inference runs.
@@ -498,3 +507,21 @@ python -m phenotypic.detect.nn list  # verify
 
 Ensure `TORCH_HOME` and `MICROSAM_CACHEDIR` (if customised) point to a
 shared filesystem accessible from compute nodes.
+
+### `Illegal instruction (core dumped)` on a SLURM compute node
+
+A stage worker exits with code 132 and the SLURM `.err` log shows `Illegal
+instruction (core dumped)`. The node's CPU is too old for the installed
+numpy/scipy/torch wheels (a pre-AVX node on a heterogeneous partition). This
+affects **any** PhenoTypic SLURM run, not just the staged GPU engine. Pin jobs to
+modern nodes — use a homogeneous modern partition, or add a SLURM feature
+constraint that excludes the old CPUs, e.g.:
+
+```bash
+python -m phenotypic --pipeline p.json --input /plates/ -o /out/ \
+    --slurm slurm_partition=<modern-partition> \
+    --gpu-slurm slurm_partition=<gpu-partition>
+```
+
+(Stage 2's GPU work runs on GPU nodes, which are typically consistent; the CPU
+Stages 1 & 3 are the ones exposed to a heterogeneous CPU partition.)
