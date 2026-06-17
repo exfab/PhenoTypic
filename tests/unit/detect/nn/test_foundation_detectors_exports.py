@@ -11,7 +11,12 @@ numeric (int/float) field on them carries a ``TuneSpec`` (search window or
 
 import typing
 
-from phenotypic.detect.nn import DinoSam2Detector, Sam3Detector
+from phenotypic.detect.nn import (
+    DinoSam2Detector,
+    FssDinoDetector,
+    Insid3Detector,
+    Sam3Detector,
+)
 from phenotypic.tools_.typing_ import TuneSpec
 
 
@@ -40,12 +45,18 @@ def test_detectors_exported_from_nn_all():
 
     assert "Sam3Detector" in nn.__all__
     assert "DinoSam2Detector" in nn.__all__
+    assert "Insid3Detector" in nn.__all__
+    assert "FssDinoDetector" in nn.__all__
     assert nn.Sam3Detector is Sam3Detector
     assert nn.DinoSam2Detector is DinoSam2Detector
+    assert nn.Insid3Detector is Insid3Detector
+    assert nn.FssDinoDetector is FssDinoDetector
 
 
 def test_every_numeric_field_carries_a_tune_spec():
-    for cls in (Sam3Detector, DinoSam2Detector):
+    # W1: the annotation-coverage gate is scoped to detect.__all__ (not
+    # detect.nn), so pin the Spec 2a + 2b GPU detectors' tune-readiness here.
+    for cls in (Sam3Detector, DinoSam2Detector, Insid3Detector, FssDinoDetector):
         for name, field_info in _numeric_fields(cls):
             metadata = list(field_info.metadata) + _walk_metadata(
                 field_info.annotation
@@ -53,3 +64,12 @@ def test_every_numeric_field_carries_a_tune_spec():
             assert any(isinstance(m, TuneSpec) for m in metadata), (
                 f"{cls.__name__}.{name} (numeric) lacks a TuneSpec annotation"
             )
+
+
+def test_semantic_detectors_set_semantic_output_kind():
+    # Spec 2b: both new detectors are semantic → write objmask (Spec 1 §8).
+    for cls in (Insid3Detector, FssDinoDetector):
+        det = cls()
+        assert det.output_kind == "semantic"
+        assert det.input_layer == "rgb"
+        assert det.supports_batching is False

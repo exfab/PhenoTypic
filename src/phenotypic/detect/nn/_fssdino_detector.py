@@ -513,7 +513,6 @@ class FssDinoDetector(GpuDetector):
 
     def _infer_one(self, sample: Any) -> "np.ndarray":
         """Score a query against the fg/bg classes → boolean objmask (tiled)."""
-        import numpy as np
 
         self._ensure_model_loaded()
         rgb = self._to_uint8(sample)

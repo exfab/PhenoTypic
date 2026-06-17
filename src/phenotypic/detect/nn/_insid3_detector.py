@@ -377,7 +377,6 @@ class Insid3Detector(GpuDetector):
         cached prototype, upsamples and thresholds to a boolean mask. Large
         plates are tiled (semantic union stitch).
         """
-        import numpy as np
 
         self._ensure_model_loaded()
         rgb = self._to_uint8(sample)
