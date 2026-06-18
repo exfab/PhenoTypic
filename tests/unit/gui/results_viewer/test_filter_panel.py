@@ -5,6 +5,7 @@ from __future__ import annotations
 from phenotypic.gui.results_viewer._filter_panel import (
     _blank_row,
     _normalise_spec,
+    _render_filter_row,
     set_row_compare,
     set_row_method,
     set_row_range,
@@ -12,6 +13,7 @@ from phenotypic.gui.results_viewer._filter_panel import (
 )
 from phenotypic.gui.results_viewer._filter_state import (
     METHOD_COMPARE,
+    METHOD_CONTAINS,
     METHOD_IS_ANY_OF,
     METHOD_RANGE,
 )
@@ -75,10 +77,6 @@ def test_setters_ignore_unknown_idx() -> None:
     rows = [_blank_row()]
     out = set_row_range(rows, "nope", 1.0, 2.0)
     assert out[0]["range_min"] is None
-
-
-from phenotypic.gui.results_viewer._filter_panel import _render_filter_row
-from phenotypic.gui.results_viewer._filter_state import METHOD_CONTAINS, METHOD_RANGE
 
 
 def _iter(component):
@@ -151,3 +149,49 @@ def test_method_dropdown_enables_range_compare_for_numeric_column() -> None:
     )
     disabled = {o["value"] for o in dropdown.options if o.get("disabled")}
     assert "range" not in disabled and "compare" not in disabled
+
+
+def test_register_callbacks_wires_method_controls(tmp_path) -> None:
+    """register_callbacks adds the per-method sync callbacks."""
+    import dash
+    import polars as pl
+
+    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic.gui.results_viewer import _filter_panel
+
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1", "d1"],
+            "Metadata_ImageFile": ["a", "b"],
+            "Size_Area": [1.0, 2.0],
+        }
+    )
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    target = master_measurements_parquet_path(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(target)
+    for stem in ("a", "b"):
+        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+
+    output_root = OutputRoot.discover(tmp_path)
+    state = CurationLabels.load(output_root.root, output_root.clean_master_df)
+    app = dash.Dash(__name__)
+    _filter_panel.register_callbacks(app, output_root, state)
+
+    # The per-method callbacks all write the (allow_duplicate) spec store, so
+    # their distinguishing surface is the *input* id, not the output-keyed
+    # callback_map key. Collect every registered input id-string.
+    registered_input_ids = {
+        spec["id"]
+        for entry in app.callback_map.values()
+        for spec in entry["inputs"]
+    }
+    blob = " ".join(registered_input_ids)
+    assert "filter-row-method" in blob
+    assert "filter-row-range-min" in blob
+    assert "filter-row-compare-op" in blob
+    assert "filter-row-text-pattern" in blob

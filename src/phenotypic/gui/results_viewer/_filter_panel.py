@@ -714,7 +714,11 @@ def register_callbacks(
             new_column = new_by_id.get(row["id"], row["column"])
             if new_column != row["column"]:
                 row["column"] = new_column
-                row["values"] = []
+                _reset_payload(row)
+                if row["method"] in _NUMERIC_ONLY_METHODS and not (
+                    new_column and output_root.is_numeric_column(new_column)
+                ):
+                    row["method"] = METHOD_IS_ANY_OF
                 changed = True
         if not changed:
             return no_update
@@ -753,6 +757,127 @@ def register_callbacks(
         if not changed:
             return no_update
         return rows
+
+    # --- Method dropdown → spec (resets payload) -------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-method", "index": ALL}, "value"),
+        State({"type": "filter-row-method", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_methods(
+        methods: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, method in zip(component_ids, methods, strict=False):
+            idx = comp_id["index"]
+            current = _find(rows, idx)
+            new_method = method or METHOD_IS_ANY_OF
+            if current is not None and current["method"] != new_method:
+                set_row_method(rows, idx, new_method)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Range inputs → spec ---------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-range-min", "index": ALL}, "value"),
+        Input({"type": "filter-row-range-max", "index": ALL}, "value"),
+        State({"type": "filter-row-range-min", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_ranges(
+        mins: list[Any],
+        maxes: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, lo, hi in zip(component_ids, mins, maxes, strict=False):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_lo, new_hi = _coerce_float(lo), _coerce_float(hi)
+            if row["range_min"] != new_lo or row["range_max"] != new_hi:
+                set_row_range(rows, idx, lo, hi)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Compare op/value → spec -----------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-compare-op", "index": ALL}, "value"),
+        Input({"type": "filter-row-compare-value", "index": ALL}, "value"),
+        State({"type": "filter-row-compare-op", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_compares(
+        ops: list[Any],
+        vals: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, op, value in zip(component_ids, ops, vals, strict=False):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_op = op if op in COMPARE_OPS else None
+            new_val = _coerce_float(value)
+            if row["compare_op"] != new_op or row["compare_value"] != new_val:
+                set_row_compare(rows, idx, op, value)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Contains text/flags → spec --------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-text-pattern", "index": ALL}, "value"),
+        Input({"type": "filter-row-text-regex", "index": ALL}, "value"),
+        Input({"type": "filter-row-text-case", "index": ALL}, "value"),
+        State({"type": "filter-row-text-pattern", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_texts(
+        patterns: list[Any],
+        regexes: list[Any],
+        cases: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, pattern, regex, case in zip(
+            component_ids, patterns, regexes, cases, strict=False
+        ):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_pat = str(pattern or "")
+            if (
+                row["text_pattern"] != new_pat
+                or row["text_regex"] != bool(regex)
+                or row["text_case_sensitive"] != bool(case)
+            ):
+                set_row_text(rows, idx, pattern, regex=regex, case=case)
+                changed = True
+        return rows if changed else no_update
 
     # --- 5. Populate values options reactively ---------------------------
 
