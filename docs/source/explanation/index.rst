@@ -26,6 +26,7 @@ theoretical background for PhenoTypic's algorithms.
    :maxdepth: 1
    :caption: Measurement & Analysis
 
+   measurement_classification_system
    measurement_metrics_biological_meaning
    edge_effects_in_plate_assays
    image_quality_noise_contrast_structure
