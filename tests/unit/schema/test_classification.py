@@ -79,6 +79,21 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", derivation_type="bogus")
 
 
+def test_shape_straddles_tier1_and_tier2():
+    from phenotypic.schema import SHAPE
+    tier1 = {SHAPE.AREA, SHAPE.CONVEX_AREA, SHAPE.MEDIAN_RADIUS, SHAPE.MEAN_RADIUS,
+             SHAPE.MAX_RADIUS, SHAPE.MIN_FERET_DIAMETER, SHAPE.MAX_FERET_DIAMETER,
+             SHAPE.MAJOR_AXIS_LENGTH, SHAPE.MINOR_AXIS_LENGTH, SHAPE.BBOX_AREA,
+             SHAPE.PERIMETER}
+    tier2 = {SHAPE.CIRCULARITY, SHAPE.ECCENTRICITY, SHAPE.SOLIDITY, SHAPE.EXTENT,
+             SHAPE.COMPACTNESS, SHAPE.ORIENTATION}
+    for m in tier1:
+        assert m.resolved_tier == 1, m
+    for m in tier2:
+        assert m.resolved_tier == 2, m
+    assert tier1 | tier2 == set(SHAPE)   # full coverage, no member missed
+
+
 def test_tier3_primary_enums():
     from phenotypic.schema import TEXTURE, ColorXYZ, Colorxy, ColorComposition
     for enum in (TEXTURE, ColorXYZ, Colorxy, ColorComposition):
