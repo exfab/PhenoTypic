@@ -42,7 +42,17 @@ from phenotypic.gui._design import (
     OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    FilterSpec,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    VALID_METHODS,
+    _coerce_float,
+)
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -63,6 +73,84 @@ _MAX_PASTE_PREVIEW_CHIPS = 200
 # the textarea before clicking Apply again. This is simpler than a
 # Preview→Apply two-stage and matches the standard "submit-with-feedback"
 # pattern used elsewhere in the project's Dash UIs.
+
+
+# Canonical empty payload for every method field, used by _blank_row and
+# the per-method setters to reset a row when its method or column changes.
+_EMPTY_PAYLOAD: dict[str, Any] = {
+    "values": [],
+    "range_min": None,
+    "range_max": None,
+    "compare_op": None,
+    "compare_value": None,
+    "text_pattern": "",
+    "text_regex": False,
+    "text_case_sensitive": False,
+}
+
+
+def _blank_row(column: str = "") -> dict[str, Any]:
+    """Return a fresh, fully-defaulted row dict with a new uuid id."""
+    return {
+        "id": uuid.uuid4().hex,
+        "column": column,
+        "method": METHOD_IS_ANY_OF,
+        **{k: (list(v) if isinstance(v, list) else v) for k, v in _EMPTY_PAYLOAD.items()},
+    }
+
+
+def _reset_payload(row: dict[str, Any]) -> None:
+    """Clear every method-specific field on ``row`` in place."""
+    for key, empty in _EMPTY_PAYLOAD.items():
+        row[key] = list(empty) if isinstance(empty, list) else empty
+
+
+def _find(rows: list[dict[str, Any]], idx: str) -> dict[str, Any] | None:
+    return next((r for r in rows if r.get("id") == idx), None)
+
+
+def set_row_method(
+    rows: list[dict[str, Any]], idx: str, method: str
+) -> list[dict[str, Any]]:
+    """Set a row's method and reset its payload (cached values are stale)."""
+    if method not in VALID_METHODS:
+        method = METHOD_IS_ANY_OF
+    row = _find(rows, idx)
+    if row is not None:
+        row["method"] = method
+        _reset_payload(row)
+    return rows
+
+
+def set_row_range(
+    rows: list[dict[str, Any]], idx: str, lo: Any, hi: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["range_min"] = _coerce_float(lo)
+        row["range_max"] = _coerce_float(hi)
+    return rows
+
+
+def set_row_compare(
+    rows: list[dict[str, Any]], idx: str, op: Any, value: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["compare_op"] = op if op in COMPARE_OPS else None
+        row["compare_value"] = _coerce_float(value)
+    return rows
+
+
+def set_row_text(
+    rows: list[dict[str, Any]], idx: str, pattern: Any, *, regex: Any, case: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["text_pattern"] = str(pattern or "")
+        row["text_regex"] = bool(regex)
+        row["text_case_sensitive"] = bool(case)
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -145,12 +233,11 @@ def layout(output_root: OutputRoot) -> Component:
 
 
 def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
-    """Coerce the store payload into a list of full row dicts.
+    """Coerce the store payload into a list of full, defaulted row dicts.
 
-    Each row is guaranteed to have ``id`` (uuid hex), ``column`` (str),
-    and ``values`` (list[str]) keys. Malformed entries are dropped; rows
-    missing an ``id`` get a fresh one (covers the cold-start case where
-    ``STORE_FILTER_SPEC`` is initialised to ``[]``).
+    Each row gains ``id``, ``column``, ``method`` (default is_any_of), and
+    every method payload field. Malformed entries are dropped; legacy rows
+    (``{column, values}`` with no ``method``) are backfilled.
     """
     if not isinstance(stored, list):
         return []
@@ -158,13 +245,21 @@ def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
     for entry in stored:
         if not isinstance(entry, dict):
             continue
-        row_id = entry.get("id") or uuid.uuid4().hex
-        column = str(entry.get("column", "") or "")
+        row = _blank_row(str(entry.get("column", "") or ""))
+        row["id"] = entry.get("id") or row["id"]
+        method = entry.get("method") or METHOD_IS_ANY_OF
+        row["method"] = method if method in VALID_METHODS else METHOD_IS_ANY_OF
         raw_values = entry.get("values") or []
-        if not isinstance(raw_values, list):
-            raw_values = []
-        values = [str(v) for v in raw_values]
-        rows.append({"id": row_id, "column": column, "values": values})
+        row["values"] = [str(v) for v in raw_values] if isinstance(raw_values, list) else []
+        row["range_min"] = _coerce_float(entry.get("range_min"))
+        row["range_max"] = _coerce_float(entry.get("range_max"))
+        op = entry.get("compare_op")
+        row["compare_op"] = op if op in COMPARE_OPS else None
+        row["compare_value"] = _coerce_float(entry.get("compare_value"))
+        row["text_pattern"] = str(entry.get("text_pattern", "") or "")
+        row["text_regex"] = bool(entry.get("text_regex", False))
+        row["text_case_sensitive"] = bool(entry.get("text_case_sensitive", False))
+        rows.append(row)
     return rows
 
 
