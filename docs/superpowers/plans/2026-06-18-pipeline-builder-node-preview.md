@@ -737,6 +737,9 @@ def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline, result,
         }
 
     _describe(input_block.block_id, "base_00.h5")
+    # Invariant: pipeline.get_ops() insertion order == _topological_image_order
+    # over the same scope == _run_operations' {i:02d}_{key}.h5 naming. The three
+    # must stay in lockstep; do not reorder one without the others.
     for i, (op_key, block) in enumerate(zip(pipeline.get_ops().keys(), ops_blocks)):
         _describe(block.block_id, f"{i:02d}_{op_key}.h5")
 
@@ -869,8 +872,10 @@ from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder import _preview_cache as pc
 
 
-def _seed_scope_hdf(tmp_path, monkeypatch, session_id, block_id):
-    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+def _seed_scope_hdf(session_id, block_id):
+    # NOTE: caller must monkeypatch pc.preview_cache_root AND create the app
+    # FIRST — create_app runs init_preview_cache() which wipes the cache root.
+    # Seeding after app creation keeps the fixture alive.
     sdir = pc.scope_dir(session_id, [])
     img = Image(arr=np.zeros((48, 64, 3), dtype=np.uint8))
     hdf = sdir / "base_00.h5"
@@ -884,10 +889,11 @@ def _seed_scope_hdf(tmp_path, monkeypatch, session_id, block_id):
 
 
 def test_preview_dzi_served(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    app = create_app(image_root=tmp_path)  # wipes the (empty) tmp cache root
     sid = "previewsess0001"
     blk = "b" * 32
-    shash = _seed_scope_hdf(tmp_path, monkeypatch, sid, blk)
-    app = create_app(image_root=tmp_path)
+    shash = _seed_scope_hdf(sid, blk)  # seed AFTER app creation survives the wipe
     client = app.server.test_client()
     resp = client.get(f"/preview-tiles/{sid}/{shash}/{blk}/gray.dzi")
     assert resp.status_code == 200
@@ -896,14 +902,17 @@ def test_preview_dzi_served(tmp_path, monkeypatch):
 
 
 def test_preview_rejects_bad_channel(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    app = create_app(image_root=tmp_path)
     sid = "previewsess0001"
     blk = "b" * 32
-    shash = _seed_scope_hdf(tmp_path, monkeypatch, sid, blk)
-    app = create_app(image_root=tmp_path)
+    shash = _seed_scope_hdf(sid, blk)
     client = app.server.test_client()
     resp = client.get(f"/preview-tiles/{sid}/{shash}/{blk}/bogus.dzi")
     assert resp.status_code == 404
 ```
+
+> **Fix (plan review #1):** `create_app` runs `init_preview_cache()` which wipes the cache root, so the app must be constructed **before** seeding the cache, with the `preview_cache_root` monkeypatch applied first. Same ordering applies in Task 9's integration test.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -1207,7 +1216,7 @@ def _is_image_producing(registry: Any, class_name: str) -> bool:
     return getattr(info, "category", None) in _IMAGE_PRODUCING_CATEGORIES
 ```
 
-In `_block_card`, splice the preview button into the `linear-node-header` `html.Div` (the one at lines 588-603, which already holds badges + `_help_button(...)`). Change its `children` list to append the preview button for image-producing nodes:
+In `_block_card`, splice the preview button into the `linear-node-header` `html.Div` (at `_linear_layout.py:591-602`, which already holds badges + `_help_button(...)`). Change its `children` list to append the preview button for image-producing nodes:
 
 ```python
         html.Div(
@@ -1323,7 +1332,7 @@ PREVIEW_OSD_MOUNT_TRIGGER = "preview-osd-mount-trigger"
 
 - [ ] **Step 3b: Add the modal builder**
 
-In `src/phenotypic/gui/builder/_layout.py`, add `build_node_preview_modal` near `build_confirm_delete_modal` (after line 2045). Use `COLOR_IMAGE_STAGE_DARK` (already imported for the point picker):
+In `src/phenotypic/gui/builder/_layout.py`, **first add `COLOR_IMAGE_STAGE_DARK` to the `_design` import block** (lines 32-39, which currently imports `COLOR_BLUE, COLOR_BORDER, COLOR_GOLD, COLOR_MUTED, COLOR_NAVY, COLOR_SURFACE, COLOR_WHITE`) — it is NOT imported there yet (only `_point_picker.py` imports it), and the modal references it. Then add `build_node_preview_modal` near `build_confirm_delete_modal` (after line 2045):
 
 ```python
 def build_node_preview_modal() -> dbc.Modal:
@@ -1611,8 +1620,16 @@ def _find_block(scope, block_id):
 Inside `register_callbacks(app)` in `_callbacks.py`, near the picker clientside block (~6469), add the server callbacks and 2 clientside callbacks. Import at the top of `_callbacks.py` (with the other builder imports):
 
 ```python
+from flask import current_app
+from phenotypic.gui._config import CFG_URL_PREFIX
+from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._preview_callbacks import build_preview_payload
+from phenotypic.gui.builder._preview_tiles import preview_dzi_url
 ```
+
+> **Fix (plan review #3 & #4):**
+> - **scope_path decoding:** the node-action id stores `scope_path` as a `"/"`-joined string (via `_linear_scope_id_value`, `_ids.py:322`), so `list(scope_raw)` would split a nested path into single characters. Decode with the existing helpers `_decode_linear_scope_path` (`_callbacks.py:901`) and `_decode_linear_optional` (`_callbacks.py:909`) — both already defined in this module.
+> - **url prefix:** read `current_app.config.get(CFG_URL_PREFIX, "/")` (the Flask server-config key set in `_app.py:142`, matching `_dzi_url`), NOT `app.config` (Dash's config).
 
 Server callbacks:
 
@@ -1629,9 +1646,9 @@ Server callbacks:
                 or not ctx.triggered[0].get("value"):
             return no_update, no_update
         tid = ctx.triggered_id
-        scope_raw = tid.get("scope_path")
-        scope_path = [] if scope_raw in (None, "__root__") else list(scope_raw)
-        return True, {"block_id": tid.get("block_id"), "scope_path": scope_path}
+        scope_path = _decode_linear_scope_path(tid.get("scope_path"))
+        block_id = _decode_linear_optional(tid.get("block_id"))
+        return True, {"block_id": block_id, "scope_path": scope_path}
 
     @app.callback(
         Output(ids.PREVIEW_LAYER_RADIO, "options"),
@@ -1653,7 +1670,7 @@ Server callbacks:
             return no_update, no_update, no_update, no_update, no_update
         if not session_id:
             session_id = uuid.uuid4().hex
-        url_prefix = app.config.get("requests_pathname_prefix", "/")
+        url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
         try:
             payload = build_preview_payload(
                 session_id=session_id, state_data=state_data,
@@ -1678,15 +1695,18 @@ Server callbacks:
     def switch_preview_layer(channel, target, session_id):
         if not channel or not target or not session_id:
             return no_update, no_update
-        from phenotypic.gui.builder._preview_tiles import preview_dzi_url
         scope_path = target["scope_path"]
         shash = pc.scope_hash(scope_path)
-        url_prefix = app.config.get("requests_pathname_prefix", "/")
+        url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
         url = preview_dzi_url(url_prefix, session_id, shash, target["block_id"], channel)
-        return url, f"· {channel}"
+        # Keep the W×H prefix consistent with compute_node_preview's caption.
+        manifest = pc.read_manifest(session_id, scope_path) or {}
+        node = manifest.get("nodes", {}).get(target["block_id"], {})
+        h, w = node.get("shape", [0, 0])
+        return url, f"{w}×{h} · {channel}"
 ```
 
-Add `from phenotypic.gui.builder import _preview_cache as pc` at the top of `_callbacks.py` and call `pc.scope_hash(...)` directly (defined in Task 3). Use `INPUT_NROWS`/`INPUT_NCOLS` ids as already referenced by `run_preview`; if their id constants differ, reuse exactly what `run_preview` passes for grid dims (read `run_preview`'s `State(...)` list for the two grid-dimension inputs and copy them verbatim).
+Call `pc.scope_hash(...)` directly (defined in Task 3). Use `INPUT_NROWS`/`INPUT_NCOLS` ids — the plan reviewer confirmed these are the exact States `run_preview` uses for grid dims (`_callbacks.py:5539-5543`).
 
 Clientside callbacks (mirror the picker block at 6469-6526):
 
@@ -1723,7 +1743,7 @@ Clientside callbacks (mirror the picker block at 6469-6526):
 
 Wire the Close button: add a callback `Output(MODAL_NODE_PREVIEW, "is_open", allow_duplicate=True)` from `Input("btn-preview-close", "n_clicks")` returning `False` (prevent_initial_call=True).
 
-Ensure the `LINEAR_NODE_ACTION` fan-in dispatcher (`_callbacks.py:3783`) does not error on `action == "preview"`: add an early `if action == "preview": return (no_update,) * <N outputs>` guard at the top of its dispatch ladder (match the existing tuple arity returned by that callback).
+> **Fix (plan review, concern A):** Do NOT add a fan-in guard. The existing `LINEAR_NODE_ACTION` dispatcher (`_callbacks.py:3783-3849`) already has a terminal `else: return _NOOP_FAN_IN` for unknown actions, so `action == "preview"` no-ops safely with the correct arity. Two Dash callbacks may share an overlapping pattern-matching `Input` (the fan-in's `action: ALL` and the new `action: "preview"`) without a duplicate-callback error. The dedicated `open_node_preview` callback owns the preview action; no change to the fan-in is needed.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1792,6 +1812,9 @@ def _nested_state():
 
 def test_nested_scopes_coexist_and_serve(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    # create_app runs init_preview_cache() which wipes the cache root, so build
+    # the app FIRST, then compute_scope writes into the (surviving) cache.
+    app = create_app(image_root=tmp_path)
     state, container, inner_op = _nested_state()
     sid = "nestedsess0001"
     scope_path = [container.block_id]
@@ -1804,7 +1827,6 @@ def test_nested_scopes_coexist_and_serve(tmp_path, monkeypatch):
     assert pc.read_manifest(sid, scope_path) is not None
 
     # the inner detector's objmap tile serves through the blueprint
-    app = create_app(image_root=tmp_path)
     client = app.server.test_client()
     shash = pc.scope_hash(scope_path)
     resp = client.get(
@@ -1879,6 +1901,8 @@ git commit -m "test(gui): nested preview integration + FEATURES.md rows"
 
 - **Spec coverage:** Task 1 = `full_layers` core flag (spec §1); Task 2 = `load_layer_hdf5` (spec §1); Tasks 3-4 = cache + chained fingerprint + threaded input (spec §2, §8); Task 5 = staging + tile route (spec §3); Task 6 = SVG button (spec §4); Task 7 = modal + JS (spec §5); Task 8 = callbacks (spec §6); Task 9 = nested integration + FEATURES.md (spec §7, §8, Testing).
 - **GridImage:** verified the grid handler round-trips `/grid/` through `save2hdf5`/`load_hdf5`; `_load_image_auto` (Task 4) selects the class by stored `phenotypic_class`, so no sidecar is needed.
-- **Symbol caution:** `_registry_info_for` and `INPUT_NROWS`/`INPUT_NCOLS` are referenced from existing code; if a name differs at implementation time, use the exact symbol `run_preview` uses for the same purpose (grid dims) and the registry-category lookup used by `_image_renderer`. The Task 8 note covers the fallback.
-- **Fan-in guard:** the existing `LINEAR_NODE_ACTION` `action: ALL` callback must early-return on `action == "preview"` (Task 8) so the dedicated open callback owns it without a dispatch error.
+- **Symbols confirmed by plan review:** `_registry_info_for` (`_image_renderer.py:382`), `INPUT_NROWS`/`INPUT_NCOLS` (`_ids.py:849,852`, the exact States `run_preview` uses), `_decode_linear_scope_path`/`_decode_linear_optional` (`_callbacks.py:901,909`), `_NOOP_FAN_IN` terminal-else in the dispatcher, and `CFG_URL_PREFIX` (`phenotypic.gui._config`) all exist as used.
+- **Fan-in guard:** NOT needed — the dispatcher already has a terminal `else: return _NOOP_FAN_IN` for unknown actions (plan review concern A). The dedicated `open_node_preview` callback owns the preview action; overlapping pattern Inputs across two callbacks are legal in Dash.
+- **Cache wipe ordering:** `create_app` runs `init_preview_cache()` (wipes the cache root), so route/integration tests must construct the app BEFORE seeding/`compute_scope` (Tasks 5 & 9, fixed).
+- **FEATURES.md gate:** the `features-md-gate` is PR-level (CLAUDE.md), so the per-task local commits in Tasks 5-8 that touch `gui/` without editing FEATURES.md are fine; the PR is satisfied by Task 9's rows. If a local pre-commit hook ever blocks a gui-touching commit for FEATURES.md, add a `🔭 planned` placeholder row for that feature then (planned rows skip the Test-ref resolve check).
 - **No new WORKFLOWS.md row** (single button + modal) — only FEATURES.md.
