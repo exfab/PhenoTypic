@@ -21,6 +21,25 @@ def _seed_scope_hdf(session_id, block_id):
     return pc.scope_hash([])
 
 
+def _seed_scope_hdf_no_objmap(session_id, block_id):
+    """Seed a scope with an HDF that has no objmap layer (legacy flat layout).
+
+    Uses ``save_intermediate_layers`` with only the non-objmap layers so
+    that ``Image.load_layer_hdf5(hdf, "objmap")`` raises ``KeyError``,
+    exercising the 404 path for overlay/objmap channels.
+    """
+    sdir = pc.scope_dir(session_id, [])
+    img = Image(arr=np.zeros((48, 64, 3), dtype=np.uint8))
+    hdf = sdir / "no_objmap.h5"
+    img.save_intermediate_layers(hdf, layers=("rgb", "gray", "detect_mat"))
+    manifest = {"fingerprint": "fp", "scope_key": "", "error": None,
+                "nodes": {block_id: {"hdf": "no_objmap.h5",
+                                     "layers": ["rgb", "gray", "detect_mat"],
+                                     "shape": [48, 64], "num_objects": 0}}}
+    pc.write_manifest(session_id, [], manifest)
+    return pc.scope_hash([])
+
+
 def test_preview_dzi_served(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
     app = create_app(image_root=tmp_path)  # wipes the (empty) tmp cache root
@@ -42,4 +61,16 @@ def test_preview_rejects_bad_channel(tmp_path, monkeypatch):
     shash = _seed_scope_hdf(sid, blk)
     client = app.server.test_client()
     resp = client.get(f"/preview-tiles/{sid}/{shash}/{blk}/bogus.dzi")
+    assert resp.status_code == 404
+
+
+def test_overlay_on_no_objmap_node_returns_404(tmp_path, monkeypatch):
+    """Requesting overlay for a node whose HDF lacks objmap returns 404, not 500."""
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    app = create_app(image_root=tmp_path)
+    sid = "previewsess0002"
+    blk = "c" * 32
+    shash = _seed_scope_hdf_no_objmap(sid, blk)
+    client = app.server.test_client()
+    resp = client.get(f"/preview-tiles/{sid}/{shash}/{blk}/overlay.dzi")
     assert resp.status_code == 404

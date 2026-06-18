@@ -950,7 +950,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 layers = _layers_modified_by(operation)
 
                 if layers is None:
-                    # Read-only op (MeasureFeatures, GridFinder): no file
+                    # Read-only op (MeasureFeatures): no file
                     intermediates[key] = None
                 elif full_layers:
                     # Faithful full v2 snapshot (all layers + class/grid attrs)

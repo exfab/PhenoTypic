@@ -120,6 +120,9 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         try:
             png_path = stage_channel_png(sdir, block_id, channel, hdf_path)
             _dzi_tiler.tile(png_path, sdir / "dzi")
+        except KeyError:
+            logger.debug("layer not available in HDF for %s/%s", block_id, channel)
+            return _json_error("layer not available", 404)
         except Exception:  # noqa: BLE001
             logger.exception("preview tile generation failed")
             return _json_error("tile generation failed", 500)
