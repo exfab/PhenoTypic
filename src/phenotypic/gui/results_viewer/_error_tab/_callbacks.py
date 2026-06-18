@@ -52,7 +52,7 @@ from phenotypic.gui.results_viewer._error_tab._data import (
     verified_good_keys,
 )
 from phenotypic.gui.results_viewer._error_tab._figure import build_distribution_figure
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     error_analysis_csv_path,
     error_analysis_html_path,
     error_analysis_parquet_path,

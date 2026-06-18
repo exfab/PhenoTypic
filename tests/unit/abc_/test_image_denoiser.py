@@ -6,7 +6,7 @@ from phenotypic.abc_ import ImageCorrector, ImageDenoiser, ImageEnhancer
 from phenotypic.enhance import (
     BayesShrinkEnhancer,
     LocalEdgeDenoise,
-    BM3DDenoiser,
+    EnhanceBlockMatch,
     NonLocalMeansDenoiser,
     VisuShrinkEnhancer,
 )
@@ -29,14 +29,14 @@ class TestImageDenoiserABC:
         assert not issubclass(ImageDenoiser, ImageCorrector)
 
     @pytest.mark.parametrize(
-        "denoiser_cls",
-        [
-            BM3DDenoiser,
-            BayesShrinkEnhancer,
-            VisuShrinkEnhancer,
-            NonLocalMeansDenoiser,
-            LocalEdgeDenoise,
-        ],
+            "denoiser_cls",
+            [
+                EnhanceBlockMatch,
+                BayesShrinkEnhancer,
+                VisuShrinkEnhancer,
+                NonLocalMeansDenoiser,
+                LocalEdgeDenoise,
+            ],
     )
     def test_concrete_denoisers_inherit(self, denoiser_cls):
         """All five concrete denoisers are :class:`ImageDenoiser` subclasses."""
@@ -44,14 +44,14 @@ class TestImageDenoiserABC:
         assert issubclass(denoiser_cls, ImageEnhancer)
 
     @pytest.mark.parametrize(
-        "denoiser_cls",
-        [
-            BM3DDenoiser,
-            BayesShrinkEnhancer,
-            VisuShrinkEnhancer,
-            NonLocalMeansDenoiser,
-            LocalEdgeDenoise,
-        ],
+            "denoiser_cls",
+            [
+                EnhanceBlockMatch,
+                BayesShrinkEnhancer,
+                VisuShrinkEnhancer,
+                NonLocalMeansDenoiser,
+                LocalEdgeDenoise,
+            ],
     )
     def test_instances_pass_isinstance(self, denoiser_cls):
         """Instances of every denoiser register as :class:`ImageDenoiser`."""

@@ -10,7 +10,7 @@ detect_mat).
 from ._bayesshrink_corrector import BayesShrinkCorrector
 from ._color_correction import CaptureMetadata, ColorCheckerProfile, ColorCorrector
 from ._color_denoise import ColorDenoise
-from ._stable_denoise import StableDenoise
+from ._denoise_block_match import DenoiseBlockMatch
 from ._grid_aligner import GridAligner
 from ._visushrink_corrector import VisuShrinkCorrector
 from ._image_cropper import ImageCropper
@@ -21,7 +21,7 @@ __all__ = [
     "ColorCheckerProfile",
     "ColorCorrector",
     "ColorDenoise",
-    "StableDenoise",
+    "DenoiseBlockMatch",
     "GridAligner",
     "ImageCropper",
     "ImagePadder",

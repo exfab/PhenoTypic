@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 from skimage.segmentation import clear_border
 
 from ..abc_ import ThresholdDetector
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class UserThreshold(ThresholdDetector):

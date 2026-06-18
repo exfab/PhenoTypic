@@ -11,7 +11,7 @@ import numpy as np
 from phenotypic.abc_ import GpuDetector
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect.nn import Sam2Detector
-from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
+from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind
 from tests._fakes.fake_gpu_detector import FakeGpuDetector as _FakeGpuDetector
 
 

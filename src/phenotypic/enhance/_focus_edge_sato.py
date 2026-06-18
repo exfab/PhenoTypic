@@ -9,7 +9,7 @@ from pydantic import field_validator
 from skimage.feature import hessian_matrix, hessian_matrix_eigvals
 
 from phenotypic.abc_ import FocusEdge
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class FocusEdgeSato(FocusEdge):

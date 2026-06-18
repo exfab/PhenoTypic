@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import ObjectDetector, GridOperation
-from phenotypic.tools_.funcs_ import validate_operation_integrity
-from phenotypic.tools_.exceptions_ import GridImageInputError
+from phenotypic.sdk_.funcs_ import validate_operation_integrity
+from phenotypic.sdk_.exceptions_ import GridImageInputError
 
 
 class GridObjectDetector(ObjectDetector, GridOperation, ABC):

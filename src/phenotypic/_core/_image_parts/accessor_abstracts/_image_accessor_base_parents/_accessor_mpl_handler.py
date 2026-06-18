@@ -8,7 +8,7 @@ import skimage as ski
 from matplotlib.patches import Rectangle
 
 from phenotypic.schema import METADATA
-from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 
 from ._accessor_io_handler import AccessorIOHandler
 

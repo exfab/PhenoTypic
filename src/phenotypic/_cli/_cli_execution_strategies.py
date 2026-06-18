@@ -33,7 +33,7 @@ from ._cli_types import (
 )
 from ._cli_output_manager import OutputManager
 from ._cli_process_single import process_single_image_core
-from phenotypic.tools_.slurm import get_slurm_array_limit
+from phenotypic.sdk_.slurm import get_slurm_array_limit
 from ._cli_slurm_array_scripts import generate_all_array_job_scripts
 from ._cli_slurm_submission import submit_slurm_script_chain
 from ._cli_update_state import append_event, append_completion_event, aggregate_state_from_events
@@ -41,14 +41,14 @@ from ._cli_failure_tracker import append_failure, read_failures
 from ._dashboard import generate_dashboard, regenerate_dashboard_artifacts
 
 from ._cli_constants import MAX_TRACEBACK_LINES
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     JOB_METADATA_JSON,
     JobMetadataKey,
     HdfAttr,
     event_log_path,
     progress_dir,
 )
-from phenotypic.tools_.typing_ import ImageTypeName
+from phenotypic.sdk_.typing_ import ImageTypeName
 
 logger = logging.getLogger(__name__)
 

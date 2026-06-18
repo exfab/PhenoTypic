@@ -8,7 +8,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.gui._config import tune_presets_dir
 from phenotypic.gui.tune._space import space_to_spec
-from phenotypic.tools_ import CONFIG_SUFFIX_TUNING, matches_any_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_TUNING, matches_any_suffix
 from phenotypic.tune import QCScorer, TuningSpec
 
 _SAFE_STEM = re.compile(r"[^A-Za-z0-9_.-]+")

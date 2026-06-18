@@ -29,7 +29,7 @@ from typing import Literal
 import polars as pl
 
 from phenotypic.schema import CURATION, OBJECT, ErrorCategory
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     curation_labels_parquet_path,
     custom_categories_json_path,
     error_category_parquet_path,

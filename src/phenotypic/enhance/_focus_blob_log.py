@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_laplace
 from typing_extensions import Self
 
 from ..abc_ import FocusBlob
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 _SQRT2 = np.sqrt(2.0)
 

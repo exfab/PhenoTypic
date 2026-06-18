@@ -13,7 +13,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur, EnhanceLocalContrast
 from phenotypic.measure import MeasureShape, MeasureIntensity, MeasureColor
 from phenotypic.refine import SmallObjectRemover, RemoveBorderObjects
-from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 
 class TestBasicSerialization:

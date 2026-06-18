@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Iterator, Literal
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
     resolve_manifest_json_path,

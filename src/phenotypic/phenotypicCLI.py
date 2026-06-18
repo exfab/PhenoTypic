@@ -179,7 +179,7 @@ from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
 )
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_OVERLAYS,
     JOB_METADATA_JSON,
@@ -195,7 +195,7 @@ from phenotypic.tools_ import (
     recompile_dir,
     resolve_processing_state_path,
 )
-from phenotypic.tools_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -523,7 +523,7 @@ def _print_process_only_dry_run_plan(
     location. See spec §5.7.
     """
     from phenotypic._cli._cli_process_only import process_only_output_path
-    from phenotypic.tools_ import phenotypic_cache_dir
+    from phenotypic.sdk_ import phenotypic_cache_dir
 
     layer = config.process_only_layer
     backend = "slurm" if config.is_slurm_mode() else "local"
@@ -1396,7 +1396,7 @@ def phenotypic_cli(
         # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
         if config.process_only_layer:
             try:
-                from phenotypic.tools_ import phenotypic_cache_pipeline_json_path
+                from phenotypic.sdk_ import phenotypic_cache_pipeline_json_path
 
                 cache_copy = phenotypic_cache_pipeline_json_path(output_dir)
                 cache_copy.parent.mkdir(parents=True, exist_ok=True)
@@ -1800,7 +1800,7 @@ def _discover_recompile_dataset_names(
     job_meta: Optional[dict[str, Any]],
 ) -> list[str]:
     """Discover datasets using the local recompile precedence."""
-    from phenotypic.tools_ import DIR_MEASUREMENTS
+    from phenotypic.sdk_ import DIR_MEASUREMENTS
     results_dir = output_dir / DIR_RESULTS
     dataset_names: list[str] = []
     if results_dir.is_dir():
@@ -1840,7 +1840,7 @@ def _build_recompile_job_metadata_datasets(
 
 def _recompile_dataset_image_names(output_dir: Path, dataset_name: str) -> list[str]:
     """Infer image names from per-image measurement Parquets or HDFs."""
-    from phenotypic.tools_ import DIR_MEASUREMENTS, DIR_HDF
+    from phenotypic.sdk_ import DIR_MEASUREMENTS, DIR_HDF
     dataset_dir = output_dir / DIR_RESULTS / dataset_name
     meas_dir = dataset_dir / DIR_MEASUREMENTS
     if meas_dir.is_dir():
@@ -1871,7 +1871,7 @@ def _wait_for_recompile_finalizer_status(
     import json
     import time
 
-    from phenotypic.tools_ import task_status_path
+    from phenotypic.sdk_ import task_status_path
     status_path = task_status_path(output_dir, finalizer_task_index)
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:

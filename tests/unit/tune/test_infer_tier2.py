@@ -16,8 +16,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tools_._column_ref import ColumnRef
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.sdk_._column_ref import ColumnRef
+from phenotypic.sdk_.typing_ import NdArrayField
 from phenotypic.tune import (
     Categorical,
     Excluded,

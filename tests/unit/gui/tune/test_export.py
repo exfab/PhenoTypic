@@ -9,7 +9,7 @@ from phenotypic.gui.tune._export import (
     export_pareto_pipeline,
     export_winning_pipeline,
 )
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     CONFIG_SUFFIX_PIPELINE,
     best_params_path,
     best_pipeline_path,

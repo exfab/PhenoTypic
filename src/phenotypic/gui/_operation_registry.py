@@ -17,10 +17,10 @@ from pydantic_core import PydanticUndefined
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import ImageOperation
-from phenotypic.tools_._column_ref import _ColumnRefMarker
-from phenotypic.tools_._docstring_params import parse_param_descriptions
-from phenotypic.tools_.mixin import PointPickerMixin
-from phenotypic.tools_.typing_ import _OperationFieldMarker
+from phenotypic.sdk_._column_ref import _ColumnRefMarker
+from phenotypic.sdk_._docstring_params import parse_param_descriptions
+from phenotypic.sdk_.mixin import PointPickerMixin
+from phenotypic.sdk_.typing_ import _OperationFieldMarker
 
 
 def _is_union_origin(origin: Any) -> bool:
@@ -32,7 +32,7 @@ def _is_union_origin(origin: Any) -> bool:
 def _has_operation_field_marker(hint: Any) -> bool:
     """Return ``True`` if ``hint`` carries an :class:`_OperationFieldMarker`.
 
-    :data:`~phenotypic.tools_.typing_.OperationField` erases its core
+    :data:`~phenotypic.sdk_.typing_.OperationField` erases its core
     type to ``Any``, so the usual ``issubclass(..., ImageOperation)``
     detection in :meth:`OperationRegistry._detect_operation_types` never
     fires. The marker is the distinguishing token. Because a field is
@@ -99,7 +99,7 @@ class ParamInfo:
             scalar slots still render a single connection.
         description: Parameter description from docstring (None if not available)
         column_ref: Populated when the annotation carries a
-            :class:`~phenotypic.tools_._column_ref._ColumnRefMarker`.
+            :class:`~phenotypic.sdk_._column_ref._ColumnRefMarker`.
             Drives the column-aware dropdown widgets in the analysis
             sub-app's section forms; ``None`` for ordinary params.
     """
@@ -492,7 +492,7 @@ class OperationRegistry:
         substring scan recognises ``List[`` / ``list[`` carriers and the
         ``Optional[...]`` / ``... | None`` wrappers around them.
 
-        A field typed :data:`~phenotypic.tools_.typing_.OperationField`
+        A field typed :data:`~phenotypic.sdk_.typing_.OperationField`
         (whose core type is erased to ``Any``) is recognised via an
         :class:`_OperationFieldMarker` scan of the annotation tree —
         ``OperationField`` accepts an operation *or* a nested pipeline,
@@ -723,8 +723,8 @@ def _detect_column_ref(
     """Extract a :class:`ColumnRefSpec` from a parameter annotation.
 
     The column-ref markers ride on the ``Annotated[...]`` aliases
-    (:data:`~phenotypic.tools_.ColumnRef` /
-    :data:`~phenotypic.tools_.ColumnRefList`).
+    (:data:`~phenotypic.sdk_.ColumnRef` /
+    :data:`~phenotypic.sdk_.ColumnRefList`).
 
     Two introspection paths feed this:
 

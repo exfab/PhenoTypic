@@ -78,8 +78,8 @@ shards, analysis sidecars, vendored `plotly.min.js`/`hyparquet.min.js`),
 ## 2. The leverage point
 
 Almost all of these paths are already centralized in
-**`src/phenotypic/tools_/_io_constants.py`** as filename constants + path-builder
-helper functions, re-exported through `phenotypic.tools_` and (for the GUI)
+**`src/phenotypic/sdk_/_io_constants.py`** as filename constants + path-builder
+helper functions, re-exported through `phenotypic.sdk_` and (for the GUI)
 `phenotypic.gui._config`. This is the single source of truth the existing
 refactor established, and it makes the move tractable.
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, List
 
 import numpy as np
 
-from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind
+from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image

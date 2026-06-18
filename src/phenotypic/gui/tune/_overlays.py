@@ -608,7 +608,7 @@ def overlay_cache_dir(run_path: "str | Path") -> Path:
     Returns:
         ``<run_path>/.pht-tune-cache/overlays/``.
     """
-    from phenotypic.tools_ import tune_cache_dir
+    from phenotypic.sdk_ import tune_cache_dir
 
     return tune_cache_dir(Path(run_path)) / _OVERLAY_CACHE_SUBDIR
 

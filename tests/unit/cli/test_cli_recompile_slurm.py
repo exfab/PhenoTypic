@@ -12,7 +12,7 @@ import polars as pl
 import pytest
 from click.testing import CliRunner
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,

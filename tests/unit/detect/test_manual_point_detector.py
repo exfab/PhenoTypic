@@ -55,7 +55,7 @@ class TestManualPointDetectorInit:
 
     def test_inherits_point_picker_mixin(self):
         """ManualPointDetector mixes in PointPickerMixin and exposes its marker."""
-        from phenotypic.tools_.mixin import PointPickerMixin
+        from phenotypic.sdk_.mixin import PointPickerMixin
 
         det = ManualPointDetector()
         assert isinstance(det, PointPickerMixin)
@@ -141,7 +141,7 @@ class TestManualPointDetectorNapari:
         """
         det = ManualPointDetector()
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = det.napari(MagicMock())
@@ -154,7 +154,7 @@ class TestManualPointDetectorNapari:
         det = ManualPointDetector()
         assert det.centers is None
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.empty((0, 2))
             result = det.napari(MagicMock())
@@ -168,7 +168,7 @@ class TestManualPointDetectorNapari:
         original_centers = [[10, 20], [30, 40]]
         det = ManualPointDetector(centers=original_centers)
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.empty((0, 2))
             det.napari(MagicMock())

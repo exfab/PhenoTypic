@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from phenotypic.tools_ import readme_md_path
+from phenotypic.sdk_ import readme_md_path
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline

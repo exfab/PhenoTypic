@@ -15,7 +15,7 @@ class TestManualGridDetectorNapari:
         """Two picked points set coord1 and coord2."""
         det = ManualGridPointDetector(coord1=(10, 10))
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = det.napari(MagicMock())
@@ -28,7 +28,7 @@ class TestManualGridDetectorNapari:
         """One picked point sets coord1; coord2 becomes None."""
         det = ManualGridPointDetector(coord1=(10, 10), coord2=(30, 30))
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50, 60]])
             result = det.napari(MagicMock())
@@ -41,7 +41,7 @@ class TestManualGridDetectorNapari:
         """Zero picked points (user closed without confirm) leaves state unchanged."""
         det = ManualGridPointDetector(coord1=(10, 10), coord2=(30, 30))
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.empty((0, 2))
             result = det.napari(MagicMock())
@@ -55,7 +55,7 @@ class TestManualGridDetectorNapari:
         """napari() returns self for method chaining."""
         det = ManualGridPointDetector()
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = det.napari(MagicMock())
@@ -66,7 +66,7 @@ class TestManualGridDetectorNapari:
         """Coordinates from napari are rounded to int and stored as tuples."""
         det = ManualGridPointDetector()
 
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50.7, 60.3], [100.1, 120.9]])
             det.napari(MagicMock())

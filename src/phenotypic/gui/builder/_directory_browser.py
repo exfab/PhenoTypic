@@ -21,7 +21,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
 
 from phenotypic.gui._config import IMAGE_EXTS  # re-exported for back-compat
-from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 # ---------------------------------------------------------------------------
 # Public constants

@@ -30,7 +30,7 @@ from phenotypic.gui.analysis._callbacks import _resolve_preview_node
 from phenotypic.gui.analysis._plot_controls import collect_plot_kwargs
 from phenotypic.gui.analysis._render import render_plot
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_ import measurements_parquet_path
+from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 

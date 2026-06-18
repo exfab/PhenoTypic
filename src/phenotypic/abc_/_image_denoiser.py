@@ -22,7 +22,7 @@ class ImageDenoiser(ImageEnhancer, ABC):
     ``image.detect_mat``.
 
     Concrete subclasses typically also mix in
-    :class:`phenotypic.tools_.mixin._GATSupportMixin` to expose the optional
+    :class:`phenotypic.sdk_.mixin._GATSupportMixin` to expose the optional
     Generalized Anscombe Transform variance-stabilization pairing for
     Poisson-Gaussian noise.
 
@@ -36,6 +36,6 @@ class ImageDenoiser(ImageEnhancer, ABC):
 
     See Also:
         :class:`phenotypic.abc_.ImageEnhancer` for the broader enhancer
-        contract; :class:`phenotypic.tools_.mixin._GATSupportMixin` for
+        contract; :class:`phenotypic.sdk_.mixin._GATSupportMixin` for
         optional variance stabilization.
     """

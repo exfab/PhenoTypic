@@ -440,7 +440,7 @@ objectives is important rather than relying on weights alone.
 `-o/--output OUTPUT_DIR` (§6) holds the whole run. The split mirrors the forward CLI's
 convention (root `CLAUDE.md`): **user-facing artifacts go in `deliverables/`**, while the
 **machinery** (the study, the trial record, splits, screening, progress, resume state) stays
-at the `OUTPUT_DIR` root. Resolve every path via the `phenotypic.tools_` helpers
+at the `OUTPUT_DIR` root. Resolve every path via the `phenotypic.sdk_` helpers
 (`deliverables_dir(output)`, …), never by hand-joining names.
 
 ```

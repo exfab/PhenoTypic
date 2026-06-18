@@ -13,7 +13,7 @@ from phenotypic._core._image_parts.detection_modes._detection_mode import (
     DetectionMode,
     register_detection_mode,
 )
-from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 
 
 @register_detection_mode

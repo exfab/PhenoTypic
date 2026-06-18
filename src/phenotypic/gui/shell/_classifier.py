@@ -32,7 +32,7 @@ from phenotypic.gui._config import (
     RESULTS_DIRNAME,
 )
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
-from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 
@@ -272,14 +272,14 @@ def _classify_dir(path: Path) -> Capabilities:
         # but not yet finalized (no master_measurements.parquet) from being
         # transiently misclassified as process-only. Resolve via the helper so a
         # legacy-root manifest still surfaces.
-        from phenotypic.tools_ import resolve_manifest_json_path
+        from phenotypic.sdk_ import resolve_manifest_json_path
 
         is_process_only_output = resolve_manifest_json_path(path).is_file()
 
     # A tune run writes its .pht-tune-cache/run.json marker at run START (before
     # any deliverable lands), so this is an independent capability — a tune
     # output may coincide with results/deliverables once the run finalizes.
-    from phenotypic.tools_ import tune_cache_run_marker_path
+    from phenotypic.sdk_ import tune_cache_run_marker_path
 
     is_tune_output = tune_cache_run_marker_path(path).is_file()
 

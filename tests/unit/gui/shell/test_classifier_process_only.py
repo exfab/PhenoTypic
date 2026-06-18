@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from phenotypic.gui.shell._classifier import classify, invalidate_cache
-from phenotypic.tools_ import manifest_json_path
+from phenotypic.sdk_ import manifest_json_path
 
 
 @pytest.fixture(autouse=True)

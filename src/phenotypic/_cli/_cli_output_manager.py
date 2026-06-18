@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 from ._cli_types import Dataset
 from ._cli_duckdb_agg import duckdb_aggregate
 from phenotypic.util import split_measurements
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     DIR_LOGS,
@@ -514,12 +514,12 @@ def finalize_post_master_outputs(
     """Run every CLI side effect that follows a freshly written master file.
 
     This is the single canonical entry point for the work that happens after
-    :data:`~phenotypic.tools_.MASTER_MEASUREMENTS_PARQUET` (and its CSV
+    :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and its CSV
     counterpart) land on disk. Every code path that writes the master —
     :func:`aggregate_measurements`, the recompile sentinel, future
     re-aggregators — should call this so the post-applied
-    :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET` mirror, the persisted
-    :data:`~phenotypic.tools_.PIPELINE_JSON`, the analysis output, and the
+    :data:`~phenotypic.sdk_.MEASUREMENTS_PARQUET` mirror, the persisted
+    :data:`~phenotypic.sdk_.PIPELINE_JSON`, the analysis output, and the
     per-feature splits stay in lock-step.
 
     The order is:
@@ -536,8 +536,8 @@ def finalize_post_master_outputs(
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
-       :data:`~phenotypic.tools_.MEASUREMENTS_CSV` /
-       :data:`~phenotypic.tools_.MEASUREMENTS_PARQUET`. When *pipeline*
+       :data:`~phenotypic.sdk_.MEASUREMENTS_CSV` /
+       :data:`~phenotypic.sdk_.MEASUREMENTS_PARQUET`. When *pipeline*
        is ``None`` or has no post ops, ``post_df`` equals the working
        frame unchanged.
     3. :func:`_seed_measurements` writes the post-applied frame.
@@ -557,7 +557,7 @@ def finalize_post_master_outputs(
 
     Args:
         output_dir: Output root that already contains
-            :data:`~phenotypic.tools_.MASTER_MEASUREMENTS_PARQUET` (and the
+            :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and the
             CSV counterpart).
         master_df: The clean (post-free, metadata-free) aggregated master.
         pipeline: Recovered pipeline, or ``None`` when it can't be
@@ -573,9 +573,9 @@ def finalize_post_master_outputs(
             artifact is written and the GUI review state is left as-is).
             When ``False`` (default), QC runs whenever the pipeline has a
             non-empty ``qc`` section: the GUI-owned
-            :data:`~phenotypic.tools_.QC_REVIEW_STATE_JSON` is cleared
+            :data:`~phenotypic.sdk_.QC_REVIEW_STATE_JSON` is cleared
             (a fresh CLI run resets review progress) and
-            :func:`phenotypic.tools_._qc_recipe._runner.run_qc` writes the ``qc/`` artifact from
+            :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` writes the ``qc/`` artifact from
             the post-applied + metadata-joined frame. QC failures are
             logged and never affect the authoritative master files.
 
@@ -619,7 +619,7 @@ def finalize_post_master_outputs(
                 # Import the submodule directly (not ``phenotypic.qc``) so QC
                 # compute is only pulled in on the path that needs it, keeping
                 # the qc package __init__ free of an eager _runner import.
-                from phenotypic.tools_._qc_recipe._runner import run_qc
+                from phenotypic.sdk_._qc_recipe._runner import run_qc
 
                 run_qc(post_df.to_pandas(), pipeline, output_dir)
             except Exception:
@@ -677,7 +677,7 @@ def _reset_qc_review_state(output_dir: Path) -> None:
     Args:
         output_dir: Run output root.
     """
-    from phenotypic.tools_ import qc_review_state_path
+    from phenotypic.sdk_ import qc_review_state_path
 
     state_path = qc_review_state_path(output_dir)
     if not state_path.exists():

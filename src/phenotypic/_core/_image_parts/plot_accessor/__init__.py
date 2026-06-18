@@ -17,7 +17,7 @@ from ._spatial_plotter import SpatialPlotter
 from ._threshold_plotter import ThresholdPlotter
 
 # Re-export registry functions for convenience
-from phenotypic.tools_.register import available_plotters, get_plotter
+from phenotypic.sdk_.register import available_plotters, get_plotter
 
 __all__ = [
     "AllDataPlotter",

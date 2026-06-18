@@ -11,7 +11,7 @@ from PIL import Image as PIL_Image
 from abc import ABC, abstractmethod
 from phenotypic._core._image_parts.accessor_abstracts import ImageAccessorBase
 from phenotypic.schema import METADATA
-from phenotypic.tools_.constants_ import IO
+from phenotypic.sdk_.constants_ import IO
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
@@ -266,9 +266,9 @@ class MultiChannelAccessor(ImageAccessorBase, ABC):
             return fig
 
         if channel is None:
-            fig = self.plotly_imshow(arr=arr, figsize=figsize, title=title)
+            fig = self._plotly_imshow(arr=arr, figsize=figsize, title=title)
         else:
-            fig = self.plotly_imshow(
+            fig = self._plotly_imshow(
                     arr=arr[:, :, channel],
                     figsize=figsize,
                     title=title,

@@ -13,7 +13,7 @@ from phenotypic.detect.nn._checkpoint_manager import Device
 # detectors reuse it). Re-exported here for back-compat with callers/tests that
 # import _Tile / _plan_tiles from _sam3_detector.
 from phenotypic.detect.nn._tiling import _plan_tiles, _Tile, _tile_starts
-from phenotypic.tools_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
+from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 
 if TYPE_CHECKING:
     import numpy as np

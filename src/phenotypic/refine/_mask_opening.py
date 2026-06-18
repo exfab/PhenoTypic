@@ -6,11 +6,11 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.sdk_.mixin import FootprintMixin
 
 import numpy as np
 from skimage.morphology import opening
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
 class MaskOpening(ObjectRefiner, FootprintMixin):

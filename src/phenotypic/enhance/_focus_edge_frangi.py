@@ -8,7 +8,7 @@ from pydantic import field_validator
 from skimage.filters import frangi
 
 from phenotypic.abc_ import FocusEdge
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class FocusEdgeFrangi(FocusEdge):

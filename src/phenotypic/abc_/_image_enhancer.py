@@ -7,9 +7,9 @@ if TYPE_CHECKING:
 
 from ._image_operation import ImageOperation
 
-from phenotypic.tools_.funcs_ import validate_operation_integrity
+from phenotypic.sdk_.funcs_ import validate_operation_integrity
 from abc import ABC, abstractmethod
-from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.sdk_.mixin import FootprintMixin
 
 
 class ImageEnhancer(FootprintMixin, ImageOperation, ABC):

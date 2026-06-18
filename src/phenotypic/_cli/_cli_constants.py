@@ -1,8 +1,8 @@
 """Constants for CLI configuration — tuning and grid defaults only.
 
 I/O artifact filenames, directory names, path helpers, and JSON contract
-keys live in :mod:`phenotypic.tools_._io_constants` (importable via
-``from phenotypic.tools_ import <name>``).  This module retains only the
+keys live in :mod:`phenotypic.sdk_._io_constants` (importable via
+``from phenotypic.sdk_ import <name>``).  This module retains only the
 CLI-tuning knobs that are not shared with the GUI.
 """
 

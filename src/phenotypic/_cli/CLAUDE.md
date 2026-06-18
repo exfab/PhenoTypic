@@ -96,7 +96,7 @@ trio.
   engine, not per-image processing.
 - **Output layout** — per-image parquets/HDF stay at the output root
   (`results/`); user-facing deliverables live under `deliverables/`. Resolve
-  paths via the `phenotypic.tools_` helpers, never by hand-joining names.
+  paths via the `phenotypic.sdk_` helpers, never by hand-joining names.
 - **HPCC SLURM heterogeneity** — on a mixed partition, pre-AVX CPU nodes can
   SIGILL ("Illegal instruction") the modern numpy/scipy wheels (this affects ALL
   phenotypic SLURM runs, not just the staged engine). Pin to a modern partition

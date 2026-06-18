@@ -5,7 +5,7 @@ Top-level shape (vertical stack):
 1. Top strip — ``+ Add check`` and ``Export QC report`` buttons plus a
    ``dbc.Toast`` for success/failure announcements.
 2. Load-warning banner — shown only when
-   :class:`~phenotypic.tools_._qc_recipe.QcRecipe.load_warnings` is
+   :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings` is
    non-empty at boot.
 3. Cards container — atomically rebuilt by the card-list-render
    callback so the card count tracks the recipe.
@@ -35,7 +35,7 @@ from phenotypic.gui._design import (
     FONT_SIZE_LABEL,
     OI_ORANGE_TEXT,
 )
-from phenotypic.tools_._qc_recipe import QcRecipe, QcRecipeLoadWarning
+from phenotypic.sdk_._qc_recipe import QcRecipe, QcRecipeLoadWarning
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 from phenotypic.gui.results_viewer._qc_tab.review import _ids as review_ids

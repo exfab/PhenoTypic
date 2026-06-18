@@ -12,7 +12,7 @@ import skimage as ski
 from PIL import Image as PIL_Image
 
 import phenotypic
-from phenotypic.tools_.constants_ import IO
+from phenotypic.sdk_.constants_ import IO
 
 from ._accessor_data_interface import AccessorDataInterface
 

@@ -14,7 +14,7 @@ from pydantic import Field, model_validator
 from typing_extensions import Self
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 from phenotypic.detect._round_peaks_detector import RoundPeaksDetector
 from phenotypic.enhance._contrast_streching import ContrastStretching
 from phenotypic.enhance._gray_opening import GrayOpening

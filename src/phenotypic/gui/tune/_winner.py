@@ -65,7 +65,7 @@ def write_winner(
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.enhance import GaussianBlur
         >>> from phenotypic.gui.tune._run_root import TuneRunRoot
-        >>> from phenotypic.tools_ import best_pipeline_path
+        >>> from phenotypic.sdk_ import best_pipeline_path
         >>> from phenotypic.tune._study_store import Trial
         >>> d = Path(tempfile.mkdtemp())
         >>> root = TuneRunRoot(

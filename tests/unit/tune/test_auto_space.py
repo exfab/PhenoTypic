@@ -10,7 +10,7 @@ from __future__ import annotations
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, OtsuDetector, RoundPeaksDetector
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tools_ import _io_constants as io
+from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import InferredSearchSpace
 from phenotypic.tune._tune_cli._auto_space import run_auto_space
 

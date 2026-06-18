@@ -13,7 +13,7 @@ from pathlib import Path
 
 import polars as pl
 
-import phenotypic.tools_ as tools_
+import phenotypic.sdk_ as tools_
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 
 

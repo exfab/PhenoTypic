@@ -1,6 +1,6 @@
 """Atomic file writes — crash-safety for the tune output writers (B3).
 
-``atomic_write_text`` / ``atomic_write_bytes`` (in ``phenotypic.tools_``) and
+``atomic_write_text`` / ``atomic_write_bytes`` (in ``phenotypic.sdk_``) and
 ``JournalStudyStore.to_parquet`` must each be all-or-nothing: a normal write
 succeeds, and an exception raised mid-serialize leaves any pre-existing file
 untouched and leaves no ``.tmp`` debris in the directory.
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.tools_ import atomic_write_bytes, atomic_write_text
+from phenotypic.sdk_ import atomic_write_bytes, atomic_write_text
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 
@@ -48,7 +48,7 @@ def test_atomic_write_text_failure_leaves_existing_file_intact(tmp_path, monkeyp
 
     # Force the rename step to blow up *after* the temp file is written, so we
     # exercise the cleanup path with a pre-existing target in place.
-    import phenotypic.tools_._atomic_io as atomic_io
+    import phenotypic.sdk_._atomic_io as atomic_io
 
     def _boom(src, dst):
         raise OSError("disk full")
@@ -67,7 +67,7 @@ def test_atomic_write_text_failure_no_partial_file_when_target_absent(
     tmp_path, monkeypatch
 ):
     target = tmp_path / "marker.json"
-    import phenotypic.tools_._atomic_io as atomic_io
+    import phenotypic.sdk_._atomic_io as atomic_io
 
     def _boom(src, dst):
         raise OSError("disk full")

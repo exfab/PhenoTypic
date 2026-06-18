@@ -28,10 +28,10 @@ from phenotypic.gui._config import (
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
 )
-from phenotypic.tools_ import deliverables_dir
+from phenotypic.sdk_ import deliverables_dir
 
 if TYPE_CHECKING:
-    from phenotypic.tools_ import ColumnSource
+    from phenotypic.sdk_ import ColumnSource
 
 logger = logging.getLogger(__name__)
 

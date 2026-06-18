@@ -49,7 +49,7 @@ def _make_tune_run(run_dir: Path) -> None:
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.detect import OtsuDetector
     from phenotypic.enhance import GaussianBlur
-    from phenotypic.tools_ import (
+    from phenotypic.sdk_ import (
         trials_parquet_path,
         tune_cache_run_marker_path,
         tuning_spec_path,

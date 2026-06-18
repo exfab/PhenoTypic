@@ -31,7 +31,7 @@ Two related changes to the PhenoTypic CLI:
    user-facing output folder clean.
 
 Both build on the existing single-source-of-truth layout module
-`phenotypic.tools_._io_constants`.
+`phenotypic.sdk_._io_constants`.
 
 ## 2. Goals / Non-goals
 

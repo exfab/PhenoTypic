@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from ._cli_file_locking import atomic_append, FileLockTimeout
-from phenotypic.tools_ import FAILURES_JSONL
-from phenotypic.tools_.typing_ import FailureSource
+from phenotypic.sdk_ import FAILURES_JSONL
+from phenotypic.sdk_.typing_ import FailureSource
 
 logger = logging.getLogger(__name__)
 

@@ -145,7 +145,7 @@ def read_base_pipeline(root: "TuneRunRoot") -> "Optional[ImagePipeline]":
 
 def _read_base_pipeline_uncached(root: "TuneRunRoot") -> "Optional[ImagePipeline]":
     """Load the base pipeline from the run's tuning_spec.json, or ``None``."""
-    from phenotypic.tools_ import resolve_tuning_spec_path
+    from phenotypic.sdk_ import resolve_tuning_spec_path
 
     spec_path = resolve_tuning_spec_path(root.path)
     if not spec_path.exists():

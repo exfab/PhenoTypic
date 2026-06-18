@@ -17,7 +17,7 @@ from numpy.fft import fft2, ifft2, ifftshift
 from pydantic import Field
 
 from ..abc_ import FocusEdge
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image

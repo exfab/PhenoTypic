@@ -12,7 +12,7 @@ import numpy as np
 
 from phenotypic.abc_ import GridFinder
 from phenotypic.schema import BBOX, GRID
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class AutoGridFinderFallbackWarning(UserWarning):

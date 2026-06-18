@@ -26,7 +26,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
-from phenotypic.tools_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 
 
 @pytest.fixture

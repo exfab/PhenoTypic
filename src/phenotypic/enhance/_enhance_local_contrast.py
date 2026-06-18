@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from skimage.exposure import equalize_adapthist
 
 from phenotypic.abc_ import ContrastAdjustment
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class EnhanceLocalContrast(ContrastAdjustment):

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import ImageOperation
-from phenotypic.tools_.typing_ import DetectMode
+from phenotypic.sdk_.typing_ import DetectMode
 
 
 class SetDetectMode(ImageOperation):

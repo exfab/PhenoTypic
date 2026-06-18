@@ -8,7 +8,10 @@ class LINEAR_SOFTPLUS_MODEL(MeasurementInfo):
     def category(cls) -> str:
         return "LinearSoftplus"
 
-    v = Entry("v", "The post-lag phase growth rate.")
-    s0 = Entry("s0", "The initial size")
+    v = Entry("v", "The post-lag phase growth rate.",
+              bio_desc="The post-lag phase growth rate "
+                       "using the target metric (usually radius)")
+    s0 = Entry("s0", "The initial value of the target metric",
+               bio_desc="The initial size")
     lam = Entry("lambda", "The duration of the lag phase")
     alpha = Entry("alpha", "lag phase transition sharpness")

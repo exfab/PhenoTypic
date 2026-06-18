@@ -10,7 +10,7 @@ import pytest
 import numpy as np
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.refine import GridAlignmentRefiner
-from phenotypic.tools_.mixin import GridInferenceMixin
+from phenotypic.sdk_.mixin import GridInferenceMixin
 
 
 class TestGridAlignmentRefinerGridInference:

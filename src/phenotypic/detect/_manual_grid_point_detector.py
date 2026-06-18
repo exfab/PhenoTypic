@@ -8,8 +8,8 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import GridObjectDetector
-from phenotypic.tools_.mixin._footprint_mixin import FootprintMixin
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.mixin._footprint_mixin import FootprintMixin
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
@@ -115,7 +115,7 @@ class ManualGridPointDetector(GridObjectDetector, FootprintMixin):
         Returns:
             ManualGridPointDetector: Self, for method chaining.
         """
-        from phenotypic.tools_.napari_ import PointPickerWidget
+        from phenotypic.sdk_.napari_ import PointPickerWidget
 
         points = PointPickerWidget(max_points=2).run(image)
 

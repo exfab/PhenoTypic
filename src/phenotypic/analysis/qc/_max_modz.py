@@ -25,7 +25,7 @@ import pandas as pd
 from phenotypic.analysis._qc_math import median_abs_deviation, modified_z_scores
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.schema import QUALITY_ZMAX
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 
 
 class MaxModifiedZScore(QualityCheck):

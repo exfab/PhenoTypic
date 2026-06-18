@@ -22,7 +22,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from phenotypic.tools_ import analysis_html_path, dashboard_html_path, progress_dir
+from phenotypic.sdk_ import analysis_html_path, dashboard_html_path, progress_dir
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ class TestAnalysisPluginRegistry:
 
     def test_all_plugins_registered(self):
         """All four plugins should be registered."""
-        from phenotypic.tools_.register import available_analysis_plugins
+        from phenotypic.sdk_.register import available_analysis_plugins
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -59,7 +59,7 @@ class TestAnalysisPluginRegistry:
 
     def test_plugin_sort_order(self):
         """Plugins should sort in the correct order by sort_order."""
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -77,7 +77,7 @@ class TestAnalysisPluginRegistry:
 
     def test_plugin_returns_strings(self):
         """Each plugin's css(), html(), js() should return non-empty strings."""
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -93,7 +93,7 @@ class TestAnalysisPluginRegistry:
 
     def test_plugin_js_has_init_function(self):
         """Each plugin's JS should define an initAnalysis_{call_name} function."""
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -106,7 +106,7 @@ class TestAnalysisPluginRegistry:
 
     def test_plugin_display_names(self):
         """Plugins should have non-empty display names."""
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -432,7 +432,7 @@ class TestPluginPrepareData:
         from phenotypic._cli._dashboard._analysis._prepare_context import (
             AnalysisPrepareContext,
         )
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
@@ -455,7 +455,7 @@ class TestPluginPrepareData:
         from phenotypic._cli._dashboard._analysis._prepare_context import (
             AnalysisPrepareContext,
         )
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
 
         # Trigger registration
         from phenotypic._cli._dashboard import _analysis  # noqa: F401

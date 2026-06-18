@@ -766,7 +766,7 @@ def _field_holds_operation(field_info: Any) -> bool:
 
     Detected by walking the annotation tree (the marker may sit under
     ``Optional`` / inside a ``list``), matching by class *name* so this module
-    never imports the ``tools_`` marker.
+    never imports the ``sdk_`` marker.
     """
     metadata = list(field_info.metadata) + _walk_metadata(field_info.annotation)
     return _has_marker(metadata, "_OperationFieldMarker")

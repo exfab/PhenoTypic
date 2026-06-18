@@ -99,7 +99,7 @@ from ._search_space import (
 from ._spec import Budget, TuningSpec
 
 # --- Phase 3: composite blend selector (serialized CompositeScorer.blend value) -
-from phenotypic.tools_.typing_ import CompositeBlend
+from phenotypic.sdk_.typing_ import CompositeBlend
 
 # --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
 # --- Phase 2 (chunk 2): OptunaConfig (registry round-trip; builds OptunaStrategy)

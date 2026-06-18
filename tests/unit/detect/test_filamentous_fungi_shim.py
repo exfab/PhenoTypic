@@ -1,13 +1,13 @@
 """Back-compat shim tests for ``phenotypic.detect._filamentous_fungi``.
 
-The shim re-exports symbols from ``phenotypic.tools_.branch_pathfinding``
+The shim re-exports symbols from ``phenotypic.sdk_.branch_pathfinding``
 to preserve legacy import paths. These tests assert the re-exported
 symbols are the same Python objects as their counterparts in the new
 location so monkey-patches and ``isinstance`` checks keep working.
 """
 
 from phenotypic.detect import _filamentous_fungi as shim
-from phenotypic.tools_ import branch_pathfinding as new
+from phenotypic.sdk_ import branch_pathfinding as new
 
 
 def test_public_function_identity():

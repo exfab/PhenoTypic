@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 import polars as pl
 
 from phenotypic.schema import OBJECT
-from phenotypic.tools_ import measurements_csv_path, measurements_parquet_path
+from phenotypic.sdk_ import measurements_csv_path, measurements_parquet_path
 
 logger = logging.getLogger(__name__)
 

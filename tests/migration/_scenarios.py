@@ -626,8 +626,8 @@ _STRUCTURAL_ONLY: frozenset[str] = frozenset(
 # Confirmed by running each twice during harness development: the
 # detect_mat differed by < 1e-6.
 TOLERANT_OPS: dict[str, float] = {
-    "BM3DDenoiser" : 1e-5,
-    "StableDenoise": 1e-5,
+    "EnhanceBlockMatch": 1e-5,
+    "DenoiseBlockMatch": 1e-5,
 }
 
 

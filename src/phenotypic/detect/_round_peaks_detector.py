@@ -12,8 +12,8 @@ import scipy.ndimage as ndimage
 from pydantic import Field
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.tools_.mixin import GridInferenceMixin
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.mixin import GridInferenceMixin
+from phenotypic.sdk_.typing_ import TuneSpec
 import skimage.filters as filters
 import skimage.morphology as morphology
 

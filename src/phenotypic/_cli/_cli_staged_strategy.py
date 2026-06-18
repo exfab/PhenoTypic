@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 from joblib import Parallel, delayed
 
 from phenotypic import ImagePipeline
-from phenotypic.tools_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
 
 from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_pipeline_split import split_pipeline_at_gpu

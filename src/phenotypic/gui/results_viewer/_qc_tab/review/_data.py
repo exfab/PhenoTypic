@@ -10,7 +10,7 @@ What lives here:
 
 * **Artifact readers** — :func:`load_qc_summary` / :func:`load_qc_members`
   read the committed ``qc_summary.parquet`` / ``qc_members.parquet``
-  (schema fixed by :mod:`phenotypic.tools_._qc_recipe._runner`).
+  (schema fixed by :mod:`phenotypic.sdk_._qc_recipe._runner`).
 * **Module + worklist slicing** — :func:`module_options`,
   :func:`groupby_cols_for`, :func:`module_worklist` (worst-first, frozen).
 * **Summary stats** — :func:`summary_stats`, which distinguishes
@@ -22,7 +22,7 @@ What lives here:
 * **Recompute frame** — :func:`build_recompute_frame` reads the
   **post-applied + metadata-joined** ``measurements.parquet`` and
   anti-joins the curated removal set, producing exactly the frame the CLI
-  feeds :func:`phenotypic.tools_._qc_recipe._runner.run_qc` minus the user's removals
+  feeds :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` minus the user's removals
   (spec §D.5 / risk refinement #1 — NOT ``master − removed``).
 """
 
@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     measurements_parquet_path,
     qc_members_parquet_path,
     qc_summary_parquet_path,
@@ -56,7 +56,7 @@ _KEY_DATASET: str = "Metadata_Dataset"
 _KEY_TIME: str = "Metadata_Time"
 
 #: Fixed lead/tail columns of ``qc_summary.parquet`` (see
-#: :mod:`phenotypic.tools_._qc_recipe._runner`). The ``groupby`` columns sit between the
+#: :mod:`phenotypic.sdk_._qc_recipe._runner`). The ``groupby`` columns sit between the
 #: ``class`` lead and the ``metric`` tail, so we recover them by slicing
 #: out these known names.
 _SUMMARY_LEAD: tuple[str, ...] = ("instance_id", "class")
@@ -527,7 +527,7 @@ def build_recompute_frame(
         # the only frame available; it lacks post/metadata columns, so a
         # metadata groupby will still KeyError inside run_qc and be skipped
         # with a warning — acceptable degradation, never a crash here.
-        from phenotypic.tools_ import master_measurements_parquet_path
+        from phenotypic.sdk_ import master_measurements_parquet_path
 
         logger.info(
             "measurements.parquet absent; recompute falling back to master"

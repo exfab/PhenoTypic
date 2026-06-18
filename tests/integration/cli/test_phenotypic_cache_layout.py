@@ -18,7 +18,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.tools_ import processing_state_path, progress_dir
+from phenotypic.sdk_ import processing_state_path, progress_dir
 
 
 def test_forward_run_writes_state_under_phenotypic(
@@ -101,7 +101,7 @@ def test_restart_wipes_stale_machine_state_and_keeps_outputs(
     """``--restart`` clears the prior run's machine-state — so a stale event does
     not survive into the new run's records — while preserving output artifacts
     (unlike ``--overwrite``, which wipes the whole dir)."""
-    from phenotypic.tools_ import deliverables_dir, event_log_path
+    from phenotypic.sdk_ import deliverables_dir, event_log_path
 
     out = tmp_path / "out"
     args = [

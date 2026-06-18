@@ -30,7 +30,7 @@ from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._layout import _build_load_warnings_banner
 from phenotypic.gui.analysis._recipe_state import RecipeState
 from phenotypic.measure import MeasureShape
-from phenotypic.tools_ import pipeline_json_path
+from phenotypic.sdk_ import pipeline_json_path
 
 
 def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:

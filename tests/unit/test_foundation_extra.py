@@ -1,10 +1,13 @@
 """Packaging-extras + DINO typing-alias contract for the foundation models."""
 
-import tomllib
+try:
+    import tomllib  # Python 3.11+ stdlib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 from pathlib import Path
 from typing import get_args
 
-from phenotypic.tools_.typing_ import DinoSize, DinoVersion
+from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 REPO = Path(__file__).resolve().parents[2]
 

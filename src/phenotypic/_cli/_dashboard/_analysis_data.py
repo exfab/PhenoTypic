@@ -14,7 +14,7 @@ import polars as pl
 
 from .._cli_output_manager import join_metadata
 from .._cli_duckdb_agg import duckdb_aggregate
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
     DATASET_AGGREGATED_PARQUET,
@@ -47,7 +47,7 @@ def write_analysis_sidecar(
         metadata_csv: Optional path to an external metadata CSV for
             inner-joining onto measurements.
     """
-    from phenotypic.tools_.register import AnalysisPluginRegistry
+    from phenotypic.sdk_.register import AnalysisPluginRegistry
 
     from ._analysis._prepare_context import AnalysisPrepareContext
 

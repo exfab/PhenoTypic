@@ -38,7 +38,7 @@ from typing import Any, ClassVar, Mapping, TypeAlias
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-from phenotypic.tools_.typing_ import polymorphic_field
+from phenotypic.sdk_.typing_ import polymorphic_field
 
 from ._orient import Sense, to_cost
 

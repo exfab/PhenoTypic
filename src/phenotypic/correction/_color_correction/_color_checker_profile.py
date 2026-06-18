@@ -23,12 +23,12 @@ from pydantic import (
     model_validator,
 )
 
-from phenotypic.tools_._json_io import read_json_source
-from phenotypic.tools_._io_constants import (
+from phenotypic.sdk_._json_io import read_json_source
+from phenotypic.sdk_._io_constants import (
     CONFIG_SUFFIX_COLOR_CHECKER,
     ensure_typed_json_suffix,
 )
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 from ._capture_metadata import CaptureMetadata
 from ._helpers import (
@@ -396,7 +396,7 @@ class ColorCheckerProfile(BaseModel):
             >>> import tempfile
             >>> from pathlib import Path
             >>> from phenotypic.correction import ColorCheckerProfile
-            >>> from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
+            >>> from phenotypic.sdk_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
             >>> with tempfile.TemporaryDirectory() as d:
             ...     p = Path(d) / "profile.json"
             ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_COLOR_CHECKER)

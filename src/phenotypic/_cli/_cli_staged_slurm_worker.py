@@ -23,8 +23,8 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from phenotypic import ImagePipeline
-from phenotypic.tools_ import dataset_hdf_dir, event_log_path
-from phenotypic.tools_.typing_ import ImageTypeName
+from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import split_pipeline_at_gpu

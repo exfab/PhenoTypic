@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from phenotypic.tools_.register import available_plotters, get_plotter
+from phenotypic.sdk_.register import available_plotters, get_plotter
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ._plot_accessor import PlotAccessor

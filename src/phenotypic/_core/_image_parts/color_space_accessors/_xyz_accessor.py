@@ -3,9 +3,9 @@ from __future__ import annotations
 import colour
 import numpy as np
 
-from phenotypic.tools_.colourspace import sRGB_D50
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
-from phenotypic.tools_.exceptions_ import IllegalAssignmentError
+from phenotypic.sdk_.colourspace import sRGB_D50
+from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
+from phenotypic.sdk_.exceptions_ import IllegalAssignmentError
 from ..accessor_abstracts._color_space_accessor import ColorSpaceAccessor
 
 

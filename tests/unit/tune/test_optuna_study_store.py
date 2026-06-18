@@ -125,7 +125,7 @@ def test_satisfies_study_store_protocol_by_calling(tmp_path):
 
 
 def test_study_db_path_resolves_to_tune_cache(tmp_path):
-    from phenotypic.tools_ import _io_constants as io
+    from phenotypic.sdk_ import _io_constants as io
 
     p = io.tune_cache_study_db_path(tmp_path)
     assert p == tmp_path / ".pht-tune-cache" / "study.db"

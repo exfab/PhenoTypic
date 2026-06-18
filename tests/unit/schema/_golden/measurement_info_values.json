@@ -1763,7 +1763,7 @@
       "Information measure of correlation 2 (√[1 – exp(–2 (H_xy2–H_xy))]). Always ≥ 0.\n        Values approaching 1 → strong spatial dependence and organized architecture (e.g., symmetric\n        rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear\n        organization missed by linear correlation."
     ]
   ],
-  "phenotypic.tools_.constants_.GAMMA_ENCODINGS": [
+  "phenotypic.sdk_.constants_.GAMMA_ENCODINGS": [
     [
       "SRGB",
       "GammaEncoding_sRGB",
@@ -1777,7 +1777,7 @@
       "Linear RGB with no gamma correction"
     ]
   ],
-  "phenotypic.tools_.constants_.PIPE_STATUS": [
+  "phenotypic.sdk_.constants_.PIPE_STATUS": [
     [
       "PROCESSED",
       "Status_Processed",

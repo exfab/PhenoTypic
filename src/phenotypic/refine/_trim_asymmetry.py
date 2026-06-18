@@ -16,7 +16,7 @@ from skimage.measure import euler_number, regionprops
 
 from ..abc_ import ObjectRefiner
 from ..measure._measure_symmetric_zones import MeasureSymmetricZones
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 _log = logging.getLogger(__name__)
 

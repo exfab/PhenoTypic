@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-from phenotypic.tools_ import results_dir
+from phenotypic.sdk_ import results_dir
 
 _OBJMAP_LAYER = "objmap"
 

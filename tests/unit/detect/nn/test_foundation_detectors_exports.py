@@ -17,7 +17,7 @@ from phenotypic.detect.nn import (
     Insid3Detector,
     Sam3Detector,
 )
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 def _walk_metadata(annotation) -> list:

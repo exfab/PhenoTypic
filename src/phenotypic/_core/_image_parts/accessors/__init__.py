@@ -2,7 +2,7 @@
 Overview
 ========
 
-The ``accessors`` submodule provides a comprehensive set of tools_ and interfaces for accessing and interacting with the various data components of an image. These components range from raw pixel data and gray representations to object masks, metadata, and high-level measurements. Additionally, it includes utilities that streamline development workflows involving image processing and analysis.
+The ``accessors`` submodule provides a comprehensive set of tools and interfaces for accessing and interacting with the various data components of an image. These components range from raw pixel data and gray representations to object masks, metadata, and high-level measurements. Additionally, it includes utilities that streamline development workflows involving image processing and analysis.
 
 The goal is to provide efficient, standardized access to image data while enabling intuitive and flexible integration for advanced image manipulation and analysis tasks.
 

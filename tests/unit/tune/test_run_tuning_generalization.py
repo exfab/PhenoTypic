@@ -21,7 +21,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tools_ import _io_constants as io
+from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Budget,
     Categorical,

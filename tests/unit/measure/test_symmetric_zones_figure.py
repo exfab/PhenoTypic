@@ -15,8 +15,8 @@ import pytest
 from phenotypic import Image
 from phenotypic.measure import MeasureSymmetricZones
 from phenotypic.measure._measure_symmetric_zones import BASE_LAYER
-from phenotypic.tools_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
-from phenotypic.tools_.viz.figures._theme import OKABE_ITO
+from phenotypic.sdk_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
+from phenotypic.sdk_.viz.figures._theme import OKABE_ITO
 
 
 def _circular_colony_image() -> Image:

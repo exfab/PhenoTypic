@@ -11,7 +11,7 @@ from skimage import segmentation, morphology
 from scipy import ndimage
 
 from ..abc_ import ObjectDetector
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class ChanVeseDetector(ObjectDetector):

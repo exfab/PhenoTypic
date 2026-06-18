@@ -10,7 +10,7 @@ morphological kernels.
 
 ```python
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.mixin import FootprintMixin
+from phenotypic.sdk_.mixin import FootprintMixin
 
 class MyRefiner(FootprintMixin, ObjectRefiner):
     # Parameters are annotated class-level fields (operations are

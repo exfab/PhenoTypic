@@ -8,8 +8,8 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.abc_ import BackgroundSubtraction
-from phenotypic.tools_.mixin import FootprintMixin
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.mixin import FootprintMixin
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class SubtractOpening(BackgroundSubtraction, FootprintMixin):

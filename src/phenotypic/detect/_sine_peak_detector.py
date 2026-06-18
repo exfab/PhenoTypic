@@ -15,8 +15,8 @@ from scipy.signal import find_peaks, fftconvolve, medfilt
 from scipy.stats import rankdata
 
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.tools_.typing_ import TuneSpec
-from phenotypic.tools_.mixin import GridInferenceMixin
+from phenotypic.sdk_.typing_ import TuneSpec
+from phenotypic.sdk_.mixin import GridInferenceMixin
 import skimage.filters as filters
 import skimage.morphology as morphology
 

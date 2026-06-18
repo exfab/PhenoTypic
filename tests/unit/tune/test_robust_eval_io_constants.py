@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.tools_ import _io_constants as io
+from phenotypic.sdk_ import _io_constants as io
 
 
 def test_splits_dir_in_tune_cache():

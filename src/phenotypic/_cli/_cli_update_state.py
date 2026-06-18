@@ -27,7 +27,7 @@ from dataclasses import dataclass
 
 from ._cli_types import DatasetState
 from ._cli_file_locking import atomic_read, atomic_append, FileLockTimeout
-from phenotypic.tools_.typing_ import ProcessingStatus
+from phenotypic.sdk_.typing_ import ProcessingStatus
 
 logger = logging.getLogger(__name__)
 

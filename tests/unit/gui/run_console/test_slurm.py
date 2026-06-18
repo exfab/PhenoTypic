@@ -28,7 +28,7 @@ from phenotypic.gui.run_console._slurm import (
     wait_for_job_id,
 )
 from phenotypic.gui.run_console._state import RunConsoleState
-from phenotypic.tools_ import job_metadata_path
+from phenotypic.sdk_ import job_metadata_path
 
 
 def _state_for(output_dir: Path) -> RunConsoleState:

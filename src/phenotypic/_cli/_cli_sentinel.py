@@ -22,7 +22,7 @@ from pathlib import Path
 import click
 
 from ._dashboard import build_manifest
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     JOB_METADATA_JSON,
     MANIFEST_JSON,
     DashboardManifestKey,

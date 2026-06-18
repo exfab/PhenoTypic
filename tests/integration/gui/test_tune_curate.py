@@ -17,7 +17,7 @@ def _curate_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """Build a loaded Curate app over a 3-trial journal + an Image Source."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     images = tmp_path / "calibration"

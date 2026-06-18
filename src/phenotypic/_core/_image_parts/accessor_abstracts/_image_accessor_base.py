@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 
 from ._image_accessor_base_parents import AccessorDashHandler
 

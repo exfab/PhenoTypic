@@ -43,7 +43,7 @@ from phenotypic.gui._config import (
     TILE_DIM_DEFAULT,
 )
 from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.tools_._qc_recipe import QcRecipe
+from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.gui._shared import SHARED_LOGO_PATH
 from phenotypic.gui._design import (
     COLOR_BG,

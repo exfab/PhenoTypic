@@ -18,7 +18,7 @@ import pytest
 from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 from phenotypic.schema import METADATA
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 
 # Module-level slow marker: full HDF5 schema and back-compat matrix. The
 # companion binary-roundtrip suite in tests/unit/core/ stays on the fast lane

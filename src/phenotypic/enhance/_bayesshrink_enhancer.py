@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageDenoiser
-from ..tools_.mixin import _GATSupportMixin
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.typing_ import TuneSpec
 
 
 class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
@@ -36,7 +36,7 @@ class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     Consider Also:
         - :class:`VisuShrinkEnhancer` when a single universal threshold
           across all subbands is preferred for speed or simplicity.
-        - :class:`BM3DDenoiser` for structured scanner banding or systematic
+        - :class:`EnhanceBlockMatch` for structured scanner banding or systematic
           CCD patterned noise that wavelet thresholding does not fully remove.
         - :class:`NonLocalMeansDenoiser` when patch-based self-similarity
           in the agar or colony texture can be exploited.

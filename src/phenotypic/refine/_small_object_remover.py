@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from skimage.morphology import remove_small_objects
 
 from ..abc_ import ObjectRefiner
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class SmallObjectRemover(ObjectRefiner):

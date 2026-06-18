@@ -11,7 +11,7 @@ import numpy as np
 import cv2
 
 from ..abc_ import ObjectRefiner
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class ExtractColonyCore(ObjectRefiner):

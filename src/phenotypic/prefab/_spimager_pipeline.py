@@ -1,6 +1,6 @@
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.correction import ImageCropper
-from phenotypic.correction import StableDenoise
+from phenotypic.correction import DenoiseBlockMatch
 from phenotypic.enhance import SubtractGaussian
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureSize
@@ -21,7 +21,7 @@ class SpImagerPipeline(PrefabPipeline):
                             top=600,
                             bottom=600
                     ),
-                    StableDenoise(),
+                    DenoiseBlockMatch(),
                     SubtractGaussian(sigma=500),
                     OtsuDetector()
                 ],

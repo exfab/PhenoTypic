@@ -8,7 +8,7 @@ from skimage.filters import laplace
 from typing import Annotated, Optional
 
 from ..abc_ import FocusEdge
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
 class FocusEdgeLaplace(FocusEdge):

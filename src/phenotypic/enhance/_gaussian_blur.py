@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 from skimage.filters import gaussian
 
 from ..abc_ import Smoothing
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class GaussianBlur(Smoothing):
@@ -34,7 +34,7 @@ class GaussianBlur(Smoothing):
           preserving sharp colony edges is important.
         - :class:`LocalEdgeDenoise` for bilateral smoothing within regions
           while keeping colony boundaries sharp.
-        - :class:`StableDenoise` for highest-quality BM3D denoising on
+        - :class:`DenoiseBlockMatch` for highest-quality BM3D denoising on
           critical low-light experiments.
 
     Args:

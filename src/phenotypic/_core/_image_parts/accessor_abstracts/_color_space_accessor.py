@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import tifffile
 
-from phenotypic.tools_.constants_ import IO
-from phenotypic.tools_.exceptions_ import IllegalAssignmentError
+from phenotypic.sdk_.constants_ import IO
+from phenotypic.sdk_.exceptions_ import IllegalAssignmentError
 from ._image_accessor_base import ImageAccessorBase
 
 

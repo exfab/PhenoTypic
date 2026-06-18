@@ -10,7 +10,7 @@ from typing import Any, Final
 
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DATASET_AGGREGATED_PARQUET,
     DIR_HDF,
     DIR_LOGS,

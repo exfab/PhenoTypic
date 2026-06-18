@@ -3,7 +3,7 @@ from typing import Literal
 import numpy as np
 
 from phenotypic.abc_ import PrefabPipeline
-from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, BM3DDenoiser
+from phenotypic.enhance import EnhanceLocalContrast, MedianFilter, EnhanceBlockMatch
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.correction import GridAligner
 from phenotypic.refine import ReduceSectionsByLine, GridOversizedObjectRemover
@@ -25,7 +25,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
     second detection pass for improved accuracy on challenging plates.
 
     Steps:
-        1. BM3DDenoiser — high-quality denoising
+        1. EnhanceBlockMatch — high-quality denoising
         2. EnhanceLocalContrast — boost local contrast
         3. MedianFilter — remove residual speckle
         4. RoundPeaksDetector — first detection pass
@@ -237,9 +237,10 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         )
 
         ops = [
-            BM3DDenoiser(sigma_psd=bm3d_sigma, block_size=bm3d_block_size,
-                         stage_arg=bm3d_stage_arg, clip=bm3d_clip),
-            EnhanceLocalContrast(kernel_size=clahe_kernel_size, clip_limit=clahe_clip_limit),
+            EnhanceBlockMatch(sigma_psd=bm3d_sigma, block_size=bm3d_block_size,
+                              stage_arg=bm3d_stage_arg, clip=bm3d_clip),
+            EnhanceLocalContrast(kernel_size=clahe_kernel_size,
+                                 clip_limit=clahe_clip_limit),
             MedianFilter(mode=median_mode, shape=median_shape, width=median_radius,
                          cval=median_cval),
             # First detection pass

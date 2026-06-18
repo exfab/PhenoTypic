@@ -56,7 +56,7 @@ from pydantic import PrivateAttr
 
 from phenotypic.abc_ import GpuDetector
 from phenotypic.detect.nn._checkpoint_manager import Device
-from phenotypic.tools_.typing_ import (
+from phenotypic.sdk_.typing_ import (
     DinoSize,
     DinoVersion,
     GpuInputLayer,

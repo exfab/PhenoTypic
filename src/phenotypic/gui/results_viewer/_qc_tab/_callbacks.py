@@ -51,7 +51,7 @@ from phenotypic.gui._config import (
     CFG_QC_RECIPE,
 )
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION, OI_VERMILION_TEXT
-from phenotypic.tools_.viz.figures import apply_theme
+from phenotypic.sdk_.viz.figures import apply_theme
 from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._param_forms import param_form, parse_widget_value
 from phenotypic.gui.results_viewer import _ids as viewer_ids
@@ -69,7 +69,7 @@ from phenotypic.gui.results_viewer._qc_tab.review import (
     _ids as review_ids,
     register_review_callbacks,
 )
-from phenotypic.tools_._qc_recipe import QcRecipe
+from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
 

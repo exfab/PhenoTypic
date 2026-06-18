@@ -10,9 +10,9 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
-from ..tools_.typing_ import TuneSpec
-from ..tools_._anscombe import gat_forward, gat_inverse, resolve_scale_factor
-from ..tools_.colourspace import decode_srgb, encode_srgb
+from ..sdk_.typing_ import TuneSpec
+from ..sdk_._anscombe import gat_forward, gat_inverse, resolve_scale_factor
+from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
 class ColorDenoise(ImageCorrector):
@@ -41,7 +41,7 @@ class ColorDenoise(ImageCorrector):
     Consider Also:
         - :class:`BayesShrinkCorrector` for faster wavelet-based denoising of
           all components when CBM3D runtime is prohibitive.
-        - :class:`StableDenoise` for GAT-stabilized BM3D on the grayscale
+        - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D on the grayscale
           channel when only intensity measurements are needed.
         - :class:`NonLocalMeansDenoiser` when a simpler, lower-cost denoiser
           for the detection matrix is sufficient.
@@ -163,7 +163,7 @@ class ColorDenoise(ImageCorrector):
         """Require a non-negative read-noise standard deviation."""
         if gat_read_sigma < 0:
             raise ValueError(
-                f"gat_read_sigma must be >= 0, got {gat_read_sigma}"
+                    f"gat_read_sigma must be >= 0, got {gat_read_sigma}"
             )
         return gat_read_sigma
 
@@ -177,7 +177,7 @@ class ColorDenoise(ImageCorrector):
             return None
         if gat_scale_factor <= 0:
             raise ValueError(
-                f"gat_scale_factor must be > 0, got {gat_scale_factor}"
+                    f"gat_scale_factor must be > 0, got {gat_scale_factor}"
             )
         return gat_scale_factor
 
@@ -191,8 +191,8 @@ class ColorDenoise(ImageCorrector):
         """
         if image.rgb.isempty():
             raise ValueError(
-                "ColorDenoise requires a 3-channel RGB image; this image "
-                "has no RGB data."
+                    "ColorDenoise requires a 3-channel RGB image; this image "
+                    "has no RGB data."
             )
 
         # Read via the private data attribute: the public ``rgb[:]`` getter

@@ -4,8 +4,8 @@ import numpy as np
 import skimage.filters.rank as rank
 from skimage.util import img_as_ubyte
 from phenotypic.abc_ import ObjectDetector
-from phenotypic.tools_ import FootprintMixin
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_ import FootprintMixin
+from phenotypic.sdk_.typing_ import TuneSpec
 from typing import Annotated, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:

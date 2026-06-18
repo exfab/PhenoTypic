@@ -29,7 +29,7 @@ from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     custom_categories_json_path,
     error_category_parquet_path,
     measurements_parquet_path,

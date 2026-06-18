@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Tuple
 if TYPE_CHECKING:
     import numpy as np
 
-    from phenotypic.tools_.typing_ import DinoSize, DinoVersion
+    from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 
 # ---------------------------------------------------------------------------

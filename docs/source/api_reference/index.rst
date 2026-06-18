@@ -70,6 +70,6 @@ Modules
    phenotypic.measure
    phenotypic.prefab
    phenotypic.refine
-   phenotypic.tools_
+   phenotypic.sdk_
    phenotypic.tune
    phenotypic.util

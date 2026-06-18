@@ -193,7 +193,7 @@ def _dump_image_to_png(image: Any, source: str, png_path: Path) -> bool:
     For ``source == "intermediate"``: try :data:`image.detect_mat`,
     falling back through gray and rgb. This mirrors the napari point
     picker's preference order from
-    :file:`tools_/napari_/_point_picker_widget.py:48`.
+    :file:`sdk_/napari_/_point_picker_widget.py:48`.
 
     The array is normalised to uint8 before saving.
 

@@ -29,7 +29,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount  # noqa: E402
 from phenotypic.data import load_synth_yeast_plate  # noqa: E402
 from phenotypic.detect import OtsuDetector  # noqa: E402
 from phenotypic.enhance import GaussianBlur  # noqa: E402
-from phenotypic.tools_ import _io_constants as io  # noqa: E402
+from phenotypic.sdk_ import _io_constants as io  # noqa: E402
 from phenotypic.tune import (  # noqa: E402
     Budget,
     Categorical,

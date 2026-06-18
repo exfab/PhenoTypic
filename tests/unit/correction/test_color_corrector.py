@@ -24,7 +24,7 @@ from phenotypic.correction._color_correction._helpers import (
     trim_background_edges,
     validate_patch_shape,
 )
-from phenotypic.tools_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix
 
 
 # ---------------------------------------------------------------------------

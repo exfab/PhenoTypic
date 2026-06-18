@@ -11,12 +11,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from phenotypic.tools_._docstring_params import apply_docstring_descriptions
-from phenotypic.tools_._io_constants import (
+from phenotypic.sdk_._docstring_params import apply_docstring_descriptions
+from phenotypic.sdk_._io_constants import (
     CONFIG_SUFFIX_OPERATION,
     ensure_typed_json_suffix,
 )
-from phenotypic.tools_._json_io import read_json_source
+from phenotypic.sdk_._json_io import read_json_source
 
 # Check for optional dependencies
 PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
@@ -240,7 +240,7 @@ class BaseOperation(BaseModel, ABC):
             >>> import tempfile
             >>> from pathlib import Path
             >>> from phenotypic.detect import OtsuDetector
-            >>> from phenotypic.tools_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
+            >>> from phenotypic.sdk_ import CONFIG_SUFFIX_OPERATION, ensure_typed_json_suffix
             >>> with tempfile.TemporaryDirectory() as d:
             ...     p = Path(d) / "op.json"
             ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_OPERATION)

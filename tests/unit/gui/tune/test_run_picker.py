@@ -17,7 +17,7 @@ from phenotypic.gui.shell import SandboxRoot
 
 def _write_tune_marker(run_dir: Path) -> None:
     """Write a minimal discoverable ``.pht-tune-cache/run.json`` marker."""
-    from phenotypic.tools_ import tune_cache_run_marker_path
+    from phenotypic.sdk_ import tune_cache_run_marker_path
 
     marker = tune_cache_run_marker_path(run_dir)
     marker.parent.mkdir(parents=True, exist_ok=True)

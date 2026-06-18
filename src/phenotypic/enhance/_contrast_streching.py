@@ -9,7 +9,7 @@ import numpy as np
 from skimage.exposure import rescale_intensity
 
 from ..abc_ import ContrastAdjustment
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class ContrastStretching(ContrastAdjustment):

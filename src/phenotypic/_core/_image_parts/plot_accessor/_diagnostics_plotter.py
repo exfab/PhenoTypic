@@ -13,9 +13,9 @@ from scipy.stats import norm
 from skimage.filters import sobel
 
 from phenotypic.abc_ import Control, FigureProvider, figure
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
-from phenotypic.tools_.viz.figures._theme import NAVY, OKABE_ITO
+from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
 
 from ._base_plotter import BasePlotter
 from ._diagnostics_types import (

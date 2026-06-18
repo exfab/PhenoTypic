@@ -89,7 +89,7 @@ def _new_image(rgb: np.ndarray, name: str) -> "Image":
         A new ``Image`` with 8-bit depth, D65 illuminant and sRGB gamma.
     """
     from phenotypic import Image
-    from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+    from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 
     return Image(
         arr=rgb,
@@ -111,7 +111,7 @@ def _new_grid_image(rgb: np.ndarray, name: str) -> "GridImage":
         A new ``GridImage`` with the canonical 8x12 plate geometry.
     """
     from phenotypic import GridImage
-    from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+    from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 
     return GridImage(
         arr=rgb,

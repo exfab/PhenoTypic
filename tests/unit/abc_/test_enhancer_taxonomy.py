@@ -27,14 +27,14 @@ from phenotypic.abc_ import (
 
 # Marker ABC -> the concrete enhancer class names that must subclass it.
 TAXONOMY: dict[type, tuple[str, ...]] = {
-    ImageDenoiser: (
+    ImageDenoiser         : (
         "BayesShrinkEnhancer",
-        "BM3DDenoiser",
+        "EnhanceBlockMatch",
         "NonLocalMeansDenoiser",
         "VisuShrinkEnhancer",
         "LocalEdgeDenoise",
     ),
-    FocusEdge: (
+    FocusEdge             : (
         "FocusEdgePhase",
         "FocusEdgeHessian",
         "FocusEdgeMeijering",
@@ -43,14 +43,14 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
         "FocusEdgeLaplace",
         "FocusEdgeSobel",
     ),
-    FocusBlob: ("FocusBlobLoG",),
-    Smoothing: (
+    FocusBlob             : ("FocusBlobLoG",),
+    Smoothing             : (
         "GaussianBlur",
         "MedianFilter",
         "RankMedianEnhancer",
         "StructureSmoothing",
     ),
-    BackgroundSubtraction: (
+    BackgroundSubtraction : (
         "SubtractGaussian",
         "SubtractRollingBall",
         "SubtractOpening",
@@ -61,7 +61,7 @@ TAXONOMY: dict[type, tuple[str, ...]] = {
         "WhiteTophatEnhance",
         "SubtractWhiteTophat",
     ),
-    ContrastAdjustment: (
+    ContrastAdjustment    : (
         "EnhanceLocalContrast",
         "ContrastStretching",
         "ImageInverter",
@@ -108,18 +108,18 @@ class TestConcreteEnhancerReparenting:
     """Every concrete enhancer subclasses its intended purpose-group."""
 
     @pytest.mark.parametrize(
-        ("cls", "marker"),
-        _NEW_PAIRS,
-        ids=[f"{c.__name__}->{m.__name__}" for c, m in _NEW_PAIRS],
+            ("cls", "marker"),
+            _NEW_PAIRS,
+            ids=[f"{c.__name__}->{m.__name__}" for c, m in _NEW_PAIRS],
     )
     def test_concrete_inherits_marker(self, cls, marker):
         assert issubclass(cls, marker)
         assert issubclass(cls, ImageEnhancer)
 
     @pytest.mark.parametrize(
-        ("cls", "marker"),
-        _NEW_PAIRS,
-        ids=[f"{c.__name__}->{m.__name__}" for c, m in _NEW_PAIRS],
+            ("cls", "marker"),
+            _NEW_PAIRS,
+            ids=[f"{c.__name__}->{m.__name__}" for c, m in _NEW_PAIRS],
     )
     def test_instance_passes_isinstance(self, cls, marker):
         """Enhancers construct with no args and register as their marker."""

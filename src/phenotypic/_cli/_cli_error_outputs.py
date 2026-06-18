@@ -21,7 +21,7 @@ import polars as pl
 
 from phenotypic.analysis import ErrorCutoffFinder, render_error_analysis_report
 from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS, _RESULT_DTYPES
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     curation_labels_parquet_path,
     error_analysis_csv_path,
     error_analysis_html_path,

@@ -13,7 +13,7 @@ import scipy.optimize as optimize
 from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
 
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
@@ -609,7 +609,7 @@ class ModelFitter(SetAnalyzer, ABC):
                     f"legend={hue!r} must be one of self.groupby={self.groupby}"
             )
 
-        from phenotypic.tools_._plotly_helpers import _require_plotly
+        from phenotypic.sdk_._plotly_helpers import _require_plotly
 
         _require_plotly()
         import plotly.graph_objects as go

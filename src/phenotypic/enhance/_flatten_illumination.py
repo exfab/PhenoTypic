@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import BackgroundSubtraction
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class FlattenIllumination(BackgroundSubtraction):

@@ -17,7 +17,7 @@ import pytest
 from click.testing import CliRunner
 
 from phenotypic._cli._cli_utils import resolve_local_worker_count
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     master_measurements_csv_path,
     measurements_parquet_path,
     progress_dir,

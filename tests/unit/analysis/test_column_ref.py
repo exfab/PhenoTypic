@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.tools_._column_ref``.
+"""Unit tests for ``phenotypic.sdk_._column_ref``.
 
 The marker is purely informational at runtime — these tests pin the
 runtime equivalence (``ColumnRef`` is still a ``str``) plus the
@@ -10,8 +10,8 @@ from typing import get_args
 
 import pytest
 
-from phenotypic.tools_ import ColumnRef, ColumnRefList
-from phenotypic.tools_._column_ref import _ColumnRefMarker
+from phenotypic.sdk_ import ColumnRef, ColumnRefList
+from phenotypic.sdk_._column_ref import _ColumnRefMarker
 
 
 class TestColumnRefMarker:
