@@ -1,0 +1,6 @@
+phenotypic.sdk\_.qc\_members\_parquet\_path
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: qc_members_parquet_path

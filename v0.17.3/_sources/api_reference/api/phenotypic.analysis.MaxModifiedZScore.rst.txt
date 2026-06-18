@@ -1,0 +1,78 @@
+phenotypic.analysis.MaxModifiedZScore
+=====================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: MaxModifiedZScore
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaxModifiedZScore.__init__
+      ~MaxModifiedZScore.analyze
+      ~MaxModifiedZScore.construct
+      ~MaxModifiedZScore.copy
+      ~MaxModifiedZScore.dash
+      ~MaxModifiedZScore.dict
+      ~MaxModifiedZScore.flag_col
+      ~MaxModifiedZScore.flagged_keys
+      ~MaxModifiedZScore.from_orm
+      ~MaxModifiedZScore.group_members
+      ~MaxModifiedZScore.json
+      ~MaxModifiedZScore.metric_col
+      ~MaxModifiedZScore.model_construct
+      ~MaxModifiedZScore.model_copy
+      ~MaxModifiedZScore.model_dump
+      ~MaxModifiedZScore.model_dump_json
+      ~MaxModifiedZScore.model_json_schema
+      ~MaxModifiedZScore.model_parametrized_name
+      ~MaxModifiedZScore.model_post_init
+      ~MaxModifiedZScore.model_rebuild
+      ~MaxModifiedZScore.model_validate
+      ~MaxModifiedZScore.model_validate_json
+      ~MaxModifiedZScore.model_validate_strings
+      ~MaxModifiedZScore.parse_file
+      ~MaxModifiedZScore.parse_obj
+      ~MaxModifiedZScore.parse_raw
+      ~MaxModifiedZScore.results
+      ~MaxModifiedZScore.schema
+      ~MaxModifiedZScore.schema_json
+      ~MaxModifiedZScore.show
+      ~MaxModifiedZScore.status_col
+      ~MaxModifiedZScore.summary
+      ~MaxModifiedZScore.update_forward_refs
+      ~MaxModifiedZScore.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaxModifiedZScore.model_computed_fields
+      ~MaxModifiedZScore.model_config
+      ~MaxModifiedZScore.model_extra
+      ~MaxModifiedZScore.model_fields
+      ~MaxModifiedZScore.model_fields_set
+      ~MaxModifiedZScore.name
+      ~MaxModifiedZScore.warn_threshold
+      ~MaxModifiedZScore.fail_threshold
+      ~MaxModifiedZScore.time_label
+      ~MaxModifiedZScore.min_replicates
+      ~MaxModifiedZScore.unmatched_groups
+      ~MaxModifiedZScore.on
+      ~MaxModifiedZScore.groupby
+      ~MaxModifiedZScore.agg_func
+      ~MaxModifiedZScore.n_jobs
+   
+   

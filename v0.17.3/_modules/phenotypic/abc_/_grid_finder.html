@@ -1,0 +1,1115 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._grid_finder &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_grid_finder';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/abc_/_grid_finder.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._grid_finder</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._grid_finder</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridMeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+
+
+<div class="viewcode-block" id="GridFinder">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridFinder">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridFinder</span><span class="p">(</span><span class="n">GridMeasureFeatures</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for detecting grid structure and assigning objects to wells.</span>
+
+<span class="sd">    GridFinder is the foundation for grid detection algorithms in arrayed plate imaging.</span>
+<span class="sd">    It detects the row and column spacing of colonies on agar plates and assigns each</span>
+<span class="sd">    detected object to its corresponding grid cell (well). This is essential for</span>
+<span class="sd">    high-throughput phenotyping experiments where samples are arranged in regular grids</span>
+<span class="sd">    (e.g., 96-well, 384-well formats).</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Use [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py) when:</span>
+<span class="sd">    - Grid position is unknown or image is rotated/shifted</span>
+<span class="sd">    - Colonies are detected but well boundaries are unclear</span>
+<span class="sd">    - You want automatic optimization of row/column edge positions</span>
+<span class="sd">    - Tolerance parameter allows tuning optimization precision</span>
+
+<span class="sd">    Use [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py) when:</span>
+<span class="sd">    - You know exact grid geometry from microscope calibration</span>
+<span class="sd">    - Grid position is fixed and repeatable across images</span>
+<span class="sd">    - You have pre-measured row and column edge coordinates</span>
+<span class="sd">    - You want deterministic, non-optimized grid assignment</span>
+
+<span class="sd">    Combining with detection pipelines:</span>
+<span class="sd">    - Use GridFinder after ObjectDetector to map colonies to wells</span>
+<span class="sd">    - AutoGridFinder works with any detection result</span>
+<span class="sd">    - ManualGridFinder requires pre-computed edge coordinates</span>
+<span class="sd">    - Grid assignment is independent of detection algorithm</span>
+
+<span class="sd">    **What it does**</span>
+
+<span class="sd">    GridFinder implementations analyze the spatial distribution of detected objects in</span>
+<span class="sd">    an image and determine the underlying grid structure. They compute pixel coordinates</span>
+<span class="sd">    where grid rows and columns are located (row_edges and col_edges), then use these</span>
+<span class="sd">    edges to assign each object to a row number, column number, and section number</span>
+<span class="sd">    (unique well identifier).</span>
+
+<span class="sd">    **Why it&#39;s important for colony phenotyping**</span>
+
+<span class="sd">    In arrayed plate experiments, colonies are grown at fixed positions corresponding to</span>
+<span class="sd">    wells in a microplate. By mapping detected colonies to grid positions, downstream</span>
+<span class="sd">    analysis can:</span>
+
+<span class="sd">    - **Sample tracking:** Correlate colony measurements with sample metadata inoculated</span>
+<span class="sd">      in each well</span>
+<span class="sd">    - **Replicate analysis:** Track growth across identical replicate wells</span>
+<span class="sd">    - **Spatial detection:** Identify contamination patterns or edge effects</span>
+<span class="sd">    - **Data export:** Organize results by well coordinates for database import and</span>
+<span class="sd">      statistical analysis</span>
+
+<span class="sd">    Without grid assignment, measurements are just unorganized lists of objects with no</span>
+<span class="sd">    link to experimental design.</span>
+
+<span class="sd">    **Grid concepts**</span>
+
+<span class="sd">    - **Row edges:** Array of pixel row coordinates marking row boundaries. For 8 rows,</span>
+<span class="sd">      array has 9 values: [0, y1, y2, ..., y8, image_height]. Objects between row_edges[i]</span>
+<span class="sd">      and row_edges[i+1] belong to row i.</span>
+<span class="sd">    - **Column edges:** Array of pixel column coordinates marking column boundaries. For</span>
+<span class="sd">      12 columns, array has 13 values: [0, x1, x2, ..., x12, image_width]. Objects between</span>
+<span class="sd">      col_edges[j] and col_edges[j+1] belong to column j.</span>
+<span class="sd">    - **Grid cell assignment:** Each object&#39;s centroid (center_rr, center_cc) is tested</span>
+<span class="sd">      against row/column edges using pd.cut(), assigning it to row i (0 to nrows-1) and</span>
+<span class="sd">      column j (0 to ncols-1).</span>
+<span class="sd">    - **Section number:** A unique well ID computed as row*ncols + col, ordered left-to-right,</span>
+<span class="sd">      top-to-bottom (top-left well = 0, bottom-right well = nrows*ncols - 1).</span>
+
+<span class="sd">    **Typical plate formats**</span>
+
+<span class="sd">    - **96-well plate:** 8 rows × 12 columns (A1-H12)</span>
+<span class="sd">    - **384-well plate:** 16 rows × 24 columns (A1-P24)</span>
+<span class="sd">    - **1536-well plate:** 32 rows × 48 columns (very high-throughput)</span>
+
+<span class="sd">    **Attributes:**</span>
+<span class="sd">        nrows (int): Number of rows in the grid. For 96-well plates, typically 8.</span>
+<span class="sd">        ncols (int): Number of columns in the grid. For 96-well plates, typically 12.</span>
+
+<span class="sd">    **Abstract Methods**</span>
+
+<span class="sd">    Subclasses must implement these methods:</span>
+
+<span class="sd">    - **_operate(image: Image) -&gt; pd.DataFrame:** Main entry point. Compute row and</span>
+<span class="sd">      column edges, then call _get_grid_info() to assemble the complete grid DataFrame.</span>
+<span class="sd">      Return the DataFrame with all grid assignments.</span>
+<span class="sd">    - **get_row_edges(image: Image) -&gt; np.ndarray:** Return array of row edge pixel</span>
+<span class="sd">      coordinates. Length must be exactly nrows + 1 (e.g., 9 values for 8 rows).</span>
+<span class="sd">    - **get_col_edges(image: Image) -&gt; np.ndarray:** Return array of column edge pixel</span>
+<span class="sd">      coordinates. Length must be exactly ncols + 1 (e.g., 13 values for 12 columns).</span>
+
+<span class="sd">    **Helper Methods for Implementation**</span>
+
+<span class="sd">    These protected methods reduce code duplication and handle grid assignment:</span>
+
+<span class="sd">    - **_get_grid_info(image, row_edges, col_edges) -&gt; pd.DataFrame:** Assembles</span>
+<span class="sd">      complete grid information from pre-computed edge coordinates. Calls internal</span>
+<span class="sd">      methods to populate ROW_NUM, COL_NUM, and ROW_MAJOR_IDX columns. Use this after</span>
+<span class="sd">      computing edges in your _operate() implementation.</span>
+<span class="sd">    - **_add_row_number_info():** Assigns row indices using pd.cut() with object</span>
+<span class="sd">      centroids and row edges.</span>
+<span class="sd">    - **_add_col_number_info():** Assigns column indices using pd.cut() with object</span>
+<span class="sd">      centroids and column edges.</span>
+<span class="sd">    - **_add_section_number_info():** Computes section numbers from row and column</span>
+<span class="sd">      indices using vectorized operations.</span>
+<span class="sd">    - **_clip_row_edges() / _clip_col_edges():** Ensures edge coordinates are clipped</span>
+<span class="sd">      to image bounds (prevents indexing errors).</span>
+
+<span class="sd">    **Output Format**</span>
+
+<span class="sd">    The _operate() method returns a pandas DataFrame with detected objects and their</span>
+<span class="sd">    grid assignments:</span>
+
+<span class="sd">    - **ROW_NUM:** Grid row index (0 to nrows-1), representing vertical well position</span>
+<span class="sd">    - **COL_NUM:** Grid column index (0 to ncols-1), representing horizontal well position</span>
+<span class="sd">    - **ROW_MAJOR_IDX:** Well identifier (0 to nrows*ncols-1), ordered left-to-right,</span>
+<span class="sd">      top-to-bottom for convenient database mapping</span>
+<span class="sd">    - **Additional columns:** Object metadata (centroid, bounding box, morphology) from</span>
+<span class="sd">      image.objects.info()</span>
+
+<span class="sd">    Objects whose centers fall outside the grid edges are clamped to the nearest</span>
+<span class="sd">    edge cell (row 0 or nrows-1, col 0 or ncols-1).</span>
+
+<span class="sd">    **Concrete Implementations**</span>
+
+<span class="sd">    PhenoTypic provides two built-in GridFinder implementations:</span>
+
+<span class="sd">    - [AutoGridFinder](src/phenotypic/grid/_auto_grid_finder.py): Deterministic robust fit</span>
+<span class="sd">      using weighted object centers. Estimates pitch from center range, fits grid indices</span>
+<span class="sd">      via least-squares, rejects outliers, and refits. Robust to protruding colonies</span>
+<span class="sd">      (e.g., filamentous fungi). Use when grid position is unknown.</span>
+<span class="sd">    - [ManualGridFinder](src/phenotypic/grid/_manual_grid_finder.py): User specifies exact</span>
+<span class="sd">      row and column edge coordinates from calibration or measurement. Use when grid geometry</span>
+<span class="sd">      is known and fixed.</span>
+
+<span class="sd">    **Fitting Strategy (for AutoGridFinder)**</span>
+
+<span class="sd">    AutoGridFinder uses a deterministic center-based robust fit:</span>
+
+<span class="sd">    - **Centers:** Extract weighted centroids from detected objects, sorted along each axis</span>
+<span class="sd">    - **Pitch estimate:** ``(max_center - min_center) / (n_expected - 1)`` (robust to multiple objects per cell)</span>
+<span class="sd">    - **Grid indices:** ``round((center - min_center) / pitch)``</span>
+<span class="sd">    - **Least-squares fit:** ``center = pitch * idx + offset`` via closed-form normal equations</span>
+<span class="sd">    - **Outlier rejection:** Remove centers where ``|residual| &gt; pitch * residual_fraction``</span>
+<span class="sd">    - **Refit:** Refined pitch and offset from inliers only</span>
+<span class="sd">    - **Symmetry anchoring:** When detected span &lt; expected, center the grid in the image</span>
+<span class="sd">    - **Edges:** ``offset + pitch * i - pitch/2`` for ``i = 0..n``, clipped to image bounds</span>
+
+<span class="sd">    **Notes**</span>
+
+<span class="sd">    - GridFinder subclasses work with regular Image objects (not just GridImage)</span>
+<span class="sd">    - Edge coordinates must be sorted in ascending order (handled by _clip_row_edges</span>
+<span class="sd">      and _clip_col_edges)</span>
+<span class="sd">    - Ensure row_edges and col_edges are clipped to image bounds to prevent indexing</span>
+<span class="sd">      errors</span>
+<span class="sd">    - Grid assignment uses pandas.cut() with include_lowest=True and right=True, meaning</span>
+<span class="sd">      objects are assigned based on which interval they fall into</span>
+<span class="sd">    - NaN values in grid columns indicate objects outside all grid cells</span>
+
+<span class="sd">    **Examples**</span>
+
+<span class="sd">        Use AutoGridFinder when grid position is unknown:</span>
+
+<span class="sd">        When the image is rotated, shifted, or geometry is unclear, let AutoGridFinder</span>
+<span class="sd">        automatically compute optimal edge positions by optimizing alignment:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.grid import AutoGridFinder</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Load and detect colonies on plate</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">        &gt;&gt;&gt; image_with_objects = detector.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # AutoGridFinder optimizes edge positions to align with colonies</span>
+<span class="sd">        &gt;&gt;&gt; grid_finder = AutoGridFinder(nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; grid_df = grid_finder.measure(image_with_objects)</span>
+<span class="sd">        &gt;&gt;&gt; # Access well assignments</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Found {len(grid_df)} colonies assigned to grid&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(grid_df[[&#39;ROW_NUM&#39;, &#39;COL_NUM&#39;, &#39;ROW_MAJOR_IDX&#39;]].head())</span>
+
+<span class="sd">        Create a ManualGridFinder for a 96-well plate with known geometry:</span>
+
+<span class="sd">        When grid geometry is known from microscope calibration, manually specify</span>
+<span class="sd">        row and column edges for reproducible grid assignment:</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.grid import ManualGridFinder</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Load and detect colonies</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">        &gt;&gt;&gt; image_with_objects = detector.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Define grid for 8 rows x 12 columns (96-well)</span>
+<span class="sd">        &gt;&gt;&gt; # Rows: 8 wells vertically, evenly spaced from pixel 100 to 2000</span>
+<span class="sd">        &gt;&gt;&gt; row_edges = np.linspace(100, 2000, 9, dtype=int)</span>
+<span class="sd">        &gt;&gt;&gt; # Columns: 12 wells horizontally, evenly spaced from pixel 50 to 3050</span>
+<span class="sd">        &gt;&gt;&gt; col_edges = np.linspace(50, 3050, 13, dtype=int)</span>
+<span class="sd">        &gt;&gt;&gt; # Create grid finder with known edge coordinates</span>
+<span class="sd">        &gt;&gt;&gt; grid_finder = ManualGridFinder(row_edges=row_edges, col_edges=col_edges)</span>
+<span class="sd">        &gt;&gt;&gt; grid_df = grid_finder.measure(image_with_objects)</span>
+<span class="sd">        &gt;&gt;&gt; # Result includes grid assignments plus object metadata</span>
+<span class="sd">        &gt;&gt;&gt; print(grid_df[[&#39;ROW_NUM&#39;, &#39;COL_NUM&#39;, &#39;ROW_MAJOR_IDX&#39;]].head())</span>
+
+<span class="sd">        Understanding ROW_MAJOR_IDX for well mapping:</span>
+
+<span class="sd">        ROW_MAJOR_IDX provides a single integer ID for each well, useful for organizing</span>
+<span class="sd">        results and correlating with sample metadata:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.grid import AutoGridFinder</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Detect and assign colonies to grid</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">        &gt;&gt;&gt; image_with_objects = detector.apply(image)</span>
+<span class="sd">        &gt;&gt;&gt; grid_finder = AutoGridFinder(nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; grid_df = grid_finder.measure(image_with_objects)</span>
+<span class="sd">        &gt;&gt;&gt; # Example: 8x12 grid (96-well plate)</span>
+<span class="sd">        &gt;&gt;&gt; # ROW_MAJOR_IDX runs 0-95, numbered left-to-right, top-to-bottom</span>
+<span class="sd">        &gt;&gt;&gt; # Section 0 = Row 0, Col 0 (top-left, A1)</span>
+<span class="sd">        &gt;&gt;&gt; # Section 11 = Row 0, Col 11 (top-right, A12)</span>
+<span class="sd">        &gt;&gt;&gt; # Section 12 = Row 1, Col 0 (second row left, B1)</span>
+<span class="sd">        &gt;&gt;&gt; # Section 95 = Row 7, Col 11 (bottom-right, H12)</span>
+<span class="sd">        &gt;&gt;&gt; # Filter colonies in a specific well</span>
+<span class="sd">        &gt;&gt;&gt; section_5_objects = grid_df[grid_df[&#39;ROW_MAJOR_IDX&#39;] == 5]</span>
+<span class="sd">        &gt;&gt;&gt; # Map section numbers back to well coordinates</span>
+<span class="sd">        &gt;&gt;&gt; well_row = 5 // 12  # Row index</span>
+<span class="sd">        &gt;&gt;&gt; well_col = 5 % 12   # Column index</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+<div class="viewcode-block" id="GridFinder.get_row_edges">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridFinder.get_row_edges">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method is to returns the row edges of the grid as a numpy array.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): Image object.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Row-edges of the grid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="GridFinder.get_col_edges">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridFinder.get_col_edges">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method is to returns the column edges of the grid as a numpy array.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            image:</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Column-edges of the grid.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clip_row_edges</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">imshape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_row_number_info</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">imshape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clip_row_edges</span><span class="p">(</span><span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">imshape</span><span class="p">)</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span>
+                <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">col</span><span class="p">],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">),</span>
+                <span class="n">include_lowest</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Clamp out-of-bounds objects to nearest edge cell</span>
+        <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">centers</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">nan_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">nearest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">nan_mask</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span> <span class="o">=</span> <span class="n">nearest</span>
+        <span class="k">return</span> <span class="n">table</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clip_col_edges</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">a_max</span><span class="o">=</span><span class="n">imshape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_col_number_info</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">imshape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clip_col_edges</span><span class="p">(</span><span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">imshape</span><span class="p">)</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span>
+                <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">col</span><span class="p">],</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">),</span>
+                <span class="n">include_lowest</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Clamp out-of-bounds objects to nearest edge cell</span>
+        <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nan_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">centers</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">nan_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">nearest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">centers</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">nan_mask</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span> <span class="o">=</span> <span class="n">nearest</span>
+        <span class="k">return</span> <span class="n">table</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_section_number_info</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">imshape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="c1"># Ensure ROW_NUM and COL_NUM exist</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_row_number_info</span><span class="p">(</span><span class="n">table</span><span class="o">=</span><span class="n">table</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">imshape</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_col_number_info</span><span class="p">(</span><span class="n">table</span><span class="o">=</span><span class="n">table</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">imshape</span><span class="p">)</span>
+
+        <span class="n">row_nums</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">col_nums</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">values</span>
+
+        <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">row_nums</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">col_nums</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">valid_rows</span> <span class="o">=</span> <span class="n">row_nums</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">valid_cols</span> <span class="o">=</span> <span class="n">col_nums</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">valid_rows</span> <span class="o">=</span> <span class="n">valid_cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Row-major index (row * ncols + col)</span>
+        <span class="n">idx_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">row_major_arr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">arrays</span><span class="o">.</span><span class="n">IntegerArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">),</span>
+            <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">row_major_arr</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx_map</span><span class="p">[</span><span class="n">valid_rows</span><span class="p">,</span> <span class="n">valid_cols</span><span class="p">]</span>
+        <span class="n">table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">row_major_arr</span><span class="p">)</span>
+
+        <span class="c1"># Column-major index (col * nrows + row)</span>
+        <span class="n">col_major_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">),</span>
+            <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">col_major_arr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">arrays</span><span class="o">.</span><span class="n">IntegerArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">),</span>
+            <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">valid_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">col_major_arr</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">col_major_map</span><span class="p">[</span><span class="n">valid_rows</span><span class="p">,</span> <span class="n">valid_cols</span><span class="p">]</span>
+        <span class="n">table</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_MAJOR_IDX</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">col_major_arr</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">table</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_grid_info</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">info_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assembles complete grid information from row and column edges.</span>
+
+<span class="sd">        This helper method takes pre-calculated edge coordinates and generates a complete</span>
+<span class="sd">        DataFrame with all grid metadata including row/column numbers and section numbers.</span>
+<span class="sd">        This eliminates code duplication across different GridFinder implementations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (Image): The image object containing objects to be gridded.</span>
+<span class="sd">            row_edges (np.ndarray): Array of row edge coordinates (length = nrows + 1).</span>
+<span class="sd">            col_edges (np.ndarray): Array of column edge coordinates (length = ncols + 1).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: Complete grid information table with ROW_NUM, COL_NUM, ROW_MAJOR_IDX, and COL_MAJOR_IDX columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">INTENSITY_WEIGHTED_CENTER_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">INTENSITY_WEIGHTED_CENTER_CC</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">DIST_WEIGHTED_CENTER_RR</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">DIST_WEIGHTED_CENTER_CC</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">),</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_MAJOR_IDX</span><span class="p">),</span>
+            <span class="p">]</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">info_table</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">info_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Add row information</span>
+        <span class="n">info_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_row_number_info</span><span class="p">(</span>
+                <span class="n">table</span><span class="o">=</span><span class="n">info_table</span><span class="p">,</span> <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add column information</span>
+        <span class="n">info_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_col_number_info</span><span class="p">(</span>
+                <span class="n">table</span><span class="o">=</span><span class="n">info_table</span><span class="p">,</span> <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span> <span class="n">imshape</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add section information</span>
+        <span class="n">info_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_section_number_info</span><span class="p">(</span>
+                <span class="n">table</span><span class="o">=</span><span class="n">info_table</span><span class="p">,</span>
+                <span class="n">row_edges</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span>
+                <span class="n">col_edges</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span>
+                <span class="n">imshape</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">info_table</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

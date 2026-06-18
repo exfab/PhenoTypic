@@ -1,0 +1,65 @@
+phenotypic.refine.RemoveGridOutliers
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveGridOutliers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveGridOutliers.__init__
+      ~RemoveGridOutliers.apply
+      ~RemoveGridOutliers.construct
+      ~RemoveGridOutliers.copy
+      ~RemoveGridOutliers.dict
+      ~RemoveGridOutliers.from_json
+      ~RemoveGridOutliers.from_orm
+      ~RemoveGridOutliers.json
+      ~RemoveGridOutliers.model_construct
+      ~RemoveGridOutliers.model_copy
+      ~RemoveGridOutliers.model_dump
+      ~RemoveGridOutliers.model_dump_json
+      ~RemoveGridOutliers.model_json_schema
+      ~RemoveGridOutliers.model_parametrized_name
+      ~RemoveGridOutliers.model_post_init
+      ~RemoveGridOutliers.model_rebuild
+      ~RemoveGridOutliers.model_validate
+      ~RemoveGridOutliers.model_validate_json
+      ~RemoveGridOutliers.model_validate_strings
+      ~RemoveGridOutliers.parse_file
+      ~RemoveGridOutliers.parse_obj
+      ~RemoveGridOutliers.parse_raw
+      ~RemoveGridOutliers.schema
+      ~RemoveGridOutliers.schema_json
+      ~RemoveGridOutliers.to_json
+      ~RemoveGridOutliers.update_forward_refs
+      ~RemoveGridOutliers.validate
+      ~RemoveGridOutliers.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveGridOutliers.model_computed_fields
+      ~RemoveGridOutliers.model_config
+      ~RemoveGridOutliers.model_extra
+      ~RemoveGridOutliers.model_fields
+      ~RemoveGridOutliers.model_fields_set
+      ~RemoveGridOutliers.axis
+      ~RemoveGridOutliers.cutoff_multiplier
+      ~RemoveGridOutliers.max_coeff_variance
+   
+   

@@ -1,0 +1,62 @@
+phenotypic.refine.GridOversizedObjectRemover
+============================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: GridOversizedObjectRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridOversizedObjectRemover.__init__
+      ~GridOversizedObjectRemover.apply
+      ~GridOversizedObjectRemover.construct
+      ~GridOversizedObjectRemover.copy
+      ~GridOversizedObjectRemover.dict
+      ~GridOversizedObjectRemover.from_json
+      ~GridOversizedObjectRemover.from_orm
+      ~GridOversizedObjectRemover.json
+      ~GridOversizedObjectRemover.model_construct
+      ~GridOversizedObjectRemover.model_copy
+      ~GridOversizedObjectRemover.model_dump
+      ~GridOversizedObjectRemover.model_dump_json
+      ~GridOversizedObjectRemover.model_json_schema
+      ~GridOversizedObjectRemover.model_parametrized_name
+      ~GridOversizedObjectRemover.model_post_init
+      ~GridOversizedObjectRemover.model_rebuild
+      ~GridOversizedObjectRemover.model_validate
+      ~GridOversizedObjectRemover.model_validate_json
+      ~GridOversizedObjectRemover.model_validate_strings
+      ~GridOversizedObjectRemover.parse_file
+      ~GridOversizedObjectRemover.parse_obj
+      ~GridOversizedObjectRemover.parse_raw
+      ~GridOversizedObjectRemover.schema
+      ~GridOversizedObjectRemover.schema_json
+      ~GridOversizedObjectRemover.to_json
+      ~GridOversizedObjectRemover.update_forward_refs
+      ~GridOversizedObjectRemover.validate
+      ~GridOversizedObjectRemover.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridOversizedObjectRemover.model_computed_fields
+      ~GridOversizedObjectRemover.model_config
+      ~GridOversizedObjectRemover.model_extra
+      ~GridOversizedObjectRemover.model_fields
+      ~GridOversizedObjectRemover.model_fields_set
+   
+   

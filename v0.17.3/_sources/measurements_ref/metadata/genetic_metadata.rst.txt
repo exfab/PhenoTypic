@@ -1,0 +1,37 @@
+GENETIC_METADATA
+================
+
+Python object: ``phenotypic.schema._experimental_tags._genetic.GENETIC_METADATA``
+
+Recommended ``Metadata_*`` tags describing the organism and its genetics.
+
+These name the genetic identity of the colonies on a plate (species, strain,
+genotype, markers). Like all experimental-tag enums they share the
+``Metadata_`` namespace, so members render as ``Metadata_<Label>`` (e.g.
+``Metadata_Strain``) and slot directly into the ``--metadata`` CSV join and the
+``post/`` metadata operations. This is a recommended vocabulary, not a validator:
+arbitrary metadata columns are still accepted.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Metadata_Organism``
+     - Species or organism name (e.g. Saccharomyces cerevisiae).
+   * - ``Metadata_Strain``
+     - Strain name or identifier (e.g. BY4741).
+   * - ``Metadata_Genotype``
+     - Genotype description of the strain.
+   * - ``Metadata_Background``
+     - Genetic background or parent strain.
+   * - ``Metadata_Allele``
+     - Specific allele or mutation under study.
+   * - ``Metadata_Plasmid``
+     - Plasmid carried by the sample.
+   * - ``Metadata_SelectionMarker``
+     - Selectable marker gene (e.g. URA3, KanMX).
+   * - ``Metadata_MatingType``
+     - Mating type for yeast (e.g. MATa, MATalpha).
+   * - ``Metadata_Ploidy``
+     - Ploidy of the organism (e.g. haploid, diploid).

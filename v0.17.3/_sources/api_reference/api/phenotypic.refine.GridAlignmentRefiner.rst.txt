@@ -1,0 +1,68 @@
+phenotypic.refine.GridAlignmentRefiner
+======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: GridAlignmentRefiner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridAlignmentRefiner.__init__
+      ~GridAlignmentRefiner.apply
+      ~GridAlignmentRefiner.construct
+      ~GridAlignmentRefiner.copy
+      ~GridAlignmentRefiner.dict
+      ~GridAlignmentRefiner.from_json
+      ~GridAlignmentRefiner.from_orm
+      ~GridAlignmentRefiner.json
+      ~GridAlignmentRefiner.model_construct
+      ~GridAlignmentRefiner.model_copy
+      ~GridAlignmentRefiner.model_dump
+      ~GridAlignmentRefiner.model_dump_json
+      ~GridAlignmentRefiner.model_json_schema
+      ~GridAlignmentRefiner.model_parametrized_name
+      ~GridAlignmentRefiner.model_post_init
+      ~GridAlignmentRefiner.model_rebuild
+      ~GridAlignmentRefiner.model_validate
+      ~GridAlignmentRefiner.model_validate_json
+      ~GridAlignmentRefiner.model_validate_strings
+      ~GridAlignmentRefiner.parse_file
+      ~GridAlignmentRefiner.parse_obj
+      ~GridAlignmentRefiner.parse_raw
+      ~GridAlignmentRefiner.schema
+      ~GridAlignmentRefiner.schema_json
+      ~GridAlignmentRefiner.to_json
+      ~GridAlignmentRefiner.update_forward_refs
+      ~GridAlignmentRefiner.validate
+      ~GridAlignmentRefiner.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridAlignmentRefiner.model_computed_fields
+      ~GridAlignmentRefiner.model_config
+      ~GridAlignmentRefiner.model_extra
+      ~GridAlignmentRefiner.model_fields
+      ~GridAlignmentRefiner.model_fields_set
+      ~GridAlignmentRefiner.smoothing_sigma
+      ~GridAlignmentRefiner.min_peak_distance
+      ~GridAlignmentRefiner.peak_prominence
+      ~GridAlignmentRefiner.edge_refinement
+      ~GridAlignmentRefiner.selection_mode
+      ~GridAlignmentRefiner.split_merged
+   
+   

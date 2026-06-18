@@ -1,0 +1,1212 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.qc._expected_vs_detected &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/qc/_expected_vs_detected';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/analysis/qc/_expected_vs_detected.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.qc._expected_vs_detected</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.qc._expected_vs_detected</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Expected-vs-detected colony count quality check.</span>
+
+<span class="sd">Compares the detected colony count per group in a measurement frame against</span>
+<span class="sd">the expected count derived from a separately-provided metadata frame</span>
+<span class="sd">(usually the plate&#39;s layout CSV). Surfaces groups where colonies are</span>
+<span class="sd">missing or over-detected.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Field</span><span class="p">,</span>
+    <span class="n">PrivateAttr</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">,</span>
+    <span class="n">field_validator</span><span class="p">,</span>
+    <span class="n">model_validator</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_COUNT</span>
+
+<span class="c1"># The metadata layout frame is an ``arbitrary_types_allowed`` field: a</span>
+<span class="c1"># raw ``pandas.DataFrame`` has no JSON schema, so attach an object-typed</span>
+<span class="c1"># placeholder so ``model_json_schema()`` succeeds. The frame is excluded</span>
+<span class="c1"># from ``model_dump`` (``Field(exclude=True)``) — a DataFrame is not</span>
+<span class="c1"># JSON-native — and the serializable surface carries only the</span>
+<span class="c1"># ``metadata_source`` path string, so ``pipeline.json`` round-trips the</span>
+<span class="c1"># layout *source* and re-reads the frame on load.</span>
+<span class="n">_MetadataFrame</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">}),</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="ExpectedVsDetectedCount">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ExpectedVsDetectedCount">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExpectedVsDetectedCount</span><span class="p">(</span><span class="n">QualityCheck</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag groups whose detected colony count diverges from metadata.</span>
+
+<span class="sd">    For each ``groupby`` combination the check compares the number of rows</span>
+<span class="sd">    in the measurement frame (``detected``) against the number of rows in</span>
+<span class="sd">    the externally-provided ``metadata`` frame for the same key</span>
+<span class="sd">    (``expected``). The signed difference and its normalized magnitude</span>
+<span class="sd">    drive a tri-state pass/warn/fail label:</span>
+
+<span class="sd">    * ``QC_Count_Metric = |detected - expected| / expected``</span>
+<span class="sd">    * ``QC_Count_Metric = numpy.inf`` when ``expected == 0`` (i.e. the</span>
+<span class="sd">      measurement group has no metadata counterpart). This always exceeds</span>
+<span class="sd">      ``fail_threshold`` so the status becomes ``&quot;fail&quot;`` and the rows are</span>
+<span class="sd">      flagged. The offending key tuple is recorded in</span>
+<span class="sd">      :attr:`unmatched_groups` so the GUI can distinguish a real biology</span>
+<span class="sd">      fail from a metadata-mismatch fail.</span>
+
+<span class="sd">    ``_HIGHER_IS_BAD`` is ``True``: a larger normalized count divergence</span>
+<span class="sd">    is worse, so the base class flags rows whose metric meets or exceeds</span>
+<span class="sd">    ``fail_threshold`` (including the infinite metric of an unmatched</span>
+<span class="sd">    group).</span>
+
+<span class="sd">    The check does **not** aggregate measurement values — it counts rows</span>
+<span class="sd">    — so :attr:`_exposes_agg_func` is ``False`` and the GUI</span>
+<span class="sd">    parameter-form rendering driver hides the ``agg_func`` field. The</span>
+<span class="sd">    base ``SetAnalyzer.agg_func`` is pinned to ``&quot;first&quot;`` internally.</span>
+
+<span class="sd">    The ``metadata`` argument can be either a ready-made</span>
+<span class="sd">    :class:`pandas.DataFrame` or a path (``Path`` or ``str``) to a</span>
+<span class="sd">    ``.csv``/``.parquet`` file. The file is read once at construction</span>
+<span class="sd">    time and the resolved frame is stored on the instance. Every column</span>
+<span class="sd">    named in ``groupby`` must be present in the metadata frame;</span>
+<span class="sd">    otherwise :class:`KeyError` is raised at ``__init__`` so the failure</span>
+<span class="sd">    surfaces before ``analyze`` runs.</span>
+
+<span class="sd">    **Serialization:** the resolved frame is *not* part of the</span>
+<span class="sd">    JSON-serializable parameter surface (a DataFrame is not JSON-native).</span>
+<span class="sd">    When ``metadata`` is supplied as a path, that path string is captured</span>
+<span class="sd">    in the serializable :attr:`metadata_source` field, so</span>
+<span class="sd">    ``model_dump`` / ``pipeline.json`` round-trip the layout *source* and</span>
+<span class="sd">    a reloaded instance re-reads the file. When ``metadata`` is supplied</span>
+<span class="sd">    as an in-memory DataFrame there is no source path to persist —</span>
+<span class="sd">    :attr:`metadata_source` stays ``None`` and the check cannot be</span>
+<span class="sd">    rebuilt from JSON alone (it will fail to instantiate with a clear</span>
+<span class="sd">    error, surfaced as a skip-with-warning by the lazy QC instantiation</span>
+<span class="sd">    path). Configure QC checks from a metadata *path* whenever the</span>
+<span class="sd">    pipeline is meant to round-trip.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        metadata: Layout frame whose row count per ``groupby`` key is the</span>
+<span class="sd">            expected colony count. Either a DataFrame or a path to a CSV</span>
+<span class="sd">            or Parquet file. Excluded from serialization — supply</span>
+<span class="sd">            ``metadata_source`` instead when rebuilding from JSON.</span>
+<span class="sd">        metadata_source: Path to the layout CSV/Parquet, captured</span>
+<span class="sd">            automatically when ``metadata`` is given as a path. This is</span>
+<span class="sd">            the JSON-serializable handle to the layout: on</span>
+<span class="sd">            reconstruction from ``pipeline.json`` the frame is re-read</span>
+<span class="sd">            from here. Usually set implicitly; pass it explicitly only</span>
+<span class="sd">            when reconstructing without a ``metadata`` frame.</span>
+<span class="sd">        groupby: Columns that define a comparison unit. Must be present</span>
+<span class="sd">            in both the metadata frame and the measurement frame passed</span>
+<span class="sd">            to :meth:`analyze`.</span>
+<span class="sd">        on: Measurement column the check operates on. Defaults to</span>
+<span class="sd">            ``&quot;Object_Label&quot;`` since &quot;detected&quot; means &quot;a measurement row</span>
+<span class="sd">            exists&quot;.</span>
+<span class="sd">        warn_threshold: Normalized count divergence at which ``Status``</span>
+<span class="sd">            becomes ``&quot;warn&quot;``. Defaults to ``0.05``.</span>
+<span class="sd">        fail_threshold: Normalized count divergence at which ``Status``</span>
+<span class="sd">            becomes ``&quot;fail&quot;`` and ``Flag=True``. Defaults to ``0.10``.</span>
+<span class="sd">        n_jobs: Worker count. Currently unused by the base ``analyze``</span>
+<span class="sd">            loop; kept on the signature for parity with</span>
+<span class="sd">            :class:`SetAnalyzer`.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError: If ``metadata`` (or ``metadata_source``) is a</span>
+<span class="sd">            path that does not exist.</span>
+<span class="sd">        KeyError: If any column in ``groupby`` is absent from the</span>
+<span class="sd">            resolved metadata frame.</span>
+<span class="sd">        ValueError: If ``metadata`` is a path with an unsupported suffix,</span>
+<span class="sd">            or if neither ``metadata`` nor ``metadata_source`` is</span>
+<span class="sd">            supplied (e.g. reconstructing from JSON that was built from</span>
+<span class="sd">            an in-memory frame, which has no source path to persist).</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        unmatched_groups: List of group-key tuples that appeared in the</span>
+<span class="sd">            measurement frame but had no counterpart in the metadata</span>
+<span class="sd">            frame during the most recent :meth:`analyze` call. Reset at</span>
+<span class="sd">            the top of each ``analyze`` so re-runs do not accumulate.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Basic match — 96-well metadata vs. a measurement frame missing</span>
+<span class="sd">        one well:</span>
+
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import (</span>
+<span class="sd">        ...     ExpectedVsDetectedCount,</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 95,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(95)),</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
+<span class="sd">        ...     metadata=metadata,</span>
+<span class="sd">        ...     groupby=[&quot;Metadata_ImageFile&quot;],</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; result = chk.analyze(measurements)  # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; &quot;QC_Count_Metric&quot; in result.columns  # doctest: +SKIP</span>
+<span class="sd">        True</span>
+
+<span class="sd">        Advanced — a measurement group has no metadata counterpart, so</span>
+<span class="sd">        the metric is infinite and the key is recorded:</span>
+
+<span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate2.png&quot;] * 10,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(10)),</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
+<span class="sd">        ...     metadata=metadata,</span>
+<span class="sd">        ...     groupby=[&quot;Metadata_ImageFile&quot;],</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; _ = chk.analyze(measurements)  # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; chk.unmatched_groups  # doctest: +SKIP</span>
+<span class="sd">        [(&#39;plate2.png&#39;,)]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">QUALITY_COUNT</span>
+
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
+    <span class="n">on</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+    <span class="n">agg_func</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;first&quot;</span>
+    <span class="c1"># ``metadata`` carries the resolved frame at runtime but is excluded</span>
+    <span class="c1"># from ``model_dump`` (a DataFrame is not JSON-native). The</span>
+    <span class="c1"># serializable handle is ``metadata_source``.</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">_MetadataFrame</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">metadata_source</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">_metadata</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+    <span class="n">_expected_counts</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_capture_metadata_source</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture a metadata *path* into ``metadata_source`` and resolve it.</span>
+
+<span class="sd">        Runs before field validation on the raw input mapping. Two</span>
+<span class="sd">        construction shapes feed this check:</span>
+
+<span class="sd">        * **Direct / GUI construction** — the caller passes</span>
+<span class="sd">          ``metadata=&lt;path-or-frame&gt;``. When it is a path, the path</span>
+<span class="sd">          string is recorded in ``metadata_source`` (unless the caller</span>
+<span class="sd">          already supplied one) so the value survives a later</span>
+<span class="sd">          ``model_dump`` even though the resolved ``metadata`` frame does</span>
+<span class="sd">          not.</span>
+<span class="sd">        * **Reconstruction from JSON** — ``model_dump`` excluded the</span>
+<span class="sd">          frame, so the input has ``metadata_source`` but no</span>
+<span class="sd">          ``metadata``. Here the frame is resolved *from*</span>
+<span class="sd">          ``metadata_source`` and injected as ``metadata`` so the</span>
+<span class="sd">          downstream field validator and ``model_post_init`` see a real</span>
+<span class="sd">          frame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: The raw input. Normally the constructor kwargs mapping;</span>
+<span class="sd">                pydantic may also hand this validator a non-dict (e.g. an</span>
+<span class="sd">                already-built model on revalidation), which passes</span>
+<span class="sd">                through untouched.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The input mapping with ``metadata`` resolved to a frame and</span>
+<span class="sd">            ``metadata_source`` populated when a source path is known.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If neither ``metadata`` nor ``metadata_source``</span>
+<span class="sd">                is provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="n">raw_metadata</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">)</span>
+        <span class="n">raw_source</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata_source&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">raw_metadata</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">raw_source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;ExpectedVsDetectedCount requires either &#39;metadata&#39; &quot;</span>
+                <span class="s2">&quot;(a DataFrame or path) or &#39;metadata_source&#39; (a path). &quot;</span>
+                <span class="s2">&quot;Both are missing — a check serialized from an in-memory &quot;</span>
+                <span class="s2">&quot;DataFrame cannot be rebuilt from JSON; configure it from &quot;</span>
+                <span class="s2">&quot;a metadata CSV/Parquet path so the source round-trips.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Reconstruction path: only the source survived serialization.</span>
+        <span class="k">if</span> <span class="n">raw_metadata</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">raw_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_source</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="c1"># Direct construction: capture the path (if it is one) so a later</span>
+        <span class="c1"># dump preserves it. An in-memory frame has no path to record.</span>
+        <span class="k">if</span> <span class="n">raw_source</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_metadata</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;metadata_source&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw_metadata</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coerce_metadata</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a DataFrame-or-path ``metadata`` argument to a frame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: Either an in-memory DataFrame or a path (``Path`` or</span>
+<span class="sd">                ``str``) to a ``.csv``/``.parquet`` file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The resolved DataFrame.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If ``value`` is a path that does not exist.</span>
+<span class="sd">            ValueError: If the path has an unsupported suffix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_resolve_metadata</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExpectedVsDetectedCount.model_post_init">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ExpectedVsDetectedCount.model_post_init">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate metadata columns and pre-compute expected counts.</span>
+
+<span class="sd">        Runs after pydantic has validated every field. Mirrors the</span>
+<span class="sd">        resolved ``metadata`` frame onto the private ``_metadata`` slot,</span>
+<span class="sd">        verifies every ``groupby`` column is present, and caches the</span>
+<span class="sd">        per-key expected colony counts.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            __context: Pydantic post-init context (unused).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            KeyError: If any column in ``groupby`` is absent from the</span>
+<span class="sd">                resolved metadata frame.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_post_init</span><span class="p">(</span><span class="n">__context</span><span class="p">)</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="s2">&quot;metadata frame is missing required groupby column(s): &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_expected_counts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_metadata</span><span class="p">(</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coerce a DataFrame-or-path metadata argument into a DataFrame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            metadata: Either an in-memory DataFrame or a path (``Path``</span>
+<span class="sd">                or ``str``) to a ``.csv``/``.parquet`` file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The resolved DataFrame. If ``metadata`` is already a</span>
+<span class="sd">            DataFrame it is returned as-is (no copy).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If ``metadata`` is a path that does not</span>
+<span class="sd">                exist.</span>
+<span class="sd">            ValueError: If the path has an unsupported suffix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">metadata</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;metadata path does not exist: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">suffix</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.csv&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.parquet&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;metadata path must be a .csv or .parquet file; got &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;suffix </span><span class="si">{</span><span class="n">suffix</span><span class="si">!r}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_lookup_expected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the expected row count for one ``groupby`` key.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: The group key as produced by</span>
+<span class="sd">                ``DataFrame.groupby(groupby).__iter__`` — a scalar when</span>
+<span class="sd">                ``groupby`` is a single column, otherwise a tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The expected row count, or ``0`` if the key is not present</span>
+<span class="sd">            in the metadata&#39;s index.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expected_counts</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute count-divergence metrics for one group.</span>
+
+<span class="sd">        Looks up the group&#39;s expected count, broadcasts the detected /</span>
+<span class="sd">        expected / delta / metric scalars across every row, and</span>
+<span class="sd">        records the key tuple in :attr:`unmatched_groups` when no</span>
+<span class="sd">        metadata counterpart was found.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group as produced by</span>
+<span class="sd">                ``data.groupby(self.groupby, dropna=False)``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group frame (a copy) with four new columns appended:</span>
+<span class="sd">            ``QC_Count_Detected``, ``QC_Count_Expected``,</span>
+<span class="sd">            ``QC_Count_Delta``, ``QC_Count_Metric``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">detected</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">))</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_group_key</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_expected</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">expected</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">detected</span> <span class="o">-</span> <span class="n">expected</span><span class="p">)</span> <span class="o">/</span> <span class="n">expected</span>
+
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">detected</span> <span class="o">-</span> <span class="n">expected</span>
+
+        <span class="n">out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">DETECTED</span><span class="p">)]</span> <span class="o">=</span> <span class="n">detected</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">EXPECTED</span><span class="p">)]</span> <span class="o">=</span> <span class="n">expected</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">DELTA</span><span class="p">)]</span> <span class="o">=</span> <span class="n">delta</span>
+        <span class="n">out</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_group_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract the ``groupby`` key for a single group as a tuple.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group frame. The values in ``self.groupby``</span>
+<span class="sd">                columns are constant within the group, so the first row</span>
+<span class="sd">                suffices.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A tuple of the group&#39;s ``groupby`` values, regardless of</span>
+<span class="sd">            whether ``groupby`` has one or many columns. Tuples are used</span>
+<span class="sd">            uniformly so the per-key index lookup is independent of</span>
+<span class="sd">            ``groupby`` arity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExpectedVsDetectedCount.analyze">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ExpectedVsDetectedCount.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset :attr:`unmatched_groups` and run the base ``analyze``.</span>
+
+<span class="sd">        Re-running the check on a different measurement frame must not</span>
+<span class="sd">        carry over unmatched groups from a previous run, so the list is</span>
+<span class="sd">        cleared before delegating to the base class.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Measurement frame to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The augmented frame from :meth:`QualityCheck.analyze`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExpectedVsDetectedCount.dash">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.ExpectedVsDetectedCount.dash">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Render a horizontal lollipop chart of ``Delta`` per group.</span>
+
+<span class="sd">        Each group&#39;s signed ``Delta`` is drawn as a horizontal stem from</span>
+<span class="sd">        zero to ``Delta``, with a marker at the tip colored by</span>
+<span class="sd">        ``Status``. The hover label exposes detected, expected, and the</span>
+<span class="sd">        metric for the group.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs: Passed through to :func:`plotly.graph_objects.Figure`</span>
+<span class="sd">                / ``Figure.update_layout`` — accepted keys are ``title``</span>
+<span class="sd">                and ``height``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`plotly.graph_objects.Figure` with one stem trace</span>
+<span class="sd">            and one marker trace.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If :meth:`analyze` has not been called yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;call analyze() first&quot;</span><span class="p">)</span>
+
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
+        <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
+        <span class="n">delta_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">DELTA</span><span class="p">)</span>
+        <span class="n">detected_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">DETECTED</span><span class="p">)</span>
+        <span class="n">expected_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_COUNT</span><span class="o">.</span><span class="n">EXPECTED</span><span class="p">)</span>
+
+        <span class="n">per_group</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">agg</span><span class="p">({</span>
+                <span class="n">delta_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
+                <span class="n">detected_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
+                <span class="n">expected_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
+                <span class="n">metric_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
+                <span class="n">status_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">per_group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">deltas</span> <span class="o">=</span> <span class="n">per_group</span><span class="p">[</span><span class="n">delta_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">statuses</span> <span class="o">=</span> <span class="n">per_group</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+        <span class="n">status_colors</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pass&quot;</span><span class="p">:</span> <span class="s2">&quot;#2E86AB&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;warn&quot;</span><span class="p">:</span> <span class="s2">&quot;#F4A261&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fail&quot;</span><span class="p">:</span> <span class="s2">&quot;#E63946&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">marker_colors</span> <span class="o">=</span> <span class="n">statuses</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">status_colors</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;#888888&quot;</span><span class="p">)</span>
+
+        <span class="n">hover</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Detected: </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;br&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Expected: </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;br&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Delta: </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">dl</span><span class="p">)</span><span class="si">}</span><span class="s2">&lt;br&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Metric: </span><span class="si">{</span><span class="n">sv</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&lt;br&gt;&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Status: </span><span class="si">{</span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">dl</span><span class="p">,</span> <span class="n">sv</span><span class="p">,</span> <span class="n">st</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="n">per_group</span><span class="p">[</span><span class="n">detected_col</span><span class="p">],</span>
+                <span class="n">per_group</span><span class="p">[</span><span class="n">expected_col</span><span class="p">],</span>
+                <span class="n">deltas</span><span class="p">,</span>
+                <span class="n">per_group</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span>
+                <span class="n">statuses</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">delta</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">deltas</span><span class="p">):</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+                <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">delta</span><span class="p">],</span>
+                    <span class="n">y</span><span class="o">=</span><span class="p">[</span><span class="n">label</span><span class="p">,</span> <span class="n">label</span><span class="p">],</span>
+                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                    <span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#888888&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">},</span>
+                    <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">deltas</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                <span class="n">marker</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">marker_colors</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">},</span>
+                <span class="n">text</span><span class="o">=</span><span class="n">hover</span><span class="p">,</span>
+                <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_vline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;Expected vs. Detected Colony Count&quot;</span>
+            <span class="p">),</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Detected − Expected&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">),</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">240</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">+</span> <span class="mi">80</span><span class="p">)),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,72 @@
+phenotypic.enhance.NonLocalMeansDenoiser
+========================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: NonLocalMeansDenoiser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NonLocalMeansDenoiser.__init__
+      ~NonLocalMeansDenoiser.apply
+      ~NonLocalMeansDenoiser.construct
+      ~NonLocalMeansDenoiser.copy
+      ~NonLocalMeansDenoiser.dict
+      ~NonLocalMeansDenoiser.from_json
+      ~NonLocalMeansDenoiser.from_orm
+      ~NonLocalMeansDenoiser.json
+      ~NonLocalMeansDenoiser.model_construct
+      ~NonLocalMeansDenoiser.model_copy
+      ~NonLocalMeansDenoiser.model_dump
+      ~NonLocalMeansDenoiser.model_dump_json
+      ~NonLocalMeansDenoiser.model_json_schema
+      ~NonLocalMeansDenoiser.model_parametrized_name
+      ~NonLocalMeansDenoiser.model_post_init
+      ~NonLocalMeansDenoiser.model_rebuild
+      ~NonLocalMeansDenoiser.model_validate
+      ~NonLocalMeansDenoiser.model_validate_json
+      ~NonLocalMeansDenoiser.model_validate_strings
+      ~NonLocalMeansDenoiser.parse_file
+      ~NonLocalMeansDenoiser.parse_obj
+      ~NonLocalMeansDenoiser.parse_raw
+      ~NonLocalMeansDenoiser.schema
+      ~NonLocalMeansDenoiser.schema_json
+      ~NonLocalMeansDenoiser.to_json
+      ~NonLocalMeansDenoiser.update_forward_refs
+      ~NonLocalMeansDenoiser.validate
+      ~NonLocalMeansDenoiser.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NonLocalMeansDenoiser.model_computed_fields
+      ~NonLocalMeansDenoiser.model_config
+      ~NonLocalMeansDenoiser.model_extra
+      ~NonLocalMeansDenoiser.model_fields
+      ~NonLocalMeansDenoiser.model_fields_set
+      ~NonLocalMeansDenoiser.patch_size
+      ~NonLocalMeansDenoiser.search_dist
+      ~NonLocalMeansDenoiser.h
+      ~NonLocalMeansDenoiser.fast_mode
+      ~NonLocalMeansDenoiser.sigma
+      ~NonLocalMeansDenoiser.use_gat
+      ~NonLocalMeansDenoiser.gat_gain
+      ~NonLocalMeansDenoiser.gat_mu
+      ~NonLocalMeansDenoiser.gat_read_sigma
+      ~NonLocalMeansDenoiser.gat_scale_factor
+   
+   

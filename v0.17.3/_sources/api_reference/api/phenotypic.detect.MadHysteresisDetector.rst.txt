@@ -1,0 +1,68 @@
+phenotypic.detect.MadHysteresisDetector
+=======================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: MadHysteresisDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MadHysteresisDetector.__init__
+      ~MadHysteresisDetector.apply
+      ~MadHysteresisDetector.construct
+      ~MadHysteresisDetector.copy
+      ~MadHysteresisDetector.dict
+      ~MadHysteresisDetector.from_json
+      ~MadHysteresisDetector.from_orm
+      ~MadHysteresisDetector.json
+      ~MadHysteresisDetector.model_construct
+      ~MadHysteresisDetector.model_copy
+      ~MadHysteresisDetector.model_dump
+      ~MadHysteresisDetector.model_dump_json
+      ~MadHysteresisDetector.model_json_schema
+      ~MadHysteresisDetector.model_parametrized_name
+      ~MadHysteresisDetector.model_post_init
+      ~MadHysteresisDetector.model_rebuild
+      ~MadHysteresisDetector.model_validate
+      ~MadHysteresisDetector.model_validate_json
+      ~MadHysteresisDetector.model_validate_strings
+      ~MadHysteresisDetector.parse_file
+      ~MadHysteresisDetector.parse_obj
+      ~MadHysteresisDetector.parse_raw
+      ~MadHysteresisDetector.schema
+      ~MadHysteresisDetector.schema_json
+      ~MadHysteresisDetector.to_json
+      ~MadHysteresisDetector.update_forward_refs
+      ~MadHysteresisDetector.validate
+      ~MadHysteresisDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MadHysteresisDetector.model_computed_fields
+      ~MadHysteresisDetector.model_config
+      ~MadHysteresisDetector.model_extra
+      ~MadHysteresisDetector.model_fields
+      ~MadHysteresisDetector.model_fields_set
+      ~MadHysteresisDetector.k_high
+      ~MadHysteresisDetector.k_low
+      ~MadHysteresisDetector.min_size
+      ~MadHysteresisDetector.connectivity
+      ~MadHysteresisDetector.ignore_zeros
+      ~MadHysteresisDetector.ignore_borders
+   
+   

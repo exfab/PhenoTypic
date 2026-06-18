@@ -1,0 +1,874 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._grid_operation &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_grid_operation';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/abc_/_grid_operation.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._grid_operation</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._grid_operation</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+
+
+<div class="viewcode-block" id="GridOperation">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridOperation">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridOperation</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for operations on grid-aligned plate images.</span>
+
+<span class="sd">    GridOperation is a marker abstract base class that enforces type safety for operations</span>
+<span class="sd">    designed to work exclusively with GridImage objects. It&#39;s a lightweight subclass of</span>
+<span class="sd">    ImageOperation that overrides the apply() method to require a GridImage input instead</span>
+<span class="sd">    of a generic Image.</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Use GridOperation when:</span>
+<span class="sd">    - Your operation requires grid structure information (well positions, row/column layout)</span>
+<span class="sd">    - You&#39;re processing arrayed plate images with regular grid layouts (96-well, 384-well)</span>
+<span class="sd">    - Your algorithm needs per-well analysis or grid-aligned regions</span>
+<span class="sd">    - You want to enforce that input must be GridImage (type safety)</span>
+
+<span class="sd">    Use ImageOperation when:</span>
+<span class="sd">    - Your operation works on general Image objects regardless of grid state</span>
+<span class="sd">    - You&#39;re doing global preprocessing, detection, or measurement</span>
+<span class="sd">    - Your algorithm doesn&#39;t depend on well structure or grid alignment</span>
+<span class="sd">    - Your operation should accept both Image and GridImage inputs</span>
+
+<span class="sd">    Combining GridOperation with ImageOperation:</span>
+<span class="sd">    - GridOperation is typically paired with other ABCs (ObjectDetector, ImageCorrector, etc.)</span>
+<span class="sd">    - Use multiple inheritance: class GridObjectDetector(ObjectDetector, GridOperation, ABC)</span>
+<span class="sd">    - GridOperation adds type safety without changing algorithm implementation</span>
+<span class="sd">    - Most grid operations inherit from both a specific ABC and GridOperation</span>
+
+<span class="sd">    **What is GridOperation?**</span>
+
+<span class="sd">    GridOperation exists to distinguish between two categories of image operations:</span>
+
+<span class="sd">    - **ImageOperation:** Works on single, unaligned Image objects. The image may or may not</span>
+<span class="sd">      have grid information. Used for general-purpose preprocessing, detection, and measurement.</span>
+<span class="sd">      Examples: GaussianBlur, OtsuDetector, MeasureColorComposition.</span>
+
+<span class="sd">    - **GridOperation:** Works only on GridImage objects that have grid structure information</span>
+<span class="sd">      (row/column layout of wells on an agar plate). The operation assumes grid information</span>
+<span class="sd">      is present and available. Used for grid-aware operations where well-level analysis or</span>
+<span class="sd">      grid alignment is required. Examples: GridObjectDetector, GridCorrector, GridRefiner.</span>
+
+<span class="sd">    **Why GridOperation exists**</span>
+
+<span class="sd">    GridOperation provides three key benefits:</span>
+
+<span class="sd">    1. **Type Safety:** The apply() method signature requires a GridImage argument, catching</span>
+<span class="sd">       misuse at runtime if someone tries to apply a grid operation to a plain Image.</span>
+
+<span class="sd">    2. **Intent Clarity:** Developers can immediately see which operations require grid information,</span>
+<span class="sd">       making the design space clear: &quot;Use ImageOperation for general image ops, GridOperation</span>
+<span class="sd">       for plate-specific grid-aware ops.&quot;</span>
+
+<span class="sd">    3. **Documentation:** Allows documentation and tutorials to clearly distinguish operations</span>
+<span class="sd">       by their input type requirements.</span>
+
+<span class="sd">    **What is GridImage?**</span>
+
+<span class="sd">    GridImage is a specialized Image subclass that adds grid structure information:</span>
+
+<span class="sd">    - **Inherits from Image:** All standard image capabilities (RGB, grayscale, color spaces,</span>
+<span class="sd">      object detection results, etc.) are available.</span>
+
+<span class="sd">    - **Adds grid field:** Contains a ``grid`` attribute (GridInfo object) storing the detected</span>
+<span class="sd">      or specified grid layout (row/column positions, cell dimensions, rotation angle).</span>
+
+<span class="sd">    - **Arrayed plate context:** Represents images of agar plates with samples arranged in</span>
+<span class="sd">      regular grids (96-well, 384-well, 1536-well formats). Typical nrows=8, ncols=12 for</span>
+<span class="sd">      96-well plates.</span>
+
+<span class="sd">    - **Grid accessors:** Via ``image.grid``, provides row/column counts, well positions, and</span>
+<span class="sd">      grid-related metadata.</span>
+
+<span class="sd">    **GridOperation Subclasses**</span>
+
+<span class="sd">    Most concrete grid operations inherit from BOTH a specific operation ABC (like ObjectDetector)</span>
+<span class="sd">    AND GridOperation to create specialized grid-aware variants:</span>
+
+<span class="sd">    - ``GridObjectDetector``: Detects objects using</span>
+<span class="sd">      grid structure. Subclasses implement well-level colony detection on gridded plates.</span>
+<span class="sd">    - ``GridCorrector``: Corrects grid alignment, rotation,</span>
+<span class="sd">      and per-well color correction. Improves grid positioning and well-level alignment.</span>
+<span class="sd">    - ``GridObjectRefiner``: Refines detection masks at</span>
+<span class="sd">      the well level. Filters and adjusts masks based on well location and size constraints.</span>
+<span class="sd">    - ``GridMeasureFeatures``: Extracts per-well measurements.</span>
+<span class="sd">      Computes features organized by grid coordinates rather than globally.</span>
+<span class="sd">    - ``GridFinder``: Detects grid structure from object</span>
+<span class="sd">      positions. Assigns detected objects to grid cells and determines well locations.</span>
+
+<span class="sd">    **Multiple Inheritance Pattern**</span>
+
+<span class="sd">    Most GridOperation subclasses use multiple inheritance to combine operation behavior with</span>
+<span class="sd">    grid type safety:</span>
+
+<span class="sd">    - Combine with ObjectDetector: class GridObjectDetector(ObjectDetector, GridOperation, ABC)</span>
+<span class="sd">    - Combine with ImageCorrector: class GridCorrector(ImageCorrector, GridOperation, ABC)</span>
+<span class="sd">    - Combine with any operation ABC: class CustomGridOp(SomeABC, GridOperation, ABC)</span>
+
+<span class="sd">    The inheritance order matters: specific ABC first, then GridOperation.</span>
+
+<span class="sd">    Example of multiple inheritance pattern:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import ImageOperation, GridOperation</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, Image</span>
+<span class="sd">        &gt;&gt;&gt; # Concrete implementation combining ObjectDetector + GridOperation</span>
+<span class="sd">        &gt;&gt;&gt; # class GridObjectDetector(ObjectDetector, GridOperation, ABC):</span>
+<span class="sd">        &gt;&gt;&gt; #     def _operate(self, image: GridImage) -&gt; GridImage:</span>
+<span class="sd">        &gt;&gt;&gt; #         # Implementation uses grid structure from image.grid</span>
+<span class="sd">        &gt;&gt;&gt; #         return image</span>
+
+<span class="sd">    This combines:</span>
+
+<span class="sd">    - **Operation behavior:** Sets image.objmask and image.objmap, with integrity checks.</span>
+<span class="sd">    - **GridOperation type safety:** Requires GridImage input, enforced at runtime.</span>
+<span class="sd">    - **ABC pattern:** Subclasses implement _operate() with grid-aware logic.</span>
+
+<span class="sd">    The key insight: GridOperation is just a type annotation layer over ImageOperation that</span>
+<span class="sd">    makes the grid requirement explicit in the method signature.</span>
+
+<span class="sd">    **Type Safety Example**</span>
+
+<span class="sd">    GridOperation enforces type checking at apply() time to catch errors early:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridOperation</span>
+<span class="sd">        &gt;&gt;&gt; # When a GridOperation is called with wrong type:</span>
+<span class="sd">        &gt;&gt;&gt; # detector = SomeGridOperation()  # subclass of GridOperation</span>
+<span class="sd">        &gt;&gt;&gt; # result = detector.apply(Image(&#39;plain.jpg&#39;))  # Raises GridImageInputError</span>
+<span class="sd">        &gt;&gt;&gt; # result = detector.apply(GridImage(&#39;plate.jpg&#39;, nrows=8, ncols=12))  # OK</span>
+
+<span class="sd">    **When to subclass GridOperation**</span>
+
+<span class="sd">    Subclass GridOperation when your operation:</span>
+
+<span class="sd">    1. **Requires grid information:** Needs to access ``image.grid`` to get well positions,</span>
+<span class="sd">       row/column structure, or grid-aligned regions.</span>
+
+<span class="sd">    2. **Operates on well-level data:** Processes colonies at the well level rather than</span>
+<span class="sd">       globally on the image (e.g., per-well filtering, well-based alignment).</span>
+
+<span class="sd">    3. **Makes assumptions about grid structure:** Your algorithm assumes a regular grid layout</span>
+<span class="sd">       and would fail or produce nonsensical results on an image without grid info.</span>
+
+<span class="sd">    Otherwise, subclass ImageOperation instead. GridOperation operations are more specialized</span>
+<span class="sd">    and less broadly applicable.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - GridOperation is a marker class with no implementation. It only overrides apply()</span>
+<span class="sd">          to specify the GridImage type and enforce input validation.</span>
+
+<span class="sd">        - GridImage inherits all Image functionality. Grid information is accessed via</span>
+<span class="sd">          the ``grid`` accessor: ``image.grid.nrows``, ``image.grid.ncols``, etc.</span>
+
+<span class="sd">        - If you&#39;re unsure whether your operation needs GridOperation, ask: &quot;Does this</span>
+<span class="sd">          algorithm fundamentally depend on grid structure?&quot; If yes, use GridOperation.</span>
+<span class="sd">          If it works equally well on plain Images, use ImageOperation.</span>
+
+<span class="sd">        - GridImage is typically created with GridFinder operations that detect grid structure.</span>
+<span class="sd">          GridFinder detects grid positions and creates a GridImage suitable for downstream</span>
+<span class="sd">          GridOperation subclasses.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Using a GridOperation subclass with GridImage:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import GridObjectDetector</span>
+<span class="sd">        &gt;&gt;&gt; # Load plate image with grid info</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()  # GridImage with detected colonies</span>
+<span class="sd">        &gt;&gt;&gt; grid_image = image</span>
+<span class="sd">        &gt;&gt;&gt; # Apply a grid-aware detector (subclass of GridObjectDetector)</span>
+<span class="sd">        &gt;&gt;&gt; # GridImage is required - type-safe operation</span>
+<span class="sd">        &gt;&gt;&gt; # detector = GridObjectDetector()  # Concrete subclass in practice</span>
+<span class="sd">        &gt;&gt;&gt; # detected = detector.apply(grid_image)</span>
+
+<span class="sd">        Type safety: GridOperation prevents misuse:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import Image, GridImage</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; image = Image(&#39;generic.jpg&#39;)  # Plain Image</span>
+<span class="sd">        &gt;&gt;&gt; grid_image = load_synth_yeast_plate()  # GridImage</span>
+<span class="sd">        &gt;&gt;&gt; # ImageOperation (GaussianBlur) accepts both</span>
+<span class="sd">        &gt;&gt;&gt; enhancer = GaussianBlur(sigma=2)</span>
+<span class="sd">        &gt;&gt;&gt; result1 = enhancer.apply(image)       # OK: Image -&gt; Image</span>
+<span class="sd">        &gt;&gt;&gt; result2 = enhancer.apply(grid_image)  # OK: GridImage -&gt; GridImage</span>
+<span class="sd">        &gt;&gt;&gt; # GridOperation requires GridImage only</span>
+<span class="sd">        &gt;&gt;&gt; # detector = SomeGridOperation()  # subclass of GridOperation</span>
+<span class="sd">        &gt;&gt;&gt; # result3 = detector.apply(grid_image)  # OK: GridImage -&gt; GridImage</span>
+<span class="sd">        &gt;&gt;&gt; # result4 = detector.apply(image)  # ERROR: raises GridImageInputError</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridOperation.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridOperation.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+EDGE_CORRECTION
+===============
+
+Python object: ``phenotypic.schema._edge_correction.EDGE_CORRECTION``
+
+Measurement info container for edge correction analysis results.
+
+Provides metadata for measurement values produced by the EdgeCorrector,
+organizing corrected colony measurements under the "EdgeCorrection" category.
+
+.. list-table:: Category: **EdgeCorrection**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``EdgeCorrection_Cap``
+     - The carrying capacity for the target measurement
+   * - ``EdgeCorrection_NewVal``
+     - The new value of the target measurement

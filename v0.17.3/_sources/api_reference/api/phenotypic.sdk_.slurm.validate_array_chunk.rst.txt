@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.validate\_array\_chunk
+=============================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: validate_array_chunk

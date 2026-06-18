@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm\_scripts\_dir
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: slurm_scripts_dir

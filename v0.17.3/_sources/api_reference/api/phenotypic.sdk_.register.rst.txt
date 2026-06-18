@@ -1,0 +1,48 @@
+phenotypic.sdk\_.register
+=========================
+
+.. automodule:: phenotypic.sdk_.register
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      available_analysis_plugins
+      available_plotters
+      get_analysis_plugin
+      get_plotter
+      register_analysis
+      register_plotter
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      AnalysisPluginRegistry
+      BaseRegistry
+      PlotterRegistry
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.chunk\_lock\_path
+==================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: chunk_lock_path

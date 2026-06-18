@@ -1,0 +1,1661 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.correction._color_correction._color_checker_profile &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/correction/_color_correction/_color_checker_profile';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/correction/_color_correction/_color_checker_profile.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._color_correction._color_checker_profile</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.correction._color_correction._color_checker_profile</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Color checker profile for root-polynomial color correction.</span>
+
+<span class="sd">Encapsulates the full workflow of extracting patch colors from a color checker</span>
+<span class="sd">card image, fitting a root-polynomial correction matrix (Finlayson 2015), and</span>
+<span class="sd">providing serializable diagnostics for quality assessment.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NamedTuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BaseModel</span><span class="p">,</span>
+    <span class="n">ConfigDict</span><span class="p">,</span>
+    <span class="n">Field</span><span class="p">,</span>
+    <span class="n">PrivateAttr</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">,</span>
+    <span class="n">field_validator</span><span class="p">,</span>
+    <span class="n">model_validator</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_json_source</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span><span class="p">,</span>
+    <span class="n">ensure_typed_json_suffix</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">center_and_pad_checker</span><span class="p">,</span>
+    <span class="n">compute_core_mask</span><span class="p">,</span>
+    <span class="n">compute_swatch_roi_mask</span><span class="p">,</span>
+    <span class="n">geometric_median</span><span class="p">,</span>
+    <span class="n">median_filter_rgb</span><span class="p">,</span>
+    <span class="n">segment_chips_by_border_fill</span><span class="p">,</span>
+    <span class="n">trim_background_edges</span><span class="p">,</span>
+    <span class="n">validate_patch_shape</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_in_jupyter_notebook</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect whether code is running inside a Jupyter notebook kernel.</span>
+
+<span class="sd">    Returns ``True`` only for notebook kernels (``ZMQInteractiveShell``),</span>
+<span class="sd">    not plain IPython terminals — used to decide whether to inline-display</span>
+<span class="sd">    a figure via ``Figure.show()``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` when running in a Jupyter notebook kernel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">IPython</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_ipython</span> <span class="k">as</span> <span class="n">_get_ipython</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">shell</span> <span class="o">=</span> <span class="n">_get_ipython</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">shell</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">shell</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;ZMQInteractiveShell&quot;</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_RoiPreprocessing</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stages of per-ROI preprocessing shared by fit and the dashboard.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        original: Raw RGB crop from the source image.</span>
+<span class="sd">        trimmed: Result of :func:`trim_background_edges`.  Equals</span>
+<span class="sd">            *original* when ``pad_checker`` is ``False``.</span>
+<span class="sd">        filtered: Median-filtered RGB.</span>
+<span class="sd">        padded: RGB after the optional centring + reflect-pad.  Equals</span>
+<span class="sd">            *filtered* when ``pad_checker`` is ``False``.</span>
+<span class="sd">        padded_normed: ``[0, 1]`` float view of *padded* via the canonical</span>
+<span class="sd">            :pyattr:`Image.rgb.normed`.</span>
+<span class="sd">        lab: CIE Lab of *padded* via the canonical</span>
+<span class="sd">            :pyattr:`Image.color.Lab` accessor.</span>
+<span class="sd">        swatch_roi_mask: 2-D boolean mask, ``True`` where *padded* is a</span>
+<span class="sd">            swatch-interior pixel and ``False`` on uniform border rows or</span>
+<span class="sd">            columns (outer frame, central divider, inter-swatch gutters).</span>
+<span class="sd">            Consumed by :func:`segment_chips_by_border_fill` as the chip</span>
+<span class="sd">            source so dark-frame pixels cannot be misassigned to a chip.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">original</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">trimmed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">filtered</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">padded</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">padded_normed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">lab</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">swatch_roi_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># ROI-slice field annotation</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1">#: A single ``slice`` ROI bound. ``slice`` is a Python-native object that</span>
+<span class="c1">#: pydantic accepts under ``arbitrary_types_allowed`` but cannot describe in</span>
+<span class="c1">#: JSON Schema, so ``WithJsonSchema`` supplies a descriptive entry. The</span>
+<span class="c1">#: ``rois`` field is transient (set at construction, excluded from</span>
+<span class="c1">#: :meth:`~pydantic.BaseModel.model_dump`); the schema entry exists only so</span>
+<span class="c1">#: ``model_json_schema()`` succeeds for downstream tooling.</span>
+<span class="n">_RoiSlice</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span>
+    <span class="nb">slice</span><span class="p">,</span>
+    <span class="n">WithJsonSchema</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span>       <span class="p">:</span> <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A Python slice (start, stop, step) bounding a &quot;</span>
+                               <span class="s2">&quot;color-checker ROI along one image axis.&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+    <span class="p">),</span>
+<span class="p">]</span>
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Illuminant constants</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">_ILLUMINANT_XY</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;D50&quot;</span><span class="p">:</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="s2">&quot;D50&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;D65&quot;</span><span class="p">:</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="s2">&quot;D65&quot;</span><span class="p">],</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_illuminant_xy</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return CIE xy chromaticity for a named illuminant.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name: Illuminant identifier (e.g. ``&#39;D50&#39;``, ``&#39;D65&#39;``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        2-element array of CIE xy chromaticity coordinates.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If *name* is not a recognised illuminant.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_ILLUMINANT_XY</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_ILLUMINANT_XY</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s2">&quot;CIE 1931 2 Degree Standard Observer&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Unknown illuminant &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. Expected one of: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">CCS_ILLUMINANTS</span><span class="p">[</span><span class="s1">&#39;CIE 1931 2 Degree Standard Observer&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_illuminant_XYZ</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return normalised XYZ (Y=1) for a named illuminant.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">colour</span><span class="o">.</span><span class="n">xy_to_XYZ</span><span class="p">(</span><span class="n">_illuminant_xy</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Reference data loading</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_reference_data</span><span class="p">(</span>
+        <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load reference Lab values and linear RGB for a colour checker.</span>
+
+<span class="sd">    The ``colour`` library stores checker data as xyY under the checker&#39;s</span>
+<span class="sd">    native illuminant (typically D50).  This function converts xyY to XYZ,</span>
+<span class="sd">    applies Bradford chromatic adaptation to *target_illuminant* when needed,</span>
+<span class="sd">    then converts to both CIE Lab and linear sRGB.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        checker_type: Key into ``colour.CCS_COLOURCHECKERS``.</span>
+<span class="sd">        target_illuminant: Target illuminant name (e.g. ``&#39;D65&#39;``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of ``(ref_Lab, ref_linear_rgb, target_wp_xy)`` where</span>
+<span class="sd">        *ref_Lab* maps patch names to ``(L, a, b)`` arrays, *ref_linear_rgb*</span>
+<span class="sd">        maps patch names to ``(R, G, B)`` linear arrays, and *target_wp_xy*</span>
+<span class="sd">        is the CIE xy whitepoint of the target illuminant.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cc</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_COLOURCHECKERS</span><span class="p">[</span><span class="n">checker_type</span><span class="p">]</span>
+    <span class="n">checker_wp_xy</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">illuminant</span>
+    <span class="n">target_wp_xy</span> <span class="o">=</span> <span class="n">_illuminant_xy</span><span class="p">(</span><span class="n">target_illuminant</span><span class="p">)</span>
+
+    <span class="c1"># Determine whether chromatic adaptation is necessary.</span>
+    <span class="n">need_adapt</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">checker_wp_xy</span><span class="p">,</span> <span class="n">target_wp_xy</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+
+    <span class="n">checker_wp_XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">xy_to_XYZ</span><span class="p">(</span><span class="n">checker_wp_xy</span><span class="p">)</span>
+    <span class="n">target_wp_XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">xy_to_XYZ</span><span class="p">(</span><span class="n">target_wp_xy</span><span class="p">)</span>
+
+    <span class="n">ref_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">ref_linear</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">cs</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_COLOURSPACES</span><span class="p">[</span><span class="s2">&quot;sRGB&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">xyY</span> <span class="ow">in</span> <span class="n">cc</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">xyY_to_XYZ</span><span class="p">(</span><span class="n">xyY</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">need_adapt</span><span class="p">:</span>
+            <span class="n">XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">chromatic_adaptation</span><span class="p">(</span>
+                    <span class="n">XYZ</span><span class="p">,</span>
+                    <span class="n">XYZ_w</span><span class="o">=</span><span class="n">checker_wp_XYZ</span><span class="p">,</span>
+                    <span class="n">XYZ_wr</span><span class="o">=</span><span class="n">target_wp_XYZ</span><span class="p">,</span>
+                    <span class="n">transform</span><span class="o">=</span><span class="s2">&quot;Bradford&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">Lab</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
+        <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Lab</span>
+
+        <span class="c1"># XYZ -&gt; linear sRGB (under target illuminant / D65 for sRGB).</span>
+        <span class="n">linear_rgb</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_RGB</span><span class="p">(</span>
+                <span class="n">XYZ</span><span class="p">,</span>
+                <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">apply_cctf_encoding</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ref_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">linear_rgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ref_Lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">target_wp_xy</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># ColorCheckerProfile</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ColorCheckerProfile">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorCheckerProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Profile fitted from a colour checker card for root-polynomial correction.</span>
+
+<span class="sd">    Measures patch colours from one or more ROIs in an image, matches them</span>
+<span class="sd">    against published reference values for the chosen checker type, rejects</span>
+<span class="sd">    outlier patches, and solves for a root-polynomial colour correction</span>
+<span class="sd">    matrix (Finlayson 2015).  The resulting matrix can be applied to entire</span>
+<span class="sd">    images via :class:`ColorCorrector`.</span>
+
+<span class="sd">    This is a pydantic v2 ``BaseModel``: the constructor parameters and the</span>
+<span class="sd">    post-fit state are declared as annotated class-level fields, so an</span>
+<span class="sd">    unfitted profile still constructs (``correction_matrix`` is ``None``,</span>
+<span class="sd">    ``is_fitted`` is ``False`` until :meth:`fit` runs).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        checker_type: Key in ``colour.CCS_COLOURCHECKERS``.  Defaults to the</span>
+<span class="sd">            post-2014 X-Rite ColorChecker 24.</span>
+<span class="sd">        degree: Root-polynomial degree (1--4).  ``2`` is recommended.</span>
+<span class="sd">        target_illuminant: Target whitepoint for the correction (e.g.</span>
+<span class="sd">            ``&#39;D65&#39;``).</span>
+<span class="sd">        median_filter_size: Kernel size for per-ROI median filtering.</span>
+<span class="sd">        stddev_mag_threshold: Column-stddev threshold for border detection</span>
+<span class="sd">            during checker centering.  Ignored when ``pad_checker`` is</span>
+<span class="sd">            ``False``.</span>
+<span class="sd">        pad_checker: When ``True``, each ROI is centred and reflect-padded</span>
+<span class="sd">            via :func:`center_and_pad_checker` to recover partially-clipped</span>
+<span class="sd">            checker cards.  Defaults to ``False`` because border-fill</span>
+<span class="sd">            segmentation requires a fully-visible grid with intact gutters:</span>
+<span class="sd">            reflect-padding fabricates extra mirrored swatch cells, which</span>
+<span class="sd">            makes the connected-component count exceed the expected number</span>
+<span class="sd">            of patches and trips the strict count gate.  Only enable it for</span>
+<span class="sd">            the clustering-era clipped-card workflow.</span>
+<span class="sd">        min_swatch_area_frac: During border-fill segmentation, connected</span>
+<span class="sd">            components smaller than this fraction of the median component</span>
+<span class="sd">            area are discarded as noise before the strict chip-count gate.</span>
+<span class="sd">        core_fraction: Fraction of centroid-to-boundary distance used to</span>
+<span class="sd">            define the reliable core of each patch.</span>
+<span class="sd">        ridge_lambda: Ridge-regression regularisation parameter for the</span>
+<span class="sd">            root-polynomial fit.</span>
+<span class="sd">        outlier_sigma: Patches whose Delta-E 2000 exceeds</span>
+<span class="sd">            ``mean + outlier_sigma * stddev`` are rejected as outliers.</span>
+<span class="sd">        rois: List of ``(row_slice, col_slice)`` tuples delimiting checker</span>
+<span class="sd">            card regions in the source image.  Stored for use by</span>
+<span class="sd">            :meth:`fit` and :meth:`dashboard`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        correction_matrix: Fitted correction matrix once :meth:`fit`</span>
+<span class="sd">            or :meth:`_fit_from_patch_colors` has been called; ``None``</span>
+<span class="sd">            on an unfitted profile.</span>
+<span class="sd">        diagnostics: Per-patch and aggregate quality metrics.</span>
+<span class="sd">        is_fitted: ``True`` after a successful fit.</span>
+<span class="sd">        capture_metadata: Camera EXIF (make/model, lens, ISO, exposure,</span>
+<span class="sd">            F-number, focal length) read from the calibration image during</span>
+<span class="sd">            :meth:`fit`.  ``None`` for an unfitted profile or one fitted via</span>
+<span class="sd">            :meth:`_fit_from_patch_colors` (no source image).  Serialises as a</span>
+<span class="sd">            nested object under :meth:`~pydantic.BaseModel.model_dump`; consumed</span>
+<span class="sd">            by :class:`ColorCorrector` to warn when a corrected image was shot</span>
+<span class="sd">            on different optics.  See :class:`CaptureMetadata`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span>
+            <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">validate_assignment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_drop_legacy_fields</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Drop fields removed since older serialised profiles were written.</span>
+
+<span class="sd">        Runs before validation, so the obsolete keys are stripped while</span>
+<span class="sd">        ``extra=&quot;forbid&quot;`` still rejects genuine typo&#39;d kwargs (the project&#39;s</span>
+<span class="sd">        strict-construction contract). ``border_distance_threshold`` was</span>
+<span class="sd">        removed when chip segmentation switched from Lab clustering to</span>
+<span class="sd">        border-fill.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;border_distance_threshold&quot;</span><span class="p">}</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="c1"># -- constructor parameters --------------------------------------------</span>
+    <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
+    <span class="n">degree</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
+    <span class="n">median_filter_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">stddev_mag_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span>
+    <span class="n">pad_checker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">min_swatch_area_frac</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">core_fraction</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">ridge_lambda</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">outlier_sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">_RoiSlice</span><span class="p">,</span> <span class="n">_RoiSlice</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># -- post-fit state (defaults so an unfitted profile still constructs) --</span>
+    <span class="n">correction_matrix</span><span class="p">:</span> <span class="n">NdArrayField</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">is_fitted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">capture_metadata</span><span class="p">:</span> <span class="n">CaptureMetadata</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># -- transient (set by fit(), never serialized) ------------------------</span>
+    <span class="n">_image</span><span class="p">:</span> <span class="s2">&quot;Image | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_degree</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``degree`` in ``{1, 2, 3, 4}`` (pre-migration guard).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">degree</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;degree must be 1, 2, 3, or 4, got </span><span class="si">{</span><span class="n">degree</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">degree</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;core_fraction&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_core_fraction</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">core_fraction</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``core_fraction`` in ``(0, 1]`` (pre-migration guard).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">core_fraction</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;core_fraction must be in (0, 1], got </span><span class="si">{</span><span class="n">core_fraction</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">core_fraction</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;min_swatch_area_frac&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_min_swatch_area_frac</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">frac</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``min_swatch_area_frac`` in ``(0, 1]``.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">frac</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;min_swatch_area_frac must be in (0, 1], got </span><span class="si">{</span><span class="n">frac</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">frac</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ridge_lambda&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_ridge_lambda</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ridge_lambda</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``ridge_lambda`` to be non-negative (pre-migration guard).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ridge_lambda</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ridge_lambda must be &gt;= 0, got </span><span class="si">{</span><span class="n">ridge_lambda</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ridge_lambda</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;outlier_sigma&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_outlier_sigma</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">outlier_sigma</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Require ``outlier_sigma`` to be positive (pre-migration guard).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">outlier_sigma</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;outlier_sigma must be &gt; 0, got </span><span class="si">{</span><span class="n">outlier_sigma</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">outlier_sigma</span>
+
+    <span class="c1"># -- serialisation ------------------------------------------------------</span>
+
+<div class="viewcode-block" id="ColorCheckerProfile.to_json">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize this profile to JSON.</span>
+
+<span class="sd">        Serializes via :meth:`~pydantic.BaseModel.model_dump_json`: the fitted</span>
+<span class="sd">        ``correction_matrix`` is emitted as a nested list, ``capture_metadata``</span>
+<span class="sd">        as a nested object, and the transient ``rois`` / ``_image`` fields are</span>
+<span class="sd">        excluded. Mirrors :meth:`ImagePipeline.to_json`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filepath: Optional path to write the JSON to. When None, the JSON</span>
+<span class="sd">                string is returned instead. Accepts a ``str`` or ``Path``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The JSON string when ``filepath`` is None, otherwise None.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; import tempfile</span>
+<span class="sd">            &gt;&gt;&gt; from pathlib import Path</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.correction import ColorCheckerProfile</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.sdk_ import CONFIG_SUFFIX_COLOR_CHECKER, ensure_typed_json_suffix</span>
+<span class="sd">            &gt;&gt;&gt; with tempfile.TemporaryDirectory() as d:</span>
+<span class="sd">            ...     p = Path(d) / &quot;profile.json&quot;</span>
+<span class="sd">            ...     saved = ensure_typed_json_suffix(p, CONFIG_SUFFIX_COLOR_CHECKER)</span>
+<span class="sd">            ...     ColorCheckerProfile(degree=3).to_json(p)</span>
+<span class="sd">            ...     loaded = ColorCheckerProfile.from_json(saved)</span>
+<span class="sd">            &gt;&gt;&gt; loaded.degree</span>
+<span class="sd">            3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">json_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ensure_typed_json_suffix</span><span class="p">(</span>
+                <span class="n">filepath</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json_str</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">json_str</span></div>
+
+
+<div class="viewcode-block" id="ColorCheckerProfile.from_json">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.from_json">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">json_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct a profile from JSON written by :meth:`to_json`.</span>
+
+<span class="sd">        Accepts a JSON string, a path to a JSON file, or a pre-parsed dict (same</span>
+<span class="sd">        input handling as :meth:`ImagePipeline.from_json`). Validation runs the</span>
+<span class="sd">        :meth:`_drop_legacy_fields` hook, so profiles saved before a field was</span>
+<span class="sd">        removed still load.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            json_data: A JSON string, path to a JSON file, or a parsed dict.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The reconstructed profile instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">read_json_source</span><span class="p">(</span><span class="n">json_data</span><span class="p">))</span></div>
+
+
+    <span class="c1"># -- high-level fitting -------------------------------------------------</span>
+
+<div class="viewcode-block" id="ColorCheckerProfile.fit">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.fit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the profile from checker-card ROIs stored at initialisation.</span>
+
+<span class="sd">        When ``rois`` was not provided at initialisation, the entire image is</span>
+<span class="sd">        treated as a single ROI.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Source image containing visible checker cards.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` for method chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">))]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capture_metadata</span> <span class="o">=</span> <span class="n">CaptureMetadata</span><span class="o">.</span><span class="n">from_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_rois</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess_roi</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
+            <span class="n">row_sl</span><span class="p">:</span> <span class="nb">slice</span><span class="p">,</span>
+            <span class="n">col_sl</span><span class="p">:</span> <span class="nb">slice</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_RoiPreprocessing</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run per-ROI preprocessing and canonical Lab conversion.</span>
+
+<span class="sd">        Shared by :meth:`_fit_from_rois` and the diagnostic dashboard so</span>
+<span class="sd">        both observe the same pixels: ``pad_checker`` controls whether</span>
+<span class="sd">        ``trim_background_edges`` and ``center_and_pad_checker`` run, and</span>
+<span class="sd">        Lab is always produced via :pyattr:`Image.color.Lab` (the same</span>
+<span class="sd">        XYZ pipeline used everywhere else in the package).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Source image (provides ``gamma`` for the wrapped sub-image).</span>
+<span class="sd">            row_sl: Row slice into ``image.rgb``.</span>
+<span class="sd">            col_sl: Column slice into ``image.rgb``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`_RoiPreprocessing` with every preprocessing stage.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
+
+        <span class="n">original</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">trimmed</span> <span class="o">=</span> <span class="n">trim_background_edges</span><span class="p">(</span><span class="n">original</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_checker</span> <span class="k">else</span> <span class="n">original</span>
+        <span class="n">filtered</span> <span class="o">=</span> <span class="n">median_filter_rgb</span><span class="p">(</span><span class="n">trimmed</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad_checker</span><span class="p">:</span>
+            <span class="n">padded</span> <span class="o">=</span> <span class="n">center_and_pad_checker</span><span class="p">(</span>
+                    <span class="n">filtered</span><span class="p">,</span>
+                    <span class="n">filter_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
+                    <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">padded</span> <span class="o">=</span> <span class="n">filtered</span>
+
+        <span class="n">sub_image</span> <span class="o">=</span> <span class="n">_Image</span><span class="p">(</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">padded</span><span class="p">,</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+        <span class="p">)</span>
+        <span class="n">lab</span> <span class="o">=</span> <span class="n">sub_image</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:]</span>
+        <span class="n">swatch_roi_mask</span> <span class="o">=</span> <span class="n">compute_swatch_roi_mask</span><span class="p">(</span>
+                <span class="n">lab</span><span class="p">,</span>
+                <span class="n">stddev_mag_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+                <span class="n">filter_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">median_filter_size</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">swatch_roi_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;Cross-channel stddev ROI mask is empty for ROI; falling &quot;</span>
+                    <span class="s2">&quot;back to a full-ROI mask. No gutters were detected, so &quot;</span>
+                    <span class="s2">&quot;segmentation will fail the chip-count gate. Consider &quot;</span>
+                    <span class="s2">&quot;lowering stddev_mag_threshold (currently </span><span class="si">%.2f</span><span class="s2">).&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stddev_mag_threshold</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">swatch_roi_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">padded</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_RoiPreprocessing</span><span class="p">(</span>
+                <span class="n">original</span><span class="o">=</span><span class="n">original</span><span class="p">,</span>
+                <span class="n">trimmed</span><span class="o">=</span><span class="n">trimmed</span><span class="p">,</span>
+                <span class="n">filtered</span><span class="o">=</span><span class="n">filtered</span><span class="p">,</span>
+                <span class="n">padded</span><span class="o">=</span><span class="n">padded</span><span class="p">,</span>
+                <span class="n">padded_normed</span><span class="o">=</span><span class="n">sub_image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">normed</span><span class="p">(),</span>
+                <span class="n">lab</span><span class="o">=</span><span class="n">lab</span><span class="p">,</span>
+                <span class="n">swatch_roi_mask</span><span class="o">=</span><span class="n">swatch_roi_mask</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_rois</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span>
+            <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the profile from one or more checker-card ROIs in an image.</span>
+
+<span class="sd">        For each ROI the function extracts the sub-image, pre-processes it</span>
+<span class="sd">        (background trimming, median filtering, centering/padding), segments</span>
+<span class="sd">        chips geometrically as filled connected components of the swatch ROI</span>
+<span class="sd">        mask and labels them by Hungarian colour match</span>
+<span class="sd">        (:func:`segment_chips_by_border_fill`), measures the core color of</span>
+<span class="sd">        each chip with geometric median, and pools the results.  Outlier</span>
+<span class="sd">        patches are rejected before fitting the root-polynomial matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Source image containing visible checker cards.</span>
+<span class="sd">            rois: List of ``(row_slice, col_slice)`` tuples delimiting the</span>
+<span class="sd">                checker card regions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` for method chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ref_Lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">target_wp_xy</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+        <span class="p">)</span>
+        <span class="n">patch_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">n_expected</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_names</span><span class="p">)</span>
+
+        <span class="c1"># Accumulate per-patch measurements across all ROIs.</span>
+        <span class="n">measured_srgb</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
+        <span class="p">}</span>
+        <span class="n">per_card_summary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">ref_Lab_tuples</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="p">(</span><span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rois</span><span class="p">):</span>
+            <span class="n">prep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preprocess_roi</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">row_sl</span><span class="p">,</span> <span class="n">col_sl</span><span class="p">)</span>
+            <span class="n">padded_float</span> <span class="o">=</span> <span class="n">prep</span><span class="o">.</span><span class="n">padded_normed</span>
+
+            <span class="c1"># 4. Segment chips geometrically and label them by colour.</span>
+            <span class="n">blob_masks</span><span class="p">,</span> <span class="n">blob_names</span> <span class="o">=</span> <span class="n">segment_chips_by_border_fill</span><span class="p">(</span>
+                    <span class="n">prep</span><span class="o">.</span><span class="n">swatch_roi_mask</span><span class="p">,</span>
+                    <span class="n">prep</span><span class="o">.</span><span class="n">lab</span><span class="p">,</span>
+                    <span class="n">ref_Lab_tuples</span><span class="p">,</span>
+                    <span class="n">min_swatch_area_frac</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_swatch_area_frac</span><span class="p">,</span>
+                    <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">card_detected</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">for</span> <span class="n">blob_mask</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">blob_masks</span><span class="p">,</span> <span class="n">blob_names</span><span class="p">):</span>
+                <span class="c1"># 5. Compute core mask and validate.</span>
+                <span class="n">core</span> <span class="o">=</span> <span class="n">compute_core_mask</span><span class="p">(</span><span class="n">blob_mask</span><span class="p">,</span> <span class="n">core_fraction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_fraction</span><span class="p">)</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">warnings</span> <span class="o">=</span> <span class="n">validate_patch_shape</span><span class="p">(</span><span class="n">core</span><span class="p">)</span>
+                <span class="n">core_pixels_fraction</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span>
+                        <span class="nb">float</span><span class="p">(</span><span class="n">blob_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span> <span class="mf">1.0</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 6. Measure color from core pixels in the padded sRGB image.</span>
+                <span class="n">core_pixels_srgb</span> <span class="o">=</span> <span class="n">padded_float</span><span class="p">[</span><span class="n">core</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">core_pixels_srgb</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># Geometric median in sRGB space.</span>
+                <span class="n">patch_srgb</span> <span class="o">=</span> <span class="n">geometric_median</span><span class="p">(</span><span class="n">core_pixels_srgb</span><span class="p">)</span>
+                <span class="n">measured_srgb</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span><span class="n">patch_srgb</span><span class="p">,</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="n">core_pixels_fraction</span><span class="p">,</span> <span class="n">warnings</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">card_detected</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="n">per_card_summary</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;roi_index&quot;</span>       <span class="p">:</span> <span class="n">roi_idx</span><span class="p">,</span>
+                        <span class="s2">&quot;patches_detected&quot;</span><span class="p">:</span> <span class="n">card_detected</span><span class="p">,</span>
+                        <span class="s2">&quot;patches_expected&quot;</span><span class="p">:</span> <span class="n">n_expected</span><span class="p">,</span>
+                    <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 7. Pool measurements: pick the best observation per patch (highest</span>
+        <span class="c1">#    core fraction) when multiple ROIs contribute.</span>
+        <span class="n">measured_rgb_final</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span><span class="p">:</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="n">measured_srgb</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">observations</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Select the observation with the largest core fraction.</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">measured_rgb_final</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">patch_meta</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;roi_index&quot;</span>          <span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;core_fraction_used&quot;</span> <span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                <span class="s2">&quot;validation_warnings&quot;</span><span class="p">:</span> <span class="n">best</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+            <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_measured</span><span class="p">(</span>
+                <span class="n">measured_rgb_final</span><span class="p">,</span>
+                <span class="n">ref_Lab</span><span class="p">,</span>
+                <span class="n">ref_linear</span><span class="p">,</span>
+                <span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">patch_meta</span><span class="p">,</span>
+                <span class="n">per_card_summary</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_patch_colors</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_rgb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">patch_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit from pre-measured patch colors.</span>
+
+<span class="sd">        Lower-level entry point for when patch RGB values have already been</span>
+<span class="sd">        extracted externally (e.g. from an automatic checker detector).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measured_rgb: ``(N, 3)`` float array of measured sRGB values in</span>
+<span class="sd">                ``[0, 1]``.</span>
+<span class="sd">            patch_names: Optional list of patch identifiers matching the rows</span>
+<span class="sd">                of *measured_rgb*.  If ``None``, names are taken from the</span>
+<span class="sd">                reference checker in order.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self`` for method chaining.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ref_Lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">target_wp_xy</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+        <span class="p">)</span>
+        <span class="n">all_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">patch_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">measured_rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;measured_rgb has </span><span class="si">{</span><span class="n">measured_rgb</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> rows but the &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;checker expects </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches. Supply &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;patch_names explicitly if providing a subset.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">patch_names</span> <span class="o">=</span> <span class="n">all_names</span>
+
+        <span class="n">measured_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">patch_names</span><span class="p">):</span>
+            <span class="n">measured_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">measured_rgb</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;roi_index&quot;</span>          <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;core_fraction_used&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;validation_warnings&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">patch_names</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_measured</span><span class="p">(</span>
+                <span class="n">measured_dict</span><span class="p">,</span>
+                <span class="n">ref_Lab</span><span class="p">,</span>
+                <span class="n">ref_linear</span><span class="p">,</span>
+                <span class="n">target_wp_xy</span><span class="p">,</span>
+                <span class="n">patch_meta</span><span class="p">,</span>
+                <span class="n">per_card_summary</span><span class="o">=</span><span class="p">[],</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="c1"># -- internal fitting logic ---------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_measured</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_srgb</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">ref_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">ref_linear</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+            <span class="n">target_wp_xy</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">patch_meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+            <span class="n">per_card_summary</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Core fitting routine shared by both public entry points.</span>
+
+<span class="sd">        Takes measured sRGB (normalised [0,1]), reference Lab and linear RGB</span>
+<span class="sd">        dicts, computes Delta-E 2000 for outlier rejection, fits the</span>
+<span class="sd">        root-polynomial matrix, and populates diagnostics.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cs</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_COLOURSPACES</span><span class="p">[</span><span class="s2">&quot;sRGB&quot;</span><span class="p">]</span>
+        <span class="n">all_patch_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">warnings_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">measured_srgb</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No patches were successfully measured.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --- Convert measured sRGB -&gt; Lab for Delta-E computation ----------</span>
+        <span class="n">measured_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">measured_linear</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">srgb</span> <span class="ow">in</span> <span class="n">measured_srgb</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">srgb_clipped</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">XYZ</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_to_XYZ</span><span class="p">(</span>
+                    <span class="n">srgb_clipped</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
+            <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_decoding</span><span class="p">(</span><span class="n">srgb_clipped</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --- Compute before-correction Delta-E 2000 -----------------------</span>
+        <span class="n">deltaE_before</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured_Lab</span><span class="p">:</span>
+            <span class="n">dE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span>
+                            <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                    <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dE</span>
+
+        <span class="c1"># --- Outlier rejection --------------------------------------------</span>
+        <span class="n">dE_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">deltaE_before</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">dE_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dE_values</span><span class="p">))</span>
+        <span class="n">dE_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">dE_values</span><span class="p">))</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="n">dE_mean</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlier_sigma</span> <span class="o">*</span> <span class="n">dE_std</span>
+
+        <span class="n">rejected</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">kept_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">measured_Lab</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+                <span class="n">rejected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="s2">&quot;Rejecting patch &#39;</span><span class="si">%s</span><span class="s2">&#39;: Delta-E 2000 = </span><span class="si">%.2f</span><span class="s2"> &gt; threshold </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">name</span><span class="p">,</span>
+                        <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+                        <span class="n">threshold</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">kept_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">warnings_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> patches remaining after outlier &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;rejection (minimum recommended: 4).&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">kept_names</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;All patches were rejected as outliers. Cannot fit correction matrix.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># --- Build arrays for fitting -------------------------------------</span>
+        <span class="n">n_kept</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">kept_names</span><span class="p">)</span>
+        <span class="n">measured_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">reference_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_kept</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">kept_names</span><span class="p">):</span>
+            <span class="n">measured_arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">reference_arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+        <span class="c1"># --- Fit root-polynomial correction matrix -------------------------</span>
+        <span class="c1"># colour.characterisation.matrix_colour_correction_Finlayson2015</span>
+        <span class="c1"># M_T = measured (test), M_R = reference</span>
+        <span class="c1"># Returns CCM of shape (3, F) where F = polynomial feature count</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">CCM</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">matrix_colour_correction_Finlayson2015</span><span class="p">(</span>
+                    <span class="n">measured_arr</span><span class="p">,</span>
+                    <span class="n">reference_arr</span><span class="p">,</span>
+                    <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                    <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># Fallback: manual ridge regression.</span>
+            <span class="n">CCM</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_ridge</span><span class="p">(</span><span class="n">measured_arr</span><span class="p">,</span> <span class="n">reference_arr</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">correction_matrix</span> <span class="o">=</span> <span class="n">CCM</span>
+
+        <span class="c1"># --- Compute after-correction Delta-E 2000 -------------------------</span>
+        <span class="n">corrected_Lab</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">deltaE_after</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured_Lab</span><span class="p">:</span>
+            <span class="n">linear_in</span> <span class="o">=</span> <span class="n">measured_linear</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">corrected_linear</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">apply_matrix_colour_correction_Finlayson2015</span><span class="p">(</span>
+                        <span class="n">linear_in</span><span class="p">,</span>
+                        <span class="n">CCM</span><span class="p">,</span>
+                        <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                        <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">corrected_linear</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_linear</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_encoding</span><span class="p">(</span><span class="n">corrected_linear</span><span class="p">,</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span><span class="p">)</span>
+            <span class="n">corrected_srgb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">corrected_srgb</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>
+                                     <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+
+            <span class="n">XYZ_corr</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">RGB_to_XYZ</span><span class="p">(</span>
+                    <span class="n">corrected_srgb</span><span class="p">,</span> <span class="n">colourspace</span><span class="o">=</span><span class="n">cs</span><span class="p">,</span> <span class="n">apply_cctf_decoding</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">Lab_corr</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">XYZ_to_Lab</span><span class="p">(</span><span class="n">XYZ_corr</span><span class="p">,</span> <span class="n">illuminant</span><span class="o">=</span><span class="n">target_wp_xy</span><span class="p">)</span>
+            <span class="n">corrected_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Lab_corr</span>
+
+            <span class="n">dE</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span><span class="n">Lab_corr</span><span class="p">,</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">deltaE_after</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dE</span>
+
+        <span class="c1"># --- Compute condition number --------------------------------------</span>
+        <span class="n">cond</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cond</span><span class="p">(</span><span class="n">CCM</span><span class="p">))</span>
+
+        <span class="c1"># --- Assemble diagnostics -----------------------------------------</span>
+        <span class="n">patches_diag</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">all_patch_names</span><span class="p">:</span>
+            <span class="n">entry</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;reference_lab&quot;</span><span class="p">:</span> <span class="n">ref_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured_Lab</span><span class="p">:</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;measured_lab&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">measured_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;corrected_lab&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_Lab</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;deltaE00_before&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">deltaE_before</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;deltaE00_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">deltaE_after</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;measured_lab&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;corrected_lab&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;deltaE00_before&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;deltaE00_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">patch_meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;core_fraction_used&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_fraction_used&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;roi_index&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;roi_index&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;validation_warnings&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;validation_warnings&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">patches_diag</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+
+        <span class="n">after_values</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">deltaE_after</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">]</span>
+        <span class="n">after_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">after_values</span><span class="p">)</span> <span class="k">if</span> <span class="n">after_values</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;checker_type&quot;</span>                      <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
+            <span class="s2">&quot;degree&quot;</span>                            <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
+            <span class="s2">&quot;target_illuminant&quot;</span>                 <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
+            <span class="s2">&quot;n_patches_detected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
+            <span class="s2">&quot;n_patches_expected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
+            <span class="s2">&quot;n_patches_rejected&quot;</span>                <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rejected</span><span class="p">),</span>
+            <span class="s2">&quot;rejected_patches&quot;</span>                  <span class="p">:</span> <span class="n">rejected</span><span class="p">,</span>
+            <span class="s2">&quot;per_card_summary&quot;</span>                  <span class="p">:</span> <span class="n">per_card_summary</span><span class="p">,</span>
+            <span class="s2">&quot;patches&quot;</span>                           <span class="p">:</span> <span class="n">patches_diag</span><span class="p">,</span>
+            <span class="s2">&quot;mean_deltaE00_before&quot;</span>              <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dE_values</span><span class="p">)),</span>
+            <span class="s2">&quot;mean_deltaE00_after&quot;</span>               <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;max_deltaE00_after&quot;</span>                <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;median_deltaE00_after&quot;</span>             <span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">after_arr</span><span class="p">)),</span>
+            <span class="s2">&quot;correction_matrix_condition_number&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="p">,</span>
+            <span class="s2">&quot;warnings&quot;</span>                          <span class="p">:</span> <span class="n">warnings_list</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;ColorCheckerProfile fitted: </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> patches, &quot;</span>
+                <span class="s2">&quot;mean dE00 </span><span class="si">%.2f</span><span class="s2"> -&gt; </span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">measured_Lab</span><span class="p">),</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">all_patch_names</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_before&quot;</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;mean_deltaE00_after&quot;</span><span class="p">],</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fit_ridge</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">reference_linear</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fallback ridge-regression fit when colour library call fails.</span>
+
+<span class="sd">        Builds root-polynomial features manually and solves the regularised</span>
+<span class="sd">        least-squares problem.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measured_linear: ``(N, 3)`` linear RGB of measured patches.</span>
+<span class="sd">            reference_linear: ``(N, 3)`` linear RGB of reference patches.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Correction matrix of shape ``(3, F)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Phi</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">characterisation</span><span class="o">.</span><span class="n">polynomial_expansion_Finlayson2015</span><span class="p">(</span>
+                <span class="n">measured_linear</span><span class="p">,</span>
+                <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="n">root_polynomial_expansion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Solve: reference = Phi @ W.T  =&gt;  W.T = (Phi^T Phi + lam I)^-1 Phi^T reference</span>
+        <span class="n">AtA</span> <span class="o">=</span> <span class="n">Phi</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">Phi</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">AtA</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">W_T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
+                <span class="n">AtA</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ridge_lambda</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">F</span><span class="p">),</span>
+                <span class="n">Phi</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">reference_linear</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># W_T has shape (F, 3); CCM convention in colour is (3, F)</span>
+        <span class="k">return</span> <span class="n">W_T</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># -- reference data accessor -------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_refs</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load reference Lab and linear RGB for the configured checker.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of ``(ref_Lab, ref_linear_rgb, target_wp_xy)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_load_reference_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">)</span>
+
+    <span class="c1"># -- dashboard ---------------------------------------------------------</span>
+
+<div class="viewcode-block" id="ColorCheckerProfile.dashboard">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.dashboard">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
+
+<span class="sd">        Constructs a :class:`ColorCorrectionReport` from this fitted profile and</span>
+<span class="sd">        returns its :meth:`~phenotypic.abc_.FigureProvider.dash` rendering. The</span>
+<span class="sd">        report declares no interactive controls, so ``dash()`` composes the</span>
+<span class="sd">        per-section figures into a single ``plotly.graph_objects.Figure``.</span>
+
+<span class="sd">        Uses the image and ROIs stored during :meth:`fit`. When fitted via</span>
+<span class="sd">        :meth:`_fit_from_patch_colors` (no source image), the pipeline-step and</span>
+<span class="sd">        segmentation figures are omitted.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            show: When ``True`` and running inside a Jupyter notebook, display</span>
+<span class="sd">                the figure inline before returning it. Set ``False`` in tests or</span>
+<span class="sd">                for programmatic use.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``plotly.graph_objects.Figure`` (always returned, even after an</span>
+<span class="sd">            inline display).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If the profile has not been fitted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Cannot create dashboard for an unfitted profile.&quot;</span>
+            <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._color_correction_report</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrectionReport</span>
+
+        <span class="n">report</span> <span class="o">=</span> <span class="n">ColorCorrectionReport</span><span class="p">(</span>
+                <span class="n">profile</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">rois</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">figure</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">show</span> <span class="ow">and</span> <span class="n">_in_jupyter_notebook</span><span class="p">():</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">figure</span></div>
+
+
+    <span class="c1"># -- serialisation ------------------------------------------------------</span>
+    <span class="c1">#</span>
+    <span class="c1"># ``ColorCheckerProfile`` is a pydantic ``BaseModel``: serialise via</span>
+    <span class="c1"># :meth:`~pydantic.BaseModel.model_dump` (use ``mode=&quot;json&quot;`` for a</span>
+    <span class="c1"># JSON-native dict — ``NdArrayField`` rewrites ``correction_matrix`` to a</span>
+    <span class="c1"># nested list, and ``rois`` is field-level ``exclude=True``) and round-trip</span>
+    <span class="c1"># via :meth:`~pydantic.BaseModel.model_validate`.</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;fitted&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_fitted</span> <span class="k">else</span> <span class="s2">&quot;unfitted&quot;</span>
+        <span class="n">n_rois</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rois</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;ColorCheckerProfile(checker_type=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;degree=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="si">}</span><span class="s2">, target_illuminant=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="si">!r}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;rois=</span><span class="si">{</span><span class="n">n_rois</span><span class="si">}</span><span class="s2">, status=</span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

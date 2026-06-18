@@ -1,0 +1,7 @@
+phenotypic.sdk\_.napari\_ package
+=================================
+
+.. automodule:: phenotypic.sdk_.napari_
+   :members:
+   :show-inheritance:
+   :undoc-members:

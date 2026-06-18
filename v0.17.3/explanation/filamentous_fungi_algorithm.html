@@ -1,0 +1,1272 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>The Filamentous Fungi Detection Algorithm &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'explanation/filamentous_fungi_algorithm';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/explanation/filamentous_fungi_algorithm.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Prefab Pipelines: Which One for Which Organism" href="prefab_pipelines_guide.html" />
+    <link rel="prev" title="The Linear-Softplus and Double-Softplus Growth Models" href="notebooks/linear_softplus_model.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Core Concepts</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="pipeline_mental_model.html">The Pipeline Mental Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="color_spaces_for_phenotyping.html">Color Spaces for Phenotyping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="how_the_image_class_works.html">How the Image Class Works</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Detection &amp; Processing</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="detection_strategies_compared.html">Detection Strategies Compared</a></li>
+<li class="toctree-l1"><a class="reference internal" href="grid_vs_non_grid_detection.html">Grid vs Non-Grid Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="what_enhancement_does.html">What Enhancement Actually Does</a></li>
+<li class="toctree-l1"><a class="reference internal" href="refinement_strategies.html">Refinement Strategies</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Measurement &amp; Analysis</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="measurement_metrics_biological_meaning.html">Measurement Metrics and Their Biological Meaning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="edge_effects_in_plate_assays.html">Edge Effects in Plate-Based Assays</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_quality_noise_contrast_structure.html">Image Quality: Noise, Contrast, and Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/linear_softplus_model.html">The Linear-Softplus and Double-Softplus Growth Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Specialized Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">The Filamentous Fungi Detection Algorithm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prefab_pipelines_guide.html">Prefab Pipelines: Which One for Which Organism</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Explanation</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">The Filamentous Fungi Detection Algorithm</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="the-filamentous-fungi-detection-algorithm">
+<h1>The Filamentous Fungi Detection Algorithm<a class="headerlink" href="#the-filamentous-fungi-detection-algorithm" title="Link to this heading">#</a></h1>
+<p>Filamentous fungi grow as sprawling networks of thin, branching hyphae
+that radiate from a dense inoculation point. Standard threshold
+detectors fail on this morphology for three reasons:</p>
+<ul class="simple">
+<li><p>No single intensity cutoff captures both the dense colony centre <em>and</em>
+the thin peripheral hyphae.</p></li>
+<li><p>Hyphae frequently appear fragmented in imaging: gaps in signal break
+what is biologically one colony into many disconnected pieces.</p></li>
+<li><p>Neighbouring colonies interleave their hyphae and must still be
+individually labelled.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> handles all three in six phases. The class
+exposes ~10 user-facing knobs grouped into three tiers:</p>
+<ol class="arabic simple">
+<li><p><strong>Scene parameters</strong> — describe the sample’s geometry.</p></li>
+<li><p><strong>Tolerance knobs</strong> — describe image quality and species morphology.</p></li>
+<li><p><strong>Overrides</strong> — escape hatches for non-standard imaging.</p></li>
+</ol>
+<p>Plus four <em>hidden class-level tunables</em> (<code class="docutils literal notranslate"><span class="pre">beta</span></code>, <code class="docutils literal notranslate"><span class="pre">gamma</span></code>, <code class="docutils literal notranslate"><span class="pre">gauss_n_iter</span></code>,
+<code class="docutils literal notranslate"><span class="pre">delta</span></code>, <code class="docutils literal notranslate"><span class="pre">pct_n_orient</span></code>) that are fixed to robust defaults. Override
+only via subclassing if you really need to.</p>
+<hr class="docutils" />
+<section id="pipeline-overview">
+<h2>Pipeline Overview<a class="headerlink" href="#pipeline-overview" title="Link to this heading">#</a></h2>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">Phase</span> <span class="mi">1</span><span class="p">:</span> <span class="n">Inoculum</span> <span class="n">Detection</span>      <span class="err">──▶</span> <span class="n">dense</span> <span class="n">colony</span> <span class="n">centres</span>
+<span class="n">Phase</span> <span class="mi">2</span><span class="p">:</span> <span class="n">Branch</span> <span class="n">Detection</span>        <span class="err">──▶</span> <span class="n">binary</span> <span class="n">mask</span> <span class="n">of</span> <span class="nb">all</span> <span class="n">hyphal</span> <span class="n">pixels</span>
+<span class="n">Phase</span> <span class="mi">3</span><span class="p">:</span> <span class="n">Centre</span> <span class="n">Filtering</span> <span class="o">+</span>      <span class="err">──▶</span> <span class="n">initial</span> <span class="n">colony</span> <span class="n">labels</span>
+         <span class="n">Voronoi</span> <span class="n">Partition</span>          <span class="p">(</span><span class="n">connectivity</span> <span class="ow">not</span> <span class="n">yet</span> <span class="n">enforced</span><span class="p">)</span>
+<span class="n">Phase</span> <span class="mi">4</span><span class="p">:</span> <span class="n">Dijkstra</span> <span class="n">Reconnection</span>   <span class="err">──▶</span> <span class="n">fragments</span> <span class="n">routed</span> <span class="n">back</span> <span class="n">to</span> <span class="n">centres</span>
+<span class="n">Phase</span> <span class="mi">5</span><span class="p">:</span> <span class="n">Final</span> <span class="n">Voronoi</span>           <span class="err">──▶</span> <span class="n">final</span> <span class="n">colony</span> <span class="n">labels</span>
+</pre></div>
+</div>
+<p>Every hyphal pixel ends up labelled with its parent colony, respecting
+both physical connectivity and spatial proximity.</p>
+</section>
+<hr class="docutils" />
+<section id="phase-1-inoculum-detection">
+<h2>Phase 1: Inoculum Detection<a class="headerlink" href="#phase-1-inoculum-detection" title="Link to this heading">#</a></h2>
+<p>Identify the dense colony centres first. These are the high-confidence
+anchors around which the rest of the algorithm operates — they determine
+both the Voronoi seeds and the Dijkstra source pixels. It’s recommended if your
+image is uniform enough to instead use <code class="docutils literal notranslate"><span class="pre">ManualGridPointDetector</span></code>, as it provides
+guaranteed detection where you expect. InoculumDetector generally works, but can
+fail depending on noise in your scene</p>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inoculum_detector</span></code></p></td>
+<td><p>ObjectDetector or ImagePipeline for centres. Defaults to <code class="docutils literal notranslate"><span class="pre">InoculumDetector</span></code> + <code class="docutils literal notranslate"><span class="pre">KeepSectionLargest</span></code> for grid plates. Replace with a species-specific centre detector if the default doesn’t pick up your inoculation points.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<hr class="docutils" />
+<section id="phase-2-branch-detection">
+<h2>Phase 2: Branch Detection<a class="headerlink" href="#phase-2-branch-detection" title="Link to this heading">#</a></h2>
+<p>A deliberately <em>sensitive</em> detector captures every plausible hyphal
+pixel, intentionally overestimating so that nothing real gets missed.
+False positives are filtered in later phases.</p>
+<p>Two signals are combined:</p>
+<ol class="arabic simple">
+<li><p><strong>Background-subtracted Gaussian response</strong> — <code class="docutils literal notranslate"><span class="pre">SubtractGaussian</span></code> with
+σ sized to blur out the whole colony, leaving just the residual
+signal.</p></li>
+<li><p><strong>Phase congruency</strong> — an illumination-invariant edge response that
+highlights thin filaments even when their absolute intensity is low
+<a class="reference internal" href="#references"><span class="std std-ref">[1]</span></a>. Hyphae are line-like; phase congruency is a
+line-sensitive feature detector.</p></li>
+</ol>
+<p>The two signals are max-merged, then thresholded with a hysteresis
+detector (triangle low, Otsu high) to produce a binary branch mask.</p>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">edge_noise_threshold</span></code></p></td>
+<td><p>Phase congruency noise floor. ↑ = stricter (rejects more pixels as noise; preserves fewer thin hyphae).</p></td>
+<td><p>6.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ignore_borders</span></code></p></td>
+<td><p>If True, drops branch components touching the image border.</p></td>
+<td><p>True</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gauss_sigma</span></code> <em>(override)</em></p></td>
+<td><p>SubtractGaussian σ. Auto-derived from <code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span> <span class="pre">×</span> <span class="pre">1.2</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pct_min_wavelength</span></code> <em>(override)</em></p></td>
+<td><p>Log-Gabor minimum wavelength. Auto-derived from <code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span> <span class="pre">×</span> <span class="pre">2</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Hidden tunables:</strong> <code class="docutils literal notranslate"><span class="pre">pct_n_orient</span> <span class="pre">=</span> <span class="pre">8</span></code> (angular resolution for PCT),
+<code class="docutils literal notranslate"><span class="pre">gauss_n_iter</span> <span class="pre">=</span> <span class="pre">2</span></code> (background-subtraction iterations).</p>
+</section>
+<hr class="docutils" />
+<section id="phase-3-centre-filtering-initial-voronoi-partition">
+<h2>Phase 3: Centre Filtering &amp; Initial Voronoi Partition<a class="headerlink" href="#phase-3-centre-filtering-initial-voronoi-partition" title="Link to this heading">#</a></h2>
+<p>The inoculum centroids seed a Euclidean Voronoi tessellation that
+assigns every branch-mask pixel to its nearest centre.</p>
+<p>First, branch components that don’t overlap <em>any</em> inoculum centre are
+dropped — debris and noise that happened to pass Phase 2 but don’t
+correspond to a real colony. Then centroids of the remaining overlapping
+components become Voronoi seeds.</p>
+<p>The result is an <em>initial</em> colony label map: every mask pixel has a
+colony ID, but pixels within a given colony aren’t necessarily
+physically connected yet. That’s what Phase 4 fixes.</p>
+<p><strong>Parameters:</strong> none directly — uses the Phase 1 centroids and the
+Phase 2 mask.</p>
+</section>
+<hr class="docutils" />
+<section id="phase-4-dijkstra-reconnection">
+<h2>Phase 4: Dijkstra Reconnection<a class="headerlink" href="#phase-4-dijkstra-reconnection" title="Link to this heading">#</a></h2>
+<p>This is the algorithm’s heavy lifting. “Pseudo-fragment” components
+(assigned to a colony by Voronoi proximity but not physically touching
+the main body) are bridged back via low-cost paths through the phase
+congruency response.</p>
+<section id="a-cost-surface-construction">
+<h3>4a. Cost surface construction<a class="headerlink" href="#a-cost-surface-construction" title="Link to this heading">#</a></h3>
+<p>Each pixel’s routing cost combines four features:</p>
+<ol class="arabic simple">
+<li><p><strong>Phase congruency energy</strong> — paths prefer high-PCT-energy
+(signal-rich) pixels.</p></li>
+<li><p><strong>Anisotropy</strong> (weighted by <code class="docutils literal notranslate"><span class="pre">β</span></code>) — rewards directional (line-like)
+regions. Anisotropy appears in the denominator of the cost formula,
+so high anisotropy lowers cost; isotropic/non-directional pixels
+therefore appear expensive by comparison.</p></li>
+<li><p><strong>Orientation coherence</strong> — rewards contiguous oriented structure.</p></li>
+<li><p><strong>Local MAD</strong> (weighted by <code class="docutils literal notranslate"><span class="pre">γ</span></code>) — penalises noisy/textured regions.</p></li>
+</ol>
+<p>Then two post-assembly penalties are added:</p>
+<ul class="simple">
+<li><p><strong>Gap penalty</strong> (<code class="docutils literal notranslate"><span class="pre">gap_crossing_penalty</span></code>) — penalises paths that cross
+low-PCT-energy gaps proportional to the gap length.</p></li>
+<li><p><strong>Border penalty</strong> (<code class="docutils literal notranslate"><span class="pre">border_margin_px</span></code>) — inflates cost within this
+many pixels of the image border, preventing shortcut paths that hug
+edges.</p></li>
+</ul>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gap_crossing_penalty</span></code></p></td>
+<td><p>Strength of the distance-gap penalty. ↑ = harder to cross low-energy gaps.</p></td>
+<td><p>4.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">border_margin_px</span></code></p></td>
+<td><p>Width of the border penalty buffer.</p></td>
+<td><p>50</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mad_window</span></code> <em>(override)</em></p></td>
+<td><p>Local MAD window. Auto-derived from <code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span> <span class="pre">×</span> <span class="pre">2</span> <span class="pre">+</span> <span class="pre">1</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">coherence_window_radius</span></code> <em>(override)</em></p></td>
+<td><p>Orientation coherence window. Auto-derived from <code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span> <span class="pre">×</span> <span class="pre">5</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Hidden tunables:</strong> <code class="docutils literal notranslate"><span class="pre">beta</span> <span class="pre">=</span> <span class="pre">2.0</span></code> (anisotropy exponent), <code class="docutils literal notranslate"><span class="pre">gamma</span> <span class="pre">=</span> <span class="pre">1.2</span></code>
+(MAD penalty weight).</p>
+</section>
+<section id="b-fragment-pre-screening">
+<h3>4b. Fragment pre-screening<a class="headerlink" href="#b-fragment-pre-screening" title="Link to this heading">#</a></h3>
+<p>Fragments stranded far from any routable territory are dropped <em>before</em>
+Dijkstra runs — no point wasting compute on hopeless cases. A minimum
+filter of radius <code class="docutils literal notranslate"><span class="pre">frag_reach_px</span></code> precomputes the lowest cost within
+that 2D neighbourhood of every pixel. A fragment passes if at least
+one of its boundary pixels sees a filtered value below <code class="docutils literal notranslate"><span class="pre">tau_screen</span></code> —
+a threshold calibrated from known-good colony boundaries (specifically,
+the 99th percentile of their min-cost envelope distribution), not an
+absolute cutoff.</p>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">frag_reach_px</span></code></p></td>
+<td><p>Max 2D distance from fragment boundary to the nearest routable pixel.</p></td>
+<td><p>10</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="c-tiled-multi-source-dijkstra">
+<h3>4c. Tiled multi-source Dijkstra<a class="headerlink" href="#c-tiled-multi-source-dijkstra" title="Link to this heading">#</a></h3>
+<p>For memory efficiency, the image is split into overlapping tiles. Each
+tile runs a multi-source Dijkstra whose wavefront is seeded from the
+<em>boundary</em> pixels of every colony body: all colony pixels (interior and
+boundary) are pre-initialised to cost zero, but interior pixels are
+marked visited immediately and never enter the heap, so propagation
+starts cleanly from the boundary outward. The result is shortest-cost
+paths from every pseudo-fragment back to its nearest main colony body.</p>
+<p>Tile size must fit several colonies with routing headroom; tile overlap
+must exceed the maximum reconnection distance so fragments near a tile
+boundary can still see their parent.</p>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tile_size</span></code> <em>(override)</em></p></td>
+<td><p>Tile side length. Auto-derived from <code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span> <span class="pre">×</span> <span class="pre">4.8</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code> <em>(override)</em></p></td>
+<td><p>Overlap between adjacent tiles. Auto-derived from <code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span> <span class="pre">×</span> <span class="pre">2.4</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Hidden tunable:</strong> <code class="docutils literal notranslate"><span class="pre">delta</span> <span class="pre">=</span> <span class="pre">1.0</span></code> — radial retreat penalty that biases
+Dijkstra against backtracking through already-visited territory.</p>
+</section>
+<section id="d-path-quality-filtering">
+<h3>4d. Path quality filtering<a class="headerlink" href="#d-path-quality-filtering" title="Link to this heading">#</a></h3>
+<p>Not every Dijkstra path is accepted. A quality-filter cascade compares
+each candidate against a distribution of <em>known-good</em> colony-skeleton
+branches (extracted from the main colony bodies). Five metrics per path:</p>
+<ol class="arabic simple">
+<li><p><strong>Median raw cost</strong> along the path (is it consistently cheap?).</p></li>
+<li><p><strong>Max of windowed median costs</strong> — the cost surface is sampled along
+the path; a sliding window of length <code class="docutils literal notranslate"><span class="pre">max_gap_length</span></code> computes the
+median cost within each window; the <em>maximum</em> of those per-window
+medians becomes the metric. A single-pixel cost spike is absorbed by
+the median, but a sustained bad stretch of length ≥ <code class="docutils literal notranslate"><span class="pre">max_gap_length</span></code>
+drives the windowed median up and flags the path.</p></li>
+<li><p><strong>Band cost variance</strong> — noisiness of the dilated band around the
+path.</p></li>
+<li><p><strong>PCT energy band median</strong> — average signal level along the path.</p></li>
+<li><p><strong>Grayscale SNR</strong> — local contrast vs. background.</p></li>
+</ol>
+<p>Thresholds for each metric are set using <code class="docutils literal notranslate"><span class="pre">reconnection_tolerance</span></code> as an
+IQR multiplier on the known-good distribution.</p>
+<p><strong>Parameters:</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Role</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_gap_length</span></code></p></td>
+<td><p>Sliding window length for the “bad stretch” detection. Longer ⇒ tolerates longer gaps.</p></td>
+<td><p>30</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reconnection_tolerance</span></code></p></td>
+<td><p>IQR multiplier for acceptance thresholds. ↑ = more permissive.</p></td>
+<td><p>2.5</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_dilation_radius</span></code> <em>(override)</em></p></td>
+<td><p>Path thickness for band sampling. Auto-derived from <code class="docutils literal notranslate"><span class="pre">max(1,</span> <span class="pre">min_branch_width_px</span> <span class="pre">//</span> <span class="pre">2)</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">snr_margin</span></code> <em>(override)</em></p></td>
+<td><p>Background-ring offset for SNR filter. Auto-derived from <code class="docutils literal notranslate"><span class="pre">max(2,</span> <span class="pre">min_branch_width_px</span> <span class="pre">//</span> <span class="pre">2)</span></code>.</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Paths that survive the cascade get painted into the colony label map
+with their assigned colony ID; the fragment pixels plus the dilated
+reconnection path are labelled together.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="phase-5-final-voronoi-partition">
+<h2>Phase 5: Final Voronoi Partition<a class="headerlink" href="#phase-5-final-voronoi-partition" title="Link to this heading">#</a></h2>
+<p>With reconnected fragments now labelled, a final Voronoi partition
+combines the Phase 3 filtered branch mask (components that overlapped
+an inoculum centre) with all painted reconnection paths from Phase 4.
+This ensures every foreground pixel gets a colony label that’s
+consistent with physical connectivity after reconnection, and that
+connected components don’t end up split across colony labels.</p>
+<p><strong>Parameters:</strong> none directly.</p>
+</section>
+<hr class="docutils" />
+<section id="parameter-tuning-guide">
+<h2>Parameter Tuning Guide<a class="headerlink" href="#parameter-tuning-guide" title="Link to this heading">#</a></h2>
+<p>The knobs fall into four tuning tiers. Work top-down: get scene
+parameters right first, then adjust tolerances if results look wrong,
+only touch overrides as a last resort.</p>
+<section id="tier-1-always-tune-first-scene-parameters">
+<h3>Tier 1: Always tune first (scene parameters)<a class="headerlink" href="#tier-1-always-tune-first-scene-parameters" title="Link to this heading">#</a></h3>
+<p>These describe your sample. Wrong values here cascade into wrong
+derived values for ~8 other parameters.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>How to set it</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span></code></p></td>
+<td><p>Measure the largest colony radius you expect in pixels. Too small ⇒ σ fails to blur out colonies, background subtraction breaks; too large ⇒ wasted memory on oversized tiles.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p>Measure the narrowest hyphal width you want to resolve. Too small ⇒ MAD/dilation windows shrink below Nyquist, missing real hyphae; too large ⇒ wavelength and windows merge neighbouring branches.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="tier-2-tune-based-on-image-quality-and-species">
+<h3>Tier 2: Tune based on image quality and species<a class="headerlink" href="#tier-2-tune-based-on-image-quality-and-species" title="Link to this heading">#</a></h3>
+<p>These depend on your imaging conditions and organism. Start at defaults,
+adjust if Phase 2 results look wrong (missing real hyphae / too much
+noise) or Phase 4 reconnection behaves poorly.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>When to raise</p></th>
+<th class="head"><p>When to lower</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">edge_noise_threshold</span></code></p></td>
+<td><p>Clean, high-contrast images with obvious hyphae</p></td>
+<td><p>Dim or noisy images where real hyphae are being lost in Phase 2</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reconnection_tolerance</span></code></p></td>
+<td><p>Legitimate fragments are not getting reconnected (permissiveness needed)</p></td>
+<td><p>Obvious over-merging of nearby colonies (strictness needed)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_gap_length</span></code></p></td>
+<td><p>Species with long sparse hyphal segments</p></td>
+<td><p>Over-merging colonies across short gaps</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="tier-3-usually-fine-at-defaults-spatial-tolerances">
+<h3>Tier 3: Usually fine at defaults (spatial tolerances)<a class="headerlink" href="#tier-3-usually-fine-at-defaults-spatial-tolerances" title="Link to this heading">#</a></h3>
+<p>Sensible defaults cover most scenes. Touch only for specific failures.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Typical reason to change</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ignore_borders</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Set <code class="docutils literal notranslate"><span class="pre">False</span></code> if you need to keep colonies at image edges (mosaic/cropped views).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">frag_reach_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+<td><p>Raise if legitimate but distant fragments are being dropped before Dijkstra.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">border_margin_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>Lower if image edges carry useful signal; raise for noisy edges.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gap_crossing_penalty</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4.0</span></code></p></td>
+<td><p>Lower (2.0) if gap-crossing paths are suppressed too aggressively; raise for very clean images where gaps truly mean absence.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="tier-4-overrides-advanced-rarely-needed">
+<h3>Tier 4: Overrides (advanced; rarely needed)<a class="headerlink" href="#tier-4-overrides-advanced-rarely-needed" title="Link to this heading">#</a></h3>
+<p>If scene knobs capture your geometry well, auto-derivation works. Only
+override when you have non-standard imaging (anisotropic pixels,
+unusual magnification) or you’re reproducing a pipeline with exact
+fixed values.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Override</p></th>
+<th class="head"><p>Derived from</p></th>
+<th class="head"><p>Formula</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gauss_sigma</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.2</span> <span class="pre">×</span> <span class="pre">R</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tile_size</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4.8</span> <span class="pre">×</span> <span class="pre">R</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max_colony_radius_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2.4</span> <span class="pre">×</span> <span class="pre">R</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pct_min_wavelength</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">×</span> <span class="pre">w</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mad_window</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2w</span> <span class="pre">+</span> <span class="pre">1</span></code> (odd)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path_dilation_radius</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max(1,</span> <span class="pre">round(w/2))</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snr_margin</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max(2,</span> <span class="pre">round(w/2))</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">coherence_window_radius</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">min_branch_width_px</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">5</span> <span class="pre">×</span> <span class="pre">w</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="experimental-tuning-what-the-defaults-assume">
+<h2>Experimental tuning: what the defaults assume<a class="headerlink" href="#experimental-tuning-what-the-defaults-assume" title="Link to this heading">#</a></h2>
+<p>The defaults are calibrated for:</p>
+<ul class="simple">
+<li><p>Plates imaged at a typical dissecting-microscope resolution.</p></li>
+<li><p>Colony radii roughly 50–300 px.</p></li>
+<li><p>Hyphal widths of 2–6 px.</p></li>
+<li><p>Moderate imaging noise (clean but not studio-quality).</p></li>
+</ul>
+<p>If your setup differs substantially from these — imaging at very high
+magnification, unusual organisms with atypical aspect ratios, or
+phase-contrast optics with ringing artefacts — expect to iterate.
+Specifically:</p>
+<ul class="simple">
+<li><p><strong>High-resolution imaging</strong> (w &gt; 6): raise <code class="docutils literal notranslate"><span class="pre">max_gap_length</span></code> and
+<code class="docutils literal notranslate"><span class="pre">frag_reach_px</span></code> proportionally.</p></li>
+<li><p><strong>Low-contrast / dim hyphae</strong>: lower <code class="docutils literal notranslate"><span class="pre">edge_noise_threshold</span></code>, raise
+<code class="docutils literal notranslate"><span class="pre">reconnection_tolerance</span></code>.</p></li>
+<li><p><strong>Very dense plates with interleaved colonies</strong>: lower
+<code class="docutils literal notranslate"><span class="pre">reconnection_tolerance</span></code>, raise <code class="docutils literal notranslate"><span class="pre">gap_crossing_penalty</span></code>. Accept a few
+extra fragments in exchange for cleaner separation.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="preprocessing-requirements">
+<h2>Preprocessing Requirements<a class="headerlink" href="#preprocessing-requirements" title="Link to this heading">#</a></h2>
+<p>The detector works best with upstream denoising and illumination
+correction:</p>
+<ol class="arabic simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">DenoiseBlockMatch</span></code></strong> (BM3D) — removes Poisson-Gaussian noise without
+destroying thin filaments.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">FlattenIllumination</span></code></strong> — corrects uneven illumination so phase
+congruency isn’t driven by intensity gradients.</p></li>
+</ol>
+<p>The <code class="docutils literal notranslate"><span class="pre">FilamentousFungiPipeline</span></code> prefab chains these automatically.</p>
+</section>
+<hr class="docutils" />
+<section id="quick-reference">
+<h2>Quick Reference<a class="headerlink" href="#quick-reference" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilamentousFungiDetector</span>
+
+<span class="n">detector</span> <span class="o">=</span> <span class="n">FilamentousFungiDetector</span><span class="p">(</span>
+        <span class="c1"># Scene: describe your sample</span>
+        <span class="n">max_colony_radius_px</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>  <span class="c1"># tier 1 — always tune</span>
+        <span class="n">min_branch_width_px</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>  <span class="c1"># tier 1 — always tune</span>
+
+        <span class="c1"># Tolerances: describe your image quality</span>
+        <span class="n">edge_noise_threshold</span><span class="o">=</span><span class="mf">6.0</span><span class="p">,</span>  <span class="c1"># tier 2 — tune if Phase 2 looks wrong</span>
+        <span class="n">reconnection_tolerance</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span>  <span class="c1"># tier 2 — tune if Phase 4 over/under-merges</span>
+        <span class="n">max_gap_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>  <span class="c1"># tier 2 — species-dependent</span>
+
+        <span class="c1"># Spatial tolerances (usually fine)</span>
+        <span class="n">ignore_borders</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># tier 3</span>
+        <span class="n">frag_reach_px</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># tier 3</span>
+        <span class="n">border_margin_px</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>  <span class="c1"># tier 3</span>
+        <span class="n">gap_crossing_penalty</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span>  <span class="c1"># tier 3</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<p><a id="references"></a></p>
+<p>[1] P. Kovesi, “Image features from phase congruency,” <em>Videre: J.
+Computer Vision Research</em>, vol. 1, no. 3, pp. 1–26, 1999.</p>
+<p>[2] A. F. Frangi et al., “Multiscale vessel enhancement filtering,” in
+<em>MICCAI</em>, 1998, pp. 130–137.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pipeline-overview">Pipeline Overview</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-1-inoculum-detection">Phase 1: Inoculum Detection</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-2-branch-detection">Phase 2: Branch Detection</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-3-centre-filtering-initial-voronoi-partition">Phase 3: Centre Filtering &amp; Initial Voronoi Partition</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-4-dijkstra-reconnection">Phase 4: Dijkstra Reconnection</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#a-cost-surface-construction">4a. Cost surface construction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#b-fragment-pre-screening">4b. Fragment pre-screening</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c-tiled-multi-source-dijkstra">4c. Tiled multi-source Dijkstra</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#d-path-quality-filtering">4d. Path quality filtering</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-5-final-voronoi-partition">Phase 5: Final Voronoi Partition</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#parameter-tuning-guide">Parameter Tuning Guide</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-1-always-tune-first-scene-parameters">Tier 1: Always tune first (scene parameters)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-2-tune-based-on-image-quality-and-species">Tier 2: Tune based on image quality and species</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-3-usually-fine-at-defaults-spatial-tolerances">Tier 3: Usually fine at defaults (spatial tolerances)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tier-4-overrides-advanced-rarely-needed">Tier 4: Overrides (advanced; rarely needed)</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#experimental-tuning-what-the-defaults-assume">Experimental tuning: what the defaults assume</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#preprocessing-requirements">Preprocessing Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-reference">Quick Reference</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/explanation/filamentous_fungi_algorithm.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

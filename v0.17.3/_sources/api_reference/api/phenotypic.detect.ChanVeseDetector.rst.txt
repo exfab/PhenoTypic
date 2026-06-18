@@ -1,0 +1,71 @@
+phenotypic.detect.ChanVeseDetector
+==================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: ChanVeseDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ChanVeseDetector.__init__
+      ~ChanVeseDetector.apply
+      ~ChanVeseDetector.construct
+      ~ChanVeseDetector.copy
+      ~ChanVeseDetector.dict
+      ~ChanVeseDetector.from_json
+      ~ChanVeseDetector.from_orm
+      ~ChanVeseDetector.json
+      ~ChanVeseDetector.model_construct
+      ~ChanVeseDetector.model_copy
+      ~ChanVeseDetector.model_dump
+      ~ChanVeseDetector.model_dump_json
+      ~ChanVeseDetector.model_json_schema
+      ~ChanVeseDetector.model_parametrized_name
+      ~ChanVeseDetector.model_post_init
+      ~ChanVeseDetector.model_rebuild
+      ~ChanVeseDetector.model_validate
+      ~ChanVeseDetector.model_validate_json
+      ~ChanVeseDetector.model_validate_strings
+      ~ChanVeseDetector.parse_file
+      ~ChanVeseDetector.parse_obj
+      ~ChanVeseDetector.parse_raw
+      ~ChanVeseDetector.schema
+      ~ChanVeseDetector.schema_json
+      ~ChanVeseDetector.to_json
+      ~ChanVeseDetector.update_forward_refs
+      ~ChanVeseDetector.validate
+      ~ChanVeseDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ChanVeseDetector.model_computed_fields
+      ~ChanVeseDetector.model_config
+      ~ChanVeseDetector.model_extra
+      ~ChanVeseDetector.model_fields
+      ~ChanVeseDetector.model_fields_set
+      ~ChanVeseDetector.mu
+      ~ChanVeseDetector.lambda1
+      ~ChanVeseDetector.lambda2
+      ~ChanVeseDetector.max_num_iter
+      ~ChanVeseDetector.tol
+      ~ChanVeseDetector.dt
+      ~ChanVeseDetector.init_level_set
+      ~ChanVeseDetector.min_size
+      ~ChanVeseDetector.connectivity
+   
+   

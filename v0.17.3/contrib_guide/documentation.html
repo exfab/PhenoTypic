@@ -1,0 +1,1141 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Documentation Writing Guide &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'contrib_guide/documentation';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/contrib_guide/documentation.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ImageOperation Docstring Style Guide" href="docstring_style.html" />
+    <link rel="prev" title="Testing Framework" href="testing.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing Guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Extending Phenotypic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Framework</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Documentation Writing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docstring_style.html">ImageOperation Docstring Style Guide</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developer Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Documentation Writing Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="documentation-writing-guide">
+<h1>Documentation Writing Guide<a class="headerlink" href="#documentation-writing-guide" title="Link to this heading">#</a></h1>
+<p>This guide defines PhenoTypic’s documentation structure, voice, and conventions.
+All user-facing documentation follows the Diataxis framework [1], which organizes
+content into four modes based on the reader’s needs.</p>
+<section id="documentation-structure">
+<h2>Documentation Structure<a class="headerlink" href="#documentation-structure" title="Link to this heading">#</a></h2>
+<p>PhenoTypic’s documentation is organized into five top-level sections.</p>
+<section id="tutorials">
+<h3>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading">#</a></h3>
+<p><strong>Purpose:</strong> Guided lessons that teach through doing. Each tutorial builds on the
+previous, forming a sequential learning path.</p>
+<p><strong>Format:</strong> Jupyter notebooks with Plotly interactive visualizations.</p>
+<p><strong>Characteristics:</strong></p>
+<ul class="simple">
+<li><p>The reader follows step-by-step instructions and observes results.</p></li>
+<li><p>Every code cell must be runnable against the bundled sample data.</p></li>
+<li><p>Tutorials teach <em>one concept at a time</em> – don’t combine detection and
+measurement in a single tutorial unless the tutorial is about pipelines.</p></li>
+<li><p>End each tutorial with a concrete outcome: “You now have a working pipeline
+that detects and measures colonies.”</p></li>
+</ul>
+</section>
+<section id="how-to-guides">
+<h3>How-To Guides<a class="headerlink" href="#how-to-guides" title="Link to this heading">#</a></h3>
+<p><strong>Purpose:</strong> Task-oriented recipes that solve a specific problem. The reader
+already knows the basics and needs to accomplish something concrete.</p>
+<p><strong>Format:</strong> Jupyter notebooks for visual tasks; static MyST Markdown pages for
+CLI, configuration, and non-visual workflows.</p>
+<p><strong>Characteristics:</strong></p>
+<ul class="simple">
+<li><p>Start with the goal, not the background: “To correct vignetting before
+detection, apply <code class="docutils literal notranslate"><span class="pre">VignetteCorrector</span></code> as the first pipeline step.”</p></li>
+<li><p>Assume tutorial-level familiarity – don’t re-explain what an <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> is.</p></li>
+<li><p>Each guide is standalone. Readers arrive from search or cross-references, not
+by reading sequentially.</p></li>
+<li><p>Link to Explanation pages for theory; link to API Reference for parameter
+details.</p></li>
+</ul>
+</section>
+<section id="explanation">
+<h3>Explanation<a class="headerlink" href="#explanation" title="Link to this heading">#</a></h3>
+<p><strong>Purpose:</strong> Conceptual material that builds understanding. Explains <em>why</em> things
+work the way they do, not <em>how</em> to use them.</p>
+<p><strong>Format:</strong> Static MyST Markdown pages with diagrams and annotated images.</p>
+<p><strong>Characteristics:</strong></p>
+<ul class="simple">
+<li><p>No prerequisite code to run. Light code is acceptable for illustration, but
+the reader should gain understanding from the prose alone.</p></li>
+<li><p>Discuss tradeoffs, failure modes, and design decisions.</p></li>
+<li><p>Reference literature where appropriate using IEEE citation style (see
+<a class="reference internal" href="#references-and-citations"><span class="std std-ref">References and Citations</span></a>).</p></li>
+<li><p>These pages are the target of “See Also” links from docstrings and how-to
+guides.</p></li>
+</ul>
+</section>
+<section id="extending-phenotypic">
+<h3>Extending PhenoTypic<a class="headerlink" href="#extending-phenotypic" title="Link to this heading">#</a></h3>
+<p><strong>Purpose:</strong> Dedicated section for users who want to build custom operations,
+plotters, or dashboards on top of PhenoTypic’s ABC hierarchy.</p>
+<p><strong>Format:</strong> Mini-Diataxis structure within the section – contains its own
+tutorial (notebook), how-to guides (static pages), and explanation pages.</p>
+<p><strong>Characteristics:</strong></p>
+<ul class="simple">
+<li><p>The tutorial walks through creating a complete custom <code class="docutils literal notranslate"><span class="pre">ImageEnhancer</span></code> from
+scratch.</p></li>
+<li><p>How-to guides cover each ABC type (<code class="docutils literal notranslate"><span class="pre">ObjectDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">ObjectRefiner</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code>, etc.) as standalone recipes.</p></li>
+<li><p>Explanation pages cover the ABC hierarchy, the <code class="docutils literal notranslate"><span class="pre">_operate()</span></code> contract, and the
+component registry system.</p></li>
+</ul>
+</section>
+<section id="api-reference">
+<h3>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h3>
+<p><strong>Purpose:</strong> Information-oriented reference for every public class, function, and
+parameter. Auto-generated from docstrings via <code class="docutils literal notranslate"><span class="pre">sphinx-apidoc</span></code> and <code class="docutils literal notranslate"><span class="pre">autodoc</span></code>.</p>
+<p><strong>Format:</strong> RST pages generated by the Sphinx build. Not manually authored.</p>
+<p><strong>Characteristics:</strong></p>
+<ul class="simple">
+<li><p>Accuracy depends entirely on docstring quality – see
+<a class="reference internal" href="docstring_style.html"><span class="std std-doc">ImageOperation Docstring Style Guide</span></a> for the docstring template.</p></li>
+<li><p>Supplemented by manually authored pages: CLI reference, configuration
+reference, and glossary.</p></li>
+</ul>
+</section>
+</section>
+<section id="audience">
+<h2>Audience<a class="headerlink" href="#audience" title="Link to this heading">#</a></h2>
+<p>The primary audience is <strong>microbiologists and biologists who are new to
+computational image processing</strong> and have limited Python experience. They know
+variables, loops, imports, and can install packages, but may not be familiar with
+NumPy arrays, image representations, or scientific Python conventions.</p>
+<p>A secondary audience is <strong>researchers with image processing experience</strong> who are
+evaluating PhenoTypic for their phenotyping workflows. They need efficient access
+to capabilities and parameters without wading through introductory material.</p>
+<section id="external-concept-linking-policy">
+<h3>External Concept Linking Policy<a class="headerlink" href="#external-concept-linking-policy" title="Link to this heading">#</a></h3>
+<p>Do not explain Python or NumPy basics inline. When a concept requires prerequisite
+knowledge, link to an authoritative external resource:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>Colony sizes are returned as a [<span class="nt">NumPy array</span>](<span class="na">https://numpy.org/doc/stable/user/basics.html</span>)
+with one entry per detected object.
+</pre></div>
+</div>
+<p>Common external references:</p>
+<ul class="simple">
+<li><p>NumPy array basics: <code class="docutils literal notranslate"><span class="pre">https://numpy.org/doc/stable/user/basics.html</span></code></p></li>
+<li><p>Python pathlib: <code class="docutils literal notranslate"><span class="pre">https://docs.python.org/3/library/pathlib.html</span></code></p></li>
+<li><p>pandas DataFrames: <code class="docutils literal notranslate"><span class="pre">https://pandas.pydata.org/docs/user_guide/dsintro.html</span></code></p></li>
+<li><p>Matplotlib basics: <code class="docutils literal notranslate"><span class="pre">https://matplotlib.org/stable/tutorials/introductory/usage.html</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="voice-and-tone">
+<h2>Voice and Tone<a class="headerlink" href="#voice-and-tone" title="Link to this heading">#</a></h2>
+<p>Each documentation section has a distinct voice matched to the reader’s mindset.</p>
+<section id="tutorials-encouraging-and-guided">
+<h3>Tutorials – Encouraging and Guided<a class="headerlink" href="#tutorials-encouraging-and-guided" title="Link to this heading">#</a></h3>
+<p>Second person, active voice. Celebrate milestones. The reader is learning and
+needs reassurance.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
+<span class="s2">&quot;Let&#39;s load our first plate image and see what we&#39;re working with.&quot;</span>
+<span class="s2">&quot;You now have a complete pipeline that enhances, detects, and measures colonies.&quot;</span>
+
+<span class="c1"># Bad</span>
+<span class="s2">&quot;The user should load an image using the imread method.&quot;</span>
+<span class="s2">&quot;The pipeline has been successfully constructed.&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="how-to-guides-direct-and-efficient">
+<h3>How-To Guides – Direct and Efficient<a class="headerlink" href="#how-to-guides-direct-and-efficient" title="Link to this heading">#</a></h3>
+<p>Imperative voice. State the goal, then the solution. No preamble or motivation –
+the reader already knows <em>why</em> they’re here.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
+<span class="s2">&quot;Pass `method=&#39;triangle&#39;` to detect faint colonies against noisy backgrounds.&quot;</span>
+
+<span class="c1"># Bad</span>
+<span class="s2">&quot;In some cases, you might want to consider using a different threshold method.</span>
+<span class="n">The</span> <span class="n">triangle</span> <span class="n">method</span> <span class="n">can</span> <span class="n">be</span> <span class="n">useful</span> <span class="n">when</span> <span class="n">colonies</span> <span class="n">are</span> <span class="n">faint</span><span class="o">.</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="explanation-textbook-lite">
+<h3>Explanation – Textbook-Lite<a class="headerlink" href="#explanation-textbook-lite" title="Link to this heading">#</a></h3>
+<p>Semi-formal, third person. Structured prose with diagrams. It is acceptable to
+reference literature and use domain-specific terminology with definitions.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
+<span class="s2">&quot;Otsu&#39;s method minimizes intra-class variance by exhaustively searching for</span>
+<span class="n">the</span> <span class="n">threshold</span> <span class="n">that</span> <span class="n">best</span> <span class="n">separates</span> <span class="n">the</span> <span class="n">foreground</span> <span class="ow">and</span> <span class="n">background</span> <span class="n">intensity</span>
+<span class="n">distributions</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span> <span class="n">This</span> <span class="n">works</span> <span class="n">well</span> <span class="n">when</span> <span class="n">the</span> <span class="n">histogram</span> <span class="ow">is</span> <span class="n">bimodal</span> <span class="o">--</span> <span class="n">a</span>
+<span class="n">common</span> <span class="nb">property</span> <span class="n">of</span> <span class="n">well</span><span class="o">-</span><span class="n">lit</span> <span class="n">plates</span> <span class="k">with</span> <span class="n">uniform</span> <span class="n">backgrounds</span><span class="o">.</span><span class="s2">&quot;</span>
+
+<span class="c1"># Bad</span>
+<span class="s2">&quot;So basically Otsu&#39;s just finds the best cutoff between dark and light pixels.&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="extending-mentor">
+<h3>Extending – Mentor<a class="headerlink" href="#extending-mentor" title="Link to this heading">#</a></h3>
+<p>First person plural or second person. Conversational but precise. Guide the
+reader through decisions.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
+<span class="s2">&quot;The simplest operation to start with is an enhancer, since it only modifies</span>
+<span class="n">detect_mat</span><span class="o">.</span> <span class="n">You</span> <span class="n">don</span><span class="s1">&#39;t need to worry about objmask, objmap, or grid state.&quot;</span>
+
+<span class="c1"># Bad</span>
+<span class="s2">&quot;ImageEnhancer subclasses shall implement the _operate method which receives</span>
+<span class="n">an</span> <span class="n">Image</span> <span class="n">instance</span> <span class="ow">and</span> <span class="n">returns</span> <span class="n">a</span> <span class="n">modified</span> <span class="n">Image</span> <span class="n">instance</span><span class="o">.</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="domain-language">
+<h2>Domain Language<a class="headerlink" href="#domain-language" title="Link to this heading">#</a></h2>
+<p>Use microbiology terminology consistently. Avoid generic image processing jargon
+when a domain-specific term exists.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Use</p></th>
+<th class="head"><p>Instead of</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>colony</p></td>
+<td><p>blob, object, region</p></td>
+</tr>
+<tr class="row-odd"><td><p>inoculum</p></td>
+<td><p>seed point, starting blob</p></td>
+</tr>
+<tr class="row-even"><td><p>plate</p></td>
+<td><p>image (when referring to the physical plate)</p></td>
+</tr>
+<tr class="row-odd"><td><p>well</p></td>
+<td><p>grid cell, section (when referring to physical wells)</p></td>
+</tr>
+<tr class="row-even"><td><p>grid section</p></td>
+<td><p>cell, tile (when referring to the computational grid partition)</p></td>
+</tr>
+<tr class="row-odd"><td><p>hyphae / mycelium</p></td>
+<td><p>filaments, branches (when biologically accurate)</p></td>
+</tr>
+<tr class="row-even"><td><p>detect_mat</p></td>
+<td><p>detection matrix, enhanced grayscale</p></td>
+</tr>
+<tr class="row-odd"><td><p>objmask</p></td>
+<td><p>binary mask, foreground mask</p></td>
+</tr>
+<tr class="row-even"><td><p>objmap</p></td>
+<td><p>label map, labeled array</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>When a term has both a biological and computational meaning (e.g., “colony” vs.
+“connected component”), use the biological term in tutorials and how-to guides,
+and introduce the computational term in Explanation pages.</p>
+</section>
+<section id="code-conventions">
+<h2>Code Conventions<a class="headerlink" href="#code-conventions" title="Link to this heading">#</a></h2>
+<section id="imports">
+<h3>Imports<a class="headerlink" href="#imports" title="Link to this heading">#</a></h3>
+<p>Always use the canonical import alias:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+</pre></div>
+</div>
+<p>Import specific operations directly when demonstrating them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianBlur</span><span class="p">,</span> <span class="n">EnhanceLocalContrast</span>
+</pre></div>
+</div>
+</section>
+<section id="sample-data">
+<h3>Sample Data<a class="headerlink" href="#sample-data" title="Link to this heading">#</a></h3>
+<p>All tutorials and visual how-to guides use the <strong>bundled real plate images</strong>
+located in <code class="docutils literal notranslate"><span class="pre">src/phenotypic/data/SnP_images/</span></code>. There are two organisms, each with
+a cropped and a full-plate variant:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Image</p></th>
+<th class="head"><p>File</p></th>
+<th class="head"><p>Use when</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Rhodotorula yeast (cropped)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RhodotorulaYeastCropped.png</span></code></p></td>
+<td><p>Default for most tutorials and how-tos. Round colonies, standard 96-well grid, clean background.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Neurospora filamentous fungi (cropped)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NeurosporaFilamentousFungiCropped.png</span></code></p></td>
+<td><p>Filamentous fungi tutorials and how-tos. Irregular hyphal morphology, spreading growth.</p></td>
+</tr>
+<tr class="row-even"><td><p>Rhodotorula yeast (full plate)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RhodotorulaYeastFullPlate.png</span></code></p></td>
+<td><p>Operations that need the full uncropped plate: cropping, padding, vignetting correction, color correction. Includes a color checker.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Neurospora filamentous fungi (full plate)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NeurosporaFilamentousFungiFullPlate.png</span></code></p></td>
+<td><p>Full plate variant for fungi-specific correction workflows. Includes a color checker.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>When to use which variant:</strong></p>
+<ul class="simple">
+<li><p><strong>Cropped images</strong> are the default. Use these for detection, enhancement,
+measurement, pipeline building, and grid plate tutorials.</p></li>
+<li><p><strong>Full plate images</strong> include the plate border, scanner margins, and a
+<strong>color checker</strong> (for <code class="docutils literal notranslate"><span class="pre">ColorCorrector</span></code> / <code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile</span></code>). Use these
+for tutorials and how-tos that demonstrate cropping (<code class="docutils literal notranslate"><span class="pre">ImageCropper</span></code>), padding
+(<code class="docutils literal notranslate"><span class="pre">ImagePadder</span></code>), vignetting correction (<code class="docutils literal notranslate"><span class="pre">VignetteCorrector</span></code>), or color
+correction.</p></li>
+</ul>
+<p>For docstring smoke tests (in the test suite, not in docstrings), use
+<code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code> (synthetic, fast, no file I/O dependencies).</p>
+</section>
+<section id="visualization">
+<h3>Visualization<a class="headerlink" href="#visualization" title="Link to this heading">#</a></h3>
+<p>Use Plotly interactive figures via the <code class="docutils literal notranslate"><span class="pre">.dash()</span></code> method, which returns
+<code class="docutils literal notranslate"><span class="pre">plotly.graph_objects.Figure</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">image</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>                              <span class="c1"># RGB display (Plotly interactive)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">detect_mat</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>                   <span class="c1"># Detection matrix (Plotly interactive)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>                       <span class="c1"># Labeled objects (Plotly interactive)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">dash</span><span class="p">(</span><span class="n">overlay</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>                  <span class="c1"># Detection overlay (Plotly interactive)</span>
+<span class="n">image</span><span class="o">.</span><span class="n">dash</span><span class="p">(</span><span class="n">overlay</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Overlay with colony labels</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">.show()</span></code> method returns <code class="docutils literal notranslate"><span class="pre">(matplotlib.figure.Figure,</span> <span class="pre">matplotlib.axes.Axes)</span></code>
+and is appropriate for static diagrams in Explanation pages or when matplotlib
+output is explicitly needed.</p>
+<p>Follow the project’s Okabe-Ito color palette (defined in
+<code class="docutils literal notranslate"><span class="pre">docs/style_guide/dashboards/CLAUDE.md</span></code>) for any custom Plotly figures.</p>
+<p>In tutorials and how-to notebooks, prefer <code class="docutils literal notranslate"><span class="pre">.dash()</span></code> for interactive
+visualizations. Do not use <code class="docutils literal notranslate"><span class="pre">matplotlib.pyplot</span></code> (<code class="docutils literal notranslate"><span class="pre">plt.show()</span></code>, <code class="docutils literal notranslate"><span class="pre">plt.imshow()</span></code>)
+directly. The <code class="docutils literal notranslate"><span class="pre">.show()</span></code> method (matplotlib) is acceptable in Explanation pages
+for static diagrams.</p>
+</section>
+<section id="notebook-structure">
+<h3>Notebook Structure<a class="headerlink" href="#notebook-structure" title="Link to this heading">#</a></h3>
+<p>Every tutorial and how-to notebook follows this cell pattern:</p>
+<ol class="arabic simple">
+<li><p><strong>Title cell</strong> (Markdown): <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Tutorial</span> <span class="pre">N:</span> <span class="pre">Title</span></code></p></li>
+<li><p><strong>Imports cell</strong> (Code): all imports, no output</p></li>
+<li><p><strong>Data loading cell</strong> (Code): load sample image, display it</p></li>
+<li><p><strong>Teaching cells</strong> (alternating Markdown + Code): one concept per pair</p></li>
+<li><p><strong>Summary cell</strong> (Markdown): what the reader accomplished, link to next step</p></li>
+</ol>
+</section>
+</section>
+<section id="cross-referencing">
+<h2>Cross-Referencing<a class="headerlink" href="#cross-referencing" title="Link to this heading">#</a></h2>
+<p>Link between documentation sections to help readers navigate.</p>
+<ul class="simple">
+<li><p><strong>Tutorials</strong> link forward to related how-to guides: “For more on contrast
+enhancement, see <a class="reference internal" href="../how_to/notebooks/enhance_low_contrast.html"><span class="doc std std-doc">How to enhance low-contrast images</span></a>.”</p></li>
+<li><p><strong>How-to guides</strong> link to Explanation pages for theory and to API Reference for
+parameter details.</p></li>
+<li><p><strong>Explanation pages</strong> link to relevant how-to guides for practical application.</p></li>
+<li><p><strong>Docstrings</strong> link to Explanation pages via <code class="docutils literal notranslate"><span class="pre">See</span> <span class="pre">Also</span></code> (see
+<a class="reference internal" href="docstring_style.html"><span class="std std-doc">ImageOperation Docstring Style Guide</span></a>).</p></li>
+</ul>
+<p>Use Sphinx cross-references where possible:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="na">:class:</span><span class="nv">`phenotypic.detect.OtsuDetector`</span>
+<span class="na">:doc:</span><span class="nv">`/explanation/detection_strategies`</span>
+<span class="na">:meth:</span><span class="nv">`Image.show`</span>
+</pre></div>
+</div>
+<p>In MyST Markdown:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>{class}`phenotypic.detect.OtsuDetector`
+{doc}`/explanation/detection_strategies`
+</pre></div>
+</div>
+</section>
+<section id="references-and-citations">
+<h2>References and Citations<a class="headerlink" href="#references-and-citations" title="Link to this heading">#</a></h2>
+<p>Use <strong>IEEE citation style</strong> [3] for all literature references. Place a numbered
+reference list at the bottom of any page that cites external work.</p>
+<section id="inline-citation">
+<h3>Inline Citation<a class="headerlink" href="#inline-citation" title="Link to this heading">#</a></h3>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>Otsu&#39;s method minimizes intra-class variance to find an optimal threshold [2].
+</pre></div>
+</div>
+</section>
+<section id="reference-list-format">
+<h3>Reference List Format<a class="headerlink" href="#reference-list-format" title="Link to this heading">#</a></h3>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="gu">## References</span>
+
+[1] D. Procida, &quot;Diataxis: A systematic framework for technical documentation,&quot;
+<span class="k">2023.</span> [Online]. Available: https://diataxis.fr/
+
+[2] N. Otsu, &quot;A threshold selection method from gray-level histograms,&quot; *IEEE
+Trans. Syst., Man, Cybern.*, vol. 9, no. 1, pp. 62--66, Jan. 1979.
+</pre></div>
+</div>
+</section>
+<section id="when-to-cite">
+<h3>When to Cite<a class="headerlink" href="#when-to-cite" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Algorithm descriptions in Explanation pages (always cite the original paper).</p></li>
+<li><p>Docstrings that name a specific method (e.g., Otsu, Frangi, BM3D) – include a
+<code class="docutils literal notranslate"><span class="pre">References</span></code> section in the docstring.</p></li>
+<li><p>Tutorials and how-to guides generally do not need citations; link to the
+relevant Explanation page instead.</p></li>
+</ul>
+</section>
+</section>
+<section id="building-the-documentation">
+<h2>Building the Documentation<a class="headerlink" href="#building-the-documentation" title="Link to this heading">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Full build (regenerates API docs, then builds HTML)</span>
+<span class="nb">cd</span><span class="w"> </span>docs<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>html
+
+<span class="c1"># Quick rebuild (HTML only, skips apidoc regeneration)</span>
+<span class="nb">cd</span><span class="w"> </span>docs<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sphinx-build<span class="w"> </span>-n<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span><span class="nb">source</span><span class="w"> </span>build/html
+
+<span class="c1"># Verify notebook execution</span>
+uv<span class="w"> </span>run<span class="w"> </span>jupyter<span class="w"> </span>execute<span class="w"> </span>docs/source/tutorials/notebooks/&lt;notebook&gt;.ipynb
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">nbsphinx_allow_errors</span></code> setting must remain <code class="docutils literal notranslate"><span class="pre">False</span></code> – any notebook that
+fails to execute will break the build. Test notebooks locally before committing.</p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<p>[1] D. Procida, “Diataxis: A systematic framework for technical documentation,”
+2023. [Online]. Available: https://diataxis.fr/</p>
+<p>[2] N. Otsu, “A threshold selection method from gray-level histograms,” <em>IEEE
+Trans. Syst., Man, Cybern.</em>, vol. 9, no. 1, pp. 62–66, Jan. 1979.</p>
+<p>[3] IEEE, “IEEE reference guide,” 2024. [Online]. Available:
+https://ieee-dataport.org/sites/default/files/analysis/27/IEEE%20Citation%20Guidelines.pdf</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation-structure">Documentation Structure</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tutorials">Tutorials</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-guides">How-To Guides</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explanation">Explanation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#extending-phenotypic">Extending PhenoTypic</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#audience">Audience</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#external-concept-linking-policy">External Concept Linking Policy</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#voice-and-tone">Voice and Tone</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tutorials-encouraging-and-guided">Tutorials – Encouraging and Guided</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-to-guides-direct-and-efficient">How-To Guides – Direct and Efficient</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#explanation-textbook-lite">Explanation – Textbook-Lite</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#extending-mentor">Extending – Mentor</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#domain-language">Domain Language</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-conventions">Code Conventions</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#imports">Imports</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-data">Sample Data</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#visualization">Visualization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#notebook-structure">Notebook Structure</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-referencing">Cross-Referencing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references-and-citations">References and Citations</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inline-citation">Inline Citation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-list-format">Reference List Format</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-cite">When to Cite</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-the-documentation">Building the Documentation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/contrib_guide/documentation.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

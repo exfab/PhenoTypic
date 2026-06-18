@@ -1,0 +1,6 @@
+phenotypic.sdk\_.napari\_.add\_image\_layer
+===========================================
+
+.. currentmodule:: phenotypic.sdk_.napari_
+
+.. autofunction:: add_image_layer

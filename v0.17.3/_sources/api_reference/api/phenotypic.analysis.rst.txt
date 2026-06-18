@@ -1,0 +1,56 @@
+﻿phenotypic.analysis
+===================
+
+.. automodule:: phenotypic.analysis
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      filter_spec_json
+      filter_spec_query
+      render_error_analysis_html
+      render_error_analysis_report
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      DoubleSoftplus
+      EdgeCorrector
+      ErrorCutoffFinder
+      ExpectedVsDetectedCount
+      ICC
+      LinearSoftplus
+      LogGrowthModel
+      MADOutlierRemover
+      MaxModifiedZScore
+      RelativeMAD
+      ReplicateAgreement
+      TukeyOutlierFraction
+      TukeyOutlierRemover
+   
+   
+
+   
+   
+   
+
+
+

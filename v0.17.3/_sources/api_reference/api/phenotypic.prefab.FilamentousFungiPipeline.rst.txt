@@ -1,0 +1,94 @@
+phenotypic.prefab.FilamentousFungiPipeline
+==========================================
+
+.. currentmodule:: phenotypic.prefab
+
+.. autoclass:: FilamentousFungiPipeline
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FilamentousFungiPipeline.__init__
+      ~FilamentousFungiPipeline.analyze
+      ~FilamentousFungiPipeline.apply
+      ~FilamentousFungiPipeline.apply_and_measure
+      ~FilamentousFungiPipeline.apply_napari
+      ~FilamentousFungiPipeline.apply_with_intermediates
+      ~FilamentousFungiPipeline.benchmark_results
+      ~FilamentousFungiPipeline.construct
+      ~FilamentousFungiPipeline.copy
+      ~FilamentousFungiPipeline.dict
+      ~FilamentousFungiPipeline.from_json
+      ~FilamentousFungiPipeline.from_orm
+      ~FilamentousFungiPipeline.get_filters
+      ~FilamentousFungiPipeline.get_meas
+      ~FilamentousFungiPipeline.get_model
+      ~FilamentousFungiPipeline.get_ops
+      ~FilamentousFungiPipeline.get_post
+      ~FilamentousFungiPipeline.get_qc
+      ~FilamentousFungiPipeline.json
+      ~FilamentousFungiPipeline.measure
+      ~FilamentousFungiPipeline.model_construct
+      ~FilamentousFungiPipeline.model_copy
+      ~FilamentousFungiPipeline.model_dump
+      ~FilamentousFungiPipeline.model_dump_json
+      ~FilamentousFungiPipeline.model_json_schema
+      ~FilamentousFungiPipeline.model_parametrized_name
+      ~FilamentousFungiPipeline.model_post_init
+      ~FilamentousFungiPipeline.model_rebuild
+      ~FilamentousFungiPipeline.model_validate
+      ~FilamentousFungiPipeline.model_validate_json
+      ~FilamentousFungiPipeline.model_validate_strings
+      ~FilamentousFungiPipeline.parse_file
+      ~FilamentousFungiPipeline.parse_obj
+      ~FilamentousFungiPipeline.parse_raw
+      ~FilamentousFungiPipeline.schema
+      ~FilamentousFungiPipeline.schema_json
+      ~FilamentousFungiPipeline.set_filters
+      ~FilamentousFungiPipeline.set_meas
+      ~FilamentousFungiPipeline.set_model
+      ~FilamentousFungiPipeline.set_ops
+      ~FilamentousFungiPipeline.set_post
+      ~FilamentousFungiPipeline.set_qc
+      ~FilamentousFungiPipeline.to_json
+      ~FilamentousFungiPipeline.update_forward_refs
+      ~FilamentousFungiPipeline.validate
+      ~FilamentousFungiPipeline.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FilamentousFungiPipeline.desc
+      ~FilamentousFungiPipeline.model_computed_fields
+      ~FilamentousFungiPipeline.model_config
+      ~FilamentousFungiPipeline.model_extra
+      ~FilamentousFungiPipeline.model_fields
+      ~FilamentousFungiPipeline.model_fields_set
+      ~FilamentousFungiPipeline.name
+      ~FilamentousFungiPipeline.desc_value
+      ~FilamentousFungiPipeline.benchmark
+      ~FilamentousFungiPipeline.verbose
+      ~FilamentousFungiPipeline.reset
+      ~FilamentousFungiPipeline.nrows
+      ~FilamentousFungiPipeline.ncols
+      ~FilamentousFungiPipeline.ops
+      ~FilamentousFungiPipeline.meas
+      ~FilamentousFungiPipeline.post
+      ~FilamentousFungiPipeline.filters
+      ~FilamentousFungiPipeline.model
+      ~FilamentousFungiPipeline.qc
+   
+   

@@ -1,0 +1,64 @@
+phenotypic.refine.SmallToLargeMerger
+====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: SmallToLargeMerger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SmallToLargeMerger.__init__
+      ~SmallToLargeMerger.apply
+      ~SmallToLargeMerger.construct
+      ~SmallToLargeMerger.copy
+      ~SmallToLargeMerger.dict
+      ~SmallToLargeMerger.from_json
+      ~SmallToLargeMerger.from_orm
+      ~SmallToLargeMerger.json
+      ~SmallToLargeMerger.model_construct
+      ~SmallToLargeMerger.model_copy
+      ~SmallToLargeMerger.model_dump
+      ~SmallToLargeMerger.model_dump_json
+      ~SmallToLargeMerger.model_json_schema
+      ~SmallToLargeMerger.model_parametrized_name
+      ~SmallToLargeMerger.model_post_init
+      ~SmallToLargeMerger.model_rebuild
+      ~SmallToLargeMerger.model_validate
+      ~SmallToLargeMerger.model_validate_json
+      ~SmallToLargeMerger.model_validate_strings
+      ~SmallToLargeMerger.parse_file
+      ~SmallToLargeMerger.parse_obj
+      ~SmallToLargeMerger.parse_raw
+      ~SmallToLargeMerger.schema
+      ~SmallToLargeMerger.schema_json
+      ~SmallToLargeMerger.to_json
+      ~SmallToLargeMerger.update_forward_refs
+      ~SmallToLargeMerger.validate
+      ~SmallToLargeMerger.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SmallToLargeMerger.model_computed_fields
+      ~SmallToLargeMerger.model_config
+      ~SmallToLargeMerger.model_extra
+      ~SmallToLargeMerger.model_fields
+      ~SmallToLargeMerger.model_fields_set
+      ~SmallToLargeMerger.distance_threshold
+      ~SmallToLargeMerger.size_threshold
+   
+   

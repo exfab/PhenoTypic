@@ -1,0 +1,6 @@
+phenotypic.sdk\_.event\_log\_path
+=================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: event_log_path

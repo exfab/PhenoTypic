@@ -1,0 +1,43 @@
+﻿phenotypic.grid
+===============
+
+.. automodule:: phenotypic.grid
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      GridApply
+      AutoGridFinder
+      CenteredAutoGridFinder
+      ManualGridFinder
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+      :toctree:
+   
+      CenteredAutoGridFinderFallbackWarning
+   
+   
+
+
+

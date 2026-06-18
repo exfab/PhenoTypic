@@ -1,0 +1,22 @@
+SIZE
+====
+
+Python object: ``phenotypic.schema._size.SIZE``
+
+Measure colony area and integrated intensity as lightweight size proxies.
+
+Extract two fundamental size metrics per detected colony: pixel area
+(biomass extent) and integrated grayscale intensity (total brightness,
+a proxy for optical density). This is a convenience class for rapid
+size assessment without the overhead of full shape or intensity
+statistical analysis.
+
+.. list-table:: Category: **Size**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Size_Area``
+     - Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.
+   * - ``Size_IntegratedIntensity``
+     - The sum of the object's grayscale pixels. Calculated as :math:`\sum{\text{pixel values}} \times \text{area}`.

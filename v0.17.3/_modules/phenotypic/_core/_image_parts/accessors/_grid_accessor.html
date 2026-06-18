@@ -1,0 +1,2150 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic._core._image_parts.accessors._grid_accessor &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/_core/_image_parts/accessors/_grid_accessor';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/_core/_image_parts/accessors/_grid_accessor.html" />
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic._core._image_parts.accessors._grid_accessor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic._core._image_parts.accessors._grid_accessor</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">napari</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">label2rgb</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">METADATA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.constants_</span><span class="w"> </span><span class="kn">import</span> <span class="n">IMAGE_TYPES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">BBOX</span><span class="p">,</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NoObjectsError</span>
+
+
+<div class="viewcode-block" id="GridAccessor">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridAccessor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provides grid-based access and analysis for microbial colony arrays on agar plates.</span>
+
+<span class="sd">    This class facilitates operations on grid structures within a GridImage, enabling analysis</span>
+<span class="sd">    of robotically-pinned microbial colonies arranged in a regular rectangular array pattern.</span>
+<span class="sd">    It provides methods for determining grid properties, retrieving colony information by grid</span>
+<span class="sd">    location, and visualizing grid overlays with row and column assignments.</span>
+
+<span class="sd">    The grid divides an agar plate image into a regular matrix of sections, each potentially</span>
+<span class="sd">    containing one or more detected colonies. The grid is ordered left-to-right, top-to-bottom</span>
+<span class="sd">    when using flattened indexing.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        nrows (int): Number of rows in the grid (read/write property). Corresponds to the</span>
+<span class="sd">            number of row pins in a colony pinning robot. Must be &gt;= 1.</span>
+<span class="sd">        ncols (int): Number of columns in the grid (read/write property). Corresponds to the</span>
+<span class="sd">            number of column pins in a colony pinning robot. Must be &gt;= 1.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Access grid information for a 96-well colony plate:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; # Load image and create grid accessor</span>
+<span class="sd">        &gt;&gt;&gt; grid_image = GridImage(&#39;agar_plate.png&#39;, nrows=8, ncols=12)</span>
+<span class="sd">        &gt;&gt;&gt; # Get grid information as a DataFrame</span>
+<span class="sd">        &gt;&gt;&gt; grid_info = grid_image.grid.info()</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Found {len(grid_info)} colonies across {grid_image.grid.nrows} rows &quot;</span>
+<span class="sd">        ...       f&quot;and {grid_image.grid.ncols} columns&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; # Extract a single grid section (colony at row 2, column 3)</span>
+<span class="sd">        &gt;&gt;&gt; section_idx = 2 * grid_image.grid.ncols + 3  # Flattened index</span>
+<span class="sd">        &gt;&gt;&gt; colony_image = grid_image.grid[section_idx]</span>
+<span class="sd">        &gt;&gt;&gt; # Visualize grid columns with color-coded labels</span>
+<span class="sd">        &gt;&gt;&gt; fig, ax = grid_image.grid.show_column_overlay(show_grid=True)</span>
+
+<span class="sd">        Get colony counts by grid section:</span>
+
+<span class="sd">        &gt;&gt;&gt; # Count colonies in each grid section</span>
+<span class="sd">        &gt;&gt;&gt; section_counts = grid_image.grid.get_section_counts(ascending=False)</span>
+<span class="sd">        &gt;&gt;&gt; print(&quot;Colonies per section (sorted):&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(section_counts)</span>
+<span class="sd">        &gt;&gt;&gt; # Get all colony information for row 0</span>
+<span class="sd">        &gt;&gt;&gt; row_info = grid_image.grid.get_info_by_section((0, slice(None)))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root_image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">:</span> <span class="n">GridImage</span> <span class="o">=</span> <span class="n">root_image</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_accessor_property_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;grid&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the number of rows in the grid.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Number of rows in the grid array. Must be &gt;= 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">nrows</span>
+
+    <span class="nd">@nrows</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">nrows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the number of rows in the grid.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            nrows (int): Number of rows in the grid. Must be a positive integer</span>
+<span class="sd">                (&gt;= 1). Typically corresponds to the number of row pins in a</span>
+<span class="sd">                colony pinning robot.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If nrows is less than 1.</span>
+<span class="sd">            TypeError: If nrows is not an integer type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">nrows</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of nrows must be greater than 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">nrows</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Number of nrows must be an integer&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">nrows</span> <span class="o">=</span> <span class="n">nrows</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the number of columns in the grid.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: Number of columns in the grid array. Must be &gt;= 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">ncols</span>
+
+    <span class="nd">@ncols</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ncols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ncols</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the number of columns in the grid.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ncols (int): Number of columns in the grid. Must be a positive</span>
+<span class="sd">                integer (&gt;= 1). Typically corresponds to the number of column</span>
+<span class="sd">                pins in a colony pinning robot.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If ncols is less than 1.</span>
+<span class="sd">            TypeError: If ncols is not an integer type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ncols</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of columns must be greater than 0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">ncols</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Number of columns must be an integer&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="n">ncols</span>
+
+<div class="viewcode-block" id="GridAccessor.info">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_metadata</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get grid information for all detected colonies.</span>
+
+<span class="sd">        Returns a DataFrame with bounding box measurements and grid location (row, column,</span>
+<span class="sd">        section) assignments for each detected object (colony). This is the primary method</span>
+<span class="sd">        for accessing detailed colony positioning and measurement data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            include_metadata (bool, optional): Whether to include image metadata columns</span>
+<span class="sd">                in the output DataFrame. Defaults to True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame with one row per detected colony. Columns include:</span>
+<span class="sd">                - Object_Label: Unique identifier for the colony</span>
+<span class="sd">                - CenterRR, CenterCC: Row and column coordinates of colony center</span>
+<span class="sd">                - MinRR, MaxRR, MinCC, MaxCC: Bounding box coordinates</span>
+<span class="sd">                - RowNum: Grid row index (0-indexed)</span>
+<span class="sd">                - ColNum: Grid column index (0-indexed)</span>
+<span class="sd">                - SectionNum: Flattened grid section index (0 to nrows*ncols-1)</span>
+<span class="sd">                - Additional columns if include_metadata=True</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Retrieve and analyze grid information:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Get full grid information</span>
+<span class="sd">            &gt;&gt;&gt; grid_info = grid_image.grid.info()</span>
+<span class="sd">            &gt;&gt;&gt; # Count colonies by row</span>
+<span class="sd">            &gt;&gt;&gt; colonies_per_row = grid_info.groupby(&#39;RowNum&#39;).size()</span>
+<span class="sd">            &gt;&gt;&gt; # Find largest colony in grid section 10</span>
+<span class="sd">            &gt;&gt;&gt; section_10 = grid_info[grid_info[&#39;SectionNum&#39;] == 10]</span>
+<span class="sd">            &gt;&gt;&gt; largest = section_10.loc[section_10[&#39;Area&#39;].idxmax()]</span>
+<span class="sd">            &gt;&gt;&gt; # Get colonies without metadata</span>
+<span class="sd">            &gt;&gt;&gt; grid_info_minimal = grid_image.grid.info(include_metadata=False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">include_metadata</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">insert_metadata</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">info</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_idx_ref_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal property: matrix mapping grid positions to flattened indices.</span>
+
+<span class="sd">        Creates a reference matrix that converts 2D grid coordinates (row, col)</span>
+<span class="sd">        to flattened section indices. Grid sections are ordered left-to-right,</span>
+<span class="sd">        top-to-bottom (row-major order).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 2D integer array of shape (nrows, ncols) where element</span>
+<span class="sd">                [i, j] contains the flattened section index corresponding to grid</span>
+<span class="sd">                position (i, j). For an 8x12 grid: [0, 0] = 0 (top-left),</span>
+<span class="sd">                [0, 11] = 11 (top-right), [7, 0] = 84 (bottom-left),</span>
+<span class="sd">                [7, 11] = 95 (bottom-right).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">),</span>
+                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_parse_slice_to_section_indices</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span> <span class="o">|</span> <span class="nb">slice</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert various index formats to list of flattened section indices.</span>
+
+<span class="sd">        Supports single indices (int), slices on flattened indices, and tuple-based</span>
+<span class="sd">        indexing for (row, column) patterns with optional slicing on each dimension.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx: Index in various forms:</span>
+<span class="sd">                - int: Single flattened section index</span>
+<span class="sd">                - slice: Range of flattened section indices</span>
+<span class="sd">                - tuple[int, int]: Single section as (row, col)</span>
+<span class="sd">                - tuple[int, slice]: Specific row, range of columns</span>
+<span class="sd">                - tuple[slice, int]: Range of rows, specific column</span>
+<span class="sd">                - tuple[slice, slice]: Range of rows and columns (only if one is full)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[int]: List of flattened section indices.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If slicing in both row AND column dimensions simultaneously</span>
+<span class="sd">                (except when one dimension is a full slice like &#39;:&#39;).</span>
+<span class="sd">            IndexError: If index is out of bounds or tuple has wrong length.</span>
+<span class="sd">            TypeError: If index type is not supported.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Case 1: int -&gt; single section</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+        <span class="c1"># Case 2: slice -&gt; range of flattened sections</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+            <span class="n">total_sections</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">total_sections</span><span class="p">)[</span><span class="n">idx</span><span class="p">])</span>
+
+        <span class="c1"># Case 3: tuple (row_part, col_part)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
+                        <span class="s2">&quot;Grid section index tuple must have length 2: (row, col).&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">row_part</span><span class="p">,</span> <span class="n">col_part</span> <span class="o">=</span> <span class="n">idx</span>
+
+            <span class="c1"># Check if both parts are slices</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">row_part</span><span class="p">,</span> <span class="nb">slice</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col_part</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="c1"># Only allow if at least one is a full slice (:)</span>
+                <span class="n">row_is_full</span> <span class="o">=</span> <span class="n">row_part</span> <span class="o">==</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                <span class="n">col_is_full</span> <span class="o">=</span> <span class="n">col_part</span> <span class="o">==</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">row_is_full</span> <span class="ow">or</span> <span class="n">col_is_full</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="s2">&quot;Cannot slice in both dimensions simultaneously. &quot;</span>
+                            <span class="s2">&quot;Use grid[rows, col] or grid[row, cols], not grid[rows, cols].&quot;</span>
+                    <span class="p">)</span>
+
+            <span class="c1"># Convert to list of row indices</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">row_part</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">)[</span><span class="n">row_part</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="n">row_part</span><span class="p">]</span>
+
+            <span class="c1"># Convert to list of column indices</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col_part</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">)[</span><span class="n">col_part</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col_part</span><span class="p">]</span>
+
+            <span class="c1"># Generate section indices using _idx_ref_matrix (row-major order)</span>
+            <span class="n">sections</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+                    <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_idx_ref_matrix</span><span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">]))</span>
+
+            <span class="k">return</span> <span class="n">sections</span>
+
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid index type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_multi_section_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">section_indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get union of bounding boxes for multiple grid sections.</span>
+
+<span class="sd">        For each section index, retrieves the object-aware bounding box using</span>
+<span class="sd">        `_adv_get_grid_section_slices`, then computes the union (min of mins,</span>
+<span class="sd">        max of maxs) across all sections.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            section_indices: List of flattened section indices.</span>
+<span class="sd">            grid_info: Optional precomputed grid info table to avoid recomputation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:</span>
+<span class="sd">                - (min_rr, min_cc): Minimum pixel coordinates (top-left)</span>
+<span class="sd">                - (max_rr, max_cc): Maximum pixel coordinates (bottom-right)</span>
+<span class="sd">                These bounds encompass all objects in all specified sections.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Handle empty selection</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">section_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="n">min_rr_all</span><span class="p">,</span> <span class="n">max_rr_all</span><span class="p">,</span> <span class="n">min_cc_all</span><span class="p">,</span> <span class="n">max_cc_all</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_section_bounds_arrays</span><span class="p">(</span><span class="n">grid_info</span><span class="o">=</span><span class="n">grid_info</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">idx_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">section_indices</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Compute union: min of mins, max of maxs</span>
+        <span class="n">global_min_rr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">min_rr_all</span><span class="p">[</span><span class="n">idx_array</span><span class="p">]))</span>
+        <span class="n">global_min_cc</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">min_cc_all</span><span class="p">[</span><span class="n">idx_array</span><span class="p">]))</span>
+        <span class="n">global_max_rr</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">max_rr_all</span><span class="p">[</span><span class="n">idx_array</span><span class="p">]))</span>
+        <span class="n">global_max_cc</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">max_cc_all</span><span class="p">[</span><span class="n">idx_array</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">global_min_rr</span><span class="p">,</span> <span class="n">global_min_cc</span><span class="p">),</span> <span class="p">(</span><span class="n">global_max_rr</span><span class="p">,</span> <span class="n">global_max_cc</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_section_object_bounds_arrays</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute per-section object-union bounding box (NaN for empty sections).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="n">section_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span>
+
+        <span class="k">if</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">obj_min_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">section_count</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="n">obj_max_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">section_count</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="n">obj_min_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">section_count</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="n">obj_max_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">section_count</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">),</span> <span class="n">observed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+                        <span class="n">min_rr</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">),</span> <span class="s2">&quot;min&quot;</span><span class="p">),</span>
+                        <span class="n">max_rr</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">),</span> <span class="s2">&quot;max&quot;</span><span class="p">),</span>
+                        <span class="n">min_cc</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">),</span> <span class="s2">&quot;min&quot;</span><span class="p">),</span>
+                        <span class="n">max_cc</span><span class="o">=</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">),</span> <span class="s2">&quot;max&quot;</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                <span class="nb">int</span><span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">))</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span>
+                    <span class="nb">range</span><span class="p">(</span><span class="n">section_count</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">obj_min_rr</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;min_rr&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">obj_max_rr</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;max_rr&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">obj_min_cc</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;min_cc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">obj_max_cc</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;max_cc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">obj_min_rr</span><span class="p">,</span> <span class="n">obj_max_rr</span><span class="p">,</span> <span class="n">obj_min_cc</span><span class="p">,</span> <span class="n">obj_max_cc</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_section_bounds_arrays</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute per-section bounds using grid edges and object extents.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+
+        <span class="n">grid_min_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">row_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">ncols</span><span class="p">)</span>
+        <span class="n">grid_max_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">row_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">ncols</span><span class="p">)</span>
+        <span class="n">grid_min_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">col_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">nrows</span><span class="p">)</span>
+        <span class="n">grid_max_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">col_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">nrows</span><span class="p">)</span>
+
+        <span class="n">obj_min_rr</span><span class="p">,</span> <span class="n">obj_max_rr</span><span class="p">,</span> <span class="n">obj_min_cc</span><span class="p">,</span> <span class="n">obj_max_cc</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_section_object_bounds_arrays</span><span class="p">(</span><span class="n">grid_info</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">min_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obj_min_rr</span><span class="p">),</span> <span class="n">grid_min_rr</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">grid_min_rr</span><span class="p">,</span> <span class="n">obj_min_rr</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">max_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obj_max_rr</span><span class="p">),</span> <span class="n">grid_max_rr</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">grid_max_rr</span><span class="p">,</span> <span class="n">obj_max_rr</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">min_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obj_min_cc</span><span class="p">),</span> <span class="n">grid_min_cc</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">grid_min_cc</span><span class="p">,</span> <span class="n">obj_min_cc</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">max_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obj_max_cc</span><span class="p">),</span> <span class="n">grid_max_cc</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">grid_max_cc</span><span class="p">,</span> <span class="n">obj_max_cc</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">min_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">min_rr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">max_rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">max_rr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">min_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">min_cc</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">max_cc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">max_cc</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">min_rr</span><span class="p">,</span> <span class="n">max_rr</span><span class="p">,</span> <span class="n">min_cc</span><span class="p">,</span> <span class="n">max_cc</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_multi_section_labels</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">section_indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all object labels from multiple grid sections.</span>
+
+<span class="sd">        Retrieves the labels (object identifiers) for all objects belonging to</span>
+<span class="sd">        the specified sections. The returned list contains each label exactly</span>
+<span class="sd">        once, even if an object appears in multiple sections.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            section_indices: List of flattened section indices.</span>
+<span class="sd">            grid_info: Optional precomputed grid info table to avoid recomputation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[int]: List of unique object labels across all specified sections.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">section_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+            <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">section_indices</span><span class="p">),</span>
+            <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">labels</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="n">labels</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+<div class="viewcode-block" id="GridAccessor.__getitem__">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.__getitem__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">slice</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span> <span class="o">|</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">slice</span> <span class="o">|</span> <span class="nb">int</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract grid section(s) as a subimage.</span>
+
+<span class="sd">        Returns a cropped image corresponding to one or more grid sections. Supports</span>
+<span class="sd">        flexible indexing including single sections, row/column slices, and flattened</span>
+<span class="sd">        index ranges. The grid is indexed left-to-right, top-to-bottom (row-major order).</span>
+<span class="sd">        Only objects belonging to the specified grid sections are included. For multiple</span>
+<span class="sd">        sections, the subimage is cropped to the union of all section bounding boxes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx: Grid section identifier(s). Supported formats:</span>
+
+<span class="sd">                - int: Single flattened section index (0 to nrows*ncols-1).</span>
+<span class="sd">                  Example: grid[54] for center section in 8x12 grid.</span>
+<span class="sd">                - tuple[int, int]: Single section as (row_index, col_index).</span>
+<span class="sd">                  Example: grid[4, 6] for row 4, column 6.</span>
+<span class="sd">                - slice: Range of flattened section indices.</span>
+<span class="sd">                  Example: grid[0:12] for first row in 8x12 grid.</span>
+<span class="sd">                - tuple[int, slice]: Specific row, range of columns.</span>
+<span class="sd">                  Example: grid[2, 0:6] for row 2, columns 0-5.</span>
+<span class="sd">                - tuple[slice, int]: Range of rows, specific column.</span>
+<span class="sd">                  Example: grid[0:4, 3] for rows 0-3, column 3.</span>
+<span class="sd">                - tuple[slice, slice]: Slices in both dimensions (only if at least</span>
+<span class="sd">                  one is a full slice &#39;:&#39;). Examples: grid[2, :], grid[:, 5],</span>
+<span class="sd">                  grid[:, :], grid[:].</span>
+
+<span class="sd">                Note: Slicing in both dimensions is not allowed unless one is a</span>
+<span class="sd">                full slice. For example, grid[0:5, 2:7] raises ValueError.</span>
+<span class="sd">                Use grid[rows, col] OR grid[row, cols], but not grid[rows, cols].</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            phenotypic.Image: A subimage containing the selected grid section(s).</span>
+<span class="sd">                For a single section, pixels and objects are relative to that section&#39;s</span>
+<span class="sd">                top-left corner. For multiple sections, the image is cropped to the</span>
+<span class="sd">                union of all selected section bounding boxes, preserving complete</span>
+<span class="sd">                objects even if they extend beyond ideal grid boundaries. Object labels</span>
+<span class="sd">                are preserved for objects in the selected sections; objects from other</span>
+<span class="sd">                sections have their labels removed (set to 0). The subimage is marked</span>
+<span class="sd">                with IMAGE_TYPE=GRID_SECTION metadata. If no objects are present in</span>
+<span class="sd">                the parent image, returns a copy of the entire parent image.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            IndexError: If idx is out of bounds for the grid dimensions, or if idx</span>
+<span class="sd">                is a tuple with length != 2.</span>
+<span class="sd">            ValueError: If attempting to slice in both row AND column dimensions</span>
+<span class="sd">                simultaneously with non-full slices (e.g., grid[0:5, 2:7]).</span>
+<span class="sd">            TypeError: If idx is not a supported type.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            .. code-block:: python</span>
+
+<span class="sd">                # Single section by flattened index</span>
+<span class="sd">                top_left = grid_image.grid[0]</span>
+<span class="sd">                print(f&quot;Section size: {top_left.shape}&quot;)</span>
+
+<span class="sd">                # Single section by (row, col) indexing</span>
+<span class="sd">                center = grid_image.grid[4, 6]</span>
+
+<span class="sd">                # Flattened index slice - first row (sections 0-11 for 8x12 grid)</span>
+<span class="sd">                first_row = grid_image.grid[0:12]</span>
+
+<span class="sd">                # All columns in row 2</span>
+<span class="sd">                row_2 = grid_image.grid[2, :]</span>
+
+<span class="sd">                # All rows in column 5</span>
+<span class="sd">                col_5 = grid_image.grid[:, 5]</span>
+
+<span class="sd">                # Rows 0-3 in column 5</span>
+<span class="sd">                subset = grid_image.grid[0:4, 5]</span>
+
+<span class="sd">                # Row 2, columns 0-5</span>
+<span class="sd">                subset = grid_image.grid[2, 0:6]</span>
+
+<span class="sd">                # Every other section (step slicing)</span>
+<span class="sd">                checkerboard = grid_image.grid[::2]</span>
+
+<span class="sd">                # Full grid extraction</span>
+<span class="sd">                all_sections = grid_image.grid[:]</span>
+
+<span class="sd">                # This raises ValueError: cannot slice both dimensions</span>
+<span class="sd">                # grid_image.grid[0:5, 2:7]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Parse input to list of section indices</span>
+        <span class="n">section_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_slice_to_section_indices</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+        <span class="c1"># Handle empty image (no objects detected)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span>
+
+        <span class="c1"># Handle empty selection</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">section_indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Return empty image with parent&#39;s shape</span>
+            <span class="k">return</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span>
+
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="c1"># Get union bounding box for all selected sections</span>
+        <span class="n">min_coords</span><span class="p">,</span> <span class="n">max_coords</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_multi_section_bounds</span><span class="p">(</span>
+                <span class="n">section_indices</span><span class="p">,</span> <span class="n">grid_info</span><span class="o">=</span><span class="n">grid_info</span>
+        <span class="p">)</span>
+        <span class="n">min_rr</span><span class="p">,</span> <span class="n">min_cc</span> <span class="o">=</span> <span class="n">min_coords</span>
+        <span class="n">max_rr</span><span class="p">,</span> <span class="n">max_cc</span> <span class="o">=</span> <span class="n">max_coords</span>
+
+        <span class="c1"># Crop parent image to union bounds</span>
+
+        <span class="n">section_image</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__to_int</span><span class="p">(</span><span class="n">min_rr</span><span class="p">):</span><span class="bp">self</span><span class="o">.</span><span class="n">__to_int</span><span class="p">(</span><span class="n">max_rr</span><span class="p">),</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__to_int</span><span class="p">(</span><span class="n">min_cc</span><span class="p">):</span><span class="bp">self</span><span class="o">.</span><span class="n">__to_int</span><span class="p">(</span><span class="n">max_cc</span><span class="p">)]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Filter object map to only include selected sections</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">section_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">valid_labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_multi_section_labels</span><span class="p">(</span>
+                <span class="n">section_indices</span><span class="p">,</span> <span class="n">grid_info</span><span class="o">=</span><span class="n">grid_info</span>
+        <span class="p">)</span>
+        <span class="n">objmap</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">valid_labels</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">section_image</span><span class="o">.</span><span class="n">objmap</span> <span class="o">=</span> <span class="n">objmap</span>
+
+        <span class="c1"># Mark as grid section</span>
+        <span class="n">section_image</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">METADATA</span><span class="o">.</span><span class="n">IMAGE_TYPE</span><span class="p">]</span> <span class="o">=</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">GRID_SECTION</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="k">return</span> <span class="n">section_image</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__to_int</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Safely convert value to int, handling numpy scalars.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s1">&#39;item&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GridAccessor.get_centroid_alignment_info">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_centroid_alignment_info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_centroid_alignment_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate linear regression fit for colony centroids along a grid axis.</span>
+
+<span class="sd">        Computes the slope and intercept of a best-fit line through the centroids of</span>
+<span class="sd">        colonies arranged along a specified axis (rows or columns). This quantifies</span>
+<span class="sd">        alignment quality and any systematic drift in the pinned colony array. Uses</span>
+<span class="sd">        standard least-squares linear regression to fit the line: y = m*x + b.</span>
+
+<span class="sd">        For row-wise analysis (axis=0), the function groups colonies by their row</span>
+<span class="sd">        index and fits a line to the relationship between column position and column</span>
+<span class="sd">        coordinate. For column-wise analysis (axis=1), it groups by column index and</span>
+<span class="sd">        fits a line to the relationship between row position and row coordinate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            axis (int): Axis along which to compute alignment:</span>
+
+<span class="sd">                - 0: Row-wise alignment. For each row, measures how colony centers</span>
+<span class="sd">                  vary along the column (CC) axis as a function of their grid column</span>
+<span class="sd">                  position. Slope indicates pixels of drift per grid column.</span>
+<span class="sd">                - 1: Column-wise alignment. For each column, measures how colony</span>
+<span class="sd">                  centers vary along the row (RR) axis as a function of their grid</span>
+<span class="sd">                  row position. Slope indicates pixels of drift per grid row.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[np.ndarray, np.ndarray]: A tuple containing:</span>
+<span class="sd">                - m_slope (np.ndarray[float]): Slopes for each row or column. Length</span>
+<span class="sd">                  is nrows if axis=0, ncols if axis=1. Values represent pixels of</span>
+<span class="sd">                  drift per grid position unit. NaN indicates no colonies in that</span>
+<span class="sd">                  row/column, 0 indicates single colony with no drift measurable.</span>
+<span class="sd">                - b_intercept (np.ndarray): Y-intercepts for each row/column, rounded</span>
+<span class="sd">                  to nearest integer. NaN indicates no colonies in that row/column.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NoObjectsError: If the parent image contains no detected objects (colonies).</span>
+<span class="sd">            ValueError: If axis is neither 0 nor 1.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Analyze colony alignment across grid axes:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Check row alignment (horizontal drift of colonies across each row)</span>
+<span class="sd">            &gt;&gt;&gt; row_slopes, row_intercepts = grid_image.grid.get_centroid_alignment_info(axis=0)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Row alignment slopes (pixels/column): {row_slopes}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Check column alignment (vertical drift of colonies across each column)</span>
+<span class="sd">            &gt;&gt;&gt; col_slopes, col_intercepts = grid_image.grid.get_centroid_alignment_info(axis=1)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Column alignment slopes (pixels/row): {col_slopes}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Identify rows with significant drift indicating pinning issues</span>
+<span class="sd">            &gt;&gt;&gt; drift_threshold = 0.05  # pixels per grid position</span>
+<span class="sd">            &gt;&gt;&gt; problematic_rows = np.where(np.abs(row_slopes) &gt; drift_threshold)[0]</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Rows with significant drift: {problematic_rows}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NoObjectsError</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">num_vectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrows</span>
+            <span class="n">x_group</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)</span>
+            <span class="n">x_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)</span>
+            <span class="n">y_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">num_vectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span>
+            <span class="n">x_group</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)</span>
+            <span class="n">x_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_RR</span><span class="p">)</span>
+            <span class="n">y_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">CENTER_CC</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Axis should be 0 or 1.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># create persistent grid_info</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="c1"># allocate empty vectors to store m &amp; b for all values</span>
+        <span class="n">m_slope</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">num_vectors</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">b_intercept</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">num_vectors</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+        <span class="c1"># Collect slope &amp; intercept for the nrows or columns</span>
+        <span class="c1"># Use 2D covariance/variance method for finding linear regression</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_vectors</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">x_group</span><span class="p">]</span> <span class="o">==</span> <span class="n">idx</span><span class="p">,</span> <span class="n">x_val</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">x_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">x_group</span><span class="p">]</span> <span class="o">==</span> <span class="n">idx</span><span class="p">,</span> <span class="n">y_val</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">y_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="n">covariance</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_mean</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">y_mean</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">variance</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_mean</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">variance</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">m_slope</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">covariance</span> <span class="o">/</span> <span class="n">variance</span>
+                <span class="n">b_intercept</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_mean</span> <span class="o">-</span> <span class="n">m_slope</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">x_mean</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">m_slope</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">b_intercept</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">y_mean</span> <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">x_mean</span>
+
+        <span class="k">return</span> <span class="n">m_slope</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">b_intercept</span><span class="p">)</span></div>
+
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Grid Columns</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridAccessor.get_col_edges">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_col_edges">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the column boundary positions in pixel coordinates.</span>
+
+<span class="sd">        Returns the x-coordinates (column indices) that define the vertical boundaries</span>
+<span class="sd">        of each grid column in the image. For an ncols-column grid, returns ncols+1</span>
+<span class="sd">        boundary values: the left edge of column 0, internal boundaries between</span>
+<span class="sd">        adjacent columns, and the right edge of column ncols-1.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of strictly increasing column edge positions (pixel</span>
+<span class="sd">                column indices). Length is ncols+1. First value is 0 or the left edge</span>
+<span class="sd">                of the first column, last value is the image width or right boundary.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Retrieve and use column edge positions:</span>
+
+<span class="sd">            &gt;&gt;&gt; col_edges = grid_image.grid.get_col_edges()</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Column edges: {col_edges}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Output: [0.0, 106.5, 213.0, 319.5, ...]  for a 12-column grid</span>
+<span class="sd">            &gt;&gt;&gt; # Calculate column width</span>
+<span class="sd">            &gt;&gt;&gt; col_width = col_edges[1] - col_edges[0]</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Column width: {col_width} pixels&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Extract pixels for column 3</span>
+<span class="sd">            &gt;&gt;&gt; col_3_min, col_3_max = int(col_edges[3]), int(col_edges[4])</span>
+<span class="sd">            &gt;&gt;&gt; column_3_data = grid_image.gray[:, col_3_min:col_3_max]</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize grid column positions</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = plt.subplots()</span>
+<span class="sd">            &gt;&gt;&gt; ax.imshow(grid_image.gray)</span>
+<span class="sd">            &gt;&gt;&gt; ax.vlines(x=col_edges, ymin=0, ymax=grid_image.shape[0], colors=&#39;cyan&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.get_col_map">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_col_map">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_col_map</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an object map with objects labeled by their grid column number.</span>
+
+<span class="sd">        Creates a copy of the object map where each detected colony is relabeled</span>
+<span class="sd">        according to its grid column assignment. All pixels belonging to colonies</span>
+<span class="sd">        in the same grid column receive the same label. This is useful for</span>
+<span class="sd">        visualizing or analyzing all colonies in a particular column together.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 2D integer array with same shape as the parent image. Each</span>
+<span class="sd">                pixel belonging to a colony is set to that colony&#39;s grid column number</span>
+<span class="sd">                (1-indexed, ranging from 1 to ncols). Pixels not belonging to any</span>
+<span class="sd">                colony are 0. Can be passed directly to label2rgb for visualization.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Get and visualize column-labeled colony map:</span>
+
+<span class="sd">            &gt;&gt;&gt; col_map = grid_image.grid.get_col_map()</span>
+<span class="sd">            &gt;&gt;&gt; # All colonies in column 0 have value 1, column 1 have value 2, etc.</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Unique values in col_map: {np.unique(col_map)}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Output: [0, 1, 2, 3, ..., 12]  for a 12-column grid</span>
+<span class="sd">            &gt;&gt;&gt; # Count total pixels belonging to each column</span>
+<span class="sd">            &gt;&gt;&gt; for col_num in range(1, grid_image.grid.ncols + 1):</span>
+<span class="sd">            ...     col_pixels = np.sum(col_map == col_num)</span>
+<span class="sd">            ...     print(f&quot;Column {col_num}: {col_pixels} pixels&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize columns with distinct colors</span>
+<span class="sd">            &gt;&gt;&gt; from skimage.color import label2rgb</span>
+<span class="sd">            &gt;&gt;&gt; colored_columns = label2rgb(label=col_map, image=grid_image.gray[:])</span>
+<span class="sd">            &gt;&gt;&gt; plt.imshow(colored_columns)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+        <span class="n">col_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">col_bidx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="p">):</span>
+            <span class="n">subtable</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">)]</span> <span class="o">==</span> <span class="n">col_bidx</span><span class="p">,</span> <span class="p">:]</span>
+
+            <span class="c1"># Edit the new map&#39;s objects to equal the column number</span>
+            <span class="n">col_map</span><span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                        <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                        <span class="n">test_elements</span><span class="o">=</span><span class="n">subtable</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                <span class="p">)</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">col_map</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.show_column_overlay">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.show_column_overlay">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show_column_overlay</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">use_enhanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="n">show_grid</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize colonies with column-based color coding and optional grid overlay.</span>
+
+<span class="sd">        Displays the image with an overlay where each colony is colored according to</span>
+<span class="sd">        its grid column assignment. This helps visualize the column structure of the</span>
+<span class="sd">        pinned array and identify any column-wise positioning issues or misalignment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            use_enhanced (bool, optional): If True, use the detection matrix version</span>
+<span class="sd">                of the parent image (detect_mat) for better contrast and visibility.</span>
+<span class="sd">                If False, use the standard grayscale image (gray). Defaults to False.</span>
+<span class="sd">            show_grid (bool, optional): If True, overlay cyan dashed gridlines</span>
+<span class="sd">                marking the column and row boundaries. Defaults to True.</span>
+<span class="sd">            ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.</span>
+<span class="sd">                If None, a new figure and axes are created with the specified figsize.</span>
+<span class="sd">                Defaults to None.</span>
+<span class="sd">            figsize (tuple[int, int], optional): Figure size as (width, height) in inches,</span>
+<span class="sd">                only used when ax is None. Defaults to (9, 10).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure and</span>
+<span class="sd">                Axes objects. If ax was provided as input, the function returns the</span>
+<span class="sd">                created figure and the input ax object (not func_ax). If ax is None,</span>
+<span class="sd">                returns the newly created figure and axes.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Display column overlay visualization with options:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Display column overlay with gridlines</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = grid_image.grid.show_column_overlay(show_grid=True)</span>
+<span class="sd">            &gt;&gt;&gt; plt.title(&quot;Colony Array - Column Overlay&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; plt.show()</span>
+<span class="sd">            &gt;&gt;&gt; # Use enhanced image for better contrast</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = grid_image.grid.show_column_overlay(</span>
+<span class="sd">            ...     use_enhanced=True,</span>
+<span class="sd">            ...     show_grid=True,</span>
+<span class="sd">            ...     figsize=(12, 14)</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; # Plot on existing axes</span>
+<span class="sd">            &gt;&gt;&gt; fig, axes = plt.subplots(1, 2, figsize=(16, 10))</span>
+<span class="sd">            &gt;&gt;&gt; grid_image.grid.show_column_overlay(ax=axes[0])</span>
+<span class="sd">            &gt;&gt;&gt; grid_image.grid.show_row_overlay(ax=axes[1])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">func_ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">tight_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func_ax</span> <span class="o">=</span> <span class="n">ax</span>
+
+        <span class="n">func_ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">use_enhanced</span><span class="p">:</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                    <span class="n">label2rgb</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_col_map</span><span class="p">(),</span>
+                              <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:])</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                    <span class="n">label2rgb</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_col_map</span><span class="p">(),</span> <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:])</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_grid</span><span class="p">:</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">vlines</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">col_edges</span><span class="p">,</span>
+                    <span class="n">ymin</span><span class="o">=</span><span class="n">row_edges</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                    <span class="n">ymax</span><span class="o">=</span><span class="n">row_edges</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+                    <span class="n">colors</span><span class="o">=</span><span class="s2">&quot;c&quot;</span><span class="p">,</span>
+                    <span class="n">linestyles</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Grid Rows</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridAccessor.get_row_edges">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_row_edges">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the row boundary positions in pixel coordinates.</span>
+
+<span class="sd">        Returns the y-coordinates (row indices) that define the horizontal boundaries</span>
+<span class="sd">        of each grid row in the image. For an nrows-row grid, returns nrows+1</span>
+<span class="sd">        boundary values: the top edge of row 0, internal boundaries between</span>
+<span class="sd">        adjacent rows, and the bottom edge of row nrows-1.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 1D array of strictly increasing row edge positions (pixel</span>
+<span class="sd">                row indices). Length is nrows+1. First value is 0 or the top edge</span>
+<span class="sd">                of the first row, last value is the image height or bottom boundary.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Retrieve and use row edge positions:</span>
+
+<span class="sd">            &gt;&gt;&gt; row_edges = grid_image.grid.get_row_edges()</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Row edges: {row_edges}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Output: [0.0, 95.2, 190.4, 285.6, ...]  for an 8-row grid</span>
+<span class="sd">            &gt;&gt;&gt; # Calculate row height</span>
+<span class="sd">            &gt;&gt;&gt; row_height = row_edges[1] - row_edges[0]</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Row height: {row_height} pixels&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Extract pixels for row 4</span>
+<span class="sd">            &gt;&gt;&gt; row_4_min, row_4_max = int(row_edges[4]), int(row_edges[5])</span>
+<span class="sd">            &gt;&gt;&gt; row_4_data = grid_image.gray[row_4_min:row_4_max, :]</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize grid row positions</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = plt.subplots()</span>
+<span class="sd">            &gt;&gt;&gt; ax.imshow(grid_image.gray)</span>
+<span class="sd">            &gt;&gt;&gt; ax.hlines(y=row_edges, xmin=0, xmax=grid_image.shape[1], colors=&#39;cyan&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">grid_finder</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.get_row_map">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_row_map">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_row_map</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an object map with objects labeled by their grid row number.</span>
+
+<span class="sd">        Creates a copy of the object map where each detected colony is relabeled</span>
+<span class="sd">        according to its grid row assignment. All pixels belonging to colonies</span>
+<span class="sd">        in the same grid row receive the same label. This is useful for</span>
+<span class="sd">        visualizing or analyzing all colonies in a particular row together.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 2D integer array with same shape as the parent image. Each</span>
+<span class="sd">                pixel belonging to a colony is set to that colony&#39;s grid row number</span>
+<span class="sd">                (1-indexed, ranging from 1 to nrows). Pixels not belonging to any</span>
+<span class="sd">                colony are 0. Can be passed directly to label2rgb for visualization.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Get and visualize row-labeled colony map:</span>
+
+<span class="sd">            &gt;&gt;&gt; row_map = grid_image.grid.get_row_map()</span>
+<span class="sd">            &gt;&gt;&gt; # All colonies in row 0 have value 1, row 1 have value 2, etc.</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Unique values in row_map: {np.unique(row_map)}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Output: [0, 1, 2, 3, ..., 8]  for an 8-row grid</span>
+<span class="sd">            &gt;&gt;&gt; # Count total pixels belonging to each row</span>
+<span class="sd">            &gt;&gt;&gt; for row_num in range(1, grid_image.grid.nrows + 1):</span>
+<span class="sd">            ...     row_pixels = np.sum(row_map == row_num)</span>
+<span class="sd">            ...     print(f&quot;Row {row_num}: {row_pixels} pixels&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize rows with distinct colors</span>
+<span class="sd">            &gt;&gt;&gt; from skimage.color import label2rgb</span>
+<span class="sd">            &gt;&gt;&gt; colored_rows = label2rgb(label=row_map, image=grid_image.gray[:])</span>
+<span class="sd">            &gt;&gt;&gt; plt.imshow(colored_rows)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+        <span class="n">row_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">col_bidx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="p">):</span>
+            <span class="n">subtable</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span> <span class="o">==</span> <span class="n">col_bidx</span><span class="p">,</span> <span class="p">:]</span>
+
+            <span class="c1"># Edit the new map&#39;s objects to equal the column number</span>
+            <span class="n">row_map</span><span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                        <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                        <span class="n">test_elements</span><span class="o">=</span><span class="n">subtable</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                <span class="p">)</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">row_map</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.show_row_overlay">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.show_row_overlay">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show_row_overlay</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">use_enhanced</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="n">show_grid</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Visualize colonies with row-based color coding and optional grid overlay.</span>
+
+<span class="sd">        Displays the image with an overlay where each colony is colored according to</span>
+<span class="sd">        its grid row assignment. This helps visualize the row structure of the pinned</span>
+<span class="sd">        array and identify any row-wise positioning issues or misalignment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            use_enhanced (bool, optional): If True, use the detection matrix version</span>
+<span class="sd">                of the parent image (detect_mat) for better contrast and visibility.</span>
+<span class="sd">                If False, use the standard grayscale image (gray). Defaults to False.</span>
+<span class="sd">            show_grid (bool, optional): If True, overlay cyan dashed gridlines</span>
+<span class="sd">                marking the row and column boundaries. Defaults to True.</span>
+<span class="sd">            ax (plt.Axes | None, optional): Existing Matplotlib Axes object to plot into.</span>
+<span class="sd">                If None, a new figure and axes are created with the specified figsize.</span>
+<span class="sd">                Defaults to None.</span>
+<span class="sd">            figsize (tuple[int, int], optional): Figure size as (width, height) in inches,</span>
+<span class="sd">                only used when ax is None. Defaults to (9, 10).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: A tuple containing the Matplotlib Figure and</span>
+<span class="sd">                Axes objects. If ax is None, returns the created figure and axes.</span>
+<span class="sd">                If ax is provided, returns the created figure and the input ax object.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Display row overlay visualization with options:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Display row overlay with gridlines</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = grid_image.grid.show_row_overlay(show_grid=True)</span>
+<span class="sd">            &gt;&gt;&gt; plt.title(&quot;Colony Array - Row Overlay&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; plt.show()</span>
+<span class="sd">            &gt;&gt;&gt; # Use enhanced image for better contrast</span>
+<span class="sd">            &gt;&gt;&gt; fig, ax = grid_image.grid.show_row_overlay(</span>
+<span class="sd">            ...     use_enhanced=True,</span>
+<span class="sd">            ...     show_grid=True,</span>
+<span class="sd">            ...     figsize=(12, 14)</span>
+<span class="sd">            ... )</span>
+<span class="sd">            &gt;&gt;&gt; # Create side-by-side comparison</span>
+<span class="sd">            &gt;&gt;&gt; fig, axes = plt.subplots(1, 2, figsize=(16, 10))</span>
+<span class="sd">            &gt;&gt;&gt; grid_image.grid.show_column_overlay(ax=axes[0])</span>
+<span class="sd">            &gt;&gt;&gt; grid_image.grid.show_row_overlay(ax=axes[1])</span>
+<span class="sd">            &gt;&gt;&gt; plt.suptitle(&quot;Column vs Row Grid Visualization&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; plt.show()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">func_ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">tight_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func_ax</span> <span class="o">=</span> <span class="n">ax</span>
+
+        <span class="n">func_ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">use_enhanced</span><span class="p">:</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                    <span class="n">label2rgb</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_row_map</span><span class="p">(),</span>
+                              <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:])</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                    <span class="n">label2rgb</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_row_map</span><span class="p">(),</span>
+                              <span class="n">image</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:])</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_grid</span><span class="p">:</span>
+            <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+            <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+            <span class="n">func_ax</span><span class="o">.</span><span class="n">hlines</span><span class="p">(</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">row_edges</span><span class="p">,</span>
+                    <span class="n">xmin</span><span class="o">=</span><span class="n">col_edges</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                    <span class="n">xmax</span><span class="o">=</span><span class="n">col_edges</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+                    <span class="n">colors</span><span class="o">=</span><span class="s2">&quot;c&quot;</span><span class="p">,</span>
+                    <span class="n">linestyles</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">func_ax</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">func_ax</span></div>
+
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Grid Sections</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridAccessor.get_section_map">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_section_map">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_section_map</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an object map with objects labeled by their grid section number.</span>
+
+<span class="sd">        Creates a copy of the object map where each detected colony is relabeled</span>
+<span class="sd">        according to its grid section assignment (flattened grid index). Section</span>
+<span class="sd">        numbering is 0-indexed, ordered left-to-right, top-to-bottom (row-major).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: 2D integer array with same shape as the parent image. Each</span>
+<span class="sd">                pixel belonging to a colony is set to that colony&#39;s grid section</span>
+<span class="sd">                number (0-indexed, ranging from 0 to nrows*ncols-1). Pixels not</span>
+<span class="sd">                belonging to any colony are 0. Can be passed directly to label2rgb</span>
+<span class="sd">                for visualization.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Get and visualize section-labeled colony map:</span>
+
+<span class="sd">            &gt;&gt;&gt; section_map = grid_image.grid.get_section_map()</span>
+<span class="sd">            &gt;&gt;&gt; # For an 8x12 grid:</span>
+<span class="sd">            &gt;&gt;&gt; # Section 0: top-left (row 0, col 0)</span>
+<span class="sd">            &gt;&gt;&gt; # Section 11: top-right (row 0, col 11)</span>
+<span class="sd">            &gt;&gt;&gt; # Section 84: bottom-left (row 7, col 0)</span>
+<span class="sd">            &gt;&gt;&gt; # Section 95: bottom-right (row 7, col 11)</span>
+<span class="sd">            &gt;&gt;&gt; # Identify empty sections</span>
+<span class="sd">            &gt;&gt;&gt; empty_sections = []</span>
+<span class="sd">            &gt;&gt;&gt; for section_num in range(grid_image.grid.nrows * grid_image.grid.ncols):</span>
+<span class="sd">            ...     if np.sum(section_map == section_num) == 0:</span>
+<span class="sd">            ...         empty_sections.append(section_num)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Empty sections: {empty_sections}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Visualize section distribution</span>
+<span class="sd">            &gt;&gt;&gt; from skimage.color import label2rgb</span>
+<span class="sd">            &gt;&gt;&gt; colored_sections = label2rgb(label=section_map, image=grid_image.gray[:])</span>
+<span class="sd">            &gt;&gt;&gt; plt.imshow(colored_sections)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+
+        <span class="n">section_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">bidx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())):</span>
+            <span class="n">subtable</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">]</span> <span class="o">==</span> <span class="n">bidx</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="n">section_map</span><span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                        <span class="n">element</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                        <span class="n">test_elements</span><span class="o">=</span><span class="n">subtable</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+                <span class="p">)</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">section_map</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.get_section_counts">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_section_counts">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_section_counts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ascending</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Count the number of objects (colonies) in each grid section.</span>
+
+<span class="sd">        Returns a Series showing how many colonies were detected in each grid section,</span>
+<span class="sd">        sorted by count. Useful for quality control to identify problematic sections</span>
+<span class="sd">        with unexpected colony counts (e.g., empty sections, multiple colonies in</span>
+<span class="sd">        single pinned location, indicating pinning errors or detection artifacts).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ascending (bool, optional): If False (default), sort counts in descending</span>
+<span class="sd">                order (sections with most colonies first). If True, sort ascending</span>
+<span class="sd">                (fewest colonies first, useful for identifying empty sections).</span>
+<span class="sd">                Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.Series: A pandas Series where:</span>
+<span class="sd">                - Index: Grid section number (0 to nrows*ncols-1), unsorted sections</span>
+<span class="sd">                  (those with no colonies) are not included</span>
+<span class="sd">                - Values: Count of colonies in that section</span>
+<span class="sd">                - Index name: GRID.ROW_MAJOR_IDX constant</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Count and analyze colonies per grid section:</span>
+
+<span class="sd">            &gt;&gt;&gt; section_counts = grid_image.grid.get_section_counts()</span>
+<span class="sd">            &gt;&gt;&gt; # Find sections with multiple colonies (potential pinning errors)</span>
+<span class="sd">            &gt;&gt;&gt; problem_sections = section_counts[section_counts &gt; 1]</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Sections with multiple colonies: {problem_sections}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Output:</span>
+<span class="sd">            &gt;&gt;&gt; # SectionNum</span>
+<span class="sd">            &gt;&gt;&gt; # 5      2</span>
+<span class="sd">            &gt;&gt;&gt; # 12     3</span>
+<span class="sd">            &gt;&gt;&gt; # dtype: int64</span>
+<span class="sd">            &gt;&gt;&gt; # Find empty sections (no colony detected)</span>
+<span class="sd">            &gt;&gt;&gt; expected_sections = set(range(grid_image.grid.nrows * grid_image.grid.ncols))</span>
+<span class="sd">            &gt;&gt;&gt; detected_sections = set(section_counts.index)</span>
+<span class="sd">            &gt;&gt;&gt; empty_sections = expected_sections - detected_sections</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Empty sections: {empty_sections}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Statistics on detection completeness</span>
+<span class="sd">            &gt;&gt;&gt; num_expected = grid_image.grid.nrows * grid_image.grid.ncols</span>
+<span class="sd">            &gt;&gt;&gt; num_detected = len(section_counts)</span>
+<span class="sd">            &gt;&gt;&gt; completeness = 100 * num_detected / num_expected</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Array completeness: {completeness:.1f}%&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="n">ascending</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GridAccessor.get_info_by_section">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.get_info_by_section">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_info_by_section</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">section_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get grid information for colonies in a specific grid section.</span>
+
+<span class="sd">        Retrieves detailed colony information (bounding box coordinates, centroid,</span>
+<span class="sd">        area, etc.) for all objects within a given grid section. The section can be</span>
+<span class="sd">        specified either by flattened index or by (row, column) tuple. Returns an</span>
+<span class="sd">        empty DataFrame if no colonies are present in the requested section.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            section_number (int | tuple[int, int]): Grid section identifier:</span>
+
+<span class="sd">                - If int: flattened section index (0 to nrows*ncols-1)</span>
+<span class="sd">                - If tuple[int, int]: (row_index, col_index) pair specifying grid</span>
+<span class="sd">                  position, with both indices 0-based</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            pd.DataFrame: DataFrame with one row per colony in the specified section.</span>
+<span class="sd">                Contains the same columns as the info() method, including Object_Label,</span>
+<span class="sd">                CenterRR, CenterCC, bounding box coordinates, grid position columns</span>
+<span class="sd">                (RowNum, ColNum, SectionNum), and optionally metadata columns.</span>
+<span class="sd">                Returns empty DataFrame if section contains no colonies.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If section_number is neither an int nor a 2-tuple.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Retrieve colony information for specific grid sections:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Get colonies using flattened index (section 25)</span>
+<span class="sd">            &gt;&gt;&gt; section_info = grid_image.grid.get_info_by_section(25)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Colonies in section 25: {len(section_info)}&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Get colonies using (row, column) notation</span>
+<span class="sd">            &gt;&gt;&gt; # Get colonies in grid position (row=2, col=5)</span>
+<span class="sd">            &gt;&gt;&gt; section_info = grid_image.grid.get_info_by_section((2, 5))</span>
+<span class="sd">            &gt;&gt;&gt; if len(section_info) &gt; 0:</span>
+<span class="sd">            ...     # Analyze properties of colonies in this section</span>
+<span class="sd">            ...     colony = section_info.iloc[0]</span>
+<span class="sd">            ...     print(f&quot;Colony area: {colony[&#39;Area&#39;]} pixels&quot;)</span>
+<span class="sd">            ...     print(f&quot;Colony center: ({colony[&#39;CenterRR&#39;]}, {colony[&#39;CenterCC&#39;]})&quot;)</span>
+<span class="sd">            ... else:</span>
+<span class="sd">            ...     print(&quot;No colony detected in this section&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Find largest colony in section 10</span>
+<span class="sd">            &gt;&gt;&gt; section_10 = grid_image.grid.get_info_by_section(10)</span>
+<span class="sd">            &gt;&gt;&gt; if len(section_10) &gt; 0:</span>
+<span class="sd">            ...     largest = section_10.loc[section_10[&#39;Area&#39;].idxmax()]</span>
+<span class="sd">            ...     print(f&quot;Largest colony: label={largest.name}, area={largest[&#39;Area&#39;]}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">section_number</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>  <span class="c1"># Access by section number</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+                <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">==</span> <span class="n">section_number</span><span class="p">,</span> <span class="p">:</span>
+            <span class="p">]</span>
+        <span class="k">elif</span> <span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">section_number</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">section_number</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="p">):</span>  <span class="c1"># Access by row and col number</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+                <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span> <span class="o">==</span> <span class="n">section_number</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span>
+            <span class="p">]</span>
+            <span class="k">return</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+                <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">)]</span> <span class="o">==</span> <span class="n">section_number</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">:</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Section index should be int or a tuple of label_subset&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_naive_get_grid_section_slices</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal method: get pixel slices for a grid section based on grid edges.</span>
+
+<span class="sd">        Returns the exact pixel boundaries of a grid section without considering</span>
+<span class="sd">        the actual objects within it. Uses grid edge positions to determine section</span>
+<span class="sd">        bounds. This may result in cropping objects that extend beyond the grid</span>
+<span class="sd">        section boundaries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx (int): Flattened grid section index (0 to nrows*ncols-1).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:</span>
+<span class="sd">                - (min_row, min_col): Minimum pixel coordinates (top-left corner)</span>
+<span class="sd">                - (max_row, max_col): Maximum pixel coordinates (bottom-right corner)</span>
+<span class="sd">                These values can be used for slicing the parent image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row_edges</span><span class="p">,</span> <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+        <span class="n">row_pos</span><span class="p">,</span> <span class="n">col_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_idx_ref_matrix</span> <span class="o">==</span> <span class="n">idx</span><span class="p">)</span>
+        <span class="n">min_cc</span> <span class="o">=</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">col_pos</span><span class="p">]</span>
+        <span class="n">max_cc</span> <span class="o">=</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">col_pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">min_rr</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">row_pos</span><span class="p">]</span>
+        <span class="n">max_rr</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">row_pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">min_rr</span><span class="p">,</span> <span class="n">min_cc</span><span class="p">),</span> <span class="p">(</span><span class="n">max_rr</span><span class="p">,</span> <span class="n">max_cc</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adv_get_grid_section_slices</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal method: get pixel slices for a grid section accounting for object boundaries.</span>
+
+<span class="sd">        Returns pixel boundaries for a grid section, expanded if necessary to fully</span>
+<span class="sd">        include all objects that belong to this section. This preserves complete</span>
+<span class="sd">        objects that might extend slightly beyond the ideal grid boundaries, and</span>
+<span class="sd">        clips to image boundaries.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx (int): Flattened grid section index (0 to nrows*ncols-1).</span>
+<span class="sd">            grid_info (pd.DataFrame | None): Optional precomputed grid info table.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[tuple[float, float], tuple[float, float]]: A tuple containing:</span>
+<span class="sd">                - (min_row, min_col): Minimum pixel coordinates (top-left corner)</span>
+<span class="sd">                - (max_row, max_col): Maximum pixel coordinates (bottom-right corner)</span>
+<span class="sd">                Coordinates are clipped to valid image boundaries [0, image_width/height].</span>
+<span class="sd">                These values can be used for slicing the parent image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">grid_min</span><span class="p">,</span> <span class="n">grid_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_naive_get_grid_section_slices</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="n">grid_min_rr</span><span class="p">,</span> <span class="n">grid_min_cc</span> <span class="o">=</span> <span class="n">grid_min</span>
+        <span class="n">grid_max_rr</span><span class="p">,</span> <span class="n">grid_max_cc</span> <span class="o">=</span> <span class="n">grid_max</span>
+
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+        <span class="n">section_info</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+            <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">==</span> <span class="n">idx</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="n">obj_min_cc</span> <span class="o">=</span> <span class="n">section_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">min_cc</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">grid_min_cc</span><span class="p">,</span> <span class="n">obj_min_cc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">min_cc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">min_cc</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">obj_max_cc</span> <span class="o">=</span> <span class="n">section_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">max_cc</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">grid_max_cc</span><span class="p">,</span> <span class="n">obj_max_cc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_cc</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">max_cc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="n">obj_min_rr</span> <span class="o">=</span> <span class="n">section_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">min_rr</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">grid_min_rr</span><span class="p">,</span> <span class="n">obj_min_rr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">min_rr</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">min_rr</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">obj_max_rr</span> <span class="o">=</span> <span class="n">section_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">)]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">max_rr</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">grid_max_rr</span><span class="p">,</span> <span class="n">obj_max_rr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_rr</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">max_rr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">min_rr</span><span class="p">,</span> <span class="n">min_cc</span><span class="p">),</span> <span class="p">(</span><span class="n">max_rr</span><span class="p">,</span> <span class="n">max_cc</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_section_labels</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal method: get object labels belonging to a grid section.</span>
+
+<span class="sd">        Retrieves all object labels (colony identifiers) that are assigned to</span>
+<span class="sd">        the specified grid section based on centroid-based grid assignment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            idx (int): Flattened grid section index (0 to nrows*ncols-1).</span>
+<span class="sd">            grid_info (pd.DataFrame | None): Optional precomputed grid info table.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[int]: List of object labels assigned to this grid section.</span>
+<span class="sd">                Returns empty list if no colonies are in the section.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">grid_info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+        <span class="n">section_info</span> <span class="o">=</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+            <span class="n">grid_info</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span> <span class="o">==</span> <span class="n">idx</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">section_info</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_gridline_shapes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build line shape arrays for all grid boundaries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[np.ndarray]: List of 2x2 arrays ``[[row_start, col_start],</span>
+<span class="sd">                [row_end, col_end]]``, one per grid edge. Produces</span>
+<span class="sd">                ``(ncols + 1) + (nrows + 1)`` lines total.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+        <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Vertical lines span from first row edge to last row edge</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">col_edges</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">row_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="p">],</span> <span class="p">[</span><span class="n">row_edges</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="p">]]))</span>
+
+        <span class="c1"># Horizontal lines span from first col edge to last col edge</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">row_edges</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">r</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="n">col_edges</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]]))</span>
+
+        <span class="k">return</span> <span class="n">lines</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_section_box_shapes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build rectangle shapes and per-section colors for all grid sections.</span>
+
+<span class="sd">        Uses grid edge positions so every section gets a box regardless of</span>
+<span class="sd">        whether colonies are detected. Colors cycle through the ``tab20``</span>
+<span class="sd">        colormap.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[list[np.ndarray], list[np.ndarray]]: A tuple of</span>
+<span class="sd">                ``(rectangles, colors)`` where each rectangle is a 4x2 array</span>
+<span class="sd">                of corner vertices and each color is an RGBA array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">()</span>
+        <span class="n">col_edges</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">()</span>
+        <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s2">&quot;tab20&quot;</span><span class="p">)</span>
+
+        <span class="n">rectangles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">colors</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">ri</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">r0</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">ri</span><span class="p">]</span>
+            <span class="n">r1</span> <span class="o">=</span> <span class="n">row_edges</span><span class="p">[</span><span class="n">ri</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">col_edges</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">c0</span> <span class="o">=</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">ci</span><span class="p">]</span>
+                <span class="n">c1</span> <span class="o">=</span> <span class="n">col_edges</span><span class="p">[</span><span class="n">ci</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="n">rectangles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">r0</span><span class="p">,</span> <span class="n">c0</span><span class="p">],</span> <span class="p">[</span><span class="n">r0</span><span class="p">,</span> <span class="n">c1</span><span class="p">],</span> <span class="p">[</span><span class="n">r1</span><span class="p">,</span> <span class="n">c1</span><span class="p">],</span> <span class="p">[</span><span class="n">r1</span><span class="p">,</span> <span class="n">c0</span><span class="p">]])</span>
+                <span class="p">)</span>
+                <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cmap</span><span class="p">(</span><span class="n">idx</span> <span class="o">%</span> <span class="mi">20</span><span class="p">)))</span>
+                <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">rectangles</span><span class="p">,</span> <span class="n">colors</span>
+
+<div class="viewcode-block" id="GridAccessor.napari">
+<a class="viewcode-back" href="../../../../../api_reference/core/grid_image_methods.html#phenotypic._core._image_parts.accessors._grid_accessor.GridAccessor.napari">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">napari</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reset</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">viewer</span><span class="p">:</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show_grid</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">gridline_color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cyan&quot;</span><span class="p">,</span>
+        <span class="n">gridline_edge_width</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">section_box_edge_width</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">opacity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add grid overlay layers to a persistent global napari viewer.</span>
+
+<span class="sd">        Creates or reuses a single napari viewer instance and adds Shapes</span>
+<span class="sd">        layers for gridlines and section boxes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Optional custom name used in layer naming. If None, uses the</span>
+<span class="sd">                image&#39;s ``name`` attribute. Defaults to None.</span>
+<span class="sd">            reset: If True, closes the current napari viewer and creates a</span>
+<span class="sd">                fresh one. Defaults to False.</span>
+<span class="sd">            viewer: Optional external napari viewer instance to use instead of</span>
+<span class="sd">                the global viewer. When provided, global viewer management is</span>
+<span class="sd">                bypassed. Defaults to None.</span>
+<span class="sd">            show_grid: If True, add Shapes layers with gridlines and</span>
+<span class="sd">                colored section box rectangles. Defaults to True.</span>
+<span class="sd">            gridline_color: Edge color for gridlines (any napari color spec).</span>
+<span class="sd">                Defaults to ``&quot;cyan&quot;``.</span>
+<span class="sd">            gridline_edge_width: Stroke width in pixels for gridlines.</span>
+<span class="sd">                Defaults to 2.0.</span>
+<span class="sd">            section_box_edge_width: Stroke width in pixels for section box</span>
+<span class="sd">                edges. Defaults to 2.0.</span>
+<span class="sd">            opacity: Layer opacity from 0.0 (transparent) to 1.0 (opaque).</span>
+<span class="sd">                Defaults to 1.0.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            napari.Viewer: The global napari viewer instance with grid layers.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ImportError: If napari is not installed.</span>
+<span class="sd">            ValueError: If opacity is not in [0.0, 1.0].</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Overlay grid on a grayscale image:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">            &gt;&gt;&gt; gi = load_synth_yeast_plate()</span>
+<span class="sd">            &gt;&gt;&gt; viewer = gi.gray.napari()</span>
+<span class="sd">            &gt;&gt;&gt; viewer = gi.grid.napari()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">opacity</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;opacity must be in range [0.0, 1.0], got </span><span class="si">{</span><span class="n">opacity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts._image_accessor_base</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">_HAS_NAPARI</span><span class="p">,</span>
+            <span class="n">_viewer_is_alive</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">_image_accessor_base</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_HAS_NAPARI</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;napari is required for interactive visualization. &quot;</span>
+                <span class="s2">&quot;Install with: pip install phenotypic[napari]&quot;</span>
+            <span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">napari</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_napari</span>
+
+        <span class="c1"># Determine active viewer</span>
+        <span class="k">if</span> <span class="n">viewer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">active_viewer</span> <span class="o">=</span> <span class="n">viewer</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">active_viewer</span> <span class="o">=</span> <span class="n">_image_accessor_base</span><span class="o">.</span><span class="n">_global_napari_viewer</span>
+
+            <span class="c1"># Reset viewer if requested</span>
+            <span class="k">if</span> <span class="n">reset</span> <span class="ow">and</span> <span class="n">_viewer_is_alive</span><span class="p">(</span><span class="n">active_viewer</span><span class="p">):</span>
+                <span class="n">active_viewer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="n">_image_accessor_base</span><span class="o">.</span><span class="n">_global_napari_viewer</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">active_viewer</span> <span class="o">=</span> <span class="kc">None</span>
+
+            <span class="c1"># Create new viewer if needed</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_viewer_is_alive</span><span class="p">(</span><span class="n">active_viewer</span><span class="p">):</span>
+                <span class="n">active_viewer</span> <span class="o">=</span> <span class="n">_napari</span><span class="o">.</span><span class="n">Viewer</span><span class="p">()</span>
+                <span class="n">_image_accessor_base</span><span class="o">.</span><span class="n">_global_napari_viewer</span> <span class="o">=</span> <span class="n">active_viewer</span>
+
+        <span class="c1"># Resolve layer name prefix</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">image_name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">image_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_grid</span><span class="p">:</span>
+            <span class="c1"># --- Gridlines layer ---</span>
+            <span class="n">gridline_layer_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;grid_</span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">_gridlines&quot;</span>
+            <span class="n">gridline_shapes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_gridline_shapes</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">layer</span> <span class="o">=</span> <span class="n">active_viewer</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">gridline_layer_name</span><span class="p">]</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">gridline_shapes</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">edge_color</span> <span class="o">=</span> <span class="n">gridline_color</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">edge_width</span> <span class="o">=</span> <span class="n">gridline_edge_width</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">opacity</span> <span class="o">=</span> <span class="n">opacity</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">active_viewer</span><span class="o">.</span><span class="n">add_shapes</span><span class="p">(</span>
+                    <span class="n">gridline_shapes</span><span class="p">,</span>
+                    <span class="n">shape_type</span><span class="o">=</span><span class="s2">&quot;line&quot;</span><span class="p">,</span>
+                    <span class="n">edge_color</span><span class="o">=</span><span class="n">gridline_color</span><span class="p">,</span>
+                    <span class="n">edge_width</span><span class="o">=</span><span class="n">gridline_edge_width</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">gridline_layer_name</span><span class="p">,</span>
+                    <span class="n">opacity</span><span class="o">=</span><span class="n">opacity</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="c1"># --- Section boxes layer ---</span>
+            <span class="n">section_layer_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;grid_</span><span class="si">{</span><span class="n">image_name</span><span class="si">}</span><span class="s2">_sections&quot;</span>
+            <span class="n">section_rectangles</span><span class="p">,</span> <span class="n">section_colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_section_box_shapes</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">layer</span> <span class="o">=</span> <span class="n">active_viewer</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">section_layer_name</span><span class="p">]</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">section_rectangles</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">edge_color</span> <span class="o">=</span> <span class="n">section_colors</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">edge_width</span> <span class="o">=</span> <span class="n">section_box_edge_width</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">opacity</span> <span class="o">=</span> <span class="n">opacity</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">active_viewer</span><span class="o">.</span><span class="n">add_shapes</span><span class="p">(</span>
+                    <span class="n">section_rectangles</span><span class="p">,</span>
+                    <span class="n">shape_type</span><span class="o">=</span><span class="s2">&quot;rectangle&quot;</span><span class="p">,</span>
+                    <span class="n">edge_color</span><span class="o">=</span><span class="n">section_colors</span><span class="p">,</span>
+                    <span class="n">face_color</span><span class="o">=</span><span class="s2">&quot;transparent&quot;</span><span class="p">,</span>
+                    <span class="n">edge_width</span><span class="o">=</span><span class="n">section_box_edge_width</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">section_layer_name</span><span class="p">,</span>
+                    <span class="n">opacity</span><span class="o">=</span><span class="n">opacity</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">active_viewer</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

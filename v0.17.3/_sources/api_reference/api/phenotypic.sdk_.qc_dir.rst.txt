@@ -1,0 +1,6 @@
+phenotypic.sdk\_.qc\_dir
+========================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: qc_dir

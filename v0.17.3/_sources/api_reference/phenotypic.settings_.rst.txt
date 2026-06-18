@@ -1,0 +1,7 @@
+phenotypic.settings\_ package
+=============================
+
+.. automodule:: phenotypic.settings_
+   :members:
+   :show-inheritance:
+   :undoc-members:

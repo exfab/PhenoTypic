@@ -1,0 +1,888 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._scoring._scorer &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_scoring/_scorer';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.3';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.3/_modules/phenotypic/tune/_scoring/_scorer.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._scoring._scorer</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._scoring._scorer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The pluggable scoring objective — a pydantic ABC.</span>
+
+<span class="sd">A ``Scorer`` emits one image&#39;s **natural per-term values** (``_score_terms``);</span>
+<span class="sd">the base-class template method ``score_image`` orients each term into bounded</span>
+<span class="sd">**cost** ``∈ [0, 1]`` (``0`` = perfect, ``1`` = worst) via the shared</span>
+<span class="sd">:func:`~phenotypic.tune._scoring._orient.to_cost`, reading the scorer&#39;s</span>
+<span class="sd">``_TERM_SENSE`` and optional ``_term_anchor``. The ``Evaluator`` collects the</span>
+<span class="sd">per-image cost terms across a calibration set, robust-aggregates each term</span>
+<span class="sd">(``median + λ·IQR``, clamped to ``[0, 1]``), then asks the scorer to</span>
+<span class="sd">``finalize`` the aggregated terms into the single scalar **the optimizer</span>
+<span class="sd">minimizes**. ``availability`` lets a scorer report that it cannot run (e.g.</span>
+<span class="sd">missing metadata) so the engine can degrade gracefully.</span>
+
+<span class="sd">Authoring a new ``Scorer`` (the canonical contract — kept in sync with</span>
+<span class="sd">``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):</span>
+
+<span class="sd">  1. Implement ``_score_terms(image, measurements) -&gt; dict[str, float]``</span>
+<span class="sd">     returning your **natural** per-term values — do **not** flip or normalize</span>
+<span class="sd">     by hand.</span>
+<span class="sd">  2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the</span>
+<span class="sd">     default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).</span>
+<span class="sd">  3. Override ``_term_anchor`` **only** if a term is unbounded, returning the</span>
+<span class="sd">     half-cost scale (for a QC-backed term, its check&#39;s ``fail_threshold``);</span>
+<span class="sd">     bounded ``[0, 1]`` terms need nothing.</span>
+<span class="sd">  4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,</span>
+<span class="sd">     default weights are framework-derived).</span>
+<span class="sd">  5. Register: re-export from ``tune/__init__.py`` and the class registry, or</span>
+<span class="sd">     the GUI and ``from_json`` cannot see it.</span>
+
+<span class="sd">The framework then orients (``to_cost``), robust-aggregates, reduces per child,</span>
+<span class="sd">and combines (augmented Tchebycheff) — the author writes none of that.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeAlias</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">polymorphic_field</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sense</span><span class="p">,</span> <span class="n">to_cost</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">project_objectives_to_scalar</span><span class="p">(</span><span class="n">mapping</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project a named-objectives mapping to its mean scalar (``0.0`` if empty).</span>
+
+<span class="sd">    The single canonical &quot;mean of a dict&#39;s values, ``0.0`` for an empty dict&quot;</span>
+<span class="sd">    reduction shared by every multi-objective → scalar projection: the</span>
+<span class="sd">    :meth:`Scorer.finalize` default, ``CompositeScorer._as_scalar``, and the</span>
+<span class="sd">    ``Evaluator``&#39;s ``_project_finalize`` sidecar all collapse a dict of named</span>
+<span class="sd">    objectives the same way (lower = better cost, ``0.0`` is the best and the</span>
+<span class="sd">    empty-mapping default).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mapping: Objective name → value (the robust-aggregated terms, or a</span>
+<span class="sd">            scorer&#39;s named-objectives sidecar).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``mean(mapping.values())`` as a ``float``; ``0.0`` for an empty mapping</span>
+<span class="sd">        (a perfect/empty cost).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">mapping</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="Scorer">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Scorer</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for tuning objectives (no-GT, supervised, reference-free, …).</span>
+
+<span class="sd">    **Orientation is a base-class template method (the one cost boundary).** A</span>
+<span class="sd">    scorer emits its *natural* per-term values in :meth:`_score_terms` (a</span>
+<span class="sd">    divergence stays a divergence; Dice stays Dice), declares the *sense* of</span>
+<span class="sd">    those values once via :attr:`_TERM_SENSE`, and the base :meth:`score_image`</span>
+<span class="sd">    wraps each term into **cost ∈ [0,1]** (``0`` perfect, ``1`` worst, lower is</span>
+<span class="sd">    better — the optimizer minimizes) via the shared :func:`to_cost` helper.</span>
+
+<span class="sd">    To add a scorer (the canonical contract — kept in sync with</span>
+<span class="sd">    ``tune/CLAUDE.md`` and ``docs/source/contrib_guide/contributing.rst``):</span>
+
+<span class="sd">    1. Implement ``_score_terms(image, measurements) -&gt; dict[str, float]``</span>
+<span class="sd">       returning your **natural** per-term values — do **not** flip or normalize</span>
+<span class="sd">       by hand.</span>
+<span class="sd">    2. Declare ``_TERM_SENSE`` (``Sense.LOWER_BETTER`` if larger = worse — the</span>
+<span class="sd">       default; ``Sense.HIGHER_BETTER`` if larger = better, e.g. Dice/ICC).</span>
+<span class="sd">    3. Override ``_term_anchor`` **only** if a term is unbounded, returning the</span>
+<span class="sd">       half-cost scale (for a QC-backed term, its check&#39;s ``fail_threshold``);</span>
+<span class="sd">       bounded ``[0, 1]`` terms need nothing.</span>
+<span class="sd">    4. Do **not** add scalarization parameters (``ε``, ``ρ``, normalization,</span>
+<span class="sd">       default weights are framework-derived).</span>
+<span class="sd">    5. Register: re-export from ``tune/__init__.py`` and the class registry, or</span>
+<span class="sd">       the GUI and ``from_json`` cannot see it.</span>
+
+<span class="sd">    The framework then orients (``to_cost``), robust-aggregates, reduces per</span>
+<span class="sd">    child, and combines (augmented Tchebycheff) — the author writes none of that.</span>
+
+<span class="sd">    Production scorers must be **stateless** across :meth:`score_image` calls:</span>
+<span class="sd">    the engine reuses one scorer instance for every trial, so per-trial mutable</span>
+<span class="sd">    state would bleed across candidates. (A test double that deliberately returns</span>
+<span class="sd">    a preset sequence via a private cursor is the documented exception.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1">#: Sense of this scorer&#39;s natural per-term values (v1: uniform per scorer).</span>
+    <span class="c1">#: ``LOWER_BETTER`` is cost-native — a raw-loss scorer needs no annotation; a</span>
+    <span class="c1">#: goodness-emitting scorer must declare ``HIGHER_BETTER``.</span>
+    <span class="n">_TERM_SENSE</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Sense</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sense</span><span class="o">.</span><span class="n">LOWER_BETTER</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;This scorer&#39;s **natural** per-term values (its own convention).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The (already-processed) image — duck-typed; reference-free</span>
+<span class="sd">                scorers read its mask/objmap, the ``QCScorer`` ignores it.</span>
+<span class="sd">            measurements: The measurement frame the candidate pipeline produced</span>
+<span class="sd">                for ``image`` (the output of ``ImagePipeline.measure``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping of term name → natural value for this image (its own</span>
+<span class="sd">            sense, not yet oriented to cost). Keys must be stable across images</span>
+<span class="sd">            so the ``Evaluator`` can aggregate per term.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_term_anchor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">term</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The half-cost anchor for an unbounded term, else ``None``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            term: The term name from :meth:`_score_terms`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``None`` when the term is already bounded in ``[0,1]`` (the default —</span>
+<span class="sd">            no anchoring); a positive float (the half-cost scale) for an</span>
+<span class="sd">            unbounded magnitude that :func:`to_cost` should threshold-anchor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="Scorer.score_image">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.score_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Orient this scorer&#39;s natural terms into **cost ∈ [0,1]** (lower = better).</span>
+
+<span class="sd">        The single orientation point: each natural term from</span>
+<span class="sd">        :meth:`_score_terms` is mapped to cost via :func:`to_cost`, using this</span>
+<span class="sd">        scorer&#39;s :attr:`_TERM_SENSE` and :meth:`_term_anchor`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: The processed image (passed through to :meth:`_score_terms`).</span>
+<span class="sd">            measurements: The candidate pipeline&#39;s measurement frame.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A mapping of term name → cost in ``[0,1]`` (``0`` perfect, ``1``</span>
+<span class="sd">            worst). Keys are stable across images for per-term aggregation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="n">term</span><span class="p">:</span> <span class="n">to_cost</span><span class="p">(</span>
+                <span class="n">value</span><span class="p">,</span> <span class="n">sense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_TERM_SENSE</span><span class="p">,</span> <span class="n">anchor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_term_anchor</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">term</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score_terms</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">measurements</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="Scorer.availability">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.availability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether this scorer can run as configured (default: yes).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` if scoring is possible; subclasses override to report a</span>
+<span class="sd">            missing prerequisite (e.g. a layout frame the ``QCScorer`` needs).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="Scorer.finalize">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Scorer.finalize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Combine robust-aggregated per-term scores into the optimizer objective.</span>
+
+<span class="sd">        The default is the arithmetic mean of the term values — a single scalar</span>
+<span class="sd">        (a single term passes through unchanged); composite single-objective</span>
+<span class="sd">        scorers override to weight terms. A **multi-objective** scorer (plan §0a)</span>
+<span class="sd">        may instead return a ``dict[str, float]`` of *named objectives*: the</span>
+<span class="sd">        ``Evaluator`` then stashes that dict on ``EvaluationResult.objectives``</span>
+<span class="sd">        and projects it to the scalar ``score`` as ``mean(objectives.values())``.</span>
+<span class="sd">        The single-objective scalar path is byte-identical — the dict branch only</span>
+<span class="sd">        fires when an override returns a dict.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            terms: Term name → robust-aggregated score (already reduced across</span>
+<span class="sd">                the calibration set by the ``Evaluator``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The scalar objective **cost** (lower = better; ``0.0`` for no terms)</span>
+<span class="sd">            for single-objective scorers, or a ``dict[str, float]`` of named</span>
+<span class="sd">            objectives for a multi-objective scorer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">project_objectives_to_scalar</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1">#: A ``Scorer``-valued field that round-trips any subclass via the ``phenotypic``</span>
+<span class="c1">#: class registry (Phase-0 ``polymorphic_field`` + ``_find_class_in_phenotypic``</span>
+<span class="c1">#: += ``phenotypic.tune``). Defined here — beside the ``Scorer`` base it widens,</span>
+<span class="c1">#: the lowest module in the ``_scoring`` import graph — so both ``CompositeScorer``</span>
+<span class="c1">#: (``_composite``) and ``TuningSpec`` (``_spec``) consume one canonical field</span>
+<span class="c1">#: without either re-building it. Typed ``TypeAlias`` so mypy accepts the</span>
+<span class="c1">#: ``Annotated`` core (erased to ``Any``) as a field annotation — the</span>
+<span class="c1">#: ``AfterValidator`` restores the runtime guard.</span>
+<span class="n">ScorerField</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Any</span>  <span class="c1"># = polymorphic_field(base=Scorer); see below</span>
+<span class="n">ScorerField</span> <span class="o">=</span> <span class="n">polymorphic_field</span><span class="p">(</span><span class="n">base</span><span class="o">=</span><span class="n">Scorer</span><span class="p">)</span>  <span class="c1"># type: ignore[misc]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

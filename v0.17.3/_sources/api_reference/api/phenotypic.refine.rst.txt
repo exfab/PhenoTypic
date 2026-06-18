@@ -1,0 +1,59 @@
+﻿phenotypic.refine
+=================
+
+.. automodule:: phenotypic.refine
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      TrimAsymmetry
+      RemoveBorderObjects
+      KeepNearestCenter
+      ExtractColonyCore
+      GridAlignmentRefiner
+      GridOversizedObjectRemover
+      RemoveLowCircularity
+      ManualRefine
+      MaskClosing
+      MaskDilation
+      MaskErosion
+      MaskFill
+      MaskGradient
+      MaskOpening
+      ReduceSectionsByLine
+      NearestNeighborMerger
+      RemoveGridOutliers
+      SeparateObjects
+      RefineBySineFit
+      Skeletonize
+      SmallObjectRemover
+      SmallToLargeMerger
+      Thinning
+      MergeFragmentChains
+      MaskWhiteTophat
+      KeepSectionLargest
+      RemoveByFeature
+   
+   
+
+   
+   
+   
+
+
+

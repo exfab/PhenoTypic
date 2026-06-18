@@ -1,0 +1,6 @@
+phenotypic.sdk\_.master\_measurements\_csv\_path
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: master_measurements_csv_path

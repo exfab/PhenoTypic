@@ -1,0 +1,62 @@
+phenotypic.abc\_.BackgroundSubtraction
+======================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: BackgroundSubtraction
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BackgroundSubtraction.__init__
+      ~BackgroundSubtraction.apply
+      ~BackgroundSubtraction.construct
+      ~BackgroundSubtraction.copy
+      ~BackgroundSubtraction.dict
+      ~BackgroundSubtraction.from_json
+      ~BackgroundSubtraction.from_orm
+      ~BackgroundSubtraction.json
+      ~BackgroundSubtraction.model_construct
+      ~BackgroundSubtraction.model_copy
+      ~BackgroundSubtraction.model_dump
+      ~BackgroundSubtraction.model_dump_json
+      ~BackgroundSubtraction.model_json_schema
+      ~BackgroundSubtraction.model_parametrized_name
+      ~BackgroundSubtraction.model_post_init
+      ~BackgroundSubtraction.model_rebuild
+      ~BackgroundSubtraction.model_validate
+      ~BackgroundSubtraction.model_validate_json
+      ~BackgroundSubtraction.model_validate_strings
+      ~BackgroundSubtraction.parse_file
+      ~BackgroundSubtraction.parse_obj
+      ~BackgroundSubtraction.parse_raw
+      ~BackgroundSubtraction.schema
+      ~BackgroundSubtraction.schema_json
+      ~BackgroundSubtraction.to_json
+      ~BackgroundSubtraction.update_forward_refs
+      ~BackgroundSubtraction.validate
+      ~BackgroundSubtraction.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BackgroundSubtraction.model_computed_fields
+      ~BackgroundSubtraction.model_config
+      ~BackgroundSubtraction.model_extra
+      ~BackgroundSubtraction.model_fields
+      ~BackgroundSubtraction.model_fields_set
+   
+   

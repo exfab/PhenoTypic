@@ -1,0 +1,61 @@
+phenotypic.abc\_.MeasureFeatures
+================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: MeasureFeatures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeasureFeatures.__init__
+      ~MeasureFeatures.construct
+      ~MeasureFeatures.copy
+      ~MeasureFeatures.dict
+      ~MeasureFeatures.from_json
+      ~MeasureFeatures.from_orm
+      ~MeasureFeatures.json
+      ~MeasureFeatures.measure
+      ~MeasureFeatures.model_construct
+      ~MeasureFeatures.model_copy
+      ~MeasureFeatures.model_dump
+      ~MeasureFeatures.model_dump_json
+      ~MeasureFeatures.model_json_schema
+      ~MeasureFeatures.model_parametrized_name
+      ~MeasureFeatures.model_post_init
+      ~MeasureFeatures.model_rebuild
+      ~MeasureFeatures.model_validate
+      ~MeasureFeatures.model_validate_json
+      ~MeasureFeatures.model_validate_strings
+      ~MeasureFeatures.parse_file
+      ~MeasureFeatures.parse_obj
+      ~MeasureFeatures.parse_raw
+      ~MeasureFeatures.schema
+      ~MeasureFeatures.schema_json
+      ~MeasureFeatures.to_json
+      ~MeasureFeatures.update_forward_refs
+      ~MeasureFeatures.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureFeatures.model_computed_fields
+      ~MeasureFeatures.model_config
+      ~MeasureFeatures.model_extra
+      ~MeasureFeatures.model_fields
+      ~MeasureFeatures.model_fields_set
+   
+   

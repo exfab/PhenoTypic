@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.ImageOperationError
+=================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: ImageOperationError

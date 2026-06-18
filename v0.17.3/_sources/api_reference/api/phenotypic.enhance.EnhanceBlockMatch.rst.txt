@@ -1,0 +1,71 @@
+phenotypic.enhance.EnhanceBlockMatch
+====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: EnhanceBlockMatch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EnhanceBlockMatch.__init__
+      ~EnhanceBlockMatch.apply
+      ~EnhanceBlockMatch.construct
+      ~EnhanceBlockMatch.copy
+      ~EnhanceBlockMatch.dict
+      ~EnhanceBlockMatch.from_json
+      ~EnhanceBlockMatch.from_orm
+      ~EnhanceBlockMatch.json
+      ~EnhanceBlockMatch.model_construct
+      ~EnhanceBlockMatch.model_copy
+      ~EnhanceBlockMatch.model_dump
+      ~EnhanceBlockMatch.model_dump_json
+      ~EnhanceBlockMatch.model_json_schema
+      ~EnhanceBlockMatch.model_parametrized_name
+      ~EnhanceBlockMatch.model_post_init
+      ~EnhanceBlockMatch.model_rebuild
+      ~EnhanceBlockMatch.model_validate
+      ~EnhanceBlockMatch.model_validate_json
+      ~EnhanceBlockMatch.model_validate_strings
+      ~EnhanceBlockMatch.parse_file
+      ~EnhanceBlockMatch.parse_obj
+      ~EnhanceBlockMatch.parse_raw
+      ~EnhanceBlockMatch.schema
+      ~EnhanceBlockMatch.schema_json
+      ~EnhanceBlockMatch.to_json
+      ~EnhanceBlockMatch.update_forward_refs
+      ~EnhanceBlockMatch.validate
+      ~EnhanceBlockMatch.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EnhanceBlockMatch.model_computed_fields
+      ~EnhanceBlockMatch.model_config
+      ~EnhanceBlockMatch.model_extra
+      ~EnhanceBlockMatch.model_fields
+      ~EnhanceBlockMatch.model_fields_set
+      ~EnhanceBlockMatch.sigma_psd
+      ~EnhanceBlockMatch.block_size
+      ~EnhanceBlockMatch.stage_arg
+      ~EnhanceBlockMatch.clip
+      ~EnhanceBlockMatch.use_gat
+      ~EnhanceBlockMatch.gat_gain
+      ~EnhanceBlockMatch.gat_mu
+      ~EnhanceBlockMatch.gat_read_sigma
+      ~EnhanceBlockMatch.gat_scale_factor
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.tune.freeze\_value
+=============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: freeze_value
