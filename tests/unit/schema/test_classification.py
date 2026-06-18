@@ -164,3 +164,12 @@ def test_identity_enums_resolve_identity():
                  PLATE_METADATA, CONDITION_METADATA, INCUBATION_METADATA,
                  ACQUISITION_METADATA, EXPERIMENT_METADATA):
         assert all(m.resolved_kind == "identity" for m in enum), enum.__name__
+
+
+def test_rst_table_includes_use_column():
+    from phenotypic.schema import TEXTURE, METADATA
+    txt = TEXTURE.rst_table()
+    assert "Use" in txt
+    assert "Discriminative feature" in txt
+    # Identity enums have no tier/use semantics -> column suppressed
+    assert "Use" not in METADATA.rst_table()

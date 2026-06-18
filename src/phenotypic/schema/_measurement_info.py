@@ -13,6 +13,12 @@ _DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diag
 # Not used by _classify; consumed by the Task 10 coverage-gate test.
 _VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
 
+_USE_LABELS: Final = {
+    (1, "primary"): "Direct phenotype (Tier 1)",
+    (2, "primary"): "Descriptive trait (Tier 2)",
+    (3, "primary"): "Discriminative feature (Tier 3)",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class Entry:
@@ -88,22 +94,24 @@ def _rst_cell_text(text: str) -> str:
 
 
 def _render_info_table(
-    rows: list[tuple[str, str, str, str | None]],
+    rows: list[tuple[str, str, str, str | None, str]],
     *,
     title: str,
     name_header: str = "Name",
     desc_header: str = "Description",
 ) -> str:
-    """Render a list-table; Biology/Image columns appear only when populated.
+    """Render a list-table; Use/Biology/Image columns appear only when populated.
 
     Args:
-        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None)`` per member.
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, use_label)``
+            per member.
         title: Bold table caption (rendered ``Category: **{title}**``).
         name_header: Header for the first (name) column.
         desc_header: Header for the description column.
     """
     has_bio = any(row[2] for row in rows)
     has_img = any(row[3] for row in rows)
+    has_use = any(row[4] for row in rows)
 
     lines = [
         f".. list-table:: Category: **{title}**",
@@ -112,14 +120,18 @@ def _render_info_table(
         f"   * - {name_header}",
         f"     - {desc_header}",
     ]
+    if has_use:
+        lines.append("     - Use")
     if has_bio:
         lines.append("     - Biology")
     if has_img:
         lines.append("     - Image")
 
-    for name, desc, bio, img in rows:
+    for name, desc, bio, img, use in rows:
         lines.append(f"   * - ``{name}``")
         lines.append(f"     - {_rst_cell_text(desc)}")
+        if has_use:
+            lines.append(f"     - {use}")
         if has_bio:
             lines.append(f"     - {_rst_cell_text(bio)}")
         if has_img:
@@ -358,6 +370,15 @@ class MeasurementInfo(str, Enum):
         """The trust tier (1/2/3) for this member, or None for non-primary."""
         return _classify(self)[1]
 
+    @property
+    def use_label(self) -> str:
+        """Short human-readable 'how to apply' label, empty for non-primary."""
+        try:
+            kind, tier = _classify(self)
+        except ValueError:
+            return ""
+        return _USE_LABELS.get((tier, kind), "")
+
     @classmethod
     def get_labels(cls) -> list[str]:
         """Get all measurement labels without category prefix.
@@ -417,6 +438,7 @@ class MeasurementInfo(str, Enum):
                 m.desc,
                 m.bio_desc,
                 m.image,
+                m.use_label,
             )
             for m in cls
         ]

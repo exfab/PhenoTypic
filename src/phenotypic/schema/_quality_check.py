@@ -57,7 +57,7 @@ class QUALITY_CHECK(QualityInfo):
         """
         slug = check_name if check_name is not None else "<name>"
         rows = [
-            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image) for m in cls
+            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image, m.use_label) for m in cls
         ]
         table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
         base = doc if isinstance(doc, str) else (doc.__doc__ or "")
