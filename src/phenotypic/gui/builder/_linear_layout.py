@@ -39,6 +39,21 @@ if TYPE_CHECKING:  # pragma: no cover
     from phenotypic.gui._operation_registry import OperationRegistry
 
 
+_IMAGE_PRODUCING_CATEGORIES = {"Enhancer", "Detector", "Refiner", "Corrector"}
+
+
+def _is_image_producing(registry: Any, class_name: str) -> bool:
+    """Whether a node's output is an image worth previewing (vs. a measurement)."""
+
+    if class_name == PIPELINE_CLASS_NAME:
+        return True
+    try:
+        info = registry.get(class_name)
+    except Exception:  # noqa: BLE001
+        return False
+    return getattr(info, "category", None) in _IMAGE_PRODUCING_CATEGORIES
+
+
 _HIDDEN_STYLE = {"display": "none"}
 _LINEAR_ZOOM_ICON_SIZE = 15
 
@@ -289,6 +304,41 @@ def _help_button(
         ),
         _help_popover(button_id, title),
     ]
+
+
+def _preview_button(
+    *,
+    scope_path: Iterable[str],
+    block_id: Optional[str],
+    surface: str = "map",
+) -> Any:
+    """Render the node-output preview (zoomable modal) trigger button."""
+
+    # Material Design "image" glyph as an inline SVG (no icon font dependency).
+    icon = html.Img(
+        src=(
+            "data:image/svg+xml;utf8,"
+            "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' "
+            "viewBox='0 0 24 24' fill='currentColor'><path d='M21 19V5c0-1.1-.9-2-2-2"
+            "H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01"
+            "L14.5 12l4.5 6H5l3.5-4.5z'/></svg>"
+        ),
+        style={"width": "16px", "height": "16px"},
+    )
+    return html.Button(
+        icon,
+        id=ids.linear_node_action_id(
+            action="preview",
+            scope_path=list(scope_path),
+            block_id=block_id,
+            surface=surface,
+        ),
+        type="button",
+        n_clicks=0,
+        title="Preview node output",
+        className="linear-preview-button",
+        **{"aria-label": "Preview node output"},  # type: ignore[arg-type]
+    )
 
 
 def _hidden_inspector_widgets() -> List[Any]:
@@ -596,6 +646,16 @@ def _block_card(
                                 scope_path=scope_path,
                                 block_id=block.block_id,
                                 title=_op_doc(registry, block.class_name),
+                            ),
+                            *(
+                                [
+                                    _preview_button(
+                                        scope_path=scope_path,
+                                        block_id=block.block_id,
+                                    )
+                                ]
+                                if _is_image_producing(registry, block.class_name)
+                                else []
                             ),
                         ],
                         className="linear-node-header",
