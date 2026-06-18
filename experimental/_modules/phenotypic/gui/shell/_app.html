@@ -639,6 +639,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">werkzeug.middleware.dispatcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">DispatcherMiddleware</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="n">CFG_RUN_REGISTRY</span><span class="p">,</span>
     <span class="n">CFG_RUNNER</span><span class="p">,</span>
     <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
@@ -650,6 +651,8 @@
     <span class="n">MOUNT_TUNE</span><span class="p">,</span>
     <span class="n">MOUNT_VIEWER</span><span class="p">,</span>
     <span class="n">TITLE_HUB</span><span class="p">,</span>
+    <span class="n">join_url_prefix</span><span class="p">,</span>
+    <span class="n">normalize_url_prefix</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._home</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_home_layout</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.shell._ids</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -751,10 +754,15 @@
         <span class="n">assets_folder</span><span class="o">=</span><span class="n">assets_folder</span><span class="p">,</span>
         <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span>
         <span class="n">requests_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
-        <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+        <span class="n">routes_pathname_prefix</span><span class="o">=</span><span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">Div</span><span class="p">(</span><span class="n">build_home_layout</span><span class="p">(</span><span class="n">sandbox</span><span class="p">),</span> <span class="n">className</span><span class="o">=</span><span class="s2">&quot;shell-page&quot;</span><span class="p">)</span>
-    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_HOME</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span>
+        <span class="n">app</span><span class="p">,</span>
+        <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_HOME</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">register_sandbox_api</span><span class="p">(</span>
         <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="p">,</span>
@@ -775,6 +783,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">compose_hub</span><span class="p">(</span>
     <span class="n">sandbox</span><span class="p">:</span> <span class="n">SandboxRoot</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="n">idle_release_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_IDLE_RELEASE_SECONDS</span><span class="p">,</span>
     <span class="n">start_idle_thread</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -803,6 +812,8 @@
 <span class="sd">            sub-app is currently being composed. ``None`` (default) is a</span>
 <span class="sd">            no-op for non-interactive / test callers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_url_prefix</span> <span class="o">=</span> <span class="n">normalize_url_prefix</span><span class="p">(</span><span class="n">url_prefix</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_tick</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">progress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">progress</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
@@ -830,9 +841,16 @@
     <span class="c1"># 1. Viewer session (lazy — heavy parquet load deferred to first GET).</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_viewer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
         <span class="n">viewer_app</span> <span class="o">=</span> <span class="n">results_viewer</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
-            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_VIEWER</span>
+            <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_VIEWER</span><span class="p">),</span>
+            <span class="n">api_url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">viewer_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+        <span class="n">wrap_in_chrome</span><span class="p">(</span>
+            <span class="n">viewer_app</span><span class="p">,</span>
+            <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_VIEWER</span><span class="p">,</span>
+            <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">viewer_app</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_teardown_viewer</span><span class="p">(</span><span class="n">viewer_app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -862,10 +880,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_analysis</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
         <span class="n">analysis_app</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
             <span class="n">output_root</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">[</span><span class="s2">&quot;output_root&quot;</span><span class="p">],</span>
-            <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_ANALYSIS</span><span class="p">,</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_ANALYSIS</span><span class="p">),</span>
+            <span class="n">api_url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">wrap_in_chrome</span><span class="p">(</span>
-            <span class="n">analysis_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span>
+            <span class="n">analysis_app</span><span class="p">,</span>
+            <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_ANALYSIS</span><span class="p">,</span>
+            <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">analysis_app</span>
 
@@ -883,6 +905,7 @@
     <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;shell&quot;</span><span class="p">)</span>
     <span class="n">shell_app</span> <span class="o">=</span> <span class="n">_build_shell_dash_app</span><span class="p">(</span>
         <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
         <span class="n">viewer_session</span><span class="o">=</span><span class="n">viewer_session</span><span class="p">,</span>
         <span class="n">viewer_state</span><span class="o">=</span><span class="n">viewer_state</span><span class="p">,</span>
         <span class="n">extra_release_sessions</span><span class="o">=</span><span class="p">(</span><span class="n">analysis_session</span><span class="p">,),</span>
@@ -891,9 +914,15 @@
     <span class="c1"># 3. Builder Dash (eager — single-process registry build).</span>
     <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;builder&quot;</span><span class="p">)</span>
     <span class="n">builder_app</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
-        <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BUILDER</span>
+        <span class="n">image_root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_BUILDER</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">builder_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span>
+        <span class="n">builder_app</span><span class="p">,</span>
+        <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BUILDER</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># 4. Run console Dash (eager). Build the process-wide runner +</span>
     <span class="c1">#    registry HERE so the shell&#39;s ``/runs/`` blueprint, the Recent</span>
@@ -910,11 +939,17 @@
 
     <span class="n">run_app</span> <span class="o">=</span> <span class="n">run_console</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
         <span class="n">sandbox</span><span class="p">,</span>
-        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_RUN</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_RUN</span><span class="p">),</span>
+        <span class="n">server_url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
         <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
         <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">run_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_RUN</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span>
+        <span class="n">run_app</span><span class="p">,</span>
+        <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_RUN</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy</span>
     <span class="c1">#     parquet load, so no ToolSession is needed. Mounted empty-state: the</span>
@@ -924,19 +959,31 @@
     <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;tune&quot;</span><span class="p">)</span>
     <span class="n">tune_app</span> <span class="o">=</span> <span class="n">tune</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
         <span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_TUNE</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_TUNE</span><span class="p">),</span>
         <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
         <span class="n">registry</span><span class="o">=</span><span class="n">registry</span><span class="p">,</span>
         <span class="n">runner</span><span class="o">=</span><span class="n">runner</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">tune_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_TUNE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span>
+        <span class="n">tune_app</span><span class="p">,</span>
+        <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_TUNE</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># 4c. Browse Dash (eager — lightweight source-image viewer). No</span>
     <span class="c1">#     ToolSession: it loads no heavy parquet, just lists files + serves</span>
     <span class="c1">#     ephemeral tiles.</span>
     <span class="n">_tick</span><span class="p">(</span><span class="s2">&quot;browse&quot;</span><span class="p">)</span>
-    <span class="n">browse_app</span> <span class="o">=</span> <span class="n">browse</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">MOUNT_BROWSE</span><span class="p">)</span>
-    <span class="n">wrap_in_chrome</span><span class="p">(</span><span class="n">browse_app</span><span class="p">,</span> <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BROWSE</span><span class="p">,</span> <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">)</span>
+    <span class="n">browse_app</span> <span class="o">=</span> <span class="n">browse</span><span class="o">.</span><span class="n">create_app</span><span class="p">(</span>
+        <span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">join_url_prefix</span><span class="p">(</span><span class="n">base_url_prefix</span><span class="p">,</span> <span class="n">MOUNT_BROWSE</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">wrap_in_chrome</span><span class="p">(</span>
+        <span class="n">browse_app</span><span class="p">,</span>
+        <span class="n">active_tab</span><span class="o">=</span><span class="n">SHELL_TAB_BROWSE</span><span class="p">,</span>
+        <span class="n">sandbox</span><span class="o">=</span><span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">base_url_prefix</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># Stash on the shell server too so any future cross-tool callback</span>
     <span class="c1"># (e.g. the sidebar&#39;s &quot;open in run console&quot; hand-off) can reach the</span>
@@ -1051,6 +1098,7 @@
 
     <span class="n">shell_app</span><span class="p">,</span> <span class="n">_viewer_session</span> <span class="o">=</span> <span class="n">compose_hub</span><span class="p">(</span>
         <span class="n">sandbox</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
         <span class="n">idle_release_seconds</span><span class="o">=</span><span class="n">idle_release_seconds</span><span class="p">,</span>
         <span class="n">start_idle_thread</span><span class="o">=</span><span class="n">start_idle_thread</span><span class="p">,</span>
         <span class="n">progress</span><span class="o">=</span><span class="n">progress</span><span class="p">,</span>

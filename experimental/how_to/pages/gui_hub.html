@@ -706,7 +706,11 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 <td><p><code class="docutils literal notranslate"><span class="pre">8050</span></code></p></td>
 <td><p>TCP port</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--url-prefix</span> <span class="pre">PREFIX</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/</span></code></p></td>
+<td><p>Browser-visible path prefix for path-stripping proxies</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
 <td><p>off</p></td>
 <td><p>Enable Dash auto-reload and verbose tracebacks</p></td>
 </tr>
@@ -715,6 +719,25 @@ uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </sp
 </div>
 <p>The startup banner printed to stdout repeats the URL and the SSH-tunnel
 command for the bound port.</p>
+<section id="open-ondemand-path-prefix">
+<h3>Open OnDemand path prefix<a class="headerlink" href="#open-ondemand-path-prefix" title="Link to this heading">#</a></h3>
+<p>Open OnDemand proxies apps through a browser path such as
+<code class="docutils literal notranslate"><span class="pre">/node/&lt;node&gt;/&lt;port&gt;/</span></code> and forwards stripped paths to the local server. Pass
+that path, not the full URL, as <code class="docutils literal notranslate"><span class="pre">--url-prefix</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--root<span class="w"> </span>/rhome/ejaco020<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--port<span class="w"> </span><span class="m">30099</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url-prefix<span class="w"> </span>/node/hz01/30099/
+</pre></div>
+</div>
+<p>Then open the full proxy URL in your browser:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>https://ondemand.hpcc.ucr.edu/node/hz01/30099/
+</pre></div>
+</div>
+<p>The app does not infer node names, ports, or OOD domains. The default prefix is
+<code class="docutils literal notranslate"><span class="pre">/</span></code>, so local launches keep the usual <code class="docutils literal notranslate"><span class="pre">/builder/</span></code>, <code class="docutils literal notranslate"><span class="pre">/results/</span></code>, and <code class="docutils literal notranslate"><span class="pre">/run/</span></code>
+paths.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p><strong><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (without a hyphen) is not supported.</strong></p>
@@ -724,6 +747,7 @@ explicit path options, not subcommands. Always use the hyphenated form
 <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic</span> <span class="pre">gui</span></code> will fail because <code class="docutils literal notranslate"><span class="pre">gui</span></code> is an unexpected positional
 argument.</p>
 </div>
+</section>
 </section>
 <section id="the-four-pages">
 <h2>The four pages<a class="headerlink" href="#the-four-pages" title="Link to this heading">#</a></h2>
@@ -925,7 +949,10 @@ the hub launcher.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-hub-is">What the hub is</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-hub">Launching the hub</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-the-hub">Launching the hub</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#open-ondemand-path-prefix">Open OnDemand path prefix</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-four-pages">The four pages</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#home">Home (<code class="docutils literal notranslate"><span class="pre">/</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#builder-builder">Builder (<code class="docutils literal notranslate"><span class="pre">/builder/</span></code>)</a></li>

@@ -631,6 +631,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DEFAULT_HOST</span><span class="p">,</span>
     <span class="n">DEFAULT_PORT</span><span class="p">,</span>
+    <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="n">SSH_TUNNEL_HINT</span><span class="p">,</span>
     <span class="n">TITLE_HUB</span><span class="p">,</span>
     <span class="n">add_launcher_args</span><span class="p">,</span>
@@ -676,6 +677,7 @@
     <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_HOST</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span>
     <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">reporter</span><span class="p">:</span> <span class="n">StartupReporter</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -692,6 +694,8 @@
 <span class="sd">        port: TCP port. Defaults to :data:`DEFAULT_PORT`.</span>
 <span class="sd">        debug: Run Dash in debug mode (auto-reload + verbose tracebacks).</span>
 <span class="sd">            Defaults to ``False``.</span>
+<span class="sd">        url_prefix: Browser-visible path prefix for path-stripping</span>
+<span class="sd">            reverse proxies such as Open OnDemand. Defaults to ``&quot;/&quot;``.</span>
 <span class="sd">        reporter: Optional :class:`StartupReporter` driving staged progress</span>
 <span class="sd">            feedback (sandbox resolution + hub composition). ``None``</span>
 <span class="sd">            (default — the programmatic boot path) skips progress reporting</span>
@@ -704,7 +708,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">reporter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
-        <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">)</span>
+        <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">reporter</span><span class="p">:</span>
             <span class="n">reporter</span><span class="o">.</span><span class="n">record_done</span><span class="p">(</span>
@@ -713,11 +717,19 @@
             <span class="k">with</span> <span class="n">reporter</span><span class="o">.</span><span class="n">stage</span><span class="p">(</span><span class="s2">&quot;Resolving sandbox root&quot;</span><span class="p">):</span>
                 <span class="n">sandbox</span> <span class="o">=</span> <span class="n">SandboxRoot</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
             <span class="k">with</span> <span class="n">reporter</span><span class="o">.</span><span class="n">stage</span><span class="p">(</span><span class="s2">&quot;Composing GUI hub&quot;</span><span class="p">):</span>
-                <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">sandbox</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="n">reporter</span><span class="o">.</span><span class="n">detail</span><span class="p">)</span>
+                <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span>
+                    <span class="n">sandbox</span><span class="p">,</span>
+                    <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+                    <span class="n">progress</span><span class="o">=</span><span class="n">reporter</span><span class="o">.</span><span class="n">detail</span><span class="p">,</span>
+                <span class="p">)</span>
         <span class="c1"># ``sandbox``/``app`` are always bound here: the ``with`` bodies run</span>
         <span class="c1"># unless ``reporter`` raises, in which case we never reach this line.</span>
     <span class="n">print_launcher_banner</span><span class="p">(</span>
-        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">TITLE_HUB</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
+        <span class="n">root</span><span class="o">=</span><span class="n">sandbox</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span></div>
 
@@ -766,6 +778,7 @@
             <span class="n">host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
             <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
             <span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">url_prefix</span><span class="p">,</span>
             <span class="n">reporter</span><span class="o">=</span><span class="n">reporter</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">NotADirectoryError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>

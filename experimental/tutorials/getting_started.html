@@ -756,6 +756,13 @@ single-hop tunnel above will return <code class="docutils literal notranslate"><
 in the GUI hub guide for the two-hop tunnel pattern. That guide also
 covers the file browser, pipeline builder, run console, and results
 viewer.</p>
+<p>For Open OnDemand-style proxies, pass the browser path as a prefix, not
+the full URL:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span>--root<span class="w"> </span>/rhome/ejaco020<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">30099</span><span class="w"> </span>--url-prefix<span class="w"> </span>/node/hz01/30099/
+</pre></div>
+</div>
+<p>Then open the full proxy URL, for example
+<code class="docutils literal notranslate"><span class="pre">https://ondemand.hpcc.ucr.edu/node/hz01/30099/</span></code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (no hyphen, as a subcommand) is <strong>not supported</strong>.

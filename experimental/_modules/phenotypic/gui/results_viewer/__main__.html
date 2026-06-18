@@ -636,6 +636,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DEFAULT_HOST</span><span class="p">,</span>
     <span class="n">DEFAULT_PORT</span><span class="p">,</span>
+    <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="n">SSH_TUNNEL_HINT</span><span class="p">,</span>
     <span class="n">TITLE_VIEWER</span><span class="p">,</span>
     <span class="n">VIEWER_CACHE_DIRNAME</span><span class="p">,</span>
@@ -656,6 +657,7 @@
     <span class="n">host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_HOST</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_PORT</span><span class="p">,</span>
     <span class="n">debug</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Boot the Dash results viewer against an output root.</span>
 
@@ -678,6 +680,8 @@
 <span class="sd">        port: TCP port to bind. Defaults to :data:`DEFAULT_PORT`.</span>
 <span class="sd">        debug: Run Dash in debug mode (auto-reload + verbose</span>
 <span class="sd">            tracebacks). Defaults to ``False``.</span>
+<span class="sd">        url_prefix: Browser-visible path prefix for path-stripping</span>
+<span class="sd">            reverse proxies such as Open OnDemand. Defaults to ``&quot;/&quot;``.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: If *output_root* does not contain a valid CLI</span>
@@ -688,13 +692,14 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="n">output</span> <span class="o">=</span> <span class="n">OutputRoot</span><span class="o">.</span><span class="n">discover</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
-    <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">)</span>
     <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">VIEWER_CACHE_DIRNAME</span>
     <span class="n">print_launcher_banner</span><span class="p">(</span>
         <span class="n">title</span><span class="o">=</span><span class="n">TITLE_VIEWER</span><span class="p">,</span>
         <span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span>
         <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span>
         <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
         <span class="n">extra_lines</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Clear tile cache    : rm -rf </span><span class="si">{</span><span class="n">cache_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,),</span>
     <span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">)</span></div>
@@ -746,6 +751,7 @@
         <span class="n">host</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
         <span class="n">port</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
         <span class="n">debug</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
+        <span class="n">url_prefix</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">url_prefix</span><span class="p">,</span>
     <span class="p">)</span>
 
 

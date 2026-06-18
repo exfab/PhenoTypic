@@ -646,10 +646,12 @@
     <span class="n">CFG_QC_PIPELINE</span><span class="p">,</span>
     <span class="n">CFG_QC_RECIPE</span><span class="p">,</span>
     <span class="n">CFG_URL_PREFIX</span><span class="p">,</span>
+    <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
     <span class="n">MOUNT_HOME</span><span class="p">,</span>
     <span class="n">QC_CROPS_URL_SEGMENT</span><span class="p">,</span>
     <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">TITLE_VIEWER</span><span class="p">,</span>
+    <span class="n">join_url_prefix</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._schema_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementSchema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
@@ -723,6 +725,7 @@
     <span class="n">output_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">OutputRoot</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">MOUNT_HOME</span><span class="p">,</span>
+    <span class="n">api_url_prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_URL_PREFIX</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a Dash application instance for the results viewer.</span>
 
@@ -739,6 +742,9 @@
 <span class="sd">            ``requests_pathname_prefix``/``routes_pathname_prefix`` on</span>
 <span class="sd">            the Dash constructor and stashed on</span>
 <span class="sd">            ``app.server.config[&quot;pheno_url_prefix&quot;]``.</span>
+<span class="sd">        api_url_prefix: Browser-visible base prefix for shell-level</span>
+<span class="sd">            Flask APIs. Defaults to ``&quot;/&quot;``; the hub passes the external</span>
+<span class="sd">            proxy prefix when configured.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        A configured :class:`dash.Dash` instance whose ``app.run(...)``</span>
@@ -770,7 +776,11 @@
 
     <span class="k">if</span> <span class="n">output_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">app</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">build_empty_state_layout</span><span class="p">()</span>
-        <span class="n">_register_empty_state_callbacks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">)</span>
+        <span class="n">_register_empty_state_callbacks</span><span class="p">(</span>
+            <span class="n">app</span><span class="p">,</span>
+            <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
+            <span class="n">api_url_prefix</span><span class="o">=</span><span class="n">api_url_prefix</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Results viewer built in empty-state mode (url_prefix=</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
             <span class="n">url_prefix</span><span class="p">,</span>
@@ -857,7 +867,12 @@
         <span class="k">return</span> <span class="kc">None</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_register_empty_state_callbacks</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_register_empty_state_callbacks</span><span class="p">(</span>
+    <span class="n">app</span><span class="p">:</span> <span class="n">dash</span><span class="o">.</span><span class="n">Dash</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">url_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">api_url_prefix</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Wire the empty-state hand-off banner.</span>
 
 <span class="sd">    Two callbacks:</span>
@@ -910,6 +925,8 @@
     <span class="c1"># a full reload even though the URL is unchanged), which is what</span>
     <span class="c1"># ``_ViewerProxy`` needs to resolve the freshly-built session. On</span>
     <span class="c1"># 4xx the JSON ``error`` is rendered into the inline error slot.</span>
+    <span class="n">api_output_root</span> <span class="o">=</span> <span class="n">join_url_prefix</span><span class="p">(</span><span class="n">api_url_prefix</span><span class="p">,</span> <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">)</span>
+
     <span class="n">app</span><span class="o">.</span><span class="n">clientside_callback</span><span class="p">(</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        async function(n_clicks, selection) {</span>
@@ -937,7 +954,7 @@
 <span class="sd">                return String(err);</span>
 <span class="sd">            }</span>
 <span class="sd">        }</span>
-<span class="sd">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_API_OUTPUT_ROOT__&quot;</span><span class="p">,</span> <span class="n">SANDBOX_API_VIEWER_OUTPUT_ROOT</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_VIEWER_PREFIX__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">url_prefix</span><span class="p">)),</span>
+<span class="sd">        &quot;&quot;&quot;</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_API_OUTPUT_ROOT__&quot;</span><span class="p">,</span> <span class="n">api_output_root</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;__PHENO_VIEWER_PREFIX__&quot;</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">url_prefix</span><span class="p">)),</span>
         <span class="n">Output</span><span class="p">(</span><span class="n">ids</span><span class="o">.</span><span class="n">EMPTY_HANDOFF_ERROR</span><span class="p">,</span> <span class="s2">&quot;children&quot;</span><span class="p">),</span>
         <span class="n">Input</span><span class="p">(</span><span class="n">ids</span><span class="o">.</span><span class="n">EMPTY_HANDOFF_OPEN_BUTTON</span><span class="p">,</span> <span class="s2">&quot;n_clicks&quot;</span><span class="p">),</span>
         <span class="n">State</span><span class="p">(</span><span class="n">SHELL_SIDEBAR_SELECTION_STORE</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">),</span>
