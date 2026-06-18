@@ -34,6 +34,8 @@ from phenotypic.gui.builder._point_picker import (
     register_point_picker_callbacks,
     register_point_picker_routes,
 )
+from phenotypic.gui.builder._preview_cache import init_cache as init_preview_cache
+from phenotypic.gui.builder._preview_tiles import register_node_preview_routes
 from phenotypic.gui.builder._state import BuilderState
 
 
@@ -143,6 +145,8 @@ def create_app(
 
     register_callbacks(app)
     register_point_picker_routes(app, image_root)
+    register_node_preview_routes(app)
+    init_preview_cache()
     register_point_picker_callbacks(app)
 
     return app
