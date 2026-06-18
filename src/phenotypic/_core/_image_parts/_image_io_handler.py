@@ -1041,6 +1041,36 @@ class ImageIOHandler(ImageColorSpace):
 
         return img
 
+    @classmethod
+    def load_layer_hdf5(cls, filename, layer: str) -> np.ndarray:
+        """Read a single image layer from an intermediate HDF5 file.
+
+        Reads only the requested dataset without reconstructing a full
+        :class:`Image`. Handles both the schema-v2 grouped layout
+        (``/layers/<layer>``) and the legacy flat layout (``/<layer>``).
+
+        Args:
+            filename: Path to the HDF5 file.
+            layer: One of ``"rgb"``, ``"gray"``, ``"detect_mat"``, ``"objmap"``.
+
+        Returns:
+            The layer array.
+
+        Raises:
+            KeyError: If *layer* is not present in the file.
+        """
+        with h5py.File(filename, "r") as f:
+            schema_version = int(f.attrs.get("schema_version", 1))
+            if schema_version >= _SCHEMA_VERSION and "layers" in f:
+                group = f["layers"]
+            else:
+                group = f
+            if layer not in group:
+                raise KeyError(
+                    f"Layer {layer!r} not found in {filename}"
+                )
+            return group[layer][()]
+
     def save2pickle(self, filename: str) -> None:
         """Save the image to a pickle file for fast serialization and deserialization.
 
