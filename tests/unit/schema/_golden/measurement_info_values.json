@@ -1140,7 +1140,7 @@
       "s0",
       "LinearSoftplus_s0",
       "s0",
-      "The initial size"
+      "The initial value of the target metric"
     ],
     [
       "lam",
