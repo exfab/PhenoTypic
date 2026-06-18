@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 
 from phenotypic.gui._config import (
-    MOUNT_HOME,
     TITLE_BROWSE,
     add_launcher_args,
     configure_launcher_logging,
@@ -21,9 +20,13 @@ def main() -> None:
     args = parser.parse_args()
     configure_launcher_logging(debug=args.debug)
     sandbox = SandboxRoot.from_path(args.root)
-    app = create_app(sandbox, url_prefix=MOUNT_HOME)
+    app = create_app(sandbox, url_prefix=args.url_prefix)
     print_launcher_banner(
-        title=TITLE_BROWSE, host=args.host, port=args.port, root=sandbox.root
+        title=TITLE_BROWSE,
+        host=args.host,
+        port=args.port,
+        root=sandbox.root,
+        url_prefix=args.url_prefix,
     )
     app.run(host=args.host, port=args.port, debug=args.debug)
 

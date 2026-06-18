@@ -30,6 +30,7 @@ from typing import Optional, Sequence
 from phenotypic.gui._config import (
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_URL_PREFIX,
     SSH_TUNNEL_HINT,
     TITLE_HUB,
     add_launcher_args,
@@ -73,6 +74,7 @@ def launch_gui(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     debug: bool = False,
+    url_prefix: str = DEFAULT_URL_PREFIX,
     *,
     reporter: StartupReporter | None = None,
 ) -> None:
@@ -89,6 +91,8 @@ def launch_gui(
         port: TCP port. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose tracebacks).
             Defaults to ``False``.
+        url_prefix: Browser-visible path prefix for path-stripping
+            reverse proxies such as Open OnDemand. Defaults to ``"/"``.
         reporter: Optional :class:`StartupReporter` driving staged progress
             feedback (sandbox resolution + hub composition). ``None``
             (default — the programmatic boot path) skips progress reporting
@@ -101,7 +105,7 @@ def launch_gui(
     """
     if reporter is None:
         sandbox = SandboxRoot.from_path(root)
-        app = create_app(sandbox)
+        app = create_app(sandbox, url_prefix=url_prefix)
     else:
         with reporter:
             reporter.record_done(
@@ -110,11 +114,19 @@ def launch_gui(
             with reporter.stage("Resolving sandbox root"):
                 sandbox = SandboxRoot.from_path(root)
             with reporter.stage("Composing GUI hub"):
-                app = create_app(sandbox, progress=reporter.detail)
+                app = create_app(
+                    sandbox,
+                    url_prefix=url_prefix,
+                    progress=reporter.detail,
+                )
         # ``sandbox``/``app`` are always bound here: the ``with`` bodies run
         # unless ``reporter`` raises, in which case we never reach this line.
     print_launcher_banner(
-        title=TITLE_HUB, host=host, port=port, root=sandbox.root
+        title=TITLE_HUB,
+        host=host,
+        port=port,
+        root=sandbox.root,
+        url_prefix=url_prefix,
     )
     app.run(host=host, port=port, debug=debug)
 
@@ -160,6 +172,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             host=args.host,
             port=args.port,
             debug=args.debug,
+            url_prefix=args.url_prefix,
             reporter=reporter,
         )
     except (FileNotFoundError, NotADirectoryError, RuntimeError) as exc:

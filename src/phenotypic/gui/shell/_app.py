@@ -38,6 +38,7 @@ from dash import html
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 from phenotypic.gui._config import (
+    DEFAULT_URL_PREFIX,
     CFG_RUN_REGISTRY,
     CFG_RUNNER,
     DEFAULT_IDLE_RELEASE_SECONDS,
@@ -49,6 +50,8 @@ from phenotypic.gui._config import (
     MOUNT_TUNE,
     MOUNT_VIEWER,
     TITLE_HUB,
+    join_url_prefix,
+    normalize_url_prefix,
 )
 from phenotypic.gui.shell._home import build_home_layout
 from phenotypic.gui.shell._ids import (
@@ -150,10 +153,15 @@ def _build_shell_dash_app(
         assets_folder=assets_folder,
         title=TITLE_HUB,
         requests_pathname_prefix=url_prefix,
-        routes_pathname_prefix=url_prefix,
+        routes_pathname_prefix=MOUNT_HOME,
     )
     app.layout = html.Div(build_home_layout(sandbox), className="shell-page")
-    wrap_in_chrome(app, active_tab=SHELL_TAB_HOME, sandbox=sandbox)
+    wrap_in_chrome(
+        app,
+        active_tab=SHELL_TAB_HOME,
+        sandbox=sandbox,
+        url_prefix=url_prefix,
+    )
 
     register_sandbox_api(
         app.server,
@@ -174,6 +182,7 @@ def _build_shell_dash_app(
 def compose_hub(
     sandbox: SandboxRoot,
     *,
+    url_prefix: str = DEFAULT_URL_PREFIX,
     idle_release_seconds: float = DEFAULT_IDLE_RELEASE_SECONDS,
     start_idle_thread: bool = True,
     progress: Callable[[str], None] | None = None,
@@ -202,6 +211,8 @@ def compose_hub(
             sub-app is currently being composed. ``None`` (default) is a
             no-op for non-interactive / test callers.
     """
+    base_url_prefix = normalize_url_prefix(url_prefix)
+
     def _tick(label: str) -> None:
         if progress is not None:
             progress(label)
@@ -229,9 +240,16 @@ def compose_hub(
     # 1. Viewer session (lazy — heavy parquet load deferred to first GET).
     def _build_viewer() -> dash.Dash:
         viewer_app = results_viewer.create_app(
-            output_root=viewer_state["output_root"], url_prefix=MOUNT_VIEWER
+            output_root=viewer_state["output_root"],
+            url_prefix=join_url_prefix(base_url_prefix, MOUNT_VIEWER),
+            api_url_prefix=base_url_prefix,
         )
-        wrap_in_chrome(viewer_app, active_tab=SHELL_TAB_VIEWER, sandbox=sandbox)
+        wrap_in_chrome(
+            viewer_app,
+            active_tab=SHELL_TAB_VIEWER,
+            sandbox=sandbox,
+            url_prefix=base_url_prefix,
+        )
         return viewer_app
 
     def _teardown_viewer(viewer_app: dash.Dash) -> None:
@@ -261,10 +279,14 @@ def compose_hub(
     def _build_analysis() -> dash.Dash:
         analysis_app = analysis.create_app(
             output_root=viewer_state["output_root"],
-            url_prefix=MOUNT_ANALYSIS,
+            url_prefix=join_url_prefix(base_url_prefix, MOUNT_ANALYSIS),
+            api_url_prefix=base_url_prefix,
         )
         wrap_in_chrome(
-            analysis_app, active_tab=SHELL_TAB_ANALYSIS, sandbox=sandbox
+            analysis_app,
+            active_tab=SHELL_TAB_ANALYSIS,
+            sandbox=sandbox,
+            url_prefix=base_url_prefix,
         )
         return analysis_app
 
@@ -282,6 +304,7 @@ def compose_hub(
     _tick("shell")
     shell_app = _build_shell_dash_app(
         sandbox,
+        url_prefix=base_url_prefix,
         viewer_session=viewer_session,
         viewer_state=viewer_state,
         extra_release_sessions=(analysis_session,),
@@ -290,9 +313,15 @@ def compose_hub(
     # 3. Builder Dash (eager — single-process registry build).
     _tick("builder")
     builder_app = builder.create_app(
-        image_root=sandbox.root, url_prefix=MOUNT_BUILDER
+        image_root=sandbox.root,
+        url_prefix=join_url_prefix(base_url_prefix, MOUNT_BUILDER),
     )
-    wrap_in_chrome(builder_app, active_tab=SHELL_TAB_BUILDER, sandbox=sandbox)
+    wrap_in_chrome(
+        builder_app,
+        active_tab=SHELL_TAB_BUILDER,
+        sandbox=sandbox,
+        url_prefix=base_url_prefix,
+    )
 
     # 4. Run console Dash (eager). Build the process-wide runner +
     #    registry HERE so the shell's ``/runs/`` blueprint, the Recent
@@ -309,11 +338,17 @@ def compose_hub(
 
     run_app = run_console.create_app(
         sandbox,
-        url_prefix=MOUNT_RUN,
+        url_prefix=join_url_prefix(base_url_prefix, MOUNT_RUN),
+        server_url_prefix=base_url_prefix,
         registry=registry,
         runner=runner,
     )
-    wrap_in_chrome(run_app, active_tab=SHELL_TAB_RUN, sandbox=sandbox)
+    wrap_in_chrome(
+        run_app,
+        active_tab=SHELL_TAB_RUN,
+        sandbox=sandbox,
+        url_prefix=base_url_prefix,
+    )
 
     # 4b. Tune co-pilot Dash (eager). Read-only and lightweight — no heavy
     #     parquet load, so no ToolSession is needed. Mounted empty-state: the
@@ -323,19 +358,31 @@ def compose_hub(
     _tick("tune")
     tune_app = tune.create_app(
         root=None,
-        url_prefix=MOUNT_TUNE,
+        url_prefix=join_url_prefix(base_url_prefix, MOUNT_TUNE),
         sandbox=sandbox,
         registry=registry,
         runner=runner,
     )
-    wrap_in_chrome(tune_app, active_tab=SHELL_TAB_TUNE, sandbox=sandbox)
+    wrap_in_chrome(
+        tune_app,
+        active_tab=SHELL_TAB_TUNE,
+        sandbox=sandbox,
+        url_prefix=base_url_prefix,
+    )
 
     # 4c. Browse Dash (eager — lightweight source-image viewer). No
     #     ToolSession: it loads no heavy parquet, just lists files + serves
     #     ephemeral tiles.
     _tick("browse")
-    browse_app = browse.create_app(sandbox, url_prefix=MOUNT_BROWSE)
-    wrap_in_chrome(browse_app, active_tab=SHELL_TAB_BROWSE, sandbox=sandbox)
+    browse_app = browse.create_app(
+        sandbox, url_prefix=join_url_prefix(base_url_prefix, MOUNT_BROWSE)
+    )
+    wrap_in_chrome(
+        browse_app,
+        active_tab=SHELL_TAB_BROWSE,
+        sandbox=sandbox,
+        url_prefix=base_url_prefix,
+    )
 
     # Stash on the shell server too so any future cross-tool callback
     # (e.g. the sidebar's "open in run console" hand-off) can reach the
@@ -448,6 +495,7 @@ def create_app(
 
     shell_app, _viewer_session = compose_hub(
         sandbox,
+        url_prefix=url_prefix,
         idle_release_seconds=idle_release_seconds,
         start_idle_thread=start_idle_thread,
         progress=progress,

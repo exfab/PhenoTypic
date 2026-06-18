@@ -41,13 +41,14 @@ def main(argv: list[str] | None = None) -> int:
     configure_launcher_logging(debug=args.debug)
 
     output_root = OutputRoot.discover(args.root)
-    app = create_app(output_root=output_root)
+    app = create_app(output_root=output_root, url_prefix=args.url_prefix)
 
     print_launcher_banner(
         title=TITLE_ANALYSIS,
         host=args.host,
         port=args.port,
         root=args.root,
+        url_prefix=args.url_prefix,
     )
     app.run(host=args.host, port=args.port, debug=args.debug)
     return 0

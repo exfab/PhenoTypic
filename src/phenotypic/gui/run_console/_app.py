@@ -29,6 +29,7 @@ from phenotypic.gui._config import (
     CFG_RUNNER,
     CFG_SANDBOX_ROOT,
     CFG_URL_PREFIX,
+    DEFAULT_URL_PREFIX,
     MOUNT_HOME,
     TITLE_RUN,
 )
@@ -49,6 +50,7 @@ def create_app(
     sandbox: SandboxRoot,
     *,
     url_prefix: str = MOUNT_HOME,
+    server_url_prefix: str = DEFAULT_URL_PREFIX,
     registry: RunRegistry | None = None,
     runner: LocalRunner | None = None,
 ) -> dash.Dash:
@@ -59,6 +61,8 @@ def create_app(
             pickers + drives Recent Runs scan.
         url_prefix: Mount-point prefix. Defaults to ``"/"`` (standalone
             launcher); the hub composer passes ``"/run/"``.
+        server_url_prefix: Browser-visible base prefix for shell-level
+            Flask routes such as ``/runs``. Defaults to ``"/"``.
         registry: Process-wide :class:`RunRegistry`. When ``None`` (the
             standalone case) a fresh local registry is built and the
             sandbox is scanned to seed Recent Runs.
@@ -103,7 +107,13 @@ def create_app(
     app.server.config[CFG_RUNNER] = runner
     app.server.config[CFG_RUN_REGISTRY] = registry
 
-    register_callbacks(app, sandbox, registry=registry, runner=runner)
+    register_callbacks(
+        app,
+        sandbox,
+        registry=registry,
+        runner=runner,
+        server_url_prefix=server_url_prefix,
+    )
 
     logger.debug(
         "Run console built: sandbox=%s url_prefix=%s",

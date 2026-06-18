@@ -46,11 +46,13 @@ from dash import ALL, Input, Output, State, ctx, no_update
 
 from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
+    DEFAULT_URL_PREFIX,
     DELIVERABLES_DIRNAME,
     RUNS_BLUEPRINT_PREFIX,
     SANDBOX_GUI_DIRNAME,
     SANDBOX_PRESETS_SUBDIR,
     THREAD_NAME_PREFIX,
+    join_url_prefix,
 )
 from phenotypic.gui.run_console import _ids as ids
 from phenotypic.gui.run_console._directory_picker import (
@@ -410,15 +412,20 @@ def _has_pending_slurm() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _dashboard_url(rel_path: str) -> str:
+def _dashboard_url(rel_path: str, *, url_prefix: str = DEFAULT_URL_PREFIX) -> str:
     """Build the iframe ``src`` for ``rel_path``.
 
     The shell mounts ``/runs/<rel>/<file>`` regardless of the Dash sub-app's
-    ``url_prefix`` so we always use the absolute ``/runs/...`` path. The
-    dashboard now lives under the run's ``deliverables/`` subdirectory.
+    mount prefix. ``url_prefix`` is the optional browser-visible base path
+    supplied for path-stripping proxies such as Open OnDemand. The dashboard
+    now lives under the run's ``deliverables/`` subdirectory.
     """
     safe_rel = rel_path.strip("/").replace("\\", "/")
-    return f"{RUNS_BLUEPRINT_PREFIX}/{safe_rel}/{DELIVERABLES_DIRNAME}/{DASHBOARD_FILENAME}"
+    path = (
+        f"{RUNS_BLUEPRINT_PREFIX}/{safe_rel}/"
+        f"{DELIVERABLES_DIRNAME}/{DASHBOARD_FILENAME}"
+    )
+    return join_url_prefix(url_prefix, path)
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +439,7 @@ def register_callbacks(
     *,
     registry: RunRegistry,
     runner: LocalRunner,
+    server_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Register every Run console callback on ``app``.
 
@@ -447,6 +455,8 @@ def register_callbacks(
             run-start, cancel, and recents-refresh callbacks.
         runner: Process-wide :class:`LocalRunner`. Owns subprocess
             lifecycle for Local runs.
+        server_url_prefix: Browser-visible base prefix for shell-level
+            Flask routes such as ``/runs``.
     """
 
     # ----------------------------------------------------------------------
@@ -1132,7 +1142,7 @@ def register_callbacks(
         if not target.is_file():
             return (no_update,) * 4
         return (
-            _dashboard_url(rel_path),
+            _dashboard_url(rel_path, url_prefix=server_url_prefix),
             {"display": "block"},
             {"display": "none"},
             True,
@@ -1316,7 +1326,7 @@ def register_callbacks(
         if not target.is_file():
             return (no_update,) * 4
         return (
-            _dashboard_url(rel_path),
+            _dashboard_url(rel_path, url_prefix=server_url_prefix),
             {"display": "block"},
             {"display": "none"},
             rel_path,

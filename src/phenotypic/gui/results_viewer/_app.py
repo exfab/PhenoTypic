@@ -45,10 +45,12 @@ from phenotypic.gui._config import (
     CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
     CFG_URL_PREFIX,
+    DEFAULT_URL_PREFIX,
     MOUNT_HOME,
     QC_CROPS_URL_SEGMENT,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
     TITLE_VIEWER,
+    join_url_prefix,
 )
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
@@ -120,6 +122,7 @@ def create_app(
     output_root: Optional[OutputRoot] = None,
     *,
     url_prefix: str = MOUNT_HOME,
+    api_url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> dash.Dash:
     """Build a Dash application instance for the results viewer.
 
@@ -136,6 +139,9 @@ def create_app(
             ``requests_pathname_prefix``/``routes_pathname_prefix`` on
             the Dash constructor and stashed on
             ``app.server.config["pheno_url_prefix"]``.
+        api_url_prefix: Browser-visible base prefix for shell-level
+            Flask APIs. Defaults to ``"/"``; the hub passes the external
+            proxy prefix when configured.
 
     Returns:
         A configured :class:`dash.Dash` instance whose ``app.run(...)``
@@ -167,7 +173,11 @@ def create_app(
 
     if output_root is None:
         app.layout = build_empty_state_layout()
-        _register_empty_state_callbacks(app, url_prefix=url_prefix)
+        _register_empty_state_callbacks(
+            app,
+            url_prefix=url_prefix,
+            api_url_prefix=api_url_prefix,
+        )
         logger.debug(
             "Results viewer built in empty-state mode (url_prefix=%s)",
             url_prefix,
@@ -253,7 +263,12 @@ def _load_qc_pipeline(output_root_path: Path):
         return None
 
 
-def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
+def _register_empty_state_callbacks(
+    app: dash.Dash,
+    *,
+    url_prefix: str,
+    api_url_prefix: str,
+) -> None:
     """Wire the empty-state hand-off banner.
 
     Two callbacks:
@@ -306,6 +321,8 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
     # a full reload even though the URL is unchanged), which is what
     # ``_ViewerProxy`` needs to resolve the freshly-built session. On
     # 4xx the JSON ``error`` is rendered into the inline error slot.
+    api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
+
     app.clientside_callback(
         """
         async function(n_clicks, selection) {
@@ -333,7 +350,7 @@ def _register_empty_state_callbacks(app: dash.Dash, *, url_prefix: str) -> None:
                 return String(err);
             }
         }
-        """.replace("__PHENO_API_OUTPUT_ROOT__", SANDBOX_API_VIEWER_OUTPUT_ROOT).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
+        """.replace("__PHENO_API_OUTPUT_ROOT__", api_output_root).replace("__PHENO_VIEWER_PREFIX__", repr(url_prefix)),
         Output(ids.EMPTY_HANDOFF_ERROR, "children"),
         Input(ids.EMPTY_HANDOFF_OPEN_BUTTON, "n_clicks"),
         State(SHELL_SIDEBAR_SELECTION_STORE, "data"),

@@ -36,10 +36,35 @@ uv run python -m phenotypic.gui --root ./images --port 8050
 | `--root PATH` | current working directory | Freezes the sandbox the file browser is allowed to see |
 | `--host ADDR` | `127.0.0.1` | Interface to bind; loopback-only by default |
 | `--port N` | `8050` | TCP port |
+| `--url-prefix PREFIX` | `/` | Browser-visible path prefix for path-stripping proxies |
 | `--debug` | off | Enable Dash auto-reload and verbose tracebacks |
 
 The startup banner printed to stdout repeats the URL and the SSH-tunnel
 command for the bound port.
+
+### Open OnDemand path prefix
+
+Open OnDemand proxies apps through a browser path such as
+`/node/<node>/<port>/` and forwards stripped paths to the local server. Pass
+that path, not the full URL, as `--url-prefix`:
+
+```bash
+uv run phenotypic-gui \
+  --root /rhome/ejaco020 \
+  --host 0.0.0.0 \
+  --port 30099 \
+  --url-prefix /node/hz01/30099/
+```
+
+Then open the full proxy URL in your browser:
+
+```text
+https://ondemand.hpcc.ucr.edu/node/hz01/30099/
+```
+
+The app does not infer node names, ports, or OOD domains. The default prefix is
+`/`, so local launches keep the usual `/builder/`, `/results/`, and `/run/`
+paths.
 
 :::{warning}
 **`phenotypic gui` (without a hyphen) is not supported.**

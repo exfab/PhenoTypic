@@ -38,6 +38,14 @@
         && window.__phenotypicAppPrefix.length > 0)
         ? window.__phenotypicAppPrefix
         : "/";
+    function siblingPrefix(prefix, mountName) {
+        let base = prefix.endsWith("/") ? prefix : prefix + "/";
+        if (base.endsWith("/builder/")) {
+            base = base.slice(0, -"builder/".length);
+        }
+        return base + mountName + "/";
+    }
+    const resultsPrefix = siblingPrefix(appPrefix, "results");
 
     function loadOpenSeadragon() {
         return new Promise(function (resolve, reject) {
@@ -50,12 +58,11 @@
             const cdn = "https://cdn.jsdelivr.net/npm/openseadragon@5/build/openseadragon/openseadragon.min.js";
             // The vendored OSD copy lives under the results-viewer assets
             // tree (its own pip extra ships those tiles + button images).
-            // Under the unified hub composer both apps' static assets are
-            // mounted at their own URL prefixes, so this absolute path
-            // resolves regardless of the builder's mount-point. Standalone
-            // ``python -m phenotypic.gui.builder`` does not mount the
-            // results viewer, so the fallback is CDN-only there.
-            const local = "/results/assets/openseadragon/openseadragon.min.js";
+            // Under the unified hub composer the results viewer's static
+            // assets live at the sibling results prefix. Standalone
+            // ``python -m phenotypic.gui.builder`` does not mount the results
+            // viewer, so the fallback is CDN-only there.
+            const local = resultsPrefix + "assets/openseadragon/openseadragon.min.js";
             const tag = document.createElement("script");
             tag.src = cdn;
             tag.async = true;
@@ -100,6 +107,14 @@
         && window.__phenotypicAppPrefix.length > 0)
         ? window.__phenotypicAppPrefix
         : "/";
+    function siblingPrefix(prefix, mountName) {
+        let base = prefix.endsWith("/") ? prefix : prefix + "/";
+        if (base.endsWith("/builder/")) {
+            base = base.slice(0, -"builder/".length);
+        }
+        return base + mountName + "/";
+    }
+    const resultsPrefix = siblingPrefix(appPrefix, "results");
 
     // Single cached viewer — this modal hosts exactly one OSD instance.
     let viewer = null;
@@ -279,14 +294,13 @@
 
         // OSD's `prefixUrl` resolves the icon images for the zoom/home/
         // fullpage buttons. The vendored icon set lives under the
-        // results-viewer's assets tree (the OSD-JS bundle does too —
-        // see `loadOpenSeadragon` in section (A)), so reuse that path
-        // verbatim instead of `appPrefix + "assets/..."` — the builder
-        // assets folder does not vendor the icons and the hub mounts the
-        // viewer under a fixed `/results/` prefix.
+        // results-viewer's assets tree (the OSD-JS bundle does too; see
+        // `loadOpenSeadragon` in section (A)), so use the sibling results
+        // prefix instead of `appPrefix + "assets/..."` — the builder assets
+        // folder does not vendor the icons.
         viewer = window.OpenSeadragon({
             element: el,
-            prefixUrl: "/results/assets/openseadragon/images/",
+            prefixUrl: resultsPrefix + "assets/openseadragon/images/",
             tileSources: dziUrl,
             showNavigator: false,
             showRotationControl: false,
