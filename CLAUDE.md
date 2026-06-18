@@ -260,11 +260,19 @@ the gate:
 - **HPCC SLURM CPU heterogeneity (polars build):** the cluster has pre-AVX2 nodes
   (`abu_dhabi` = c01–30, `ivy` = h01–06). The stock `polars` wheel bakes AVX2 into its
   baseline with no runtime fallback, so it SIGILLs ("Illegal instruction (core dumped)")
-  there. We therefore **ship `polars-lts-cpu` by default** (baseline-ISA build, runs
-  everywhere). numpy/scipy use runtime SIMD dispatch and are fine on those nodes. On
-  AVX2-capable machines you can swap in the faster stock `polars` build (same
-  `import polars` API) — see `docs/source/how_to/pages/polars_cpu_build.md`. Pinning
-  jobs to AVX2 partitions/constraints is an alternative if you prefer the stock build.
+  there. We therefore **ship `polars[rtcompat]` by default** — the runtime-compat build
+  that ships both ISA variants (`polars-runtime-32` + `polars-runtime-compat`) and
+  picks the right `.so` at import time, so the same install runs on pre-AVX2 and modern
+  nodes alike (it supersedes the old `polars-lts-cpu` single-wheel workaround). numpy/scipy
+  use runtime SIMD dispatch and are fine on those nodes. The `import polars` API is
+  identical — see `docs/source/how_to/pages/polars_cpu_build.md`. Pinning jobs to AVX2
+  partitions/constraints is an alternative if you prefer a single-ISA stock build.
+  - **Gotcha — partial/corrupt extract:** `polars[rtcompat]` is a thin `polars` shim
+    package over the runtime wheels. An interrupted install can leave `polars/` missing
+    its own `__init__.py`, so Python treats it as a namespace package and
+    `import polars` yields `polars.__file__ == None` / `AttributeError: module 'polars'
+    has no attribute 'DataFrame'`. Fix: `uv pip install --reinstall polars` (or
+    `uv sync`). It's an environmental extract failure, not a code bug.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
