@@ -1,6 +1,0 @@
-phenotypic.tools\_.best\_pipeline\_path
-=======================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: best_pipeline_path

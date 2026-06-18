@@ -8,11 +8,16 @@ Python object: ``phenotypic.schema._linear_softplus_model.LINEAR_SOFTPLUS_MODEL`
 
    * - Column label
      - Description
+     - Biology
    * - ``LinearSoftplus_v``
      - The post-lag phase growth rate.
+     - The post-lag phase growth rate using the target metric (usually radius)
    * - ``LinearSoftplus_s0``
+     - The initial value of the target metric
      - The initial size
    * - ``LinearSoftplus_lambda``
      - The duration of the lag phase
+     - 
    * - ``LinearSoftplus_alpha``
      - lag phase transition sharpness
+     - 

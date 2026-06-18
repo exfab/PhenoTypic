@@ -1,6 +1,0 @@
-phenotypic.tools\_.task\_status\_filename
-=========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: task_status_filename

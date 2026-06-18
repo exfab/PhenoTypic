@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../_static/documentation_options.js?v=320a8d94"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0" />
+  <meta name="docsearch:version" content="0.17.1" />
   </head>
   
   
@@ -1385,7 +1385,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -1587,7 +1587,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -2459,7 +2459,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -2661,7 +2661,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -3645,7 +3645,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -4605,7 +4605,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -5530,7 +5530,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -6372,7 +6372,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -6574,7 +6574,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -7470,7 +7470,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -7672,7 +7672,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -8478,7 +8478,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -8680,7 +8680,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -9698,7 +9698,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -9900,7 +9900,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>
@@ -10905,7 +10905,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <dd class="field-odd"><p>pd.DataFrame</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="phenotypic.tools_.exceptions_.html#phenotypic.tools_.exceptions_.OperationFailedError" title="phenotypic.tools_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
     and re-raised as OperationFailedError with details including the
     original exception type, message, image name, and operation class.
     This provides consistent error handling across all measurers.</p>
@@ -11107,7 +11107,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span> <span class="n">ensure_typed_json_suffix</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;op.json&quot;</span>
 <span class="gp">... </span>    <span class="n">saved</span> <span class="o">=</span> <span class="n">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">)</span>

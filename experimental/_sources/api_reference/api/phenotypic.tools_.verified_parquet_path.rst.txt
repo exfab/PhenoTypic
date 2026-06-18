@@ -1,6 +1,0 @@
-phenotypic.tools\_.verified\_parquet\_path
-==========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: verified_parquet_path

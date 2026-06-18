@@ -1,6 +1,0 @@
-phenotypic.tools\_.matches\_any\_suffix
-=======================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: matches_any_suffix

@@ -1,6 +1,0 @@
-phenotypic.tools\_.tuning\_spec\_path
-=====================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: tuning_spec_path

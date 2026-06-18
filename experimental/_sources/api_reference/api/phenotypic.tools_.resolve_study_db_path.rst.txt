@@ -1,6 +1,0 @@
-phenotypic.tools\_.resolve\_study\_db\_path
-===========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: resolve_study_db_path

@@ -1,6 +1,0 @@
-phenotypic.tools\_.register.available\_plotters
-===============================================
-
-.. currentmodule:: phenotypic.tools_.register
-
-.. autofunction:: available_plotters

@@ -1,6 +1,0 @@
-phenotypic.tools\_.qc\_review\_state\_path
-==========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: qc_review_state_path

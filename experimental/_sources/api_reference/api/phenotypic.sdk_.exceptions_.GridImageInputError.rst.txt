@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.GridImageInputError
+=================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: GridImageInputError

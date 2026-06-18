@@ -1,0 +1,28 @@
+phenotypic.sdk\_.register.BaseRegistry
+======================================
+
+.. currentmodule:: phenotypic.sdk_.register
+
+.. autoclass:: BaseRegistry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BaseRegistry.__init__
+      ~BaseRegistry.available
+      ~BaseRegistry.get
+      ~BaseRegistry.register
+   
+   
+
+   
+   
+   

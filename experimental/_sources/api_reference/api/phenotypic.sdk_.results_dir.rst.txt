@@ -1,0 +1,6 @@
+phenotypic.sdk\_.results\_dir
+=============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: results_dir

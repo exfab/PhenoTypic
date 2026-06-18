@@ -1,7 +1,0 @@
-phenotypic.tools\_.colourspace module
-=====================================
-
-.. automodule:: phenotypic.tools_.colourspace
-   :members:
-   :show-inheritance:
-   :undoc-members:

@@ -1,6 +1,0 @@
-phenotypic.tools\_.tune\_cache\_split\_assignment\_path
-=======================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: tune_cache_split_assignment_path

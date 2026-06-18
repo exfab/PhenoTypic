@@ -1,6 +1,0 @@
-phenotypic.tools\_.atomic\_write\_text
-======================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: atomic_write_text

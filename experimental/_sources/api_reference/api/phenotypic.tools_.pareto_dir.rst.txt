@@ -1,6 +1,0 @@
-phenotypic.tools\_.pareto\_dir
-==============================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: pareto_dir

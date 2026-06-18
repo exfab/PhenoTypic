@@ -1,0 +1,39 @@
+phenotypic.sdk\_.constants\_
+============================
+
+.. automodule:: phenotypic.sdk_.constants_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      ConstantLabels
+      GAMMA_ENCODINGS
+      GRID_LINREG_STATS_EXTRACTOR
+      IMAGE_MODE
+      IMAGE_TYPES
+      IO
+      PIPE_STATUS
+   
+   
+
+   
+   
+   
+
+
+

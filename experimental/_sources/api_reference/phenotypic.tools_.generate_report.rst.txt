@@ -1,7 +1,0 @@
-phenotypic.tools\_.generate\_report module
-==========================================
-
-.. automodule:: phenotypic.tools_.generate_report
-   :members:
-   :show-inheritance:
-   :undoc-members:

@@ -1,0 +1,7 @@
+phenotypic.sdk\_.branch\_pathfinding package
+============================================
+
+.. automodule:: phenotypic.sdk_.branch_pathfinding
+   :members:
+   :show-inheritance:
+   :undoc-members:

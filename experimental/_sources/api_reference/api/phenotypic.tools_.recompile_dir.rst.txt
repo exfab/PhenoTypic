@@ -1,6 +1,0 @@
-phenotypic.tools\_.recompile\_dir
-=================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: recompile_dir

@@ -1,6 +1,0 @@
-phenotypic.tools\_.custom\_categories\_json\_path
-=================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: custom_categories_json_path

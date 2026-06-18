@@ -1,6 +1,0 @@
-phenotypic.tools\_.trials\_parquet\_path
-========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: trials_parquet_path

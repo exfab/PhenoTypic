@@ -23,7 +23,7 @@
    
       BayesShrinkEnhancer
       LocalEdgeDenoise
-      BM3DDenoiser
+      EnhanceBlockMatch
       EnhanceLocalContrast
       StructureSmoothing
       ContrastStretching

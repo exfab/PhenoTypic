@@ -1,0 +1,6 @@
+phenotypic.sdk\_.has\_config\_suffix
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: has_config_suffix

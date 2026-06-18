@@ -1,0 +1,6 @@
+phenotypic.sdk\_.register.register\_plotter
+===========================================
+
+.. currentmodule:: phenotypic.sdk_.register
+
+.. autofunction:: register_plotter

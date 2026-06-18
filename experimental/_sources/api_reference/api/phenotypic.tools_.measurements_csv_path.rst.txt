@@ -1,6 +1,0 @@
-phenotypic.tools\_.measurements\_csv\_path
-==========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: measurements_csv_path

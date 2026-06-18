@@ -23,7 +23,7 @@ noise (long exposures), compression artifacts.
   correlation suggests structured artifacts (e.g., banding, uneven
   illumination).
 
-**Mitigation:** `GaussianBlur`, `MedianFilter`, `StableDenoise` (BM3D),
+**Mitigation:** `GaussianBlur`, `MedianFilter`, `DenoiseBlockMatch` (BM3D),
 `VisuShrinkEnhancer` (wavelet).
 
 ## Contrast

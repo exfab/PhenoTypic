@@ -1,6 +1,0 @@
-phenotypic.tools\_.tune\_cache\_splits\_dir
-===========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: tune_cache_splits_dir

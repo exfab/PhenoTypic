@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.format\_sbatch\_directives
+=================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: format_sbatch_directives

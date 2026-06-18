@@ -1,0 +1,6 @@
+phenotypic.sdk\_.analysis\_full\_parquet\_path
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: analysis_full_parquet_path

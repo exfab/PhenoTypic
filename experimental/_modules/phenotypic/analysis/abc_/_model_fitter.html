@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../../_static/documentation_options.js?v=9b4af9f2"></script>
+    <script src="../../../../_static/documentation_options.js?v=320a8d94"></script>
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.17.0" />
+  <meta name="docsearch:version" content="0.17.1" />
   </head>
   
   
@@ -611,7 +611,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
@@ -1223,7 +1223,7 @@
                     <span class="sa">f</span><span class="s2">&quot;legend=</span><span class="si">{</span><span class="n">hue</span><span class="si">!r}</span><span class="s2"> must be one of self.groupby=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
 
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tools_._plotly_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">_require_plotly</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._plotly_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">_require_plotly</span>
 
         <span class="n">_require_plotly</span><span class="p">()</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>

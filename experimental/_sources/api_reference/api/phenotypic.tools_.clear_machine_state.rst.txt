@@ -1,6 +1,0 @@
-phenotypic.tools\_.clear\_machine\_state
-========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: clear_machine_state

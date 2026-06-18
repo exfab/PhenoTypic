@@ -1,6 +1,0 @@
-phenotypic.tools\_.exceptions\_.InputShapeMismatchError
-=======================================================
-
-.. currentmodule:: phenotypic.tools_.exceptions_
-
-.. autoexception:: InputShapeMismatchError

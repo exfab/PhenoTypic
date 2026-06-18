@@ -1,6 +1,0 @@
-phenotypic.tools\_.migrate\_legacy\_machine\_state
-==================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: migrate_legacy_machine_state

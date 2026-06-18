@@ -1,6 +1,0 @@
-phenotypic.tools\_.manifest\_json\_path
-=======================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: manifest_json_path

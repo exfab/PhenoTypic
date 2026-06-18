@@ -1,0 +1,7 @@
+phenotypic.sdk\_.mixin package
+==============================
+
+.. automodule:: phenotypic.sdk_.mixin
+   :members:
+   :show-inheritance:
+   :undoc-members:

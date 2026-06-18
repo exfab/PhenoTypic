@@ -1,0 +1,1020 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_.branch_pathfinding._fragment_prescreening &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_/branch_pathfinding/_fragment_prescreening';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/sdk_/branch_pathfinding/_fragment_prescreening.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_.branch_pathfinding._fragment_prescreening</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_.branch_pathfinding._fragment_prescreening</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Fragment pre-screening against the composite cost surface.</span>
+
+<span class="sd">Rapidly identifies fragments surrounded by high-cost regions that have</span>
+<span class="sd">no viable path corridor to any colony.  These fragments are rejected</span>
+<span class="sd">before Dijkstra propagation, saving significant computation.</span>
+
+<span class="sd">The approach uses ``scipy.ndimage.minimum_filter`` to precompute the</span>
+<span class="sd">local minimum cost within *r_screen* pixels of every pixel in a single</span>
+<span class="sd">O(M) pass.  Each fragment&#39;s boundary pixels are then checked against</span>
+<span class="sd">this pre-filtered map.  If no boundary pixel sees a low-cost region</span>
+<span class="sd">within *r_screen*, no Dijkstra path through that fragment can succeed.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimum_filter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_boundaries</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrescreenResult</span>
+
+
+<div class="viewcode-block" id="compute_min_cost_envelope">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.branch_pathfinding.html#phenotypic.sdk_.branch_pathfinding.compute_min_cost_envelope">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_min_cost_envelope</span><span class="p">(</span>
+    <span class="n">cost_surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">r_screen</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Precompute local minimum cost within *r_screen* of every pixel.</span>
+
+<span class="sd">    Applies a minimum filter with kernel size ``2 * r_screen + 1`` to the</span>
+<span class="sd">    cost surface.  The output value at each pixel is the minimum cost</span>
+<span class="sd">    found within an *r_screen*-pixel square neighbourhood.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cost_surface: Composite cost array, shape ``(H, W)``, values &gt; 0.</span>
+<span class="sd">        r_screen: Screening radius in pixels.  Should match or slightly</span>
+<span class="sd">            exceed the maximum biologically plausible gap distance.</span>
+<span class="sd">            Typical range: 25--40 px.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Minimum-filtered cost array, same shape as input.  Value at</span>
+<span class="sd">        ``(y, x)`` is the minimum cost within *r_screen* pixels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kernel_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">r_screen</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">minimum_filter</span><span class="p">(</span><span class="n">cost_surface</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compute_screening_envelope</span><span class="p">(</span>
+    <span class="n">cost_surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">colony_branch_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">r_screen</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the screening envelope and filtered cost surface.</span>
+
+<span class="sd">    Shared helper for :func:`calibrate_screening_threshold` and</span>
+<span class="sd">    :func:`prescreen_fragments` to avoid duplicate ``minimum_filter``</span>
+<span class="sd">    passes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cost_surface: Composite cost array, shape ``(H, W)``.</span>
+<span class="sd">        colony_branch_mask: Inoculum+branch mask, shape ``(H, W)``.</span>
+<span class="sd">            Nonzero values indicate colony pixels.</span>
+<span class="sd">        r_screen: Screening radius in pixels.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of ``(min_cost_envelope, cost_for_filter)`` where</span>
+<span class="sd">        *min_cost_envelope* is the minimum-filtered cost and</span>
+<span class="sd">        *cost_for_filter* is the modified cost surface with colony</span>
+<span class="sd">        pixels replaced by background median.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cost_for_filter</span> <span class="o">=</span> <span class="n">cost_surface</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">colony_pixels</span> <span class="o">=</span> <span class="n">colony_branch_mask</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">non_colony_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">colony_pixels</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">non_colony_mask</span><span class="p">):</span>
+        <span class="n">fill_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">cost_surface</span><span class="p">[</span><span class="n">non_colony_mask</span><span class="p">],</span> <span class="mi">50</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fill_value</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="n">cost_for_filter</span><span class="p">[</span><span class="n">colony_pixels</span><span class="p">]</span> <span class="o">=</span> <span class="n">fill_value</span>
+    <span class="n">min_cost_envelope</span> <span class="o">=</span> <span class="n">compute_min_cost_envelope</span><span class="p">(</span><span class="n">cost_for_filter</span><span class="p">,</span> <span class="n">r_screen</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">min_cost_envelope</span><span class="p">,</span> <span class="n">cost_for_filter</span>
+
+
+<div class="viewcode-block" id="calibrate_screening_threshold">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.branch_pathfinding.html#phenotypic.sdk_.branch_pathfinding.calibrate_screening_threshold">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_screening_threshold</span><span class="p">(</span>
+    <span class="n">cost_surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">colony_branch_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">r_screen</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">99.0</span><span class="p">,</span>
+    <span class="n">min_cost_envelope</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Derive the screening threshold from known-good branch endpoints.</span>
+
+<span class="sd">    Identifies pixels at the outer boundary of connected colonies in the</span>
+<span class="sd">    inoculum+branch mask and computes their local minimum cost</span>
+<span class="sd">    environment.  The threshold is set at the specified percentile of</span>
+<span class="sd">    this distribution, ensuring that fragments in environments</span>
+<span class="sd">    comparable to known-good branches are retained.</span>
+
+<span class="sd">    This should be run once per image (or per imaging session if</span>
+<span class="sd">    conditions are stable) before calling :func:`prescreen_fragments`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cost_surface: Composite cost array, shape ``(H, W)``.</span>
+<span class="sd">        colony_branch_mask: Inoculum+branch mask, shape ``(H, W)``.</span>
+<span class="sd">            Nonzero values indicate colony pixels.</span>
+<span class="sd">        r_screen: Screening radius, same value as will be used in</span>
+<span class="sd">            :func:`prescreen_fragments`.</span>
+<span class="sd">        percentile: Threshold percentile.  Default 99.0 (very</span>
+<span class="sd">            permissive: only the worst 1% of known-good environments</span>
+<span class="sd">            would be rejected).</span>
+<span class="sd">        min_cost_envelope: Pre-computed minimum cost envelope from</span>
+<span class="sd">            :func:`_compute_screening_envelope`. If ``None``, computed</span>
+<span class="sd">            internally.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of ``(tau_screen, calibration_values)`` where</span>
+<span class="sd">        *tau_screen* is the derived threshold and</span>
+<span class="sd">        *calibration_values* is the array of per-boundary-pixel</span>
+<span class="sd">        minimum costs used to compute it.  The *calibration_values*</span>
+<span class="sd">        can be passed to :func:`prescreen_fragments` or used for</span>
+<span class="sd">        diagnostic plotting.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If no boundary pixels are found in</span>
+<span class="sd">            *colony_branch_mask*.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">min_cost_envelope</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">min_cost_envelope</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_compute_screening_envelope</span><span class="p">(</span>
+            <span class="n">cost_surface</span><span class="p">,</span> <span class="n">colony_branch_mask</span><span class="p">,</span> <span class="n">r_screen</span>
+        <span class="p">)</span>
+
+    <span class="n">colony_pixels</span> <span class="o">=</span> <span class="n">colony_branch_mask</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="c1"># Outer boundary of the colony mask: pixels at tips/edges of</span>
+    <span class="c1"># known-good branches representing worst-case connected environment.</span>
+    <span class="n">outer_boundary</span> <span class="o">=</span> <span class="n">find_boundaries</span><span class="p">(</span><span class="n">colony_pixels</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">)</span>
+
+    <span class="n">boundary_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">outer_boundary</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">boundary_coords</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;No boundary pixels found in colony_branch_mask. &quot;</span>
+            <span class="s2">&quot;Is the mask empty?&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">boundary_coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">boundary_coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">calibration_values</span> <span class="o">=</span> <span class="n">min_cost_envelope</span><span class="p">[</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">tau_screen</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">calibration_values</span><span class="p">,</span> <span class="n">percentile</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">tau_screen</span><span class="p">,</span> <span class="n">calibration_values</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_extract_fragment_boundaries</span><span class="p">(</span>
+    <span class="n">fragment_labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract boundary pixel coordinates for each labelled fragment.</span>
+
+<span class="sd">    Boundary pixels are those within the fragment mask that have at</span>
+<span class="sd">    least one 8-connected neighbour outside the fragment (including</span>
+<span class="sd">    neighbours belonging to other fragments).</span>
+
+<span class="sd">    For very small fragments (&lt; 4 pixels), all pixels are treated as</span>
+<span class="sd">    boundary pixels since they are entirely &quot;surface.&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        fragment_labels: Labelled fragment array, shape ``(H, W)``.</span>
+<span class="sd">            0 = background, positive integers = fragment IDs.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict mapping ``fragment_id`` to an ``(N, 2)`` array of</span>
+<span class="sd">        ``(row, col)`` boundary pixel coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Single-pass boundary detection across all fragments</span>
+    <span class="n">all_boundaries</span> <span class="o">=</span> <span class="n">find_boundaries</span><span class="p">(</span><span class="n">fragment_labels</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">)</span>
+
+    <span class="n">boundaries</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">fragment_labels</span><span class="p">):</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span>
+        <span class="n">pixel_count</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span>
+
+        <span class="k">if</span> <span class="n">pixel_count</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="c1"># Very small fragments: all pixels are boundary.</span>
+            <span class="n">boundaries</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">fid</span><span class="p">)]</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">coords</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">r0</span><span class="p">,</span> <span class="n">c0</span><span class="p">,</span> <span class="n">r1</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">bbox</span>
+            <span class="n">local_labels</span> <span class="o">=</span> <span class="n">fragment_labels</span><span class="p">[</span><span class="n">r0</span><span class="p">:</span><span class="n">r1</span><span class="p">,</span> <span class="n">c0</span><span class="p">:</span><span class="n">c1</span><span class="p">]</span>
+            <span class="n">local_bounds</span> <span class="o">=</span> <span class="n">all_boundaries</span><span class="p">[</span><span class="n">r0</span><span class="p">:</span><span class="n">r1</span><span class="p">,</span> <span class="n">c0</span><span class="p">:</span><span class="n">c1</span><span class="p">]</span>
+            <span class="n">local_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">local_labels</span> <span class="o">==</span> <span class="n">fid</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">local_bounds</span>
+            <span class="n">local_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">local_mask</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">local_coords</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Fallback: if find_boundaries returns nothing</span>
+                <span class="n">boundaries</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">fid</span><span class="p">)]</span> <span class="o">=</span> <span class="n">prop</span><span class="o">.</span><span class="n">coords</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Offset local coords to global</span>
+                <span class="n">coords</span> <span class="o">=</span> <span class="n">local_coords</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r0</span><span class="p">,</span> <span class="n">c0</span><span class="p">])</span>
+                <span class="n">boundaries</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">fid</span><span class="p">)]</span> <span class="o">=</span> <span class="n">coords</span>
+
+    <span class="k">return</span> <span class="n">boundaries</span>
+
+
+<div class="viewcode-block" id="prescreen_fragments">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.branch_pathfinding.html#phenotypic.sdk_.branch_pathfinding.prescreen_fragments">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prescreen_fragments</span><span class="p">(</span>
+    <span class="n">cost_surface</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">fragment_labels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">r_screen</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="n">tau_screen</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">calibration_cost_values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">calibration_percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">99.0</span><span class="p">,</span>
+    <span class="n">colony_branch_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">min_cost_envelope</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PrescreenResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-screen fragments against the local cost environment.</span>
+
+<span class="sd">    Rejects fragments surrounded entirely by high-cost regions before</span>
+<span class="sd">    Dijkstra propagation.  Uses a minimum filter over the cost surface</span>
+<span class="sd">    to efficiently check whether any low-cost corridor exists within</span>
+<span class="sd">    *r_screen* pixels of each fragment boundary.</span>
+
+<span class="sd">    The threshold *tau_screen* can be set explicitly or derived from</span>
+<span class="sd">    calibration data (known-good fragment boundary cost values).  If</span>
+<span class="sd">    calibration data is provided, the threshold is set at the specified</span>
+<span class="sd">    percentile, making screening very permissive (only reject clearly</span>
+<span class="sd">    hopeless cases).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cost_surface: Composite cost array, shape ``(H, W)``, values &gt; 0.</span>
+<span class="sd">            Output of cost surface construction, with known objects</span>
+<span class="sd">            already masked to epsilon_free.</span>
+<span class="sd">        fragment_labels: Labelled fragment array, shape ``(H, W)``.</span>
+<span class="sd">            0 = background, positive integers = fragment IDs.  Fragments</span>
+<span class="sd">            already connected to colonies (in the inoculum+branch mask)</span>
+<span class="sd">            should *not* be included here.</span>
+<span class="sd">        r_screen: Screening radius in pixels.  Maximum gap distance</span>
+<span class="sd">            considered biologically plausible.  Typical: 25--40 px.</span>
+<span class="sd">        tau_screen: Cost threshold for rejection.  Fragments whose</span>
+<span class="sd">            minimum environmental cost exceeds this are rejected.  If</span>
+<span class="sd">            ``None``, *calibration_cost_values* must be provided.</span>
+<span class="sd">        calibration_cost_values: Array of minimum environmental cost</span>
+<span class="sd">            values from known-good fragments (those already in the</span>
+<span class="sd">            inoculum+branch mask).  Used to derive *tau_screen* at the</span>
+<span class="sd">            specified percentile.  Ignored if *tau_screen* is set.</span>
+<span class="sd">        calibration_percentile: Percentile of calibration distribution</span>
+<span class="sd">            to use as threshold.  Default 99.0 (very permissive).</span>
+<span class="sd">        colony_branch_mask: If provided, the inoculum+branch mask (any</span>
+<span class="sd">            nonzero value = colony).  Used to exclude colony pixels from</span>
+<span class="sd">            the minimum-filtered cost map so that fragment screening</span>
+<span class="sd">            reflects the gap environment, not the free-traversal zone</span>
+<span class="sd">            inside colonies.  Shape ``(H, W)``.</span>
+<span class="sd">        min_cost_envelope: Pre-computed minimum cost envelope from</span>
+<span class="sd">            :func:`_compute_screening_envelope`. If ``None``, computed</span>
+<span class="sd">            internally. Passing a pre-computed envelope avoids a</span>
+<span class="sd">            duplicate ``minimum_filter`` pass when both</span>
+<span class="sd">            :func:`calibrate_screening_threshold` and this function</span>
+<span class="sd">            are called on the same cost surface.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :class:`PrescreenResult` containing the filtered fragment</span>
+<span class="sd">        labels, sets of passed/rejected IDs, and the threshold used.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If neither *tau_screen* nor</span>
+<span class="sd">            *calibration_cost_values* is provided, if</span>
+<span class="sd">            *fragment_labels* contains no fragments, or if the shapes</span>
+<span class="sd">            of *cost_surface* and *fragment_labels* do not match.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># --- Input validation ---</span>
+    <span class="k">if</span> <span class="n">cost_surface</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">fragment_labels</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Shape mismatch: cost_surface </span><span class="si">{</span><span class="n">cost_surface</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> vs &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;fragment_labels </span><span class="si">{</span><span class="n">fragment_labels</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">fragment_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">fragment_labels</span><span class="p">)</span>
+    <span class="n">fragment_ids</span> <span class="o">=</span> <span class="n">fragment_ids</span><span class="p">[</span><span class="n">fragment_ids</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">fragment_ids</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;fragment_labels contains no labeled fragments&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tau_screen</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">calibration_cost_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Must provide either tau_screen or calibration_cost_values&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- Threshold determination ---</span>
+    <span class="k">if</span> <span class="n">tau_screen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">calibration_cost_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># guarded above</span>
+        <span class="n">tau_screen</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">calibration_cost_values</span><span class="p">,</span> <span class="n">calibration_percentile</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># --- Precompute minimum cost envelope ---</span>
+    <span class="k">if</span> <span class="n">min_cost_envelope</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">colony_branch_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">min_cost_envelope</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_compute_screening_envelope</span><span class="p">(</span>
+                <span class="n">cost_surface</span><span class="p">,</span> <span class="n">colony_branch_mask</span><span class="p">,</span> <span class="n">r_screen</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">min_cost_envelope</span> <span class="o">=</span> <span class="n">compute_min_cost_envelope</span><span class="p">(</span><span class="n">cost_surface</span><span class="p">,</span> <span class="n">r_screen</span><span class="p">)</span>
+
+    <span class="c1"># --- Extract fragment boundaries ---</span>
+    <span class="n">boundaries</span> <span class="o">=</span> <span class="n">_extract_fragment_boundaries</span><span class="p">(</span><span class="n">fragment_labels</span><span class="p">)</span>
+
+    <span class="c1"># --- Screen each fragment ---</span>
+    <span class="n">passed</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">rejected</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">fid</span> <span class="ow">in</span> <span class="n">fragment_ids</span><span class="p">:</span>
+        <span class="n">fid_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fid_int</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">boundaries</span><span class="p">:</span>
+            <span class="c1"># Fragment had no extractable boundary (should not happen).</span>
+            <span class="n">rejected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fid_int</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">boundaries</span><span class="p">[</span><span class="n">fid_int</span><span class="p">]</span>
+        <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Sample the minimum-filtered cost at boundary pixels.</span>
+        <span class="c1"># The value at each boundary pixel already represents the</span>
+        <span class="c1"># minimum cost within r_screen pixels of that point.</span>
+        <span class="n">boundary_min_costs</span> <span class="o">=</span> <span class="n">min_cost_envelope</span><span class="p">[</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">]</span>
+
+        <span class="c1"># The fragment&#39;s environmental cost is the best (lowest)</span>
+        <span class="c1"># value across all its boundary pixels.  This asks: &quot;is there</span>
+        <span class="c1"># ANY low-cost region within r_screen of ANY part of this</span>
+        <span class="c1"># fragment&#39;s boundary?&quot;</span>
+        <span class="n">frag_min_env</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">boundary_min_costs</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">frag_min_env</span> <span class="o">&gt;</span> <span class="n">tau_screen</span><span class="p">:</span>
+            <span class="n">rejected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fid_int</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fid_int</span><span class="p">)</span>
+
+    <span class="c1"># --- Build output ---</span>
+    <span class="n">screened_labels</span> <span class="o">=</span> <span class="n">fragment_labels</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">rejected</span><span class="p">:</span>
+        <span class="n">rejection_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">fragment_labels</span><span class="p">,</span> <span class="n">rejected</span><span class="p">)</span>
+        <span class="n">screened_labels</span><span class="p">[</span><span class="n">rejection_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">PrescreenResult</span><span class="p">(</span>
+        <span class="n">screened_fragment_labels</span><span class="o">=</span><span class="n">screened_labels</span><span class="p">,</span>
+        <span class="n">passed_ids</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="n">passed</span><span class="p">),</span>
+        <span class="n">rejected_ids</span><span class="o">=</span><span class="nb">set</span><span class="p">(</span><span class="n">rejected</span><span class="p">),</span>
+        <span class="n">threshold_used</span><span class="o">=</span><span class="n">tau_screen</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

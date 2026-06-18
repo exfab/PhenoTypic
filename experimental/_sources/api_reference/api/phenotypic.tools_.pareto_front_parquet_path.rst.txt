@@ -1,6 +1,0 @@
-phenotypic.tools\_.pareto\_front\_parquet\_path
-===============================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: pareto_front_parquet_path

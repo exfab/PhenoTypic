@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.get\_slurm\_array\_limit
+===============================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: get_slurm_array_limit

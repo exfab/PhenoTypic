@@ -1,6 +1,0 @@
-phenotypic.tools\_.error\_analysis\_parquet\_path
-=================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: error_analysis_parquet_path

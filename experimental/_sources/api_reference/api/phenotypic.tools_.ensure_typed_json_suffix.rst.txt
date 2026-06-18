@@ -1,6 +1,0 @@
-phenotypic.tools\_.ensure\_typed\_json\_suffix
-==============================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: ensure_typed_json_suffix

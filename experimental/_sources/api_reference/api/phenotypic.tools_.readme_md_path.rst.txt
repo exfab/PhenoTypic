@@ -1,6 +1,0 @@
-phenotypic.tools\_.readme\_md\_path
-===================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: readme_md_path

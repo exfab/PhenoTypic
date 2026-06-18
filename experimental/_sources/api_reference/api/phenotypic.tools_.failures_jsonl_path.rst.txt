@@ -1,6 +1,0 @@
-phenotypic.tools\_.failures\_jsonl\_path
-========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: failures_jsonl_path

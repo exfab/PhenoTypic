@@ -1,6 +1,0 @@
-phenotypic.tools\_.timed\_execution
-===================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: timed_execution

@@ -1,6 +1,0 @@
-phenotypic.tools\_.resolve\_pipeline\_config\_path
-==================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: resolve_pipeline_config_path

@@ -1,6 +1,0 @@
-phenotypic.tools\_.resolve\_processing\_state\_path
-===================================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: resolve_processing_state_path

@@ -1,6 +1,0 @@
-phenotypic.tools\_.sentinel\_resubmitted\_path
-==============================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: sentinel_resubmitted_path

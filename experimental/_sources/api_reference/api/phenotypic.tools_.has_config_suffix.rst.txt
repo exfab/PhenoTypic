@@ -1,6 +1,0 @@
-phenotypic.tools\_.has\_config\_suffix
-======================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: has_config_suffix

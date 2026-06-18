@@ -327,7 +327,7 @@ Specifically:
 The detector works best with upstream denoising and illumination
 correction:
 
-1. **`StableDenoise`** (BM3D) — removes Poisson-Gaussian noise without
+1. **`DenoiseBlockMatch`** (BM3D) — removes Poisson-Gaussian noise without
    destroying thin filaments.
 2. **`FlattenIllumination`** — corrects uneven illumination so phase
    congruency isn't driven by intensity gradients.

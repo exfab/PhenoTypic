@@ -1,0 +1,6 @@
+phenotypic.sdk\_.readme\_md\_path
+=================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: readme_md_path

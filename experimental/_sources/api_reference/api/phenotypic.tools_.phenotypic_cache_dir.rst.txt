@@ -1,6 +1,0 @@
-phenotypic.tools\_.phenotypic\_cache\_dir
-=========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: phenotypic_cache_dir

@@ -1,6 +1,0 @@
-phenotypic.tools\_.param\_importance\_path
-==========================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: param_importance_path

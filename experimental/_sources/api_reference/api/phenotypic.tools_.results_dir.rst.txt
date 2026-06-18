@@ -1,6 +1,0 @@
-phenotypic.tools\_.results\_dir
-===============================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: results_dir

@@ -1,6 +1,0 @@
-phenotypic.tools\_.checkpoint\_lock\_filename
-=============================================
-
-.. currentmodule:: phenotypic.tools_
-
-.. autofunction:: checkpoint_lock_filename
