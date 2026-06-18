@@ -116,7 +116,7 @@ method's payload; only the active method's fields are read:
   "method": "range",                 // is_any_of | is_none_of | range | compare | contains
   "values": [],                      // is_any_of / is_none_of
   "range":   {"min": 100, "max": 5000},   // range (either bound nullable)
-  "compare": {"op": ">=", "value": 0.85}, // compare (op in >, >=, <, <=, ==, !=)
+  "compare": {"op": ">=", "value": 0.85}, // compare (op in >, >=, <, <=)
   "contains":{"pattern": "plate_02", "regex": false, "case_sensitive": false}
 }
 ```
@@ -137,7 +137,7 @@ expressions:
 | **Is any of** (default) | `col.cast(String).is_in(values)` | multi-select dropdown + Paste |
 | **Is none of** | `~col.cast(String).is_in(values)` | multi-select dropdown + Paste |
 | **Range (between)** | `col.cast(Float64, strict=False)` with `>= min` and/or `<= max` (either optional) | two numeric inputs |
-| **Compare** | `col.cast(Float64, strict=False) <op> value` | operator dropdown + numeric input |
+| **Compare** | `col.cast(Float64, strict=False) <op> value`, `op ∈ {>, >=, <, <=}` (ordering only — no `==`/`!=`; use list mode for equality) | operator dropdown + numeric input |
 | **Contains** | `col.cast(String).str.contains(pat, literal=not regex)`; see case-insensitivity note below | text input + `regex` / `case-sensitive` checkboxes |
 
 **Unset = skip (no-op), never "match nothing"** — consistent with today's
@@ -269,7 +269,7 @@ toggle/badge read the same spec store. No new stores.
 **Unit (pure, no browser):**
 
 - `FilterRow.to_expr()` / `FilterSpec.apply_to` for all five methods, including:
-  optional/single-bound range, inclusive bounds, every compare operator,
+  optional/single-bound range, inclusive bounds, each ordering compare operator,
   contains literal vs regex and case on/off, numeric cast of mixed columns,
   and unset-skip for each method.
 - `_compute` numeric vs lexical ordering; `_all_parse_as_float`;
