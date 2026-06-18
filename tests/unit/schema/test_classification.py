@@ -10,7 +10,6 @@ def _make(cls, **entries):
     # Build a throwaway enum subclass for testing resolution.
     # type() bypasses EnumMeta.__prepare__ on Python 3.12+, so use EnumMeta directly.
     from enum import EnumMeta
-    from phenotypic.schema import MeasurementInfo  # noqa: F401
     ns = EnumMeta.__prepare__("T", (cls,))
     ns["category"] = classmethod(lambda c: "T")
     for name, kw in entries.items():
@@ -20,7 +19,7 @@ def _make(cls, **entries):
 
 def test_tier_bases_are_memberless():
     for base in (DirectPhenotype, DescriptiveTrait, DiscriminativeFeature,
-                 IdentityInfo, QualityInfo, DerivedMeasure):
+                 IdentityInfo, QualityInfo, DerivedMeasure, PrimaryMeasure):
         assert list(base) == []
 
 

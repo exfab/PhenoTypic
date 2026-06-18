@@ -151,8 +151,13 @@ def _render_info_table(
 def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
     """Resolve (kind, tier) for a member; raise if unclassified.
 
-    Precedence: diagnostic/normalization derivation_type, then an explicit
-    Entry tier override, then the member's base-class kind()/tier().
+    Precedence (highest to lowest):
+    1. ``derivation_type == "diagnostic"`` → ``("quality", None)``
+    2. ``derivation_type == "normalization"`` → ``("derived", None)``
+    3. ``derivation_type == "parameterization"`` → ``("derived", tier_override)``
+       (raises if ``tier_override`` is ``None``)
+    4. Explicit ``Entry(tier=...)`` override combined with the class ``kind()``
+    5. Class-level ``kind()`` / ``tier()`` (from a classification base class)
     """
     if member.derivation_type == "diagnostic":
         return ("quality", None)
