@@ -1,9 +1,10 @@
 """Second-order texture features derived from the gray-level co-occurrence matrix."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DiscriminativeFeature
 
 
-class TEXTURE(MeasurementInfo):
+class TEXTURE(DiscriminativeFeature):
     """Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).
 
     All features assume normalized GLCMs computed at one or more pixel offsets and averaged

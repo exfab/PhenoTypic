@@ -1,9 +1,10 @@
 """Per-object summary statistics in CIE chromaticity xy coordinates."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DiscriminativeFeature
 
 
-class Colorxy(MeasurementInfo):
+class Colorxy(DiscriminativeFeature):
     """Measure colony color statistics across multiple perceptual color spaces.
 
     Extract per-colony color features from CIE XYZ, chromaticity (xy),
