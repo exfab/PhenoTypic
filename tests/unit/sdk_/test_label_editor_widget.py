@@ -174,6 +174,53 @@ class TestDrawMethod:
             assert args[1] == "objmask"
 
 
+class TestAddImageLayer:
+    """add_image_layer sets non-stretched, dtype-aware contrast limits."""
+
+    def _fresh_viewer(self):
+        viewer = MagicMock()
+        viewer.layers.__getitem__.side_effect = KeyError  # force add_image branch
+        return viewer
+
+    def test_integer_layer_uses_full_dtype_range(self):
+        from phenotypic.sdk_.napari_ import add_image_layer
+
+        viewer = self._fresh_viewer()
+        arr = np.full((10, 10, 3), 200, dtype=np.uint8)  # RGB uint8, range 200..200
+
+        add_image_layer(viewer, arr, name="rgb")
+
+        _, kw = viewer.add_image.call_args
+        assert kw["contrast_limits"] == (0, 255)  # NOT (200, 200)
+        assert kw["rgb"] is True
+
+    def test_float_layer_uses_unit_range_not_minmax(self):
+        from phenotypic.sdk_.napari_ import add_image_layer
+
+        viewer = self._fresh_viewer()
+        arr = np.full((10, 10), 0.7, dtype=np.float32)  # data range 0.7..0.7
+
+        add_image_layer(viewer, arr, name="gray")
+
+        _, kw = viewer.add_image.call_args
+        assert kw["contrast_limits"] == (0.0, 1.0)  # NOT (0.7, 0.7) auto-stretch
+        assert kw["rgb"] is False
+
+    def test_existing_layer_is_updated_in_place(self):
+        from phenotypic.sdk_.napari_ import add_image_layer
+
+        viewer = MagicMock()
+        existing = MagicMock()
+        viewer.layers.__getitem__.return_value = existing  # layer already present
+        arr = np.full((10, 10), 0.4, dtype=np.float32)
+
+        add_image_layer(viewer, arr, name="gray")
+
+        viewer.add_image.assert_not_called()
+        np.testing.assert_array_equal(existing.data, arr)
+        assert existing.contrast_limits == (0.0, 1.0)
+
+
 class TestRealPanelConstruction:
     """Build the actual Qt dock widget (regression for the __bases__ bug).
 

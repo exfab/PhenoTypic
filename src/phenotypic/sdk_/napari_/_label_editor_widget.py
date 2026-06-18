@@ -54,14 +54,19 @@ class LabelEditorWidget:
             )
         import napari
 
+        from ._layers import add_image_layer
+
         active_viewer = (
             viewer if viewer is not None else napari.Viewer(title="Label Editor")
         )
 
+        # Add reference image layers with non-stretched contrast (integer dtype
+        # → full range, normalized float → (0, 1)), so they render at their true
+        # brightness rather than auto-stretched to each layer's own min/max.
         if not image.rgb.isempty():
-            image.rgb.napari(viewer=active_viewer, layer_name="rgb")
-        image.gray.napari(viewer=active_viewer, layer_name="gray")
-        image.detect_mat.napari(viewer=active_viewer, layer_name="detect_mat")
+            add_image_layer(active_viewer, image.rgb[:], name="rgb")
+        add_image_layer(active_viewer, image.gray[:], name="gray")
+        add_image_layer(active_viewer, image.detect_mat[:], name="detect_mat")
 
         if accessor_name == "objmask":
             seed = image.objmask[:].astype(np.uint8)
@@ -76,7 +81,7 @@ class LabelEditorWidget:
         panel = _make_label_editor_panel(
             active_viewer, labels_layer, image, accessor_name
         )
-        active_viewer.window.add_dock_widget(panel, name="Label Editor", area="right")
+        _dock_panel_above_layer_controls(active_viewer, panel)
 
         # Only drive a blocking event loop when we own the viewer. When the
         # caller supplies one (advanced reuse), they manage their own loop and
@@ -167,3 +172,31 @@ def _make_label_editor_panel(viewer, labels_layer, image, accessor_name: str):
             self._discard_btn.clicked.connect(self._discard)
 
     return _LabelEditorPanel()
+
+
+def _dock_panel_above_layer_controls(viewer, panel) -> None:
+    """Dock *panel* on the left, stacked above napari's layer list and controls.
+
+    Produces a top-to-bottom left column of: this panel, the layer list, then
+    the layer controls. napari appends new left docks to the bottom of the
+    column, so after adding the panel we reorder the two native docks beneath it
+    with ``splitDockWidget`` (which places its second argument immediately after
+    the first in the same dock area).
+
+    Args:
+        viewer: The napari viewer the panel is docked into.
+        panel: The dock-widget contents to add (the Save/Discard panel).
+    """
+    from qtpy.QtCore import Qt
+
+    window = viewer.window
+    dock = window.add_dock_widget(panel, name="Label Editor", area="left")
+
+    qt_window = window._qt_window
+    qt_viewer = window._qt_viewer
+    list_dock = qt_viewer.dockLayerList
+    controls_dock = qt_viewer.dockLayerControls
+
+    # Final top→bottom order: editor panel, layer list, layer controls.
+    qt_window.splitDockWidget(dock, list_dock, Qt.Orientation.Vertical)
+    qt_window.splitDockWidget(list_dock, controls_dock, Qt.Orientation.Vertical)
