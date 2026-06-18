@@ -36,3 +36,12 @@ def test_wipe_scope_removes_dir(tmp_path, monkeypatch):
     (d / "base_00.h5").write_bytes(b"x")
     pc.wipe_scope("sess1", [])
     assert not d.exists()
+
+
+def test_init_cache_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "root")
+    monkeypatch.setattr(pc, "_atexit_registered", False)
+    pc.init_cache()
+    pc.init_cache()
+    assert pc._atexit_registered is True
+    assert pc.preview_cache_root().is_dir()

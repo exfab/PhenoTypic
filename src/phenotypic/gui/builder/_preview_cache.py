@@ -53,31 +53,34 @@ def init_cache() -> None:
 
 def scope_hash(scope_path: list[str]) -> str:
     """Stable hash of a scope_path (list of container block_ids)."""
-    return hashlib.sha1("/".join(scope_path).encode("utf-8")).hexdigest()
+    return hashlib.sha1(
+        "/".join(scope_path).encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
+
+
+def _scope_path(session_id: str, scope_path: list[str]) -> Path:
+    """Per-(session, scope) directory path WITHOUT creating it."""
+    return preview_cache_root() / session_id / scope_hash(scope_path)
 
 
 def scope_dir(session_id: str, scope_path: list[str]) -> Path:
     """Per-(session, scope) directory, created if missing."""
-    d = preview_cache_root() / session_id / scope_hash(scope_path)
+    d = _scope_path(session_id, scope_path)
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def wipe_scope(session_id: str, scope_path: list[str]) -> None:
     """Remove a single scope's cache dir (best-effort)."""
-    shutil.rmtree(
-        preview_cache_root() / session_id / scope_hash(scope_path),
-        ignore_errors=True,
-    )
-
-
-def _manifest_path(session_id: str, scope_path: list[str]) -> Path:
-    return scope_dir(session_id, scope_path) / "manifest.json"
+    shutil.rmtree(_scope_path(session_id, scope_path), ignore_errors=True)
 
 
 def read_manifest(session_id: str, scope_path: list[str]) -> Optional[dict]:
-    """Return the scope manifest dict, or None if absent/unreadable."""
-    path = _manifest_path(session_id, scope_path)
+    """Return the scope manifest dict, or None if absent/unreadable.
+
+    Pure read: never creates the scope dir as a side effect.
+    """
+    path = _scope_path(session_id, scope_path) / "manifest.json"
     if not path.exists():
         return None
     try:
@@ -87,8 +90,8 @@ def read_manifest(session_id: str, scope_path: list[str]) -> Optional[dict]:
 
 
 def write_manifest(session_id: str, scope_path: list[str], manifest: dict) -> None:
-    """Write the scope manifest atomically."""
-    path = _manifest_path(session_id, scope_path)
-    tmp = path.with_suffix(".json.tmp")
+    """Write the scope manifest atomically (creates the scope dir)."""
+    path = scope_dir(session_id, scope_path) / "manifest.json"
+    tmp = path.with_name("manifest.json.tmp")
     tmp.write_text(json.dumps(manifest))
     tmp.replace(path)
