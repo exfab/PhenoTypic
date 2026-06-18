@@ -77,3 +77,15 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", tier=4)
     with pytest.raises(ValueError):
         Entry("x", "d", derivation_type="bogus")
+
+
+def test_identity_enums_resolve_identity():
+    from phenotypic.schema import (
+        METADATA, BBOX, OBJECT, GRID,
+        GENETIC_METADATA, SAMPLE_METADATA, PLATE_METADATA, CONDITION_METADATA,
+        INCUBATION_METADATA, ACQUISITION_METADATA, EXPERIMENT_METADATA,
+    )
+    for enum in (METADATA, BBOX, OBJECT, GRID, GENETIC_METADATA, SAMPLE_METADATA,
+                 PLATE_METADATA, CONDITION_METADATA, INCUBATION_METADATA,
+                 ACQUISITION_METADATA, EXPERIMENT_METADATA):
+        assert all(m.resolved_kind == "identity" for m in enum), enum.__name__

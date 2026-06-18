@@ -1,9 +1,10 @@
 """The label and description of the per-object identifier column."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import IdentityInfo
 
 
-class OBJECT(MeasurementInfo):
+class OBJECT(IdentityInfo):
     """Per-object identifier shared by every measurement table.
 
     ``Object_Label`` is written as the first column of every per-object

@@ -1,9 +1,10 @@
 """Imaging and acquisition metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class ACQUISITION_METADATA(MeasurementInfo):
+class ACQUISITION_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags describing image acquisition.
 
     These record how and by whom an image was captured (acquisition date,

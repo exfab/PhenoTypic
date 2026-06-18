@@ -1,9 +1,10 @@
 """Organism and genetics metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class GENETIC_METADATA(MeasurementInfo):
+class GENETIC_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags describing the organism and its genetics.
 
     These name the genetic identity of the colonies on a plate (species, strain,

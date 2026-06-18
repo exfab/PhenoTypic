@@ -1,9 +1,10 @@
 """Experiment-level and bookkeeping metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class EXPERIMENT_METADATA(MeasurementInfo):
+class EXPERIMENT_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags for experiment-level bookkeeping.
 
     These group results by experiment/project and carry free-form provenance

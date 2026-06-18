@@ -1,9 +1,10 @@
 """Plate and array layout metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class PLATE_METADATA(MeasurementInfo):
+class PLATE_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags describing the assay plate and its array.
 
     These capture plate-level grouping and physical layout (plate id, batch, array

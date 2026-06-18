@@ -1,9 +1,10 @@
 """Sample identity and provenance metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class SAMPLE_METADATA(MeasurementInfo):
+class SAMPLE_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags identifying a sample and its provenance.
 
     These distinguish individual biological samples and track where each colony came
