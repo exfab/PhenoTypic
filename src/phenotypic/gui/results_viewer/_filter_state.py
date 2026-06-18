@@ -2,9 +2,12 @@
 
 This module exposes the pure data layer that backs the viewer's filter
 sidebar. It mediates between the Dash ``dcc.Store`` payload (a list of
-``{"column": str, "values": list[str]}`` dicts) and a polars
-``DataFrame.filter`` expression chain. Keeping this logic separate from the
-Dash callbacks lets it be unit-tested without spinning up a browser.
+per-row dicts, each carrying a ``column``, a ``method`` — one of
+``is_any_of`` / ``is_none_of`` / ``range`` / ``compare`` / ``contains`` —
+and that method's payload fields) and a polars ``DataFrame.filter``
+expression chain. Each row compiles to a single predicate via
+:meth:`FilterRow.to_expr`; rows AND together. Keeping this logic separate
+from the Dash callbacks lets it be unit-tested without spinning up a browser.
 """
 
 from __future__ import annotations

@@ -670,7 +670,7 @@ def register_callbacks(
         """
         del n_clicks
         rows = _normalise_spec(stored)
-        rows.append({"id": uuid.uuid4().hex, "column": "", "values": []})
+        rows.append(_blank_row())
         return rows
 
     # --- 2. Render filter rows -------------------------------------------
