@@ -13,7 +13,7 @@ _DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diag
 # Not used by _classify; consumed by the Task 10 coverage-gate test.
 _VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
 
-_USE_LABELS: Final = {
+_USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
     (1, "primary"): "Direct phenotype (Tier 1)",
     (2, "primary"): "Descriptive trait (Tier 2)",
     (3, "primary"): "Discriminative feature (Tier 3)",
