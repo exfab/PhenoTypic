@@ -31,12 +31,12 @@ name: run-pytest
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [ main, dev ]
   push:
     # Seed the main-prefixed ``.testmondata`` cache that PR runs restore
     # via ``restore-keys``. Without this trigger, no workflow ever writes
     # a cache with ``main`` in the key, and every PR run starts cold.
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 # Prevent duplicate runs on the same PR/commit
@@ -159,9 +159,9 @@ jobs:
         run: |
           source .venv/bin/activate
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            pytest -n auto  # Full parallel run, addopts still excludes -m slow
+            pytest -q --tb=long -r "Efw" --no-header -n auto  # Full parallel run, addopts still excludes -m slow
           else
-            pytest --testmon  # Selective: PR (skip unchanged dependencies)
+            pytest -q --tb=long -r "Efw" --no-header --testmon  # Selective: PR (skip unchanged dependencies)
           fi
 
   # tests-windows and tests-macos moved to .github/workflows/run-pytest-full.yml

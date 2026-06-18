@@ -149,5 +149,5 @@ jobs:
       - name: Run tests (full, slow included)
         run: |
           .venv\Scripts\activate
-          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
         shell: pwsh
