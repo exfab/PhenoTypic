@@ -1,0 +1,1095 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._evaluation._builder &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_evaluation/_builder';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/tune/_evaluation/_builder.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._evaluation._builder</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._evaluation._builder</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Turn a sampled parameter combo into a runnable ``ImagePipeline``.</span>
+
+<span class="sd">The combo is a flat ``{root-relative-key: value}`` mapping (the same keys a</span>
+<span class="sd">``SearchSpace`` knob carries; see master §5). ``build_pipeline`` clones the base</span>
+<span class="sd">pipeline, overlays each key onto the op it addresses by **fresh reconstruction**</span>
+<span class="sd">(full validation — byte-compatible with the legacy sweep&#39;s</span>
+<span class="sd">``operation_class(**merged)``), and drops ops toggled off via ``__enabled__``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_core</span><span class="w"> </span><span class="kn">import</span> <span class="n">InitErrorDetails</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+
+<span class="c1">#: Matches a nested list-index segment ``name[i]`` (e.g. ``detectors[0]``) and</span>
+<span class="c1">#: captures the field name and the integer index. The depth cap is 1: a key may</span>
+<span class="c1">#: carry **exactly one** such segment (a second ``[i]`` is a depth error).</span>
+<span class="n">_NESTED_SEGMENT_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^(?P&lt;field&gt;[^\[\]]+)\[(?P&lt;index&gt;\d+)\]$&quot;</span><span class="p">)</span>
+<span class="c1">#: Matches any segment that *opens* a bracket — used to detect a malformed or</span>
+<span class="c1">#: second ``[i]`` segment after the first nested segment has been consumed.</span>
+<span class="n">_BRACKET_SEGMENT_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\[&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FlatKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A scalar field on the op at ``position``: ``&quot;&lt;pos&gt;.&lt;field&gt;&quot;``.&quot;&quot;&quot;</span>
+
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PresenceKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A presence toggle: ``&quot;&lt;pos&gt;.__enabled__&quot;`` or ``&quot;&lt;pos&gt;.&lt;Class&gt;.__enabled__&quot;``.</span>
+
+<span class="sd">    ``cls_name`` is the class segment from the three-part form (validated against</span>
+<span class="sd">    the op actually at ``position``), or ``None`` for the bare two-part form.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">cls_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">NestedKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A one-level nested-op field: ``&quot;&lt;pos&gt;.&lt;field&gt;[&lt;index&gt;].&lt;leaf&gt;&quot;``.</span>
+
+<span class="sd">    Addresses ``ordered_ops[position].&lt;field&gt;[index].&lt;leaf&gt;`` — a scalar field on</span>
+<span class="sd">    the operation occupying slot ``index`` of the parent&#39;s operation-valued list</span>
+<span class="sd">    field. The depth cap is 1: ``leaf`` may not itself carry a ``[i]`` segment.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">leaf</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="c1">#: The union of typed parse results ``_parse_key`` may return.</span>
+<span class="n">ParsedKey</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">FlatKey</span><span class="p">,</span> <span class="n">PresenceKey</span><span class="p">,</span> <span class="n">NestedKey</span><span class="p">]</span>
+
+<span class="n">_FILAMENTOUS_SCENE_PARENTS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;max_colony_radius_px&quot;</span><span class="p">,</span> <span class="s2">&quot;min_branch_width_px&quot;</span><span class="p">}</span>
+<span class="n">_FILAMENTOUS_DERIVED_FIELDS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;gauss_sigma&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tile_size&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tile_overlap&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pct_min_wavelength&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;mad_window&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;path_dilation_radius&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;snr_margin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;coherence_window_radius&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ordered_ops</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParsedKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a combo key to a typed ``FlatKey`` / ``PresenceKey`` / ``NestedKey``.</span>
+
+<span class="sd">    The grammar is additive over Phase 1: flat ``&quot;&lt;pos&gt;.&lt;field&gt;&quot;`` and presence</span>
+<span class="sd">    ``&quot;&lt;pos&gt;[.&lt;Class&gt;].__enabled__&quot;`` keys parse exactly as before (projecting</span>
+<span class="sd">    onto the same ``(position, field)`` / ``(position, &quot;__enabled__&quot;)`` shape);</span>
+<span class="sd">    a segment matching ``name[i]`` switches the key into the nested grammar.</span>
+
+<span class="sd">    Disambiguation and limits:</span>
+<span class="sd">        * A segment matching ``name[i]`` (e.g. ``detectors[0]``) marks a nested</span>
+<span class="sd">          key; the **depth cap is 1** — a second ``[i]`` segment raises a</span>
+<span class="sd">          &quot;depth&quot; ``ValueError``.</span>
+<span class="sd">        * A malformed bracket segment (``name[x]``, ``name[]``) or a nested key</span>
+<span class="sd">          missing its leaf raises a clear ``ValueError``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: A root-relative combo key.</span>
+<span class="sd">        ordered_ops: The base pipeline&#39;s ops in order (for bounds + class checks).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``FlatKey``, ``PresenceKey``, or ``NestedKey``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        IndexError: If the position is out of range.</span>
+<span class="sd">        ValueError: If a presence key&#39;s class name does not match the op there,</span>
+<span class="sd">            or for a malformed / over-deep nested key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="n">position</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">ordered_ops</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;combo key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> targets position </span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">, but the base &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;pipeline has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ordered_ops</span><span class="p">)</span><span class="si">}</span><span class="s2"> op(s)&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Locate the first ``name[i]`` segment (if any) — its presence selects the</span>
+    <span class="c1"># nested grammar. The remaining segments after it must contain no further</span>
+    <span class="c1"># bracket (depth cap = 1).</span>
+    <span class="k">for</span> <span class="n">seg_index</span><span class="p">,</span> <span class="n">segment</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">nested</span> <span class="o">=</span> <span class="n">_NESTED_SEGMENT_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nested</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_parse_nested_key</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">parts</span><span class="p">,</span> <span class="n">seg_index</span><span class="p">,</span> <span class="n">nested</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;__enabled__&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">expected_cls</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">actual_cls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">ordered_ops</span><span class="p">[</span><span class="n">position</span><span class="p">])</span><span class="o">.</span><span class="vm">__name__</span>
+            <span class="k">if</span> <span class="n">actual_cls</span> <span class="o">!=</span> <span class="n">expected_cls</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;presence key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> targets class </span><span class="si">{</span><span class="n">expected_cls</span><span class="si">!r}</span><span class="s2">, but &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;position </span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2"> holds a </span><span class="si">{</span><span class="n">actual_cls</span><span class="si">!r}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">PresenceKey</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span> <span class="n">cls_name</span><span class="o">=</span><span class="n">expected_cls</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PresenceKey</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span> <span class="n">cls_name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="c1"># Guard against a malformed bracket that escaped the nested regex</span>
+        <span class="c1"># (e.g. ``&quot;0.detectors[x]&quot;``): an unmatched ``[`` is never a flat field.</span>
+        <span class="k">if</span> <span class="n">_BRACKET_SEGMENT_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;combo key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> has a malformed nested segment </span><span class="si">{</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> &quot;</span>
+                <span class="s2">&quot;(expected ``field[&lt;int&gt;]``)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">FlatKey</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span> <span class="n">field</span><span class="o">=</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="c1"># A 3+ part key with no ``name[i]`` and not a classed presence is malformed</span>
+    <span class="c1"># (e.g. a stray bracket that did not match, or an unexpected dotted path).</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;combo key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is not a recognised flat, presence, or nested key&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_nested_key</span><span class="p">(</span>
+    <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">seg_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">nested</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Match</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NestedKey</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a ``NestedKey`` from a matched ``name[i]`` segment (depth cap = 1).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: The full combo key (for error messages).</span>
+<span class="sd">        position: The already-parsed op position.</span>
+<span class="sd">        parts: The dot-split key segments.</span>
+<span class="sd">        seg_index: Index into ``parts`` of the matched ``name[i]`` segment.</span>
+<span class="sd">        nested: The ``_NESTED_SEGMENT_RE`` match for that segment.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The parsed ``NestedKey``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: For a second ``[i]`` (depth error) or a missing leaf.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">leaf_parts</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="n">seg_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">leaf_parts</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;nested key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is missing its leaf field &quot;</span>
+            <span class="s2">&quot;(expected ``&lt;pos&gt;.&lt;field&gt;[&lt;int&gt;].&lt;leaf&gt;``)&quot;</span>
+        <span class="p">)</span>
+    <span class="c1"># Depth cap = 1: no segment after the first ``[i]`` may open another bracket.</span>
+    <span class="k">for</span> <span class="n">leaf_segment</span> <span class="ow">in</span> <span class="n">leaf_parts</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">_BRACKET_SEGMENT_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">leaf_segment</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;nested key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> exceeds the nesting depth cap of 1 &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(a second ``[i]`` segment </span><span class="si">{</span><span class="n">leaf_segment</span><span class="si">!r}</span><span class="s2"> is not supported)&quot;</span>
+            <span class="p">)</span>
+    <span class="n">leaf</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">leaf_parts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">NestedKey</span><span class="p">(</span>
+        <span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span>
+        <span class="n">field</span><span class="o">=</span><span class="n">nested</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;field&quot;</span><span class="p">),</span>
+        <span class="n">index</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">nested</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;index&quot;</span><span class="p">)),</span>
+        <span class="n">leaf</span><span class="o">=</span><span class="n">leaf</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rebuild_op</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a fresh op of the same type with ``overrides`` applied.</span>
+
+<span class="sd">    Reconstructs through the constructor (re-running validators) rather than</span>
+<span class="sd">    mutating in place, so the result serializes byte-identically to a freshly</span>
+<span class="sd">    constructed op — operations are immutable/keyword-only.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        op: The base operation instance.</span>
+<span class="sd">        overrides: Field name → new value.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new operation instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="n">model_fields</span><span class="p">}</span>
+    <span class="n">fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)(</span><span class="o">**</span><span class="n">fields</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_filamentous_auto_values</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return old auto-derived values for a ``FilamentousFungiDetector``.&quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">max_colony_radius_px</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">min_branch_width_px</span>
+    <span class="n">mad_window</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_MAD_WINDOW_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">mad_window</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">mad_window</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;gauss_sigma&quot;</span><span class="p">:</span> <span class="n">op</span><span class="o">.</span><span class="n">_GAUSS_SIGMA_PER_R</span> <span class="o">*</span> <span class="n">r</span><span class="p">,</span>
+        <span class="s2">&quot;tile_size&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_TILE_SIZE_PER_R</span> <span class="o">*</span> <span class="n">r</span><span class="p">)),</span>
+        <span class="s2">&quot;tile_overlap&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_TILE_OVERLAP_PER_R</span> <span class="o">*</span> <span class="n">r</span><span class="p">)),</span>
+        <span class="s2">&quot;pct_min_wavelength&quot;</span><span class="p">:</span> <span class="n">op</span><span class="o">.</span><span class="n">_WAVELENGTH_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">,</span>
+        <span class="s2">&quot;mad_window&quot;</span><span class="p">:</span> <span class="n">mad_window</span><span class="p">,</span>
+        <span class="s2">&quot;path_dilation_radius&quot;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_PATH_DILATION_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))),</span>
+        <span class="s2">&quot;snr_margin&quot;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_SNR_MARGIN_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">))),</span>
+        <span class="s2">&quot;coherence_window_radius&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="n">_COHERENCE_RADIUS_PER_W</span> <span class="o">*</span> <span class="n">w</span><span class="p">)),</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_reset_filamentous_auto_derived_fields</span><span class="p">(</span>
+    <span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset auto-derived detector fields when their scene parent is tuned.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">!=</span> <span class="s2">&quot;FilamentousFungiDetector&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">overrides</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">_FILAMENTOUS_SCENE_PARENTS</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">overrides</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">overrides</span>
+
+    <span class="n">auto_values</span> <span class="o">=</span> <span class="n">_filamentous_auto_values</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">_FILAMENTOUS_DERIVED_FIELDS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">updated</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span> <span class="o">==</span> <span class="n">auto_values</span><span class="p">[</span><span class="n">field</span><span class="p">]:</span>
+            <span class="n">updated</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">updated</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rebuild_op_or_raise_with_keys</span><span class="p">(</span>
+    <span class="n">op</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">keys</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct ``op`` with ``overrides``; on failure, name the knob keys.</span>
+
+<span class="sd">    The leaf op&#39;s own ``field_validator`` / ``Field`` bounds fire here during</span>
+<span class="sd">    fresh reconstruction. This is the **apply-time ⊆ backstop**: the ``⊆``</span>
+<span class="sd">    inference check is blind to *validator*-enforced bounds (they live in</span>
+<span class="sd">    imperative code, not ``model_fields[name].metadata``), so an out-of-bound</span>
+<span class="sd">    sampled value is only caught at this reconstruction site.</span>
+
+<span class="sd">    A failing reconstruction re-raises the op&#39;s ``pydantic.ValidationError``</span>
+<span class="sd">    **wrapped** so the message names the offending knob key(s) and the op class</span>
+<span class="sd">    — no new exception type, the result is still a ``ValidationError`` (a</span>
+<span class="sd">    ``ValueError`` subclass) carrying the original per-field errors.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        op: The base operation instance being overlaid.</span>
+<span class="sd">        overrides: Field name → sampled value for this position.</span>
+<span class="sd">        keys: The root-relative knob keys (``&quot;&lt;pos&gt;.&lt;field&gt;&quot;``) for ``overrides``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A freshly reconstructed operation instance.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValidationError: Wrapped to prepend the knob key + op class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_rebuild_op</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">overrides</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">ValidationError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">cls_name</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">cls_name</span><span class="si">}</span><span class="s2">]&quot;</span>
+        <span class="n">augmented</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">exc</span><span class="o">.</span><span class="n">errors</span><span class="p">(</span><span class="n">include_url</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">ctx</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ctx&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span>
+            <span class="n">ctx</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">err</span><span class="p">[</span><span class="s1">&#39;msg&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">augmented</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;value_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">err</span><span class="p">[</span><span class="s2">&quot;loc&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="n">err</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;ctx&quot;</span><span class="p">:</span> <span class="n">ctx</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">ValidationError</span><span class="o">.</span><span class="n">from_exception_data</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> (tuning overlay)&quot;</span><span class="p">,</span>
+            <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;list[InitErrorDetails]&quot;</span><span class="p">,</span> <span class="n">augmented</span><span class="p">),</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rebuild_nested_field</span><span class="p">(</span>
+    <span class="n">parent</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">slot_overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a new value for ``parent.&lt;field&gt;`` with nested leaf overrides applied.</span>
+
+<span class="sd">    For each ``(index, {leaf: value})`` entry, reads the live leaf op at</span>
+<span class="sd">    ``parent.&lt;field&gt;[index]``, asserts it is present (loud error on a ``None``</span>
+<span class="sd">    slot or out-of-range index), and rebuilds it through the **same** key-tagged</span>
+<span class="sd">    backstop (:func:`_rebuild_op_or_raise_with_keys`) so a leaf-validator failure</span>
+<span class="sd">    still surfaces with the offending knob key + op class. Untouched slots</span>
+<span class="sd">    (including ``None`` slots) pass through unchanged.</span>
+
+<span class="sd">    Depth cap = 1: leaf overrides are scalar fields on the nested op; the nested</span>
+<span class="sd">    op&#39;s own operation-valued fields are never recursed into here.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        parent: The parent operation instance owning the list field.</span>
+<span class="sd">        position: The parent&#39;s position in the pipeline (for key tagging).</span>
+<span class="sd">        field: The parent&#39;s operation-list field name (e.g. ``&quot;detectors&quot;``).</span>
+<span class="sd">        slot_overrides: ``{index: {leaf_field: value}}`` for this field.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A fresh list to splice into the parent&#39;s ``field`` (the parent itself is</span>
+<span class="sd">        reconstructed by the caller via :func:`_rebuild_op_or_raise_with_keys`).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        IndexError: If a nested index is out of range.</span>
+<span class="sd">        ValueError: If the addressed slot is ``None`` (an empty/unfilled slot).</span>
+<span class="sd">        ValidationError: When a nested leaf value violates the leaf op&#39;s own</span>
+<span class="sd">            bounds — wrapped to name the knob key + leaf op class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;nested key targets </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">, which is not a &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;list field (got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">current</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+    <span class="n">new_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">leaf_overrides</span> <span class="ow">in</span> <span class="n">slot_overrides</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;nested key targets </span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">], but that field &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;holds </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> slot(s)&quot;</span>
+            <span class="p">)</span>
+        <span class="n">leaf_op</span> <span class="o">=</span> <span class="n">new_list</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">leaf_op</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;nested key targets </span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">], but that slot &quot;</span>
+                <span class="s2">&quot;is empty (None) — there is no operation to tune there&quot;</span>
+            <span class="p">)</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">].</span><span class="si">{</span><span class="n">leaf</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">leaf</span> <span class="ow">in</span> <span class="n">leaf_overrides</span>
+        <span class="p">]</span>
+        <span class="n">new_list</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">_rebuild_op_or_raise_with_keys</span><span class="p">(</span>
+            <span class="n">leaf_op</span><span class="p">,</span> <span class="n">leaf_overrides</span><span class="p">,</span> <span class="n">keys</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_list</span>
+
+
+<div class="viewcode-block" id="build_pipeline">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.build_pipeline">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_pipeline</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="n">ImagePipeline</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ImagePipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Clone ``base``, overlay ``params``, and drop ``__enabled__=False`` ops.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base: The base pipeline embedded in the ``TuningSpec``.</span>
+<span class="sd">        params: A flat combo (``{root-relative-key: value}``) from a strategy.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new ``ImagePipeline`` carrying the base&#39;s measurements/post/qc with the</span>
+<span class="sd">        tuned operations.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        IndexError / ValueError: Propagated from key parsing (out-of-range</span>
+<span class="sd">            position/index, class mismatch, empty nested slot, malformed key).</span>
+<span class="sd">        ValidationError: When a sampled value violates the leaf op&#39;s own bounds</span>
+<span class="sd">            (the apply-time ``⊆`` backstop), wrapped to name the knob key + op</span>
+<span class="sd">            class — for both flat and nested leaves.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">candidate</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># preserves meas/post/qc; isolates ops from base</span>
+    <span class="n">ordered_ops</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">get_ops</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="n">overrides</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">enabled</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Nested overrides keyed by (position, field) → {index: {leaf: value}}.</span>
+    <span class="n">nested</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">_parse_key</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">ordered_ops</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">PresenceKey</span><span class="p">):</span>
+            <span class="n">enabled</span><span class="p">[</span><span class="n">parsed</span><span class="o">.</span><span class="n">position</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parsed</span><span class="p">,</span> <span class="n">FlatKey</span><span class="p">):</span>
+            <span class="n">overrides</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="p">{})[</span><span class="n">parsed</span><span class="o">.</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># NestedKey</span>
+            <span class="p">(</span>
+                <span class="n">nested</span><span class="o">.</span><span class="n">setdefault</span><span class="p">((</span><span class="n">parsed</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">parsed</span><span class="o">.</span><span class="n">field</span><span class="p">),</span> <span class="p">{})</span>
+                <span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">parsed</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="p">{})[</span><span class="n">parsed</span><span class="o">.</span><span class="n">leaf</span><span class="p">]</span>
+            <span class="p">)</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="n">new_ops</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">op</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ordered_ops</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">enabled</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+            <span class="k">continue</span>  <span class="c1"># presence toggled off → drop the op</span>
+        <span class="n">op_overrides</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">overrides</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="c1"># Fold any nested-field overrides for this op into a single rebuild.</span>
+        <span class="n">nested_for_op</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">field</span><span class="p">:</span> <span class="n">slot_map</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">field</span><span class="p">),</span> <span class="n">slot_map</span> <span class="ow">in</span> <span class="n">nested</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">pos</span> <span class="o">==</span> <span class="n">position</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">slot_map</span> <span class="ow">in</span> <span class="n">nested_for_op</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">op_overrides</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">_rebuild_nested_field</span><span class="p">(</span>
+                <span class="n">op</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">slot_map</span>
+            <span class="p">)</span>
+        <span class="n">op_overrides</span> <span class="o">=</span> <span class="n">_reset_filamentous_auto_derived_fields</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">op_overrides</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">op_overrides</span><span class="p">:</span>
+            <span class="c1"># un-overridden ops come from `candidate` (the deep copy), never `base`</span>
+            <span class="n">new_ops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">op_overrides</span><span class="p">]</span>
+        <span class="n">new_ops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_rebuild_op_or_raise_with_keys</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">op_overrides</span><span class="p">,</span> <span class="n">keys</span><span class="p">))</span>
+
+    <span class="n">candidate</span><span class="o">.</span><span class="n">set_ops</span><span class="p">(</span><span class="n">new_ops</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">candidate</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

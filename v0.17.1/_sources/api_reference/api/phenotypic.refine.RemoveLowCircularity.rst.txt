@@ -1,0 +1,63 @@
+phenotypic.refine.RemoveLowCircularity
+======================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveLowCircularity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveLowCircularity.__init__
+      ~RemoveLowCircularity.apply
+      ~RemoveLowCircularity.construct
+      ~RemoveLowCircularity.copy
+      ~RemoveLowCircularity.dict
+      ~RemoveLowCircularity.from_json
+      ~RemoveLowCircularity.from_orm
+      ~RemoveLowCircularity.json
+      ~RemoveLowCircularity.model_construct
+      ~RemoveLowCircularity.model_copy
+      ~RemoveLowCircularity.model_dump
+      ~RemoveLowCircularity.model_dump_json
+      ~RemoveLowCircularity.model_json_schema
+      ~RemoveLowCircularity.model_parametrized_name
+      ~RemoveLowCircularity.model_post_init
+      ~RemoveLowCircularity.model_rebuild
+      ~RemoveLowCircularity.model_validate
+      ~RemoveLowCircularity.model_validate_json
+      ~RemoveLowCircularity.model_validate_strings
+      ~RemoveLowCircularity.parse_file
+      ~RemoveLowCircularity.parse_obj
+      ~RemoveLowCircularity.parse_raw
+      ~RemoveLowCircularity.schema
+      ~RemoveLowCircularity.schema_json
+      ~RemoveLowCircularity.to_json
+      ~RemoveLowCircularity.update_forward_refs
+      ~RemoveLowCircularity.validate
+      ~RemoveLowCircularity.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveLowCircularity.model_computed_fields
+      ~RemoveLowCircularity.model_config
+      ~RemoveLowCircularity.model_extra
+      ~RemoveLowCircularity.model_fields
+      ~RemoveLowCircularity.model_fields_set
+      ~RemoveLowCircularity.cutoff
+   
+   

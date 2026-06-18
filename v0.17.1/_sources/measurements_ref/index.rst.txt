@@ -1,0 +1,78 @@
+Measurements
+============
+
+PhenoTypic uses ``MeasurementInfo`` enums to define stable column names
+for measurement outputs and metadata joins. Browse by group:
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   measurements/index
+   models-and-analysis/index
+   quality-control/index
+   curation-and-errors/index
+   metadata/index
+
+.. grid:: 1 2 2 2
+   :gutter: 3
+
+   .. grid-item-card:: Measurements
+
+      +++
+
+      .. button-ref:: measurements/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Measurements
+
+   .. grid-item-card:: Models & Analysis
+
+      +++
+
+      .. button-ref:: models-and-analysis/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Models & Analysis
+
+   .. grid-item-card:: Quality Control
+
+      +++
+
+      .. button-ref:: quality-control/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Quality Control
+
+   .. grid-item-card:: Curation & Errors
+
+      +++
+
+      .. button-ref:: curation-and-errors/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Curation & Errors
+
+   .. grid-item-card:: Metadata
+
+      +++
+
+      .. button-ref:: metadata/index
+         :ref-type: doc
+         :click-parent:
+         :color: secondary
+         :expand:
+
+         Browse Metadata

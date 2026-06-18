@@ -1,0 +1,6 @@
+phenotypic.util.decode\_well\_position
+======================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: decode_well_position

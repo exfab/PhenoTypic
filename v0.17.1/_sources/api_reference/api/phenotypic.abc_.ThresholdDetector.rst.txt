@@ -1,0 +1,62 @@
+phenotypic.abc\_.ThresholdDetector
+==================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ThresholdDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ThresholdDetector.__init__
+      ~ThresholdDetector.apply
+      ~ThresholdDetector.construct
+      ~ThresholdDetector.copy
+      ~ThresholdDetector.dict
+      ~ThresholdDetector.from_json
+      ~ThresholdDetector.from_orm
+      ~ThresholdDetector.json
+      ~ThresholdDetector.model_construct
+      ~ThresholdDetector.model_copy
+      ~ThresholdDetector.model_dump
+      ~ThresholdDetector.model_dump_json
+      ~ThresholdDetector.model_json_schema
+      ~ThresholdDetector.model_parametrized_name
+      ~ThresholdDetector.model_post_init
+      ~ThresholdDetector.model_rebuild
+      ~ThresholdDetector.model_validate
+      ~ThresholdDetector.model_validate_json
+      ~ThresholdDetector.model_validate_strings
+      ~ThresholdDetector.parse_file
+      ~ThresholdDetector.parse_obj
+      ~ThresholdDetector.parse_raw
+      ~ThresholdDetector.schema
+      ~ThresholdDetector.schema_json
+      ~ThresholdDetector.to_json
+      ~ThresholdDetector.update_forward_refs
+      ~ThresholdDetector.validate
+      ~ThresholdDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ThresholdDetector.model_computed_fields
+      ~ThresholdDetector.model_config
+      ~ThresholdDetector.model_extra
+      ~ThresholdDetector.model_fields
+      ~ThresholdDetector.model_fields_set
+   
+   

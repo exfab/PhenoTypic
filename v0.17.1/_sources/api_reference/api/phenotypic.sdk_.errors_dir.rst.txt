@@ -1,0 +1,6 @@
+phenotypic.sdk\_.errors\_dir
+============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: errors_dir

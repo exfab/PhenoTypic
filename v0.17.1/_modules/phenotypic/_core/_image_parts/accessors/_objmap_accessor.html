@@ -1,0 +1,1288 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic._core._image_parts.accessors._objmap_accessor &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/_core/_image_parts/accessors/_objmap_accessor';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/_core/_image_parts/accessors/_objmap_accessor.html" />
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic._core._image_parts.accessors._objmap_accessor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic._core._image_parts.accessors._objmap_accessor</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">csc_matrix</span><span class="p">,</span> <span class="n">coo_matrix</span><span class="p">,</span> <span class="n">issparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">label2rgb</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">SingleChannelAccessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin</span><span class="w"> </span><span class="kn">import</span> \
+    <span class="n">NapariLabelsMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ArrayKeyValueShapeMismatchError</span><span class="p">,</span>
+    <span class="n">InvalidMapValueError</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ObjectMap">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ObjectMap</span><span class="p">(</span><span class="n">NapariLabelsMixin</span><span class="p">,</span> <span class="n">SingleChannelAccessor</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages an object map for labeled regions in an image.</span>
+
+<span class="sd">    This class provides a mechanism to manipulate and access labeled object maps</span>
+<span class="sd">    within a given image. It is tightly coupled with the parent image object and</span>
+<span class="sd">    provides methods for accessing sparse and dense representations, relabeling,</span>
+<span class="sd">    resetting, and visualization.</span>
+
+<span class="sd">    The object map is stored internally as a compressed sparse column (CSC) matrix</span>
+<span class="sd">    for memory efficiency. All public methods expose the data through dense array</span>
+<span class="sd">    interfaces for ease of use while maintaining the sparse representation backend.</span>
+<span class="sd">    Changes to the object map shapes are automatically reflected in the object mask.</span>
+
+<span class="sd">    The class supports array-like indexing and slicing operations, sparse format</span>
+<span class="sd">    conversion, and visualization with matplotlib.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        _root_image: The parent Image object that this accessor is associated with.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Changes to the object map shapes will be automatically reflected in the</span>
+<span class="sd">        object mask.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_accessor_property_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;objmap&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current sparse backend reference.</span>
+
+<span class="sd">        This property ensures we always access the live reference to the sparse</span>
+<span class="sd">        object map, even if it&#39;s been replaced by another operation. This is</span>
+<span class="sd">        critical for maintaining consistency when the sparse matrix is updated</span>
+<span class="sd">        in-place by various operations.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scipy.sparse.csc_matrix: The current sparse object map in compressed</span>
+<span class="sd">                sparse column format.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_num_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total number of distinct labeled objects in the map.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The count of unique non-zero labels in the object map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the unique object labels present in the image.</span>
+
+<span class="sd">        Extracts all unique labels from the object map, excluding the background</span>
+<span class="sd">        (label 0). This property internally converts the sparse representation to</span>
+<span class="sd">        dense for label extraction.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A 1D array of unique non-zero labels, sorted in ascending</span>
+<span class="sd">                order. An empty array is returned if no objects are present.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">backend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span>
+        <span class="n">backend</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">backend</span><span class="o">.</span><span class="n">nnz</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">backend</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">backend</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ObjectMap.__array__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.__array__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__array__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implement the array interface for NumPy compatibility.</span>
+
+<span class="sd">        This method enables NumPy functions to operate directly on ObjectMap</span>
+<span class="sd">        instances by converting the sparse representation to a dense array.</span>
+<span class="sd">        It allows usage patterns such as `np.sum(objmap)`, `np.max(objmap)`,</span>
+<span class="sd">        and array unpacking operations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dtype (type, optional): Optional NumPy dtype to cast the array to.</span>
+<span class="sd">                If None, the array maintains its native dtype. Defaults to None.</span>
+<span class="sd">            copy (bool, optional): Control whether the underlying data is copied.</span>
+<span class="sd">                If True, a copy is guaranteed. If False (NumPy 2.0+), no copy</span>
+<span class="sd">                is made. If None, a copy is made only if necessary for dtype</span>
+<span class="sd">                conversion. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A dense NumPy array representation of the object map</span>
+<span class="sd">                with shape matching the image dimensions (height, width).</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Using ObjectMap with NumPy functions:</span>
+
+<span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap</span>
+<span class="sd">            &gt;&gt;&gt; max_label = np.max(objmap)</span>
+<span class="sd">            &gt;&gt;&gt; unique_labels = np.unique(objmap)</span>
+<span class="sd">            &gt;&gt;&gt; arr = np.asarray(objmap, dtype=np.uint32)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span> <span class="k">if</span> <span class="n">copy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">copy</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">copy</span><span class="p">:</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">arr</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.__getitem__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.__getitem__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a slice of the object map as if it were a dense array.</span>
+
+<span class="sd">        This method implements NumPy-style slicing and indexing for the ObjectMap.</span>
+<span class="sd">        The sparse representation is converted to dense for the indexing operation,</span>
+<span class="sd">        allowing all standard NumPy slicing patterns including integer indexing,</span>
+<span class="sd">        boolean masking, and multi-dimensional slicing.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Index or slice specification. Can be an integer, tuple of integers,</span>
+<span class="sd">                slice object, boolean array, or integer array for advanced indexing.</span>
+<span class="sd">                All NumPy indexing patterns are supported.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The sliced portion of the object map as a dense array.</span>
+<span class="sd">                The returned shape depends on the indexing pattern. Returns a scalar</span>
+<span class="sd">                if a single element is indexed, otherwise returns an ndarray.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            NumPy-style indexing and slicing:</span>
+
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap</span>
+<span class="sd">            &gt;&gt;&gt; row = objmap[5]  # Get row 5</span>
+<span class="sd">            &gt;&gt;&gt; region = objmap[10:20, 30:40]  # Get a rectangular region</span>
+<span class="sd">            &gt;&gt;&gt; pixel = objmap[5, 10]  # Get a single pixel</span>
+<span class="sd">            &gt;&gt;&gt; mask = objmap[objmap &gt; 0]  # Boolean indexing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.__setitem__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.__setitem__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set values in the object map as if it were a dense array.</span>
+
+<span class="sd">        This method implements NumPy-style assignment for the ObjectMap. It accepts</span>
+<span class="sd">        both array and scalar values, validates shapes and types, and atomically</span>
+<span class="sd">        updates the internal sparse representation. The operation is atomic with</span>
+<span class="sd">        respect to the backend reference.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Index or slice specification for the location to update. Can be</span>
+<span class="sd">                an integer, tuple of integers, slice object, boolean array, or</span>
+<span class="sd">                integer array. All NumPy indexing patterns are supported.</span>
+<span class="sd">            value: The value(s) to assign. Can be:</span>
+<span class="sd">                - A NumPy array matching the shape of the key selection</span>
+<span class="sd">                - A scalar integer, bool, or float (converted to int)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ArrayKeyValueShapeMismatchError: If the shape or dtype of a supplied</span>
+<span class="sd">                array does not match the shape of the key selection, or if the</span>
+<span class="sd">                dtypes are incompatible.</span>
+<span class="sd">            InvalidMapValueError: If value is not a supported type (not an array,</span>
+<span class="sd">                int, bool, or float).</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - After assignment, the sparse matrix is compressed and zeros are</span>
+<span class="sd">              eliminated to maintain memory efficiency.</span>
+<span class="sd">            - All values are internally cast to uint16 to match the sparse matrix</span>
+<span class="sd">              dtype and represent object labels.</span>
+<span class="sd">            - The operation is atomic: if an exception occurs, the map is not</span>
+<span class="sd">              modified.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Assigning values to the object map:</span>
+
+<span class="sd">            &gt;&gt;&gt; objmap = image.objmap</span>
+<span class="sd">            &gt;&gt;&gt; # Set a single pixel</span>
+<span class="sd">            &gt;&gt;&gt; objmap[5, 10] = 3</span>
+<span class="sd">            &gt;&gt;&gt; # Set a region with a scalar value</span>
+<span class="sd">            &gt;&gt;&gt; objmap[10:20, 30:40] = 0</span>
+<span class="sd">            &gt;&gt;&gt; # Set a region with an array</span>
+<span class="sd">            &gt;&gt;&gt; region_labels = np.array([[1, 1], [1, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; objmap[10:12, 30:32] = region_labels</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Fast path: full-slice replacement avoids dense round-trip</span>
+        <span class="n">_is_full</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">slice</span><span class="p">)</span> <span class="ow">and</span> <span class="n">key</span> <span class="o">==</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_is_full</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">issparse</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="n">new_sparse</span> <span class="o">=</span> <span class="n">csc_matrix</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">backend_dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">backend_dtype</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
+                <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span>
+                <span class="k">return</span>
+
+        <span class="c1"># Get current backend and convert to dense once</span>
+        <span class="n">dense</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="n">backend_dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>  <span class="c1"># Array case</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">backend_dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dense</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
+            <span class="k">elif</span> <span class="n">dense</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">value</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
+
+            <span class="n">dense</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>  <span class="c1"># Scalar Case</span>
+            <span class="n">dense</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidMapValueError</span>
+
+        <span class="c1"># Protects against the case that the obj map is set on the filled mask that returns when no objects are in the _root_image</span>
+        <span class="c1"># Note: removed due to confusing behavior</span>
+        <span class="c1"># if 0 not in dense:</span>
+        <span class="c1">#     dense = clear_border(dense, buffer_size=0, bgval=1)</span>
+
+        <span class="c1"># Update backend atomically</span>
+        <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">dense</span><span class="p">)</span>
+        <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>  <span class="c1"># Remove zero values to save space</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_subject_arr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the dense representation of the object map.</span>
+
+<span class="sd">        This property provides access to the underlying array data by converting</span>
+<span class="sd">        the sparse CSC matrix to a dense NumPy array. It is used internally by</span>
+<span class="sd">        base class methods for operations requiring array-like access.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The dense object map with shape (height, width) and</span>
+<span class="sd">                dtype uint16. Background pixels have value 0, object pixels</span>
+<span class="sd">                have unique positive integer labels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the shape of the object map.</span>
+
+<span class="sd">        Returns the dimensions of the object map as a tuple of (height, width).</span>
+<span class="sd">        This matches the shape of the parent image&#39;s grayscale representation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[int, int]: A tuple (height, width) representing the spatial</span>
+<span class="sd">                dimensions of the object map.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Getting object map dimensions:</span>
+
+<span class="sd">            &gt;&gt;&gt; height, width = image.objmap.shape</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Object map dimensions: {width}x{height}&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">shape</span>
+
+<div class="viewcode-block" id="ObjectMap.copy">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.copy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a dense copy of the object map.</span>
+
+<span class="sd">        Creates and returns a dense NumPy array copy of the object map. The</span>
+<span class="sd">        returned array is independent and modifications to it will not affect</span>
+<span class="sd">        the original object map.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A dense copy of the object map with shape (height, width)</span>
+<span class="sd">                and dtype uint16.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Creating an independent copy of the object map:</span>
+
+<span class="sd">            &gt;&gt;&gt; objmap_copy = image.objmap.copy()</span>
+<span class="sd">            &gt;&gt;&gt; objmap_copy[0, 0] = 999  # Modifications don&#39;t affect the original</span>
+<span class="sd">            &gt;&gt;&gt; assert image.objmap[0, 0] != 999</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.as_csc">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.as_csc">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_csc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csc_matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the object map as a compressed sparse column matrix.</span>
+
+<span class="sd">        Converts the internal object map representation to CSC (Compressed Sparse</span>
+<span class="sd">        Column) format. CSC format is optimized for column slicing and matrix</span>
+<span class="sd">        operations.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scipy.sparse.csc_matrix: A copy of the object map in CSC sparse format.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Converting to CSC sparse format:</span>
+
+<span class="sd">            &gt;&gt;&gt; sparse_csc = image.objmap.as_csc()</span>
+<span class="sd">            &gt;&gt;&gt; # Efficient column operations</span>
+<span class="sd">            &gt;&gt;&gt; first_column = sparse_csc[:, 0].toarray()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">tocsc</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.as_coo">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.as_coo">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_coo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">coo_matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the object map in COOrdinate (ijv) sparse format.</span>
+
+<span class="sd">        Converts the internal object map representation to COO (Coordinate or ijv)</span>
+<span class="sd">        format, which stores non-zero elements as (row, column, value) tuples.</span>
+<span class="sd">        This format is useful for constructing sparse matrices or analyzing</span>
+<span class="sd">        individual non-zero entries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scipy.sparse.coo_matrix: A copy of the object map in COO sparse format.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Converting to COO sparse format and accessing entries:</span>
+
+<span class="sd">            &gt;&gt;&gt; sparse_coo = image.objmap.as_coo()</span>
+<span class="sd">            &gt;&gt;&gt; # Access non-zero entries directly</span>
+<span class="sd">            &gt;&gt;&gt; for i, j, v in zip(sparse_coo.row, sparse_coo.col, sparse_coo.data):</span>
+<span class="sd">            ...     print(f&quot;Object label {v} at position ({i}, {j})&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">tocoo</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.show">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.show">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab10&quot;</span><span class="p">,</span>
+            <span class="n">ax</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">mpl_params</span><span class="p">:</span> <span class="kc">None</span> <span class="o">|</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Display the object map using matplotlib&#39;s imshow.</span>
+
+<span class="sd">        This method visualizes the labeled object map using matplotlib. Each</span>
+<span class="sd">        unique label is assigned a distinct color from the specified colormap,</span>
+<span class="sd">        allowing visual distinction between labeled objects. The background</span>
+<span class="sd">        (label 0) is typically shown in a neutral color.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            figsize (tuple[int, int], optional): Tuple specifying the figure size</span>
+<span class="sd">                in inches (width, height). If None, uses the default matplotlib</span>
+<span class="sd">                figure size. Defaults to None.</span>
+<span class="sd">            title (str, optional): Title text for the plot. If None, no title is</span>
+<span class="sd">                displayed. Defaults to None.</span>
+<span class="sd">            cmap (str, optional): The colormap name used for rendering the labeled</span>
+<span class="sd">                object map. A diverse colormap like &#39;nipy_spectral&#39; is recommended</span>
+<span class="sd">                for clearly distinguishing between many objects. Defaults to</span>
+<span class="sd">                &#39;nipy_spectral&#39;.</span>
+<span class="sd">            ax (plt.Axes, optional): Existing Matplotlib Axes object where the</span>
+<span class="sd">                object map will be plotted. If None, a new figure and axes are</span>
+<span class="sd">                created. Defaults to None.</span>
+<span class="sd">            mpl_params (dict, optional): Additional parameters passed to matplotlib&#39;s</span>
+<span class="sd">                imshow function for plot customization (e.g., interpolation,</span>
+<span class="sd">                normalization). If None, no extra parameters are applied.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: A tuple containing the matplotlib Figure</span>
+<span class="sd">                and Axes objects where the object map is rendered. If an existing</span>
+<span class="sd">                axes was provided, its parent figure is returned.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Displaying the object map with various options:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Basic visualization</span>
+<span class="sd">            &gt;&gt;&gt; fig = image.objmap.show()</span>
+<span class="sd">            &gt;&gt;&gt; # Custom figure size and title</span>
+<span class="sd">            &gt;&gt;&gt; fig = image.objmap.show(figsize=(10, 8), title=&#39;Labeled Objects&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; # Use a different colormap</span>
+<span class="sd">            &gt;&gt;&gt; fig = image.objmap.show(cmap=&#39;tab20&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">)</span>
+        <span class="n">cmap</span><span class="o">.</span><span class="n">set_bad</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mpl_plot</span><span class="p">(</span>
+                <span class="c1"># Use masked array to make background black</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">(),</span> <span class="n">value</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+                <span class="n">mpl_settings</span><span class="o">=</span><span class="n">mpl_params</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.reset">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the object map to an empty state with no labeled objects.</span>
+
+<span class="sd">        Clears all object labels from the object map, effectively removing all</span>
+<span class="sd">        detected or manually-set objects. The resulting map contains only zeros</span>
+<span class="sd">        (background). The shape of the map is preserved to match the parent</span>
+<span class="sd">        image&#39;s dimensions.</span>
+
+<span class="sd">        This method is useful when you want to clear the current segmentation</span>
+<span class="sd">        and prepare for a new detection or labeling operation.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Clearing all objects from the object map:</span>
+
+<span class="sd">            &gt;&gt;&gt; image.objmap.reset()</span>
+<span class="sd">            &gt;&gt;&gt; # Now image.objmap contains no objects</span>
+<span class="sd">            &gt;&gt;&gt; assert image.objmap[:].max() == 0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">gray</span><span class="o">.</span><span class="n">shape</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.relabel">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.relabel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">relabel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connectivity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Relabel all connected components in the object map.</span>
+
+<span class="sd">        This method reassigns labels to all connected components in the current</span>
+<span class="sd">        object map based on the specified connectivity criterion. It uses</span>
+<span class="sd">        scikit-image&#39;s `label` function to identify connected components and</span>
+<span class="sd">        assigns them new sequential labels starting from 1. This is useful when:</span>
+
+<span class="sd">        - Object labels are non-sequential or have gaps</span>
+<span class="sd">        - The labeling needs to be reset to sequential labels</span>
+<span class="sd">        - Connectivity needs to be changed (e.g., from 8-connectivity to 4-connectivity)</span>
+
+<span class="sd">        The operation treats the current object map as a binary mask (foreground</span>
+<span class="sd">        vs. background) and relabels the foreground regions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            connectivity (int, optional): Maximum number of orthogonal hops to</span>
+<span class="sd">                consider a pixel as a neighbor of another. For 2D images:</span>
+<span class="sd">                - 1: 4-connectivity (horizontal and vertical neighbors only)</span>
+<span class="sd">                - 2: 8-connectivity (including diagonal neighbors)</span>
+<span class="sd">                Higher values are supported for higher dimensional data.</span>
+<span class="sd">                Defaults to 1.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None: The operation modifies the object map in-place.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Background (label 0) is preserved in its original location.</span>
+<span class="sd">            - After relabeling, object labels will be sequential (1, 2, 3, ...).</span>
+<span class="sd">            - The relabeling process may change existing label values.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Relabeling connected components:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Relabel with 4-connectivity</span>
+<span class="sd">            &gt;&gt;&gt; image.objmap.relabel(connectivity=1)</span>
+<span class="sd">            &gt;&gt;&gt; # Relabel with 8-connectivity for diagonal neighbors</span>
+<span class="sd">            &gt;&gt;&gt; image.objmap.relabel(connectivity=2)</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            - `scikit-image.measure.label()`: The underlying function used for</span>
+<span class="sd">              connected component labeling.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get the current mask and relabel it</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">relabeled</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">connectivity</span><span class="o">=</span><span class="n">connectivity</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.vmax">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.vmax">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">vmax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the maximum value for the object map data type.</span>
+
+<span class="sd">        Object maps are stored as uint16 arrays where values represent object labels.</span>
+<span class="sd">        This returns the theoretical maximum value that the uint16 dtype can represent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subject_arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">max</span></div>
+
+
+<div class="viewcode-block" id="ObjectMap.vmin">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.vmin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">vmin</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the minimum value for the object map data type.</span>
+
+<span class="sd">        Object maps are stored as uint16 arrays where 0 represents background.</span>
+<span class="sd">        This returns the theoretical minimum value that the uint16 dtype can represent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subject_arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">min</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dense_to_sparse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csc_matrix</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a dense array or shape to a compressed sparse column matrix.</span>
+
+<span class="sd">        This static utility method constructs a CSC (Compressed Sparse Column)</span>
+<span class="sd">        sparse matrix from either a dense NumPy array or a shape tuple. It is used</span>
+<span class="sd">        internally to maintain the efficient sparse representation of the object</span>
+<span class="sd">        map and provides a centralized point to change the underlying sparse</span>
+<span class="sd">        format if needed.</span>
+
+<span class="sd">        The resulting sparse matrix is optimized by:</span>
+<span class="sd">        - Using uint16 dtype for label storage (supports up to 65,535 objects)</span>
+<span class="sd">        - Eliminating zero entries to save memory</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            arg: Input for sparse matrix construction. Can be:</span>
+<span class="sd">                - A NumPy array (dense object map): converted to sparse format</span>
+<span class="sd">                - A tuple (height, width): creates an empty sparse matrix of this shape</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scipy.sparse.csc_matrix: A CSC sparse matrix with dtype uint16. Empty</span>
+<span class="sd">                matrices have no non-zero entries, dense matrices are converted</span>
+<span class="sd">                with zeros eliminated.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Zero values are eliminated after construction, so matrices are</span>
+<span class="sd">              stored in a memory-efficient compressed format.</span>
+<span class="sd">            - CSC format is efficient for column slicing and standard matrix</span>
+<span class="sd">              operations.</span>
+<span class="sd">            - The uint16 dtype allows labels from 0 (background) to 65,535.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Converting between dense and sparse representations:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Create empty sparse matrix with specific shape</span>
+<span class="sd">            &gt;&gt;&gt; sparse = ObjectMap._dense_to_sparse((512, 512))</span>
+<span class="sd">            &gt;&gt;&gt; # Convert dense array to sparse</span>
+<span class="sd">            &gt;&gt;&gt; dense_map = np.array([[0, 1, 1], [0, 2, 2]])</span>
+<span class="sd">            &gt;&gt;&gt; sparse = ObjectMap._dense_to_sparse(dense_map)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sparse</span> <span class="o">=</span> <span class="n">csc_matrix</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_OBJMAP_DTYPE</span><span class="p">)</span>
+        <span class="n">sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">sparse</span>
+
+<div class="viewcode-block" id="ObjectMap.imsave">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmap_accessor.ObjectMap.imsave">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">imsave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+               <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">bit_depth</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+               <span class="n">use_label2rgb</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the object map to a file.</span>
+
+<span class="sd">        Saves the object map array to a specified file format. The raw object map</span>
+<span class="sd">        contains integer labels (0 = background, 1+ = object IDs). When use_label2rgb</span>
+<span class="sd">        is True, labels are colorized for visualization but NOT blended with the</span>
+<span class="sd">        original image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filepath: Destination file path (.png, .jpeg, or .tiff).</span>
+<span class="sd">            bit_depth: Target bit depth (8 or 16). If None, uses image&#39;s bit depth.</span>
+<span class="sd">            use_label2rgb: If True, colorize labels using skimage.color.label2rgb</span>
+<span class="sd">                for visual inspection. Note: This does NOT blend with the original</span>
+<span class="sd">                image - it only colorizes the labels against a black background.</span>
+<span class="sd">                For overlays blended with the original image at full resolution,</span>
+<span class="sd">                use ``Image.rgb.save_overlay()`` or ``Image.gray.save_overlay()``</span>
+<span class="sd">                instead. Defaults to False.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the file extension is not supported.</span>
+
+<span class="sd">        See Also:</span>
+<span class="sd">            ImageAccessorBase.save_overlay: For saving overlays that blend the</span>
+<span class="sd">                object labels with the original image at full resolution.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Save raw object map vs colorized:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">            &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">            &gt;&gt;&gt; # Save raw labeled map (integer values)</span>
+<span class="sd">            &gt;&gt;&gt; image.objmap.imsave(&quot;objmap_raw.png&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; # Save colorized labels (no background image)</span>
+<span class="sd">            &gt;&gt;&gt; image.objmap.imsave(&quot;objmap_colored.png&quot;, use_label2rgb=True)</span>
+<span class="sd">            &gt;&gt;&gt; # For overlay with original image, use save_overlay:</span>
+<span class="sd">            &gt;&gt;&gt; image.rgb.save_overlay(&quot;overlay.png&quot;, overlay_alpha=0.3)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">use_label2rgb</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filepath</span><span class="o">=</span><span class="n">filepath</span><span class="p">,</span> <span class="n">bit_depth</span><span class="o">=</span><span class="n">bit_depth</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Colorize labels without background image</span>
+            <span class="n">colored</span> <span class="o">=</span> <span class="n">label2rgb</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_subject_arr</span><span class="p">,</span> <span class="n">bg_label</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># Convert float [0,1] to uint8 for saving</span>
+            <span class="n">colored_uint8</span> <span class="o">=</span> <span class="p">(</span><span class="n">colored</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_image</span><span class="p">(</span>
+                    <span class="n">filepath</span><span class="o">=</span><span class="n">filepath</span><span class="p">,</span>
+                    <span class="n">arr</span><span class="o">=</span><span class="n">colored_uint8</span><span class="p">,</span>
+                    <span class="n">bit_depth</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>  <span class="c1"># Always 8-bit for colorized output</span>
+                    <span class="n">metadata_json</span><span class="o">=</span><span class="kc">None</span>
+            <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

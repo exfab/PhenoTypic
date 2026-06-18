@@ -1,0 +1,6 @@
+phenotypic.sdk\_.pipeline\_json\_path
+=====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: pipeline_json_path

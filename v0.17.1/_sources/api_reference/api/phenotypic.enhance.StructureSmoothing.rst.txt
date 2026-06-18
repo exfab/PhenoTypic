@@ -1,0 +1,68 @@
+phenotypic.enhance.StructureSmoothing
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: StructureSmoothing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~StructureSmoothing.__init__
+      ~StructureSmoothing.apply
+      ~StructureSmoothing.construct
+      ~StructureSmoothing.copy
+      ~StructureSmoothing.dict
+      ~StructureSmoothing.from_json
+      ~StructureSmoothing.from_orm
+      ~StructureSmoothing.json
+      ~StructureSmoothing.model_construct
+      ~StructureSmoothing.model_copy
+      ~StructureSmoothing.model_dump
+      ~StructureSmoothing.model_dump_json
+      ~StructureSmoothing.model_json_schema
+      ~StructureSmoothing.model_parametrized_name
+      ~StructureSmoothing.model_post_init
+      ~StructureSmoothing.model_rebuild
+      ~StructureSmoothing.model_validate
+      ~StructureSmoothing.model_validate_json
+      ~StructureSmoothing.model_validate_strings
+      ~StructureSmoothing.parse_file
+      ~StructureSmoothing.parse_obj
+      ~StructureSmoothing.parse_raw
+      ~StructureSmoothing.schema
+      ~StructureSmoothing.schema_json
+      ~StructureSmoothing.to_json
+      ~StructureSmoothing.update_forward_refs
+      ~StructureSmoothing.validate
+      ~StructureSmoothing.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~StructureSmoothing.model_computed_fields
+      ~StructureSmoothing.model_config
+      ~StructureSmoothing.model_extra
+      ~StructureSmoothing.model_fields
+      ~StructureSmoothing.model_fields_set
+      ~StructureSmoothing.num_iter
+      ~StructureSmoothing.sigma
+      ~StructureSmoothing.rho
+      ~StructureSmoothing.dt
+      ~StructureSmoothing.alpha
+      ~StructureSmoothing.C
+   
+   

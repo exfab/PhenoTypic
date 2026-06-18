@@ -1,0 +1,6 @@
+phenotypic.sdk\_.job\_metadata\_path
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: job_metadata_path

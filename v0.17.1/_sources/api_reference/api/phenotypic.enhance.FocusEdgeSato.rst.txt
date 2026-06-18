@@ -1,0 +1,66 @@
+phenotypic.enhance.FocusEdgeSato
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeSato
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeSato.__init__
+      ~FocusEdgeSato.apply
+      ~FocusEdgeSato.construct
+      ~FocusEdgeSato.copy
+      ~FocusEdgeSato.dict
+      ~FocusEdgeSato.from_json
+      ~FocusEdgeSato.from_orm
+      ~FocusEdgeSato.json
+      ~FocusEdgeSato.model_construct
+      ~FocusEdgeSato.model_copy
+      ~FocusEdgeSato.model_dump
+      ~FocusEdgeSato.model_dump_json
+      ~FocusEdgeSato.model_json_schema
+      ~FocusEdgeSato.model_parametrized_name
+      ~FocusEdgeSato.model_post_init
+      ~FocusEdgeSato.model_rebuild
+      ~FocusEdgeSato.model_validate
+      ~FocusEdgeSato.model_validate_json
+      ~FocusEdgeSato.model_validate_strings
+      ~FocusEdgeSato.parse_file
+      ~FocusEdgeSato.parse_obj
+      ~FocusEdgeSato.parse_raw
+      ~FocusEdgeSato.schema
+      ~FocusEdgeSato.schema_json
+      ~FocusEdgeSato.to_json
+      ~FocusEdgeSato.update_forward_refs
+      ~FocusEdgeSato.validate
+      ~FocusEdgeSato.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeSato.model_computed_fields
+      ~FocusEdgeSato.model_config
+      ~FocusEdgeSato.model_extra
+      ~FocusEdgeSato.model_fields
+      ~FocusEdgeSato.model_fields_set
+      ~FocusEdgeSato.sigmas
+      ~FocusEdgeSato.black_ridges
+      ~FocusEdgeSato.mode
+      ~FocusEdgeSato.cval
+   
+   

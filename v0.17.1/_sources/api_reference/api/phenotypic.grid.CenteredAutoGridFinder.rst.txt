@@ -1,0 +1,75 @@
+phenotypic.grid.CenteredAutoGridFinder
+======================================
+
+.. currentmodule:: phenotypic.grid
+
+.. autoclass:: CenteredAutoGridFinder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CenteredAutoGridFinder.__init__
+      ~CenteredAutoGridFinder.construct
+      ~CenteredAutoGridFinder.copy
+      ~CenteredAutoGridFinder.dict
+      ~CenteredAutoGridFinder.from_json
+      ~CenteredAutoGridFinder.from_orm
+      ~CenteredAutoGridFinder.get_col_edges
+      ~CenteredAutoGridFinder.get_row_edges
+      ~CenteredAutoGridFinder.json
+      ~CenteredAutoGridFinder.measure
+      ~CenteredAutoGridFinder.model_construct
+      ~CenteredAutoGridFinder.model_copy
+      ~CenteredAutoGridFinder.model_dump
+      ~CenteredAutoGridFinder.model_dump_json
+      ~CenteredAutoGridFinder.model_json_schema
+      ~CenteredAutoGridFinder.model_parametrized_name
+      ~CenteredAutoGridFinder.model_post_init
+      ~CenteredAutoGridFinder.model_rebuild
+      ~CenteredAutoGridFinder.model_validate
+      ~CenteredAutoGridFinder.model_validate_json
+      ~CenteredAutoGridFinder.model_validate_strings
+      ~CenteredAutoGridFinder.parse_file
+      ~CenteredAutoGridFinder.parse_obj
+      ~CenteredAutoGridFinder.parse_raw
+      ~CenteredAutoGridFinder.schema
+      ~CenteredAutoGridFinder.schema_json
+      ~CenteredAutoGridFinder.to_json
+      ~CenteredAutoGridFinder.update_forward_refs
+      ~CenteredAutoGridFinder.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CenteredAutoGridFinder.ABSOLUTE_FLOOR
+      ~CenteredAutoGridFinder.DET_EPS
+      ~CenteredAutoGridFinder.SPAN_PCT_HIGH
+      ~CenteredAutoGridFinder.SPAN_PCT_LOW
+      ~CenteredAutoGridFinder.model_computed_fields
+      ~CenteredAutoGridFinder.model_config
+      ~CenteredAutoGridFinder.model_extra
+      ~CenteredAutoGridFinder.model_fields
+      ~CenteredAutoGridFinder.model_fields_set
+      ~CenteredAutoGridFinder.nrows
+      ~CenteredAutoGridFinder.ncols
+      ~CenteredAutoGridFinder.residual_fraction
+      ~CenteredAutoGridFinder.n_pitch_samples
+      ~CenteredAutoGridFinder.response_floor
+      ~CenteredAutoGridFinder.max_iter
+      ~CenteredAutoGridFinder.min_fit_objects
+      ~CenteredAutoGridFinder.warn
+   
+   

@@ -1,0 +1,1414 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.util.image_metrics &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/util/image_metrics';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/util/image_metrics.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.util.image_metrics</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.util.image_metrics</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Image quality metrics for colony detection analysis.</span>
+
+<span class="sd">This module provides comprehensive image quality assessment tools for</span>
+<span class="sd">evaluating detection matrices before colony detection. Metrics include</span>
+<span class="sd">noise estimation, contrast analysis, structural coherence, and</span>
+<span class="sd">background uniformity assessment.</span>
+
+<span class="sd">The :class:`ImageMetricsCalculator` computes metrics used by the</span>
+<span class="sd">:class:`DiagnosticsPlotter` for both its static matplotlib figures and</span>
+<span class="sd">its interactive ``image.plot.dash.diagnostics()`` views.</span>
+
+<span class="sd">Examples:</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">    &gt;&gt;&gt; from phenotypic.util.image_metrics import ImageMetricsCalculator</span>
+<span class="sd">    &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">    &gt;&gt;&gt; calc = ImageMetricsCalculator(image.detect_mat[:])</span>
+<span class="sd">    &gt;&gt;&gt; noise = calc.compute_noise_metrics()</span>
+<span class="sd">    &gt;&gt;&gt; print(f&quot;SNR: {noise[&#39;snr&#39;]:.2f}&quot;)</span>
+<span class="sd">    SNR: ...</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypedDict</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">fft</span> <span class="k">as</span> <span class="n">scipy_fft</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter</span><span class="p">,</span> <span class="n">uniform_filter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">structure_tensor</span><span class="p">,</span> <span class="n">structure_tensor_eigenvalues</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">frangi</span><span class="p">,</span> <span class="n">hessian</span><span class="p">,</span> <span class="n">meijering</span>
+
+<span class="c1"># Global thresholds for metric interpretation</span>
+<span class="n">THRESHOLDS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;snr&quot;</span>          <span class="p">:</span> <span class="p">{</span><span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="s2">&quot;marginal&quot;</span><span class="p">:</span> <span class="mf">7.0</span><span class="p">},</span>
+    <span class="s2">&quot;rms_contrast&quot;</span> <span class="p">:</span> <span class="p">{</span><span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span> <span class="s2">&quot;marginal&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">},</span>
+    <span class="s2">&quot;coherence&quot;</span>    <span class="p">:</span> <span class="p">{</span><span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span> <span class="s2">&quot;marginal&quot;</span><span class="p">:</span> <span class="mf">0.30</span><span class="p">},</span>
+    <span class="s2">&quot;nonuniformity&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="mf">0.50</span><span class="p">,</span> <span class="s2">&quot;marginal&quot;</span><span class="p">:</span> <span class="mf">0.20</span><span class="p">},</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="NoiseMetrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.NoiseMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NoiseMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Noise-related metrics from detection matrix analysis.&quot;&quot;&quot;</span>
+
+    <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sigma_mad</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">correlation_length</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="ContrastMetrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ContrastMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContrastMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Contrast-related metrics from detection matrix analysis.&quot;&quot;&quot;</span>
+
+    <span class="n">rms_contrast</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">michelson</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dynamic_range</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">p1</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">p99</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="StructureMetrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.StructureMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StructureMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Structure tensor and ridge detection metrics.&quot;&quot;&quot;</span>
+
+    <span class="n">mean_coherence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">optimal_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">peak_response</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ridge_responses</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">scales</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">ridge_method</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">coherence_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Non-serializable</span></div>
+
+
+
+<div class="viewcode-block" id="BackgroundMetrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.BackgroundMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BackgroundMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Background uniformity metrics.&quot;&quot;&quot;</span>
+
+    <span class="n">nonuniformity_ratio</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">mean_gradient</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">background_estimate</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Non-serializable</span></div>
+
+
+
+<div class="viewcode-block" id="QualityScores">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.QualityScores">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QualityScores</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalized 0-1 quality scores for radar chart visualization.&quot;&quot;&quot;</span>
+
+    <span class="n">SNR</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Contrast</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Coherence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Uniformity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">Sharpness</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageMetricsCalculator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes image quality metrics from detection matrices.</span>
+
+<span class="sd">    This class extracts noise, contrast, structure, and background</span>
+<span class="sd">    metrics used to assess image quality for colony detection.</span>
+<span class="sd">    It provides the computational core shared by both the static</span>
+<span class="sd">    matplotlib and the interactive Plotly diagnostics visualizations.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        detect_mat: 2D grayscale detection matrix (typically ``image.detect_mat[:]``).</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        bit_depth: Image bit depth (8 or 16) inferred from max intensity.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.util.image_metrics import ImageMetricsCalculator</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; calc = ImageMetricsCalculator(image.detect_mat[:])</span>
+<span class="sd">        &gt;&gt;&gt; noise = calc.compute_noise_metrics()</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;SNR: {noise[&#39;snr&#39;]:.2f}&quot;)</span>
+<span class="sd">        SNR: ...</span>
+<span class="sd">        &gt;&gt;&gt; contrast = calc.compute_contrast_metrics()</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;RMS contrast: {contrast[&#39;rms_contrast&#39;]:.3f}&quot;)</span>
+<span class="sd">        RMS contrast: ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detect_mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span> <span class="o">=</span> <span class="n">detect_mat</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_intensity</span> <span class="o">=</span> <span class="mf">255.0</span> <span class="k">if</span> <span class="n">detect_mat</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="mi">255</span> <span class="k">else</span> <span class="mf">65535.0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bit_depth</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Image bit depth (8 or 16) inferred from max intensity.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="mi">8</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_intensity</span> <span class="o">==</span> <span class="mf">255.0</span> <span class="k">else</span> <span class="mi">16</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">max_intensity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Maximum intensity value based on image bit depth.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_intensity</span>
+
+    <span class="c1"># =========================================================================</span>
+    <span class="c1"># HELPER METHODS</span>
+    <span class="c1"># =========================================================================</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_autocorrelation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute 2D autocorrelation using FFT.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img: Input image array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            2D autocorrelation array (cropped to central region).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Pad to avoid circular correlation artifacts</span>
+        <span class="n">padded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">img</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">),</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+
+        <span class="c1"># FFT-based autocorrelation</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">scipy_fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">padded</span><span class="p">)</span>
+        <span class="n">power</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">autocorr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">scipy_fft</span><span class="o">.</span><span class="n">ifft2</span><span class="p">(</span><span class="n">power</span><span class="p">))</span>
+
+        <span class="c1"># Shift zero-lag to center and crop</span>
+        <span class="n">autocorr</span> <span class="o">=</span> <span class="n">scipy_fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">autocorr</span><span class="p">)</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">ch</span><span class="p">,</span> <span class="n">cw</span> <span class="o">=</span> <span class="n">autocorr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">autocorr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">crop_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">h</span> <span class="o">//</span> <span class="mi">4</span><span class="p">,</span> <span class="n">w</span> <span class="o">//</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">autocorr_cropped</span> <span class="o">=</span> <span class="n">autocorr</span><span class="p">[</span>
+            <span class="n">ch</span> <span class="o">-</span> <span class="n">crop_size</span><span class="p">:</span> <span class="n">ch</span> <span class="o">+</span> <span class="n">crop_size</span><span class="p">,</span> <span class="n">cw</span> <span class="o">-</span> <span class="n">crop_size</span><span class="p">:</span> <span class="n">cw</span> <span class="o">+</span> <span class="n">crop_size</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">autocorr_cropped</span>
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_psd">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_psd">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_psd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute radially averaged power spectral density.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img: Input image array. If None, uses the stored detection matrix.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (frequencies, radial_psd).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="c1"># Compute 2D FFT</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">scipy_fft</span><span class="o">.</span><span class="n">fft2</span><span class="p">(</span><span class="n">img</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+        <span class="n">f_shifted</span> <span class="o">=</span> <span class="n">scipy_fft</span><span class="o">.</span><span class="n">fftshift</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">psd_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">f_shifted</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+
+        <span class="c1"># Radial averaging</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">psd_2d</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">h</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">w</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ogrid</span><span class="p">[:</span><span class="n">h</span><span class="p">,</span> <span class="p">:</span><span class="n">w</span><span class="p">]</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">cx</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Bin by radius</span>
+        <span class="n">max_r</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">)</span>
+        <span class="n">radial_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">weights</span><span class="o">=</span><span class="n">psd_2d</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">radial_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+        <span class="n">radial_psd</span> <span class="o">=</span> <span class="n">radial_sum</span><span class="p">[:</span> <span class="n">max_r</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">radial_count</span><span class="p">[:</span> <span class="n">max_r</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="c1"># Frequency axis (normalized)</span>
+        <span class="n">freqs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">radial_psd</span><span class="p">))</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">radial_psd</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">freqs</span><span class="p">,</span> <span class="n">radial_psd</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_local_contrast">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_local_contrast">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_local_contrast</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute local Weber contrast map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img: Input image array. If None, uses the stored detection matrix.</span>
+<span class="sd">            window_size: Size of local window.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Local contrast map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="n">img_float</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Local mean</span>
+        <span class="n">local_mean</span> <span class="o">=</span> <span class="n">uniform_filter</span><span class="p">(</span><span class="n">img_float</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">window_size</span><span class="p">)</span>
+
+        <span class="c1"># Local contrast (Weber-like)</span>
+        <span class="n">contrast</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">img_float</span> <span class="o">-</span> <span class="n">local_mean</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">local_mean</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">contrast</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_local_variance">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_local_variance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_local_variance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute local variance map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img: Input image array. If None, uses the stored detection matrix.</span>
+<span class="sd">            window_size: Size of local window.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Local variance map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="n">img_float</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="c1"># Local mean and mean of squares</span>
+        <span class="n">local_mean</span> <span class="o">=</span> <span class="n">uniform_filter</span><span class="p">(</span><span class="n">img_float</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">window_size</span><span class="p">)</span>
+        <span class="n">local_mean_sq</span> <span class="o">=</span> <span class="n">uniform_filter</span><span class="p">(</span><span class="n">img_float</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">window_size</span><span class="p">)</span>
+
+        <span class="c1"># Variance = E[X^2] - E[X]^2</span>
+        <span class="n">variance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">local_mean_sq</span> <span class="o">-</span> <span class="n">local_mean</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">variance</span></div>
+
+
+    <span class="c1"># =========================================================================</span>
+    <span class="c1"># METRIC COMPUTATION METHODS</span>
+    <span class="c1"># =========================================================================</span>
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_noise_metrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_noise_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_noise_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NoiseMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute noise-related metrics (parameter-free).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with SNR, sigma_mad, and correlation_length.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="c1"># Estimate noise using high-pass residual (more robust than Laplacian MAD)</span>
+        <span class="c1"># For synthetic images with large uniform regions, Laplacian MAD can be 0</span>
+        <span class="n">smoothed</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="n">residual</span> <span class="o">=</span> <span class="n">img</span> <span class="o">-</span> <span class="n">smoothed</span>
+
+        <span class="c1"># Use robust MAD estimator, falling back to std if MAD is too small</span>
+        <span class="n">mad_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">residual</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">residual</span><span class="p">)))</span>
+        <span class="n">sigma_mad</span> <span class="o">=</span> <span class="n">mad_val</span> <span class="o">/</span> <span class="mf">0.6745</span> <span class="k">if</span> <span class="n">mad_val</span> <span class="o">&gt;</span> <span class="mf">1e-10</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">residual</span><span class="p">)</span>
+
+        <span class="c1"># Ensure minimum noise estimate (prevents division by near-zero)</span>
+        <span class="n">sigma_mad</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">sigma_mad</span><span class="p">,</span> <span class="mf">1e-6</span><span class="p">)</span>
+
+        <span class="c1"># Signal estimation (mean of image)</span>
+        <span class="n">signal_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># SNR calculation</span>
+        <span class="n">snr</span> <span class="o">=</span> <span class="n">signal_mean</span> <span class="o">/</span> <span class="n">sigma_mad</span>
+
+        <span class="c1"># Correlation length from autocorrelation</span>
+        <span class="c1"># Compute half-width at half-maximum</span>
+        <span class="n">autocorr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_autocorrelation</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">center_h</span> <span class="o">=</span> <span class="n">autocorr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+
+        <span class="c1"># Extract horizontal profile through center</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">autocorr</span><span class="p">[</span><span class="n">center_h</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">profile_norm</span> <span class="o">=</span> <span class="n">profile</span> <span class="o">/</span> <span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="c1"># Find half-width at half-maximum</span>
+        <span class="n">half_max_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">profile_norm</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">half_max_indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">correlation_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">half_max_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">half_max_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">correlation_length</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="k">return</span> <span class="n">NoiseMetrics</span><span class="p">(</span>
+                <span class="n">snr</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">snr</span><span class="p">),</span>
+                <span class="n">sigma_mad</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">sigma_mad</span><span class="p">),</span>
+                <span class="n">correlation_length</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">correlation_length</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_contrast_metrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_contrast_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_contrast_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContrastMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute contrast-related metrics (parameter-free).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with rms_contrast, michelson, dynamic_range, p1, and p99.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="c1"># RMS contrast (std / mean) - bit-depth agnostic</span>
+        <span class="n">mean_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">std_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">rms_contrast</span> <span class="o">=</span> <span class="n">std_val</span> <span class="o">/</span> <span class="p">(</span><span class="n">mean_val</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="c1"># Michelson contrast using percentiles (more robust than min/max)</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p99</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
+        <span class="n">michelson</span> <span class="o">=</span> <span class="p">(</span><span class="n">p99</span> <span class="o">-</span> <span class="n">p1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">p99</span> <span class="o">+</span> <span class="n">p1</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="c1"># Dynamic range (normalized by max possible intensity)</span>
+        <span class="n">min_val</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">max_val</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">dynamic_range</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">-</span> <span class="n">min_val</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_intensity</span>
+
+        <span class="k">return</span> <span class="n">ContrastMetrics</span><span class="p">(</span>
+                <span class="n">rms_contrast</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">rms_contrast</span><span class="p">),</span>
+                <span class="n">michelson</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">michelson</span><span class="p">),</span>
+                <span class="n">dynamic_range</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">dynamic_range</span><span class="p">),</span>
+                <span class="n">p1</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">p1</span><span class="p">),</span>
+                <span class="n">p99</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">p99</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_structure_metrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_structure_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_structure_metrics</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span>
+            <span class="n">scales</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">ridge_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;meijering&quot;</span><span class="p">,</span> <span class="s2">&quot;frangi&quot;</span><span class="p">,</span> <span class="s2">&quot;hessian&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;meijering&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StructureMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute structure tensor and ridge detection metrics.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sigma: Sigma for structure tensor computation.</span>
+<span class="sd">            scales: List of scales for multiscale ridge detection. Defaults to</span>
+<span class="sd">                [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0].</span>
+<span class="sd">            ridge_method: Method for ridge detection: &quot;meijering&quot; (default),</span>
+<span class="sd">                &quot;frangi&quot;, or &quot;hessian&quot;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with mean_coherence, optimal_scale, peak_response,</span>
+<span class="sd">            ridge_responses, scales, ridge_method, and coherence_map.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">scales</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scales</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">]</span>
+
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_intensity</span>
+
+        <span class="c1"># Compute structure tensor and coherence</span>
+        <span class="n">A_elems</span> <span class="o">=</span> <span class="n">structure_tensor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+        <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span> <span class="o">=</span> <span class="n">structure_tensor_eigenvalues</span><span class="p">(</span><span class="n">A_elems</span><span class="p">)</span>
+
+        <span class="c1"># Coherence: (l1 - l2) / (l1 + l2 + eps)</span>
+        <span class="n">coherence</span> <span class="o">=</span> <span class="p">(</span><span class="n">l1</span> <span class="o">-</span> <span class="n">l2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">l1</span> <span class="o">+</span> <span class="n">l2</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="n">mean_coherence</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">coherence</span><span class="p">))</span>
+
+        <span class="c1"># Multiscale ridge detection</span>
+        <span class="n">ridge_responses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">scale</span> <span class="ow">in</span> <span class="n">scales</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ridge_method</span> <span class="o">==</span> <span class="s2">&quot;meijering&quot;</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">meijering</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigmas</span><span class="o">=</span><span class="p">[</span><span class="n">scale</span><span class="p">],</span> <span class="n">black_ridges</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">ridge_method</span> <span class="o">==</span> <span class="s2">&quot;frangi&quot;</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">frangi</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigmas</span><span class="o">=</span><span class="p">[</span><span class="n">scale</span><span class="p">],</span> <span class="n">black_ridges</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># hessian</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">hessian</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigmas</span><span class="o">=</span><span class="p">[</span><span class="n">scale</span><span class="p">],</span> <span class="n">black_ridges</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">ridge_responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">response</span><span class="p">)))</span>
+
+        <span class="c1"># Find optimal scale</span>
+        <span class="k">if</span> <span class="n">ridge_responses</span><span class="p">:</span>
+            <span class="n">optimal_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">ridge_responses</span><span class="p">)</span>
+            <span class="n">optimal_scale</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="n">optimal_idx</span><span class="p">]</span>
+            <span class="n">peak_response</span> <span class="o">=</span> <span class="n">ridge_responses</span><span class="p">[</span><span class="n">optimal_idx</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">optimal_scale</span> <span class="o">=</span> <span class="n">scales</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scales</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">peak_response</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="n">StructureMetrics</span><span class="p">(</span>
+                <span class="n">mean_coherence</span><span class="o">=</span><span class="n">mean_coherence</span><span class="p">,</span>
+                <span class="n">optimal_scale</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">optimal_scale</span><span class="p">),</span>
+                <span class="n">peak_response</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">peak_response</span><span class="p">),</span>
+                <span class="n">ridge_responses</span><span class="o">=</span><span class="n">ridge_responses</span><span class="p">,</span>
+                <span class="n">scales</span><span class="o">=</span><span class="n">scales</span><span class="p">,</span>
+                <span class="n">ridge_method</span><span class="o">=</span><span class="n">ridge_method</span><span class="p">,</span>
+                <span class="n">coherence_map</span><span class="o">=</span><span class="n">coherence</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_background_metrics">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_background_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_background_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BackgroundMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute background uniformity metrics.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sigma: Sigma for background estimation (Gaussian smoothing).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with nonuniformity_ratio, mean_gradient, and</span>
+<span class="sd">            background_estimate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_mat</span>
+
+        <span class="c1"># Background estimate via large-sigma Gaussian smoothing</span>
+        <span class="n">background</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+
+        <span class="c1"># Nonuniformity ratio (std / mean of background)</span>
+        <span class="n">bg_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
+        <span class="n">bg_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
+        <span class="n">nonuniformity_ratio</span> <span class="o">=</span> <span class="n">bg_std</span> <span class="o">/</span> <span class="p">(</span><span class="n">bg_mean</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+        <span class="c1"># Mean gradient magnitude of background</span>
+        <span class="n">grad_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">grad_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">background</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">grad_mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">grad_x</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">grad_y</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">mean_gradient</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">grad_mag</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">BackgroundMetrics</span><span class="p">(</span>
+                <span class="n">nonuniformity_ratio</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">nonuniformity_ratio</span><span class="p">),</span>
+                <span class="n">mean_gradient</span><span class="o">=</span><span class="n">mean_gradient</span><span class="p">,</span>
+                <span class="n">background_estimate</span><span class="o">=</span><span class="n">background</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_quality_scores">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_quality_scores">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_quality_scores</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">noise</span><span class="p">:</span> <span class="n">NoiseMetrics</span><span class="p">,</span>
+            <span class="n">contrast</span><span class="p">:</span> <span class="n">ContrastMetrics</span><span class="p">,</span>
+            <span class="n">structure</span><span class="p">:</span> <span class="n">StructureMetrics</span><span class="p">,</span>
+            <span class="n">background</span><span class="p">:</span> <span class="n">BackgroundMetrics</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QualityScores</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute normalized 0-1 quality scores for radar chart.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            noise: Noise metrics from compute_noise_metrics().</span>
+<span class="sd">            contrast: Contrast metrics from compute_contrast_metrics().</span>
+<span class="sd">            structure: Structure metrics from compute_structure_metrics().</span>
+<span class="sd">            background: Background metrics from compute_background_metrics().</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary of quality scores (SNR, Contrast, Coherence, Uniformity,</span>
+<span class="sd">            Sharpness), all normalized to [0, 1].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># SNR score (saturates at 15)</span>
+        <span class="n">snr_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">noise</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Contrast score (RMS contrast, saturates at 0.15)</span>
+        <span class="n">contrast_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">contrast</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Coherence score (already 0-1)</span>
+        <span class="n">coherence_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">structure</span><span class="p">[</span><span class="s2">&quot;mean_coherence&quot;</span><span class="p">],</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Uniformity score (inverse of nonuniformity)</span>
+        <span class="n">uniformity_score</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">background</span><span class="p">[</span><span class="s2">&quot;nonuniformity_ratio&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># Sharpness score (based on peak ridge response as proxy)</span>
+        <span class="n">sharpness_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">structure</span><span class="p">[</span><span class="s2">&quot;peak_response&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">QualityScores</span><span class="p">(</span>
+                <span class="n">SNR</span><span class="o">=</span><span class="n">snr_score</span><span class="p">,</span>
+                <span class="n">Contrast</span><span class="o">=</span><span class="n">contrast_score</span><span class="p">,</span>
+                <span class="n">Coherence</span><span class="o">=</span><span class="n">coherence_score</span><span class="p">,</span>
+                <span class="n">Uniformity</span><span class="o">=</span><span class="n">uniformity_score</span><span class="p">,</span>
+                <span class="n">Sharpness</span><span class="o">=</span><span class="n">sharpness_score</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># =========================================================================</span>
+    <span class="c1"># INTERPRETATION AND RECOMMENDATIONS</span>
+    <span class="c1"># =========================================================================</span>
+
+<div class="viewcode-block" id="ImageMetricsCalculator.generate_interpretation">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.generate_interpretation">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_interpretation</span><span class="p">(</span>
+            <span class="n">section</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;noise&quot;</span><span class="p">,</span> <span class="s2">&quot;contrast&quot;</span><span class="p">,</span> <span class="s2">&quot;structure&quot;</span><span class="p">,</span> <span class="s2">&quot;background&quot;</span><span class="p">],</span>
+            <span class="n">metrics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate human-readable interpretation text.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            section: Section name (&quot;noise&quot;, &quot;contrast&quot;, &quot;structure&quot;, &quot;background&quot;).</span>
+<span class="sd">            metrics: Computed metrics for the section.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Interpretation text string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">&quot;noise&quot;</span><span class="p">:</span>
+            <span class="n">snr</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;critically low&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong denoising required (LocalEdgeDenoise, MedianFilter).&quot;</span>
+            <span class="k">elif</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;marginal&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Light denoising recommended (GaussianBlur sigma=0.5-1.0).&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;adequate&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;No denoising needed.&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SNR (</span><span class="si">{</span><span class="n">snr</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) is </span><span class="si">{</span><span class="n">quality</span><span class="si">}</span><span class="s2"> for reliable detection. </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">elif</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">&quot;contrast&quot;</span><span class="p">:</span>
+            <span class="n">rms</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;critically low&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Strong contrast enhancement required (EnhanceLocalContrast, HistogramEqualization).&quot;</span>
+            <span class="k">elif</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;marginal&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Contrast enhancement recommended (EnhanceLocalContrast clip_limit=2.0).&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;adequate&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Contrast is sufficient for detection.&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;RMS contrast (</span><span class="si">{</span><span class="n">rms</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">) is </span><span class="si">{</span><span class="n">quality</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">elif</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">&quot;structure&quot;</span><span class="p">:</span>
+            <span class="n">coherence</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;mean_coherence&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">coherence</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;coherence&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;low&quot;</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="s2">&quot;weak directional structure&quot;</span>
+            <span class="k">elif</span> <span class="n">coherence</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;coherence&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;moderate&quot;</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="s2">&quot;some linear features present&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+                <span class="n">desc</span> <span class="o">=</span> <span class="s2">&quot;strong linear/edge structure&quot;</span>
+            <span class="n">opt_scale</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;optimal_scale&quot;</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Mean coherence (</span><span class="si">{</span><span class="n">coherence</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">) indicates </span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Optimal ridge scale: sigma=</span><span class="si">{</span><span class="n">opt_scale</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> px.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">section</span> <span class="o">==</span> <span class="s2">&quot;background&quot;</span><span class="p">:</span>
+            <span class="n">nonunif</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;nonuniformity_ratio&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">nonunif</span> <span class="o">&gt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;nonuniformity&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;severe&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Background correction critical (SubtractRollingBall, FlatFieldCorrection).&quot;</span>
+            <span class="k">elif</span> <span class="n">nonunif</span> <span class="o">&gt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;nonuniformity&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;moderate&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Background correction recommended.&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">quality</span> <span class="o">=</span> <span class="s2">&quot;acceptably low&quot;</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="s2">&quot;Background is sufficiently uniform.&quot;</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Background non-uniformity (</span><span class="si">{</span><span class="n">nonunif</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">) is </span><span class="si">{</span><span class="n">quality</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ImageMetricsCalculator.generate_recommendations">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.generate_recommendations">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_recommendations</span><span class="p">(</span>
+            <span class="n">noise</span><span class="p">:</span> <span class="n">NoiseMetrics</span><span class="p">,</span>
+            <span class="n">contrast</span><span class="p">:</span> <span class="n">ContrastMetrics</span><span class="p">,</span>
+            <span class="n">structure</span><span class="p">:</span> <span class="n">StructureMetrics</span><span class="p">,</span>
+            <span class="n">background</span><span class="p">:</span> <span class="n">BackgroundMetrics</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate actionable preprocessing recommendations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            noise: Noise metrics from compute_noise_metrics().</span>
+<span class="sd">            contrast: Contrast metrics from compute_contrast_metrics().</span>
+<span class="sd">            structure: Structure metrics from compute_structure_metrics().</span>
+<span class="sd">            background: Background metrics from compute_background_metrics().</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of recommendation strings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Noise recommendations</span>
+        <span class="n">snr</span> <span class="o">=</span> <span class="n">noise</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">]</span>
+        <span class="n">corr_len</span> <span class="o">=</span> <span class="n">noise</span><span class="p">[</span><span class="s2">&quot;correlation_length&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Apply strong denoising: LocalEdgeDenoise(sigma_spatial=3, sigma_intensity=0.1)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">snr</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;snr&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Apply light denoising: GaussianBlur(sigma=0.5-1.0)&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">corr_len</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Structured noise detected (xi=</span><span class="si">{</span><span class="n">corr_len</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">px). &quot;</span>
+                    <span class="s2">&quot;Consider MedianFilter or morphological opening.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Contrast recommendations</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">contrast</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">]</span>
+        <span class="n">dynamic</span> <span class="o">=</span> <span class="n">contrast</span><span class="p">[</span><span class="s2">&quot;dynamic_range&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Apply contrast enhancement: EnhanceLocalContrast(clip_limit=3.0) or HistogramEqualization&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">rms</span> <span class="o">&lt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;rms_contrast&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="s2">&quot;Consider EnhanceLocalContrast(clip_limit=2.0) for improved contrast&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dynamic</span> <span class="o">&lt;</span> <span class="mf">0.3</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Low dynamic range detected. Consider ContrastStretching or exposure adjustment.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Structure recommendations</span>
+        <span class="n">opt_scale</span> <span class="o">=</span> <span class="n">structure</span><span class="p">[</span><span class="s2">&quot;optimal_scale&quot;</span><span class="p">]</span>
+        <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Use sigma_range=[</span><span class="si">{</span><span class="n">opt_scale</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.7</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">opt_scale</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1.5</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] for multiscale structure detection&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Background recommendations</span>
+        <span class="n">nonunif</span> <span class="o">=</span> <span class="n">background</span><span class="p">[</span><span class="s2">&quot;nonuniformity_ratio&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">nonunif</span> <span class="o">&gt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;nonuniformity&quot;</span><span class="p">][</span><span class="s2">&quot;critical&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Apply background correction: SubtractRollingBall(radius=50) or FlatFieldCorrection&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">nonunif</span> <span class="o">&gt;</span> <span class="n">THRESHOLDS</span><span class="p">[</span><span class="s2">&quot;nonuniformity&quot;</span><span class="p">][</span><span class="s2">&quot;marginal&quot;</span><span class="p">]:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">&quot;Consider SubtractGaussian(sigma=50) for background uniformity&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">recommendations</span></div>
+
+
+    <span class="c1"># =========================================================================</span>
+    <span class="c1"># CONVENIENCE METHOD</span>
+    <span class="c1"># =========================================================================</span>
+
+<div class="viewcode-block" id="ImageMetricsCalculator.compute_all">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.util.image_metrics.html#phenotypic.util.ImageMetricsCalculator.compute_all">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_all</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">structure_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span>
+            <span class="n">ridge_scales</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">ridge_method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;meijering&quot;</span><span class="p">,</span> <span class="s2">&quot;frangi&quot;</span><span class="p">,</span> <span class="s2">&quot;hessian&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;meijering&quot;</span><span class="p">,</span>
+            <span class="n">background_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">,</span>
+            <span class="n">include_non_serializable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute all metrics and return comprehensive dict.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            structure_sigma: Sigma for structure tensor computation.</span>
+<span class="sd">            ridge_scales: Scales for ridge detection.</span>
+<span class="sd">            ridge_method: Ridge detection algorithm.</span>
+<span class="sd">            background_sigma: Sigma for background estimation.</span>
+<span class="sd">            include_non_serializable: If False, removes numpy arrays from output.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with keys: bit_depth, noise, contrast, structure, background,</span>
+<span class="sd">            quality_scores, interpretations, recommendations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute all metrics</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_noise_metrics</span><span class="p">()</span>
+        <span class="n">contrast</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_contrast_metrics</span><span class="p">()</span>
+        <span class="n">structure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_structure_metrics</span><span class="p">(</span>
+                <span class="n">sigma</span><span class="o">=</span><span class="n">structure_sigma</span><span class="p">,</span>
+                <span class="n">scales</span><span class="o">=</span><span class="n">ridge_scales</span><span class="p">,</span>
+                <span class="n">ridge_method</span><span class="o">=</span><span class="n">ridge_method</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">background</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_background_metrics</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="n">background_sigma</span><span class="p">)</span>
+
+        <span class="c1"># Compute quality scores</span>
+        <span class="n">quality_scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_quality_scores</span><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span>
+                                                     <span class="n">background</span><span class="p">)</span>
+
+        <span class="c1"># Generate interpretations</span>
+        <span class="n">interpretations</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;noise&quot;</span>     <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_interpretation</span><span class="p">(</span><span class="s2">&quot;noise&quot;</span><span class="p">,</span> <span class="n">noise</span><span class="p">),</span>
+            <span class="s2">&quot;contrast&quot;</span>  <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_interpretation</span><span class="p">(</span><span class="s2">&quot;contrast&quot;</span><span class="p">,</span> <span class="n">contrast</span><span class="p">),</span>
+            <span class="s2">&quot;structure&quot;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_interpretation</span><span class="p">(</span><span class="s2">&quot;structure&quot;</span><span class="p">,</span> <span class="n">structure</span><span class="p">),</span>
+            <span class="s2">&quot;background&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_interpretation</span><span class="p">(</span><span class="s2">&quot;background&quot;</span><span class="p">,</span> <span class="n">background</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Generate recommendations</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_recommendations</span><span class="p">(</span>
+                <span class="n">noise</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">structure</span><span class="p">,</span> <span class="n">background</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Clean non-serializable items if requested</span>
+        <span class="k">if</span> <span class="n">include_non_serializable</span><span class="p">:</span>
+            <span class="n">structure_out</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+            <span class="n">background_out</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">background</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">structure_out</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">structure</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;coherence_map&quot;</span><span class="p">}</span>
+            <span class="n">background_out</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">background</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;background_estimate&quot;</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;bit_depth&quot;</span>      <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bit_depth</span><span class="p">,</span>
+            <span class="s2">&quot;noise&quot;</span>          <span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">noise</span><span class="p">),</span>
+            <span class="s2">&quot;contrast&quot;</span>       <span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">contrast</span><span class="p">),</span>
+            <span class="s2">&quot;structure&quot;</span>      <span class="p">:</span> <span class="n">structure_out</span><span class="p">,</span>
+            <span class="s2">&quot;background&quot;</span>     <span class="p">:</span> <span class="n">background_out</span><span class="p">,</span>
+            <span class="s2">&quot;quality_scores&quot;</span> <span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">quality_scores</span><span class="p">),</span>
+            <span class="s2">&quot;interpretations&quot;</span><span class="p">:</span> <span class="n">interpretations</span><span class="p">,</span>
+            <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="n">recommendations</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;ImageMetricsCalculator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;THRESHOLDS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NoiseMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ContrastMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StructureMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;BackgroundMetrics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QualityScores&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

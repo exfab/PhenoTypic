@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.IllegalElementAssignmentError
+===========================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: IllegalElementAssignmentError

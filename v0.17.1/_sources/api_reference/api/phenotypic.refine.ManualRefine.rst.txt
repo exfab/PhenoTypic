@@ -1,0 +1,66 @@
+phenotypic.refine.ManualRefine
+==============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: ManualRefine
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualRefine.__init__
+      ~ManualRefine.apply
+      ~ManualRefine.construct
+      ~ManualRefine.copy
+      ~ManualRefine.dict
+      ~ManualRefine.from_json
+      ~ManualRefine.from_orm
+      ~ManualRefine.json
+      ~ManualRefine.model_construct
+      ~ManualRefine.model_copy
+      ~ManualRefine.model_dump
+      ~ManualRefine.model_dump_json
+      ~ManualRefine.model_json_schema
+      ~ManualRefine.model_parametrized_name
+      ~ManualRefine.model_post_init
+      ~ManualRefine.model_rebuild
+      ~ManualRefine.model_validate
+      ~ManualRefine.model_validate_json
+      ~ManualRefine.model_validate_strings
+      ~ManualRefine.napari
+      ~ManualRefine.parse_file
+      ~ManualRefine.parse_obj
+      ~ManualRefine.parse_raw
+      ~ManualRefine.schema
+      ~ManualRefine.schema_json
+      ~ManualRefine.to_json
+      ~ManualRefine.update_forward_refs
+      ~ManualRefine.validate
+      ~ManualRefine.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ManualRefine.model_computed_fields
+      ~ManualRefine.model_config
+      ~ManualRefine.model_extra
+      ~ManualRefine.model_fields
+      ~ManualRefine.model_fields_set
+      ~ManualRefine.centers
+      ~ManualRefine.shape
+      ~ManualRefine.width
+   
+   

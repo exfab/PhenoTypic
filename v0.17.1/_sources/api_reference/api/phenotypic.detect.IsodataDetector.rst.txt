@@ -1,0 +1,64 @@
+phenotypic.detect.IsodataDetector
+=================================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: IsodataDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~IsodataDetector.__init__
+      ~IsodataDetector.apply
+      ~IsodataDetector.construct
+      ~IsodataDetector.copy
+      ~IsodataDetector.dict
+      ~IsodataDetector.from_json
+      ~IsodataDetector.from_orm
+      ~IsodataDetector.json
+      ~IsodataDetector.model_construct
+      ~IsodataDetector.model_copy
+      ~IsodataDetector.model_dump
+      ~IsodataDetector.model_dump_json
+      ~IsodataDetector.model_json_schema
+      ~IsodataDetector.model_parametrized_name
+      ~IsodataDetector.model_post_init
+      ~IsodataDetector.model_rebuild
+      ~IsodataDetector.model_validate
+      ~IsodataDetector.model_validate_json
+      ~IsodataDetector.model_validate_strings
+      ~IsodataDetector.parse_file
+      ~IsodataDetector.parse_obj
+      ~IsodataDetector.parse_raw
+      ~IsodataDetector.schema
+      ~IsodataDetector.schema_json
+      ~IsodataDetector.to_json
+      ~IsodataDetector.update_forward_refs
+      ~IsodataDetector.validate
+      ~IsodataDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IsodataDetector.model_computed_fields
+      ~IsodataDetector.model_config
+      ~IsodataDetector.model_extra
+      ~IsodataDetector.model_fields
+      ~IsodataDetector.model_fields_set
+      ~IsodataDetector.ignore_zeros
+      ~IsodataDetector.ignore_borders
+   
+   

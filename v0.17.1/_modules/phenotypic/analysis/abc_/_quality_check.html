@@ -1,0 +1,1121 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.abc_._quality_check &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/abc_/_quality_check';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/analysis/abc_/_quality_check.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.abc_._quality_check</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.abc_._quality_check</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Base ABC for metric-driven quality-control checks on measurement frames.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">QUALITY_CHECK</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
+
+
+<div class="viewcode-block" id="QualityCheck">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QualityCheck</span><span class="p">(</span><span class="n">SetAnalyzer</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect quality-control issues in measurement frames.</span>
+
+<span class="sd">    ``QualityCheck`` is a thin layer over :class:`SetAnalyzer` that</span>
+<span class="sd">    standardizes how subclasses surface flagged rows for downstream</span>
+<span class="sd">    curation. Subclasses implement a single ``_compute(group)`` hook</span>
+<span class="sd">    that augments one group with at minimum a raw, directional</span>
+<span class="sd">    ``QC_&lt;name&gt;_Metric`` column (the check&#39;s headline value in its own</span>
+<span class="sd">    units). The base class then derives two companion columns from the</span>
+<span class="sd">    metric, using the check&#39;s ``_HIGHER_IS_BAD`` direction flag to decide</span>
+<span class="sd">    which side of each threshold is &quot;bad&quot;:</span>
+
+<span class="sd">    * ``QC_&lt;name&gt;_Flag`` (``bool``): ``True`` when the metric crosses</span>
+<span class="sd">      ``fail_threshold`` in the bad direction. When ``_HIGHER_IS_BAD`` is</span>
+<span class="sd">      ``True`` that means ``metric &gt;= fail_threshold``; when ``False``</span>
+<span class="sd">      (e.g. an agreement score where lower is worse) it means</span>
+<span class="sd">      ``metric &lt;= fail_threshold``. Rows with ``Flag=True`` are the ones</span>
+<span class="sd">      the results-viewer GUI offers to mark for curation removal.</span>
+<span class="sd">    * ``QC_&lt;name&gt;_Status`` (``str``): tri-state label derived from the</span>
+<span class="sd">      same metric column. With ``_HIGHER_IS_BAD=True``: ``&quot;pass&quot;`` until</span>
+<span class="sd">      ``metric &gt;= warn_threshold`` (``&quot;warn&quot;``), then</span>
+<span class="sd">      ``metric &gt;= fail_threshold`` (``&quot;fail&quot;``), with</span>
+<span class="sd">      ``warn_threshold &lt;= fail_threshold``. With ``_HIGHER_IS_BAD=False``</span>
+<span class="sd">      the comparisons invert to ``&lt;=`` with</span>
+<span class="sd">      ``fail_threshold &lt;= warn_threshold``. Only ``&quot;fail&quot;`` triggers</span>
+<span class="sd">      ``Flag=True``; the ``&quot;warn&quot;`` tier is informational.</span>
+
+<span class="sd">    NaN metrics (e.g. under-powered replicate bins in</span>
+<span class="sd">    :class:`ReplicateAgreement`) are treated as ``&quot;pass&quot;`` with</span>
+<span class="sd">    ``Flag=False`` so degenerate groups never gate curation.</span>
+
+<span class="sd">    Subclasses set class-level attributes that drive column naming,</span>
+<span class="sd">    threshold direction, and docstring autogeneration:</span>
+
+<span class="sd">    * ``name`` — short identifier composed into output column names</span>
+<span class="sd">      (``QC_&lt;name&gt;_Flag`` and friends). Must be set on every concrete</span>
+<span class="sd">      subclass.</span>
+<span class="sd">    * ``_HIGHER_IS_BAD`` — ``True`` when a larger metric value is worse</span>
+<span class="sd">      (the common case), ``False`` when a smaller value is worse (e.g. an</span>
+<span class="sd">      agreement score). Intrinsic to the metric, not user-tunable; it has</span>
+<span class="sd">      **no default on the base** and must be set on every concrete</span>
+<span class="sd">      subclass.</span>
+<span class="sd">    * ``_measurement_infoclass`` — optional per-subclass</span>
+<span class="sd">      :class:`MeasurementInfo` enum documenting any check-specific</span>
+<span class="sd">      columns the subclass emits beyond the generic</span>
+<span class="sd">      ``Flag``/``Metric``/``Status`` trio. When set,</span>
+<span class="sd">      ``__init_subclass__`` appends its RST table to the subclass</span>
+<span class="sd">      docstring.</span>
+
+<span class="sd">    The base class drives group iteration directly in :meth:`analyze`,</span>
+<span class="sd">    so the abstract :meth:`SetAnalyzer._apply2group_func` is overridden</span>
+<span class="sd">    to raise — subclasses implement ``_compute`` instead.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name: Short identifier composed into output column names. Set on</span>
+<span class="sd">            each concrete subclass (e.g. ``&quot;Count&quot;``, ``&quot;SE&quot;``).</span>
+<span class="sd">        warn_threshold: Metric value (in the check&#39;s own units) at which</span>
+<span class="sd">            ``Status`` becomes ``&quot;warn&quot;`` in the bad direction. A pydantic</span>
+<span class="sd">            instance field; subclasses override the default by</span>
+<span class="sd">            re-declaring it, and callers may override it per instance.</span>
+<span class="sd">        fail_threshold: Metric value at which ``Status`` becomes</span>
+<span class="sd">            ``&quot;fail&quot;`` and ``Flag=True`` in the bad direction. A pydantic</span>
+<span class="sd">            instance field; subclasses override the default by</span>
+<span class="sd">            re-declaring it, and callers may override it per instance.</span>
+<span class="sd">        unmatched_groups: Groups that the check could not evaluate (for</span>
+<span class="sd">            example, expected counts whose group key never appeared in</span>
+<span class="sd">            the data). Populated by subclasses that need to report</span>
+<span class="sd">            missing combinations; empty by default.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span>
+    <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
+    <span class="n">unmatched_groups</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_threshold_order</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QualityCheck</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject thresholds ordered against the check&#39;s bad direction.</span>
+
+<span class="sd">        The ``warn`` tier must always sit between ``&quot;pass&quot;`` and ``&quot;fail&quot;``</span>
+<span class="sd">        in the metric&#39;s bad direction, so the two thresholds have a fixed</span>
+<span class="sd">        ordering that depends only on ``_HIGHER_IS_BAD``:</span>
+
+<span class="sd">        * ``_HIGHER_IS_BAD=True``  → ``warn_threshold &lt;= fail_threshold``</span>
+<span class="sd">          (a larger metric is worse, so ``fail`` is the higher boundary).</span>
+<span class="sd">        * ``_HIGHER_IS_BAD=False`` → ``warn_threshold &gt;= fail_threshold``</span>
+<span class="sd">          (a smaller metric is worse, so ``fail`` is the lower boundary).</span>
+
+<span class="sd">        Equality is allowed — it collapses the ``warn`` band so the check</span>
+<span class="sd">        is purely pass/fail. A mis-ordered pair would silently invert the</span>
+<span class="sd">        tri-state (e.g. a lower-is-bad check that fails *above* its warn</span>
+<span class="sd">        line), so it raises ``ValueError`` (surfaced by pydantic as a</span>
+<span class="sd">        ``ValidationError``) at construction.</span>
+
+<span class="sd">        Intermediate ABCs that have not yet bound ``_HIGHER_IS_BAD`` skip</span>
+<span class="sd">        the check so the base class stays instantiable for test doubles.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the thresholds are ordered against the bad</span>
+<span class="sd">                direction implied by ``_HIGHER_IS_BAD``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">higher_is_bad</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="s2">&quot;_HIGHER_IS_BAD&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;warn_threshold must be &lt;= fail_threshold for a &quot;</span>
+                <span class="s2">&quot;higher-is-bad check &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(got warn=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fail=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">higher_is_bad</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;warn_threshold must be &gt;= fail_threshold for a &quot;</span>
+                <span class="s2">&quot;lower-is-bad check &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(got warn=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;fail=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the check&#39;s metric columns to one group.</span>
+
+<span class="sd">        Must add at minimum the metric column (``QC_&lt;name&gt;_Metric``), the</span>
+<span class="sd">        raw headline value in the check&#39;s own units. May add</span>
+<span class="sd">        check-specific columns documented by ``_measurement_infoclass``.</span>
+<span class="sd">        ``Flag`` and ``Status`` are derived by the base class from the</span>
+<span class="sd">        metric and ``_HIGHER_IS_BAD``, so subclasses must not set them</span>
+<span class="sd">        directly.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: A single group as produced by</span>
+<span class="sd">                ``data.groupby(self.groupby, dropna=False)``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group frame (typically a copy) augmented with the</span>
+<span class="sd">            ``QC_&lt;name&gt;_Metric`` column and any check-specific metric</span>
+<span class="sd">            columns.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="QualityCheck.analyze">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the check on every group and return the augmented frame.</span>
+
+<span class="sd">        Iterates over ``data.groupby(self.groupby, dropna=False)``,</span>
+<span class="sd">        delegates per-group computation to :meth:`_compute`, and adds</span>
+<span class="sd">        three generic columns derived from the metric:</span>
+
+<span class="sd">        * ``QC_&lt;name&gt;_Metric`` (carry-through from ``_compute``)</span>
+<span class="sd">        * ``QC_&lt;name&gt;_Flag`` (``bool``)</span>
+<span class="sd">        * ``QC_&lt;name&gt;_Status`` (``&quot;pass&quot;`` / ``&quot;warn&quot;`` / ``&quot;fail&quot;``)</span>
+
+<span class="sd">        ``Flag`` and ``Status`` are directional. With</span>
+<span class="sd">        ``_HIGHER_IS_BAD=True`` a row fails when ``metric &gt;=</span>
+<span class="sd">        fail_threshold`` and warns when ``metric &gt;= warn_threshold``;</span>
+<span class="sd">        with ``_HIGHER_IS_BAD=False`` the comparisons invert to ``&lt;=``.</span>
+<span class="sd">        A ``NaN`` metric always yields ``Status=&quot;pass&quot;`` and</span>
+<span class="sd">        ``Flag=False``.</span>
+
+<span class="sd">        Rows are never dropped. The augmented frame is stored on</span>
+<span class="sd">        :attr:`_latest_measurements` and returned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Input measurement frame. Must contain ``self.on`` and</span>
+<span class="sd">                every column in ``self.groupby``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The input frame with the three generic QC columns appended</span>
+<span class="sd">            plus whatever ``_compute`` contributed.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            KeyError: If ``self.on`` or any column in ``self.groupby`` is</span>
+<span class="sd">                missing from ``data``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">]</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Missing required columns for QualityCheck: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
+        <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
+        <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
+
+        <span class="n">pieces</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">pieces</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_compute</span><span class="p">(</span><span class="n">group</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">pieces</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">pieces</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="n">metric</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;coerce&quot;</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">&quot;pass&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_HIGHER_IS_BAD</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="p">),</span> <span class="s2">&quot;warn&quot;</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">),</span> <span class="s2">&quot;fail&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flag</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">warn_threshold</span><span class="p">),</span> <span class="s2">&quot;warn&quot;</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">),</span> <span class="s2">&quot;fail&quot;</span><span class="p">)</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">metric</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">&quot;pass&quot;</span><span class="p">)</span>
+
+        <span class="n">result</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">flag</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">status</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.summary">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a one-row-per-group summary of the most recent analyze.</span>
+
+<span class="sd">        The aggregate columns are **prefixed with ``qc_``** so they can</span>
+<span class="sd">        never collide with a ``groupby`` column on ``reset_index`` — a</span>
+<span class="sd">        plate-layout column literally named ``status`` or ``num_rows``</span>
+<span class="sd">        would otherwise raise. The summary therefore always carries the</span>
+<span class="sd">        group key columns *plus* the four prefixed aggregates.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with columns ``[*self.groupby, &quot;qc_n_members&quot;,</span>
+<span class="sd">            &quot;qc_n_flagged&quot;, &quot;qc_worst_metric&quot;, &quot;qc_status&quot;]``.</span>
+<span class="sd">            ``qc_worst_metric`` is the extreme metric value in the bad</span>
+<span class="sd">            direction across the group: ``group[metric_col].max()`` when</span>
+<span class="sd">            ``_HIGHER_IS_BAD`` is ``True``, else ``group[metric_col].min()``.</span>
+<span class="sd">            ``qc_status`` is the worst status across the group: ``&quot;fail&quot;``</span>
+<span class="sd">            wins over ``&quot;warn&quot;`` which wins over ``&quot;pass&quot;``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;pass&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;warn&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;fail&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}</span>
+        <span class="n">inv_rank</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rank</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
+        <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
+        <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
+        <span class="n">higher_is_bad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_HIGHER_IS_BAD</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_summarize</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+            <span class="n">worst</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">rank</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span>
+            <span class="n">worst_metric</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">higher_is_bad</span> <span class="k">else</span> <span class="n">metric</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span>
+                <span class="s2">&quot;qc_n_members&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)),</span>
+                <span class="s2">&quot;qc_n_flagged&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                <span class="s2">&quot;qc_worst_metric&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">worst_metric</span><span class="p">),</span>
+                <span class="s2">&quot;qc_status&quot;</span><span class="p">:</span> <span class="n">inv_rank</span><span class="p">[</span><span class="n">worst</span><span class="p">],</span>
+            <span class="p">})</span>
+
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_summarize</span><span class="p">,</span> <span class="n">include_groups</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">summary</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.flagged_keys">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.flagged_keys">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flagged_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (``Metadata_ImageFile``, ``Object_Label``) pairs to curate.</span>
+
+<span class="sd">        Used by the GUI &quot;Mark all flagged for removal&quot; button. Requires</span>
+<span class="sd">        the analyzed frame to carry both ``Metadata_ImageFile`` and</span>
+<span class="sd">        ``Object_Label`` columns (the curation key used by</span>
+<span class="sd">        ``STORE_REMOVED_KEYS``). Returns an empty list when those</span>
+<span class="sd">        columns are absent or when no rows were flagged.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            De-duplicated list of ``(image_file, object_label)`` tuples</span>
+<span class="sd">            for rows where ``Flag=True``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="n">flag_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()</span>
+        <span class="n">label_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">flag_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="s2">&quot;Metadata_ImageFile&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">label_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">flagged</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">),</span>
+                         <span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">,</span> <span class="n">label_col</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">flagged</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">flagged</span> <span class="o">=</span> <span class="n">flagged</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Metadata_ImageFile</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">Object_Label</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">flagged</span><span class="o">.</span><span class="n">itertuples</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.group_members">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.group_members">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">group_members</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map each group key to its member rows for worklists/galleries.</span>
+
+<span class="sd">        Walks the most recent analyzed frame and, for every group key</span>
+<span class="sd">        produced by ``data.groupby(self.groupby, dropna=False)``, collects</span>
+<span class="sd">        the rows that belong to it as ``(Metadata_ImageFile, Object_Label,</span>
+<span class="sd">        member_value)`` tuples, where ``member_value`` is the row&#39;s</span>
+<span class="sd">        ``self.on`` value (the column the check operates on). The mapping</span>
+<span class="sd">        preserves group iteration order.</span>
+
+<span class="sd">        Mirrors :meth:`flagged_keys`&#39;s guard: if the analyzed frame lacks</span>
+<span class="sd">        either ``Metadata_ImageFile`` or the object-label column, an empty</span>
+<span class="sd">        mapping is returned rather than raising.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ordered mapping of group key (always a tuple, even for a</span>
+<span class="sd">            single ``groupby`` column) to a list of</span>
+<span class="sd">            ``(image_file, object_label, member_value)`` tuples. Empty</span>
+<span class="sd">            when the curation key columns are absent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="n">label_col</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;Metadata_ImageFile&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">label_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">members</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">key_tuple</span> <span class="o">=</span> <span class="n">key</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">key</span><span class="p">,)</span>
+            <span class="n">image_files</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">label_col</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">members</span><span class="p">[</span><span class="n">key_tuple</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">image_file</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">image_file</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="n">image_files</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">values</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">members</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.metric_col">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.metric_col">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the metric column name for this check.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_Metric&quot;</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.flag_col">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.flag_col">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flag_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the flag column name for this check.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_Flag&quot;</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.status_col">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.status_col">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">status_col</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the status column name for this check.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_Status&quot;</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.results">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the augmented frame stored by the most recent analyze().&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply2group_func</span><span class="p">(</span><span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Not used by QualityCheck — implement ``_compute`` on the subclass.</span>
+
+<span class="sd">        :meth:`QualityCheck.analyze` drives group iteration directly via</span>
+<span class="sd">        :meth:`_compute`; the abstract ``_apply2group_func`` from</span>
+<span class="sd">        :class:`SetAnalyzer` is satisfied here purely to keep the class</span>
+<span class="sd">        instantiable. Raises ``NotImplementedError`` so accidental</span>
+<span class="sd">        external calls fail loudly.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: Always.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;QualityCheck subclasses implement _compute(group), not &quot;</span>
+            <span class="s2">&quot;_apply2group_func. analyze() drives the iteration.&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="QualityCheck.show">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.show">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;QualityCheck plots are Plotly-only — see :meth:`dash`.</span>
+
+<span class="sd">        :class:`SetAnalyzer`&#39;s matplotlib ``show()`` is not implemented</span>
+<span class="sd">        for QC because the QC tab is Plotly-driven. Raising rather than</span>
+<span class="sd">        falling back to a placeholder so notebook users discover the</span>
+<span class="sd">        right method.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: Always; use :meth:`dash` instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> does not implement matplotlib &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;show(); use dash() for interactive output.&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="QualityCheck.__init_subclass__">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.QualityCheck.__init_subclass__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append QC and per-check RST tables to the subclass docstring.</span>
+
+<span class="sd">        Skips intermediate ABCs that have not yet bound ``name``. When</span>
+<span class="sd">        the subclass declares both a docstring and a ``name``, the</span>
+<span class="sd">        generic :class:`QUALITY_CHECK` table is appended (substituting</span>
+<span class="sd">        ``name`` into the column headers). If</span>
+<span class="sd">        ``_measurement_infoclass`` is also set, its table is appended</span>
+<span class="sd">        as well so check-specific columns are documented alongside the</span>
+<span class="sd">        generic trio.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">QUALITY_CHECK</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">,</span> <span class="n">check_name</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
+            <span class="n">mi</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s2">&quot;_measurement_infoclass&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">mi</span><span class="o">.</span><span class="n">append_rst_to_doc</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

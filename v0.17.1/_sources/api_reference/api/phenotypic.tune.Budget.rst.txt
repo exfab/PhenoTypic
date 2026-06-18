@@ -1,0 +1,60 @@
+phenotypic.tune.Budget
+======================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Budget
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Budget.__init__
+      ~Budget.construct
+      ~Budget.copy
+      ~Budget.dict
+      ~Budget.from_orm
+      ~Budget.json
+      ~Budget.model_construct
+      ~Budget.model_copy
+      ~Budget.model_dump
+      ~Budget.model_dump_json
+      ~Budget.model_json_schema
+      ~Budget.model_parametrized_name
+      ~Budget.model_post_init
+      ~Budget.model_rebuild
+      ~Budget.model_validate
+      ~Budget.model_validate_json
+      ~Budget.model_validate_strings
+      ~Budget.parse_file
+      ~Budget.parse_obj
+      ~Budget.parse_raw
+      ~Budget.schema
+      ~Budget.schema_json
+      ~Budget.update_forward_refs
+      ~Budget.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Budget.model_computed_fields
+      ~Budget.model_config
+      ~Budget.model_extra
+      ~Budget.model_fields
+      ~Budget.model_fields_set
+      ~Budget.n_trials
+      ~Budget.max_failures
+   
+   

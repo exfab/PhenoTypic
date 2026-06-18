@@ -1,0 +1,6 @@
+phenotypic.sdk\_.timed\_execution
+=================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: timed_execution

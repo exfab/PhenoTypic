@@ -1,0 +1,68 @@
+phenotypic.correction.DenoiseBlockMatch
+=======================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: DenoiseBlockMatch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DenoiseBlockMatch.__init__
+      ~DenoiseBlockMatch.apply
+      ~DenoiseBlockMatch.construct
+      ~DenoiseBlockMatch.copy
+      ~DenoiseBlockMatch.dict
+      ~DenoiseBlockMatch.from_json
+      ~DenoiseBlockMatch.from_orm
+      ~DenoiseBlockMatch.json
+      ~DenoiseBlockMatch.model_construct
+      ~DenoiseBlockMatch.model_copy
+      ~DenoiseBlockMatch.model_dump
+      ~DenoiseBlockMatch.model_dump_json
+      ~DenoiseBlockMatch.model_json_schema
+      ~DenoiseBlockMatch.model_parametrized_name
+      ~DenoiseBlockMatch.model_post_init
+      ~DenoiseBlockMatch.model_rebuild
+      ~DenoiseBlockMatch.model_validate
+      ~DenoiseBlockMatch.model_validate_json
+      ~DenoiseBlockMatch.model_validate_strings
+      ~DenoiseBlockMatch.parse_file
+      ~DenoiseBlockMatch.parse_obj
+      ~DenoiseBlockMatch.parse_raw
+      ~DenoiseBlockMatch.schema
+      ~DenoiseBlockMatch.schema_json
+      ~DenoiseBlockMatch.to_json
+      ~DenoiseBlockMatch.update_forward_refs
+      ~DenoiseBlockMatch.validate
+      ~DenoiseBlockMatch.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DenoiseBlockMatch.model_computed_fields
+      ~DenoiseBlockMatch.model_config
+      ~DenoiseBlockMatch.model_extra
+      ~DenoiseBlockMatch.model_fields
+      ~DenoiseBlockMatch.model_fields_set
+      ~DenoiseBlockMatch.block_size
+      ~DenoiseBlockMatch.stage_arg
+      ~DenoiseBlockMatch.gain
+      ~DenoiseBlockMatch.mu
+      ~DenoiseBlockMatch.sigma
+      ~DenoiseBlockMatch.scale_factor
+   
+   

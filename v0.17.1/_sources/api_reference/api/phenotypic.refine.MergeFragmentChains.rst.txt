@@ -1,0 +1,63 @@
+phenotypic.refine.MergeFragmentChains
+=====================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MergeFragmentChains
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MergeFragmentChains.__init__
+      ~MergeFragmentChains.apply
+      ~MergeFragmentChains.construct
+      ~MergeFragmentChains.copy
+      ~MergeFragmentChains.dict
+      ~MergeFragmentChains.from_json
+      ~MergeFragmentChains.from_orm
+      ~MergeFragmentChains.json
+      ~MergeFragmentChains.model_construct
+      ~MergeFragmentChains.model_copy
+      ~MergeFragmentChains.model_dump
+      ~MergeFragmentChains.model_dump_json
+      ~MergeFragmentChains.model_json_schema
+      ~MergeFragmentChains.model_parametrized_name
+      ~MergeFragmentChains.model_post_init
+      ~MergeFragmentChains.model_rebuild
+      ~MergeFragmentChains.model_validate
+      ~MergeFragmentChains.model_validate_json
+      ~MergeFragmentChains.model_validate_strings
+      ~MergeFragmentChains.parse_file
+      ~MergeFragmentChains.parse_obj
+      ~MergeFragmentChains.parse_raw
+      ~MergeFragmentChains.schema
+      ~MergeFragmentChains.schema_json
+      ~MergeFragmentChains.to_json
+      ~MergeFragmentChains.update_forward_refs
+      ~MergeFragmentChains.validate
+      ~MergeFragmentChains.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MergeFragmentChains.model_computed_fields
+      ~MergeFragmentChains.model_config
+      ~MergeFragmentChains.model_extra
+      ~MergeFragmentChains.model_fields
+      ~MergeFragmentChains.model_fields_set
+      ~MergeFragmentChains.distance_threshold
+   
+   

@@ -1,0 +1,7 @@
+phenotypic.sdk\_.slurm package
+==============================
+
+.. automodule:: phenotypic.sdk_.slurm
+   :members:
+   :show-inheritance:
+   :undoc-members:

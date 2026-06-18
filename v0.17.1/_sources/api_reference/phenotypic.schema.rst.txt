@@ -1,0 +1,7 @@
+phenotypic.schema package
+=========================
+
+.. automodule:: phenotypic.schema
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.sentinel\_resubmitted\_path
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: sentinel_resubmitted_path

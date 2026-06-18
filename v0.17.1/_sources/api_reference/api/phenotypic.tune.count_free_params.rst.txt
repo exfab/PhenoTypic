@@ -1,0 +1,6 @@
+phenotypic.tune.count\_free\_params
+===================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: count_free_params

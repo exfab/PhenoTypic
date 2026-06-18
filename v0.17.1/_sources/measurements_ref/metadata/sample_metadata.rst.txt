@@ -1,0 +1,36 @@
+SAMPLE_METADATA
+===============
+
+Python object: ``phenotypic.schema._experimental_tags._sample.SAMPLE_METADATA``
+
+Recommended ``Metadata_*`` tags identifying a sample and its provenance.
+
+These distinguish individual biological samples and track where each colony came
+from (replicate, clone, source plate/well, library). Members render as
+``Metadata_<Label>`` (e.g. ``Metadata_Replicate``) and share the ``Metadata_``
+namespace with the other experimental-tag enums. Recommended vocabulary, not a
+validator: arbitrary metadata columns are still accepted.
+
+.. list-table:: Category: **Metadata**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Metadata_SampleID``
+     - Unique identifier for the biological sample.
+   * - ``Metadata_Replicate``
+     - Biological replicate identifier.
+   * - ``Metadata_TechnicalReplicate``
+     - Technical replicate identifier.
+   * - ``Metadata_Clone``
+     - Clone or isolate identifier.
+   * - ``Metadata_LibraryID``
+     - Source library or collection identifier (e.g. a deletion collection).
+   * - ``Metadata_SourcePlate``
+     - Identifier of the source plate the sample was pinned from.
+   * - ``Metadata_SourceWell``
+     - Well position on the source plate (e.g. A1).
+   * - ``Metadata_Barcode``
+     - Molecular or sample barcode.
+   * - ``Metadata_Control``
+     - Control designation (e.g. positive, negative, blank).

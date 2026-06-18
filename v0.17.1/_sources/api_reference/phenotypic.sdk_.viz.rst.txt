@@ -1,0 +1,16 @@
+phenotypic.sdk\_.viz package
+============================
+
+.. automodule:: phenotypic.sdk_.viz
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.sdk_.viz.figures
+   phenotypic.sdk_.viz.notebook

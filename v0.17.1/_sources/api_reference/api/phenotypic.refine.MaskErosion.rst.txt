@@ -1,0 +1,65 @@
+phenotypic.refine.MaskErosion
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskErosion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskErosion.__init__
+      ~MaskErosion.apply
+      ~MaskErosion.construct
+      ~MaskErosion.copy
+      ~MaskErosion.dict
+      ~MaskErosion.from_json
+      ~MaskErosion.from_orm
+      ~MaskErosion.json
+      ~MaskErosion.model_construct
+      ~MaskErosion.model_copy
+      ~MaskErosion.model_dump
+      ~MaskErosion.model_dump_json
+      ~MaskErosion.model_json_schema
+      ~MaskErosion.model_parametrized_name
+      ~MaskErosion.model_post_init
+      ~MaskErosion.model_rebuild
+      ~MaskErosion.model_validate
+      ~MaskErosion.model_validate_json
+      ~MaskErosion.model_validate_strings
+      ~MaskErosion.parse_file
+      ~MaskErosion.parse_obj
+      ~MaskErosion.parse_raw
+      ~MaskErosion.schema
+      ~MaskErosion.schema_json
+      ~MaskErosion.to_json
+      ~MaskErosion.update_forward_refs
+      ~MaskErosion.validate
+      ~MaskErosion.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskErosion.model_computed_fields
+      ~MaskErosion.model_config
+      ~MaskErosion.model_extra
+      ~MaskErosion.model_fields
+      ~MaskErosion.model_fields_set
+      ~MaskErosion.shape
+      ~MaskErosion.width
+      ~MaskErosion.n_iter
+   
+   

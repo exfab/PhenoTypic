@@ -1,0 +1,62 @@
+phenotypic.abc\_.GridObjectDetector
+===================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: GridObjectDetector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridObjectDetector.__init__
+      ~GridObjectDetector.apply
+      ~GridObjectDetector.construct
+      ~GridObjectDetector.copy
+      ~GridObjectDetector.dict
+      ~GridObjectDetector.from_json
+      ~GridObjectDetector.from_orm
+      ~GridObjectDetector.json
+      ~GridObjectDetector.model_construct
+      ~GridObjectDetector.model_copy
+      ~GridObjectDetector.model_dump
+      ~GridObjectDetector.model_dump_json
+      ~GridObjectDetector.model_json_schema
+      ~GridObjectDetector.model_parametrized_name
+      ~GridObjectDetector.model_post_init
+      ~GridObjectDetector.model_rebuild
+      ~GridObjectDetector.model_validate
+      ~GridObjectDetector.model_validate_json
+      ~GridObjectDetector.model_validate_strings
+      ~GridObjectDetector.parse_file
+      ~GridObjectDetector.parse_obj
+      ~GridObjectDetector.parse_raw
+      ~GridObjectDetector.schema
+      ~GridObjectDetector.schema_json
+      ~GridObjectDetector.to_json
+      ~GridObjectDetector.update_forward_refs
+      ~GridObjectDetector.validate
+      ~GridObjectDetector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridObjectDetector.model_computed_fields
+      ~GridObjectDetector.model_config
+      ~GridObjectDetector.model_extra
+      ~GridObjectDetector.model_fields
+      ~GridObjectDetector.model_fields_set
+   
+   

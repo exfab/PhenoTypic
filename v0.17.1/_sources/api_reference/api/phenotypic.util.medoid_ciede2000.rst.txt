@@ -1,0 +1,6 @@
+phenotypic.util.medoid\_ciede2000
+=================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: medoid_ciede2000

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.NoComponentError
+==============================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: NoComponentError

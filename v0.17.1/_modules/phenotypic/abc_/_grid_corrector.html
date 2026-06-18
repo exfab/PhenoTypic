@@ -1,0 +1,933 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.abc_._grid_corrector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/abc_/_grid_corrector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/abc_/_grid_corrector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.abc_._grid_corrector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.abc_._grid_corrector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridOperation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImageInputError</span><span class="p">,</span> <span class="n">OutputValueError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+
+
+<div class="viewcode-block" id="GridCorrector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridCorrector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridCorrector</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">,</span> <span class="n">GridOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply whole-image transformations (rotation, alignment, perspective) to GridImage objects.</span>
+
+<span class="sd">    GridCorrector is a type-safe wrapper around ImageCorrector that enforces GridImage input</span>
+<span class="sd">    and output types. It is specialized for grid-aware image corrections on arrayed plate images.</span>
+
+<span class="sd">    **Quick Decision Guide**</span>
+
+<span class="sd">    Choose GridCorrector vs ImageCorrector:</span>
+
+<span class="sd">    - **GridCorrector:** Transformation modifies well structure or assumes grid layout. Examples: align</span>
+<span class="sd">      colonies to grid axes, per-well perspective correction, rotation with grid-aware interpolation.</span>
+<span class="sd">    - **ImageCorrector:** Transformation works on any Image. Examples: general rotation, perspective</span>
+<span class="sd">      correction on ungridded images, generic image transformations without grid awareness.</span>
+<span class="sd">    - **Grid-aware operations:** Use GridCorrector when grid rows/columns matter for the transformation</span>
+<span class="sd">      or when the transformation affects well-level alignment and downstream analysis.</span>
+<span class="sd">    - **Type safety:** GridCorrector enforces GridImage input/output; ImageCorrector accepts plain Image.</span>
+<span class="sd">    - **Implementation complexity:** GridCorrector typically requires understanding grid.rotation_angle,</span>
+<span class="sd">      grid.alignment, and per-well coordinate mapping via image.grid.info().</span>
+<span class="sd">    - **Output consistency:** GridCorrector guarantees all components rotate identically. ImageCorrector</span>
+<span class="sd">      gives you flexibility but requires manual synchronization of all components.</span>
+<span class="sd">    - **Grid preservation:** GridCorrector may update grid state after transformation. ImageCorrector</span>
+<span class="sd">      leaves grid structure unchanged (if present).</span>
+
+<span class="sd">    **Purpose**</span>
+
+<span class="sd">    Use GridCorrector when implementing transformations that modify entire GridImage objects</span>
+<span class="sd">    while respecting their grid structure. Like ImageCorrector, it updates all image components</span>
+<span class="sd">    (rgb, gray, detect_mat, objmask, objmap) together to maintain synchronization. The difference</span>
+<span class="sd">    is that it requires GridImage input and output, making explicit that your transformation</span>
+<span class="sd">    works in the context of grid-structured plate images.</span>
+
+<span class="sd">    **What GridCorrector modifies**</span>
+
+<span class="sd">    GridCorrector operations modify ALL image components simultaneously:</span>
+
+<span class="sd">    - **Color data:** rgb, gray (pixel coordinates change due to rotation/perspective)</span>
+<span class="sd">    - **Preprocessed data:** detect_mat (detection matrix also rotates/transforms)</span>
+<span class="sd">    - **Detection results:** objmask, objmap (colony masks and labels transform identically)</span>
+<span class="sd">    - **Grid structure:** Grid rotation angle and alignment state (optional, depends on operation)</span>
+
+<span class="sd">    This ensures that a rotated colony mask aligns perfectly with the rotated rgb and gray data.</span>
+
+<span class="sd">    **GridImage vs Image**</span>
+
+<span class="sd">    - **Image:** Generic image with optional, unvalidated grid information.</span>
+<span class="sd">    - **GridImage:** Specialized Image subclass with validated grid structure (row/column</span>
+<span class="sd">      layout, well positions, grid alignment angle). Typically used after GridFinder detects</span>
+<span class="sd">      the grid structure.</span>
+
+<span class="sd">    **Typical Use Cases**</span>
+
+<span class="sd">    - **Grid alignment:** Rotate the entire image so detected colonies align with grid rows and columns.</span>
+<span class="sd">      Improves downstream grid-based analysis via [GridAligner](src/phenotypic/correction/_grid_aligner.py).</span>
+<span class="sd">    - **Perspective correction:** Correct camera tilt or lens distortion that skews the grid layout.</span>
+<span class="sd">    - **Plate reorientation:** Rotate plate image to canonical orientation for consistent well assignment.</span>
+<span class="sd">    - **Color calibration per well:** Apply per-well color correction that respects grid well boundaries.</span>
+
+<span class="sd">    **Implementation Pattern**</span>
+
+<span class="sd">    Inherit from GridCorrector and implement ``_operate()`` as an instance method:</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from phenotypic.abc_ import GridCorrector</span>
+<span class="sd">        from phenotypic import GridImage</span>
+
+<span class="sd">        class GridAligner(GridCorrector):</span>
+<span class="sd">            &#39;&#39;&#39;Rotate GridImage to align colonies with grid rows/columns.&#39;&#39;&#39;</span>
+
+<span class="sd">            axis: int = 0  # Annotated class-level fields</span>
+<span class="sd">            max_rotation: float = 45.0</span>
+
+<span class="sd">            def _operate(self, image: GridImage) -&gt; GridImage:</span>
+<span class="sd">                # image is guaranteed to be GridImage with valid grid structure</span>
+<span class="sd">                # Access grid structure and compute needed transformation</span>
+<span class="sd">                grid_info = image.grid.info()</span>
+<span class="sd">                nrows, ncols = grid_info[&#39;grid_shape&#39;]</span>
+
+<span class="sd">                # Calculate rotation needed to align colonies with grid axes</span>
+<span class="sd">                rotation_angle = self._calculate_grid_rotation(image, self.axis)</span>
+
+<span class="sd">                # Clamp rotation to reasonable range to prevent over-correction</span>
+<span class="sd">                if abs(rotation_angle) &gt; self.max_rotation:</span>
+<span class="sd">                    rotation_angle = self.max_rotation * (1 if rotation_angle &gt; 0 else -1)</span>
+
+<span class="sd">                # Apply rotation to all image components automatically</span>
+<span class="sd">                image.rotate(angle_of_rotation=rotation_angle, mode=&#39;edge&#39;)</span>
+
+<span class="sd">                # Grid structure (rows/cols) unchanged; rotation_angle updated automatically</span>
+<span class="sd">                return image</span>
+
+<span class="sd">    **Critical Implementation Details**</span>
+
+<span class="sd">    Ensure ALL image components are transformed identically:</span>
+
+<span class="sd">    - **Transformation synchronization:** When you rotate/warp rgb, also rotate gray, detect_mat, objmask, objmap.</span>
+<span class="sd">      Use image.rotate() or similar methods that handle this automatically. Failure to synchronize causes</span>
+<span class="sd">      misalignment between visual and label data.</span>
+<span class="sd">    - **Coordinate system consistency:** Grid coordinates (well centers, row/column positions) must match</span>
+<span class="sd">      the transformed pixel coordinates. Update grid.rotation_angle and grid.alignment after transformation</span>
+<span class="sd">      so downstream operations use correct well boundaries.</span>
+<span class="sd">    - **Grid state preservation:** Maintain grid.rows, grid.cols, and grid.well_size unchanged unless</span>
+<span class="sd">      explicitly needed (e.g., perspective correction may change well size). Update only rotation_angle</span>
+<span class="sd">      and alignment for simple rotations.</span>
+<span class="sd">    - **Interpolation order:** Use order=1+ for color data (smooth), order=0 for labels (preserve integers).</span>
+<span class="sd">      Mixed interpolation on different components is OK and expected.</span>
+<span class="sd">    - **Edge handling:** Define how image boundaries are handled during transformation (reflect, wrap, constant).</span>
+<span class="sd">      Choose mode=&#39;edge&#39; or mode=&#39;constant&#39; depending on plate structure and whether border wells matter.</span>
+<span class="sd">    - **In-place vs return:** GridCorrector operations typically modify image in-place AND return it. Follow</span>
+<span class="sd">      this pattern for consistency with parent ImageCorrector class.</span>
+
+<span class="sd">    **Interpolation Considerations**</span>
+
+<span class="sd">    When rotating or warping:</span>
+
+<span class="sd">    - **Color data (rgb, gray):** Use smooth interpolation (order=1+) to preserve colony edges</span>
+<span class="sd">    - **Detection data (objmask, objmap):** Use nearest-neighbor interpolation (order=0) to</span>
+<span class="sd">      preserve discrete object labels (must remain integers)</span>
+<span class="sd">    - **Detection matrix:** Use same interpolation as color data for consistency</span>
+
+<span class="sd">    **Common Transformations**</span>
+
+<span class="sd">    - **Rotation:** Most common GridCorrector operation. Rotate entire plate to align colonies with grid axes.</span>
+<span class="sd">      Use image.rotate(angle_of_rotation, mode=&#39;edge&#39;) to handle all components automatically.</span>
+<span class="sd">    - **Perspective correction:** Correct camera tilt or lens distortion. More complex; requires affine or</span>
+<span class="sd">      homography transformation on all components with careful interpolation.</span>
+<span class="sd">    - **Scale and crop:** Resize plate image while maintaining grid structure. Update grid.well_size accordingly.</span>
+<span class="sd">    - **Flip/transpose:** Flip or transpose plate (e.g., for reorientation). Update grid rows/cols and rotation_angle.</span>
+
+<span class="sd">    **Best Practices**</span>
+
+<span class="sd">    - Always verify grid structure is valid before applying GridCorrector (check grid.rows, grid.cols &gt; 0).</span>
+<span class="sd">    - Test transformation on synthetic data first; grid misalignment can cascade through entire pipeline.</span>
+<span class="sd">    - Update grid metadata (rotation_angle, alignment) immediately after transformation for consistency.</span>
+<span class="sd">    - Log the transformation (angle, parameters) for reproducibility and debugging.</span>
+<span class="sd">    - Consider edge well effects (evaporation, contamination); some corrections may need well-specific logic.</span>
+
+<span class="sd">    **Notes**</span>
+
+<span class="sd">    - GridCorrector has no integrity checks (@validate_operation_integrity), by design.</span>
+<span class="sd">      All components are intentionally modified together; there is nothing to validate.</span>
+<span class="sd">    - Grid rotation angle and alignment state may be updated after the transformation.</span>
+<span class="sd">      Downstream grid-aware operations will work with the updated grid structure.</span>
+<span class="sd">    - GridImage must have valid grid structure before correction. Use GridFinder or specify</span>
+<span class="sd">      grid manually before applying GridCorrector.</span>
+<span class="sd">    - Output is always GridImage (type-safe). Attempting to apply to plain Image raises error.</span>
+<span class="sd">    - Coordinate system: Grid rows/cols are logical indices; transformation affects pixel coordinates only.</span>
+<span class="sd">      Update rotation_angle to track cumulative transformations.</span>
+
+<span class="sd">    **Relationship to GridFinder and GridOperation**</span>
+
+<span class="sd">    - **GridFinder:** Detects grid structure automatically. Use BEFORE GridCorrector to establish rows/cols.</span>
+<span class="sd">    - **GridCorrector:** Adjusts/aligns detected grid. Use AFTER GridFinder to optimize grid alignment.</span>
+<span class="sd">    - **GridOperation:** Base class for all grid-aware operations. GridCorrector is a specialized subclass</span>
+<span class="sd">      that combines ImageCorrector functionality with grid awareness.</span>
+<span class="sd">    - **Pipeline integration:** Typical order: detect_grid (GridFinder) → correct_grid (GridCorrector) →</span>
+<span class="sd">      measure/analyze (GridMeasureFeatures).</span>
+
+<span class="sd">    **Image Synchronization Details**</span>
+
+<span class="sd">    When implementing ``_operate()``, ensure these components stay in sync:</span>
+
+<span class="sd">    - **rgb &amp; gray:** Always rotate together. Gray is derived from rgb, so maintain pixel correspondence.</span>
+<span class="sd">    - **detect_mat:** Detection matrix processed from gray. Must rotate with same angle/transformation.</span>
+<span class="sd">    - **objmask &amp; objmap:** Detection results. Must use SAME interpolation as rgb to maintain object alignment.</span>
+<span class="sd">    - **Grid metadata:** Update grid.rotation_angle if rotation applied. Keep grid.rows/cols unchanged unless</span>
+<span class="sd">      grid structure itself changes.</span>
+
+<span class="sd">    **Example Coordinate Transformation**</span>
+
+<span class="sd">    For a 96-well plate rotated by θ degrees:</span>
+
+<span class="sd">    - Original well positions: grid.info()[&#39;well_centers&#39;] in absolute pixel coordinates</span>
+<span class="sd">    - After rotation by θ: well_centers shift to new pixel positions</span>
+<span class="sd">    - Update grid.rotation_angle += θ</span>
+<span class="sd">    - Grid rows/cols (logical structure) remain unchanged (8 rows × 12 cols)</span>
+
+<span class="sd">    **Known Implementations**</span>
+
+<span class="sd">    Reference implementations in the PhenoTypic framework:</span>
+
+<span class="sd">    - **[GridAligner](src/phenotypic/correction/_grid_aligner.py):** Rotates entire image to align detected</span>
+<span class="sd">      colonies with grid rows and columns. Uses Hough transform to detect dominant angles in colony positions.</span>
+<span class="sd">    - **ImageRotation (ImageCorrector):** Simple rotation without grid awareness. Baseline for understanding</span>
+<span class="sd">      how GridCorrector extends basic functionality with grid metadata updates.</span>
+<span class="sd">    - Custom implementations: Users can subclass GridCorrector for domain-specific plate corrections</span>
+<span class="sd">      (e.g., multi-stage perspective correction, plate-specific calibrations).</span>
+
+<span class="sd">    **Testing GridCorrector Implementations**</span>
+
+<span class="sd">    Best practices for testing new GridCorrector subclasses:</span>
+
+<span class="sd">    - Use ``load_synth_yeast_plate()`` from phenotypic.data (creates GridImage with synthetic colonies).</span>
+<span class="sd">    - Verify all components (rgb, gray, detect_mat, objmask, objmap) rotate identically by computing pixel</span>
+<span class="sd">      differences before/after transformation.</span>
+<span class="sd">    - Check that grid.rotation_angle is updated correctly and accumulated rotations are tracked.</span>
+<span class="sd">    - Validate on multiple plate formats (96-well, 384-well) to ensure well positions are handled correctly.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        GridAligner: rotate to align colonies with grid axes:</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage, Image</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import RoundPeaksDetector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.correction import GridAligner</span>
+<span class="sd">        &gt;&gt;&gt; # Load and detect colonies</span>
+<span class="sd">        &gt;&gt;&gt; image = Image(&#39;plate.jpg&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; image = RoundPeaksDetector().operate(image)</span>
+<span class="sd">        &gt;&gt;&gt; # Create GridImage with grid structure</span>
+<span class="sd">        &gt;&gt;&gt; grid_image = GridImage(image)</span>
+<span class="sd">        &gt;&gt;&gt; grid_image.detect_grid()</span>
+<span class="sd">        &gt;&gt;&gt; # Align entire image to grid rows/columns</span>
+<span class="sd">        &gt;&gt;&gt; aligner = GridAligner(axis=0)  # Align rows horizontally</span>
+<span class="sd">        &gt;&gt;&gt; aligned = aligner.apply(grid_image)</span>
+<span class="sd">        &gt;&gt;&gt; # All components (rgb, gray, masks, map) rotated together</span>
+<span class="sd">        &gt;&gt;&gt; # Grid structure updated to reflect rotation</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Rotation angle: {aligned.grid.rotation_angle}&quot;)</span>
+
+<span class="sd">        Custom perspective correction (conceptual):</span>
+
+<span class="sd">        &gt;&gt;&gt; from phenotypic.abc_ import GridCorrector</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import GridImage</span>
+<span class="sd">        &gt;&gt;&gt; class GridPerspectiveCorrector(GridCorrector):</span>
+<span class="sd">        ...     &#39;&#39;&#39;Correct camera tilt or lens distortion on grid plate.&#39;&#39;&#39;</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     tilt_angle: float  # Annotated class-level field</span>
+<span class="sd">        ...</span>
+<span class="sd">        ...     def _operate(self, image: GridImage) -&gt; GridImage:</span>
+<span class="sd">        ...         # Apply perspective transform to all components</span>
+<span class="sd">        ...         # Update grid coordinates accordingly</span>
+<span class="sd">        ...         grid_info = image.grid.info()</span>
+<span class="sd">        ...         image.apply_perspective(self.tilt_angle)</span>
+<span class="sd">        ...         # Re-validate grid after transformation</span>
+<span class="sd">        ...         return image</span>
+<span class="sd">        &gt;&gt;&gt; # Usage: correct skewed plate image</span>
+<span class="sd">        &gt;&gt;&gt; corrector = GridPerspectiveCorrector(tilt_angle=10.0)</span>
+<span class="sd">        &gt;&gt;&gt; corrected = corrector.apply(grid_image)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Do not modify this method in inherited functions</span>
+<div class="viewcode-block" id="GridCorrector.apply">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GridCorrector.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">GridImageInputError</span><span class="p">()</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">GridImage</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">OutputValueError</span><span class="p">(</span><span class="s2">&quot;GridImage&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

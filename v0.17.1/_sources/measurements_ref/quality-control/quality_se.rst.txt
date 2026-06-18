@@ -1,0 +1,26 @@
+QUALITY_SE
+==========
+
+Python object: ``phenotypic.schema._quality_se.QUALITY_SE``
+
+Measurement info for the replicate-agreement standard-error QC check.
+
+Carries the per-(group, time) summary statistics used to gauge how tightly
+biological replicates agree on a colony phenotype. Disagreement between
+replicates often signals contamination, edge artifacts, or imaging issues
+rather than real biology, so the SE and CV columns drive curation decisions
+downstream of the QC pipeline.
+
+.. list-table:: Category: **QC_SE**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_SE_Value``
+     - Raw SE = stddev / sqrt(n) across replicates.
+   * - ``QC_SE_Mean``
+     - Mean across replicates at this (group, time).
+   * - ``QC_SE_CV``
+     - Coefficient of variation, stddev / \|mean\|.
+   * - ``QC_SE_NumReplicates``
+     - Replicate count contributing to the SE.

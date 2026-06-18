@@ -1,0 +1,68 @@
+phenotypic.correction.ImagePadder
+=================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ImagePadder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImagePadder.__init__
+      ~ImagePadder.apply
+      ~ImagePadder.construct
+      ~ImagePadder.copy
+      ~ImagePadder.dict
+      ~ImagePadder.from_json
+      ~ImagePadder.from_orm
+      ~ImagePadder.json
+      ~ImagePadder.model_construct
+      ~ImagePadder.model_copy
+      ~ImagePadder.model_dump
+      ~ImagePadder.model_dump_json
+      ~ImagePadder.model_json_schema
+      ~ImagePadder.model_parametrized_name
+      ~ImagePadder.model_post_init
+      ~ImagePadder.model_rebuild
+      ~ImagePadder.model_validate
+      ~ImagePadder.model_validate_json
+      ~ImagePadder.model_validate_strings
+      ~ImagePadder.parse_file
+      ~ImagePadder.parse_obj
+      ~ImagePadder.parse_raw
+      ~ImagePadder.schema
+      ~ImagePadder.schema_json
+      ~ImagePadder.to_json
+      ~ImagePadder.update_forward_refs
+      ~ImagePadder.validate
+      ~ImagePadder.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImagePadder.model_computed_fields
+      ~ImagePadder.model_config
+      ~ImagePadder.model_extra
+      ~ImagePadder.model_fields
+      ~ImagePadder.model_fields_set
+      ~ImagePadder.left
+      ~ImagePadder.right
+      ~ImagePadder.top
+      ~ImagePadder.bottom
+      ~ImagePadder.mode
+      ~ImagePadder.constant_value
+   
+   

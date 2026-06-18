@@ -1,0 +1,39 @@
+﻿phenotypic.prefab
+=================
+
+.. automodule:: phenotypic.prefab
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      HeavyWatershedPipeline
+      HeavyOtsuPipeline
+      GridSectionPipeline
+      HeavyRoundPeaksPipeline
+      RoundPeaksPipeline
+      FilamentousFungiPipeline
+      SpImagerPipeline
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,62 @@
+phenotypic.abc\_.MorphologicalFiltering
+=======================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: MorphologicalFiltering
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MorphologicalFiltering.__init__
+      ~MorphologicalFiltering.apply
+      ~MorphologicalFiltering.construct
+      ~MorphologicalFiltering.copy
+      ~MorphologicalFiltering.dict
+      ~MorphologicalFiltering.from_json
+      ~MorphologicalFiltering.from_orm
+      ~MorphologicalFiltering.json
+      ~MorphologicalFiltering.model_construct
+      ~MorphologicalFiltering.model_copy
+      ~MorphologicalFiltering.model_dump
+      ~MorphologicalFiltering.model_dump_json
+      ~MorphologicalFiltering.model_json_schema
+      ~MorphologicalFiltering.model_parametrized_name
+      ~MorphologicalFiltering.model_post_init
+      ~MorphologicalFiltering.model_rebuild
+      ~MorphologicalFiltering.model_validate
+      ~MorphologicalFiltering.model_validate_json
+      ~MorphologicalFiltering.model_validate_strings
+      ~MorphologicalFiltering.parse_file
+      ~MorphologicalFiltering.parse_obj
+      ~MorphologicalFiltering.parse_raw
+      ~MorphologicalFiltering.schema
+      ~MorphologicalFiltering.schema_json
+      ~MorphologicalFiltering.to_json
+      ~MorphologicalFiltering.update_forward_refs
+      ~MorphologicalFiltering.validate
+      ~MorphologicalFiltering.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MorphologicalFiltering.model_computed_fields
+      ~MorphologicalFiltering.model_config
+      ~MorphologicalFiltering.model_extra
+      ~MorphologicalFiltering.model_fields
+      ~MorphologicalFiltering.model_fields_set
+   
+   

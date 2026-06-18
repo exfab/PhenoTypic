@@ -1,0 +1,86 @@
+﻿phenotypic.tune
+===============
+
+.. automodule:: phenotypic.tune
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      build_pipeline
+      infer_group_key
+      compute_generalization_gap
+      run_held_out
+      compute_param_importance
+      compute_param_importance_report
+      count_free_params
+      screening_warmup_floor
+      select_params_to_freeze
+      freeze_value
+      build_reduced_space
+      run_tuning
+      infer_search_space
+      run_auto_space
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      Categorical
+      IntRange
+      FloatRange
+      Fixed
+      Knob
+      SearchSpace
+      StrategyConfig
+      GridConfig
+      RandomConfig
+      OptunaConfig
+      Scorer
+      QCScorer
+      ReferenceFreeScorer
+      GroundTruthMasks
+      SupervisedScorer
+      CompositeScorer
+      Evaluator
+      EvaluationResult
+      HeldOutConfig
+      GeneralizationReport
+      TuningEngine
+      TuningSpec
+      Budget
+      StudyStore
+      JournalStudyStore
+      Trial
+      ImportanceReport
+      ScreeningController
+      ScreeningConfig
+      ScreeningResult
+      TuneSpec
+      InferredSearchSpace
+      Excluded
+   
+   
+
+   
+   
+   
+
+
+

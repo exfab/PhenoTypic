@@ -1,0 +1,24 @@
+QUALITY_COUNT
+=============
+
+Python object: ``phenotypic.schema._quality_count.QUALITY_COUNT``
+
+Measurement info for the expected-vs-detected colony count QC check.
+
+Carries the per-group colony counts compared by the count quality check:
+how many colonies were detected on the plate versus how many the metadata
+declared, and their signed difference. Negative ``Delta`` values flag
+missing colonies (e.g. failed spots, dropouts) while positive values flag
+spurious detections (e.g. fragmentation, artifacts).
+
+.. list-table:: Category: **QC_Count**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_Count_Detected``
+     - Detected colony count in the group.
+   * - ``QC_Count_Expected``
+     - Expected colony count from the metadata frame.
+   * - ``QC_Count_Delta``
+     - Detected − Expected (signed; negative = missing).

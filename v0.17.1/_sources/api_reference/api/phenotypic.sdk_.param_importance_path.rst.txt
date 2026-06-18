@@ -1,0 +1,6 @@
+phenotypic.sdk\_.param\_importance\_path
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: param_importance_path

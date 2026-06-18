@@ -1,0 +1,64 @@
+phenotypic.enhance.FocusEdgeLaplace
+===================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgeLaplace
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgeLaplace.__init__
+      ~FocusEdgeLaplace.apply
+      ~FocusEdgeLaplace.construct
+      ~FocusEdgeLaplace.copy
+      ~FocusEdgeLaplace.dict
+      ~FocusEdgeLaplace.from_json
+      ~FocusEdgeLaplace.from_orm
+      ~FocusEdgeLaplace.json
+      ~FocusEdgeLaplace.model_construct
+      ~FocusEdgeLaplace.model_copy
+      ~FocusEdgeLaplace.model_dump
+      ~FocusEdgeLaplace.model_dump_json
+      ~FocusEdgeLaplace.model_json_schema
+      ~FocusEdgeLaplace.model_parametrized_name
+      ~FocusEdgeLaplace.model_post_init
+      ~FocusEdgeLaplace.model_rebuild
+      ~FocusEdgeLaplace.model_validate
+      ~FocusEdgeLaplace.model_validate_json
+      ~FocusEdgeLaplace.model_validate_strings
+      ~FocusEdgeLaplace.parse_file
+      ~FocusEdgeLaplace.parse_obj
+      ~FocusEdgeLaplace.parse_raw
+      ~FocusEdgeLaplace.schema
+      ~FocusEdgeLaplace.schema_json
+      ~FocusEdgeLaplace.to_json
+      ~FocusEdgeLaplace.update_forward_refs
+      ~FocusEdgeLaplace.validate
+      ~FocusEdgeLaplace.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgeLaplace.model_computed_fields
+      ~FocusEdgeLaplace.model_config
+      ~FocusEdgeLaplace.model_extra
+      ~FocusEdgeLaplace.model_fields
+      ~FocusEdgeLaplace.model_fields_set
+      ~FocusEdgeLaplace.kernel_size
+      ~FocusEdgeLaplace.mask
+   
+   

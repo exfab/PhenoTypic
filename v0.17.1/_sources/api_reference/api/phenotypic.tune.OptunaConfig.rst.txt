@@ -1,0 +1,65 @@
+phenotypic.tune.OptunaConfig
+============================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: OptunaConfig
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~OptunaConfig.__init__
+      ~OptunaConfig.build
+      ~OptunaConfig.construct
+      ~OptunaConfig.copy
+      ~OptunaConfig.dict
+      ~OptunaConfig.from_orm
+      ~OptunaConfig.json
+      ~OptunaConfig.model_construct
+      ~OptunaConfig.model_copy
+      ~OptunaConfig.model_dump
+      ~OptunaConfig.model_dump_json
+      ~OptunaConfig.model_json_schema
+      ~OptunaConfig.model_parametrized_name
+      ~OptunaConfig.model_post_init
+      ~OptunaConfig.model_rebuild
+      ~OptunaConfig.model_validate
+      ~OptunaConfig.model_validate_json
+      ~OptunaConfig.model_validate_strings
+      ~OptunaConfig.parse_file
+      ~OptunaConfig.parse_obj
+      ~OptunaConfig.parse_raw
+      ~OptunaConfig.schema
+      ~OptunaConfig.schema_json
+      ~OptunaConfig.update_forward_refs
+      ~OptunaConfig.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OptunaConfig.model_computed_fields
+      ~OptunaConfig.model_config
+      ~OptunaConfig.model_extra
+      ~OptunaConfig.model_fields
+      ~OptunaConfig.model_fields_set
+      ~OptunaConfig.kind
+      ~OptunaConfig.sampler
+      ~OptunaConfig.n_trials
+      ~OptunaConfig.prune
+      ~OptunaConfig.storage_url
+      ~OptunaConfig.seed
+   
+   

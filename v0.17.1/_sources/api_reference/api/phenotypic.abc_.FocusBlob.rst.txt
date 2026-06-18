@@ -1,0 +1,62 @@
+phenotypic.abc\_.FocusBlob
+==========================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: FocusBlob
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusBlob.__init__
+      ~FocusBlob.apply
+      ~FocusBlob.construct
+      ~FocusBlob.copy
+      ~FocusBlob.dict
+      ~FocusBlob.from_json
+      ~FocusBlob.from_orm
+      ~FocusBlob.json
+      ~FocusBlob.model_construct
+      ~FocusBlob.model_copy
+      ~FocusBlob.model_dump
+      ~FocusBlob.model_dump_json
+      ~FocusBlob.model_json_schema
+      ~FocusBlob.model_parametrized_name
+      ~FocusBlob.model_post_init
+      ~FocusBlob.model_rebuild
+      ~FocusBlob.model_validate
+      ~FocusBlob.model_validate_json
+      ~FocusBlob.model_validate_strings
+      ~FocusBlob.parse_file
+      ~FocusBlob.parse_obj
+      ~FocusBlob.parse_raw
+      ~FocusBlob.schema
+      ~FocusBlob.schema_json
+      ~FocusBlob.to_json
+      ~FocusBlob.update_forward_refs
+      ~FocusBlob.validate
+      ~FocusBlob.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusBlob.model_computed_fields
+      ~FocusBlob.model_config
+      ~FocusBlob.model_extra
+      ~FocusBlob.model_fields
+      ~FocusBlob.model_fields_set
+   
+   

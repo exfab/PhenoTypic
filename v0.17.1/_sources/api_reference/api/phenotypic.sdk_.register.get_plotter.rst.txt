@@ -1,0 +1,6 @@
+phenotypic.sdk\_.register.get\_plotter
+======================================
+
+.. currentmodule:: phenotypic.sdk_.register
+
+.. autofunction:: get_plotter

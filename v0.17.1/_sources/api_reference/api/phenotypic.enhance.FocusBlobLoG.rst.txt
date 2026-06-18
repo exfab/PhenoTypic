@@ -1,0 +1,65 @@
+phenotypic.enhance.FocusBlobLoG
+===============================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusBlobLoG
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusBlobLoG.__init__
+      ~FocusBlobLoG.apply
+      ~FocusBlobLoG.construct
+      ~FocusBlobLoG.copy
+      ~FocusBlobLoG.dict
+      ~FocusBlobLoG.from_json
+      ~FocusBlobLoG.from_orm
+      ~FocusBlobLoG.json
+      ~FocusBlobLoG.model_construct
+      ~FocusBlobLoG.model_copy
+      ~FocusBlobLoG.model_dump
+      ~FocusBlobLoG.model_dump_json
+      ~FocusBlobLoG.model_json_schema
+      ~FocusBlobLoG.model_parametrized_name
+      ~FocusBlobLoG.model_post_init
+      ~FocusBlobLoG.model_rebuild
+      ~FocusBlobLoG.model_validate
+      ~FocusBlobLoG.model_validate_json
+      ~FocusBlobLoG.model_validate_strings
+      ~FocusBlobLoG.parse_file
+      ~FocusBlobLoG.parse_obj
+      ~FocusBlobLoG.parse_raw
+      ~FocusBlobLoG.schema
+      ~FocusBlobLoG.schema_json
+      ~FocusBlobLoG.to_json
+      ~FocusBlobLoG.update_forward_refs
+      ~FocusBlobLoG.validate
+      ~FocusBlobLoG.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusBlobLoG.model_computed_fields
+      ~FocusBlobLoG.model_config
+      ~FocusBlobLoG.model_extra
+      ~FocusBlobLoG.model_fields
+      ~FocusBlobLoG.model_fields_set
+      ~FocusBlobLoG.min_radius
+      ~FocusBlobLoG.max_radius
+      ~FocusBlobLoG.num_scales
+   
+   

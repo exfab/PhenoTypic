@@ -1,0 +1,62 @@
+phenotypic.enhance.ImageInverter
+================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ImageInverter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageInverter.__init__
+      ~ImageInverter.apply
+      ~ImageInverter.construct
+      ~ImageInverter.copy
+      ~ImageInverter.dict
+      ~ImageInverter.from_json
+      ~ImageInverter.from_orm
+      ~ImageInverter.json
+      ~ImageInverter.model_construct
+      ~ImageInverter.model_copy
+      ~ImageInverter.model_dump
+      ~ImageInverter.model_dump_json
+      ~ImageInverter.model_json_schema
+      ~ImageInverter.model_parametrized_name
+      ~ImageInverter.model_post_init
+      ~ImageInverter.model_rebuild
+      ~ImageInverter.model_validate
+      ~ImageInverter.model_validate_json
+      ~ImageInverter.model_validate_strings
+      ~ImageInverter.parse_file
+      ~ImageInverter.parse_obj
+      ~ImageInverter.parse_raw
+      ~ImageInverter.schema
+      ~ImageInverter.schema_json
+      ~ImageInverter.to_json
+      ~ImageInverter.update_forward_refs
+      ~ImageInverter.validate
+      ~ImageInverter.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageInverter.model_computed_fields
+      ~ImageInverter.model_config
+      ~ImageInverter.model_extra
+      ~ImageInverter.model_fields
+      ~ImageInverter.model_fields_set
+   
+   

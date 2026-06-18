@@ -1,0 +1,1523 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.abc_._model_fitter &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=320a8d94"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/abc_/_model_fitter';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.1/_modules/phenotypic/analysis/abc_/_model_fitter.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.abc_._model_fitter</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.abc_._model_fitter</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">abc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">itertools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optimize</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">joblib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MODEL_METRICS</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._set_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SetAnalyzer</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+
+<span class="n">LossKind</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="s2">&quot;soft_l1&quot;</span><span class="p">,</span> <span class="s2">&quot;huber&quot;</span><span class="p">,</span> <span class="s2">&quot;cauchy&quot;</span><span class="p">,</span> <span class="s2">&quot;arctan&quot;</span><span class="p">]</span>
+<span class="sd">&quot;&quot;&quot;Scipy ``least_squares`` loss names supported by :class:`ModelFitter`.</span>
+
+<span class="sd">- ``&quot;linear&quot;`` — standard unweighted squared-residual loss (default).</span>
+<span class="sd">- ``&quot;soft_l1&quot;`` — smooth L1; mild downweighting of large residuals.</span>
+<span class="sd">- ``&quot;huber&quot;`` — quadratic near zero, linear past ``f_scale``; classic</span>
+<span class="sd">  robust loss.</span>
+<span class="sd">- ``&quot;cauchy&quot;`` — heavy-tailed; aggressively suppresses outliers.</span>
+<span class="sd">- ``&quot;arctan&quot;`` — saturates to a bounded contribution; most aggressive.</span>
+
+<span class="sd">See :func:`scipy.optimize.least_squares` for the exact ρ formulas.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="ModelFitter">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelFitter</span><span class="p">(</span><span class="n">SetAnalyzer</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Template base class for grouped least-squares model fitting.</span>
+
+<span class="sd">    Subclasses provide the mathematical model (`model_func`), the loss</span>
+<span class="sd">    function (`_loss_func`), an initial parameter guess, parameter bounds,</span>
+<span class="sd">    and a small set of hooks that let the base class drive ``analyze``,</span>
+<span class="sd">    ``show``, ``dash``, and ``results`` without hard-coding parameter</span>
+<span class="sd">    names.</span>
+
+<span class="sd">    Fit-quality metrics (MAE, MSE, RMSE, R²) and optimizer diagnostics</span>
+<span class="sd">    (loss, status, sample count) are emitted under the shared</span>
+<span class="sd">    :class:`MODEL_METRICS` category so that every ``ModelFitter`` subclass</span>
+<span class="sd">    produces a consistent set of diagnostic columns.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        time_label (str): Column name representing the independent</span>
+<span class="sd">            variable (typically time).</span>
+<span class="sd">        loss (LossKind): Loss calculation method passed through to</span>
+<span class="sd">            :func:`scipy.optimize.least_squares`. Defaults to</span>
+<span class="sd">            ``&quot;huber&quot;`` — quadratic near zero and linear past</span>
+<span class="sd">            ``f_scale``, so the fit behaves like standard</span>
+<span class="sd">            least-squares on inliers but downweights rare large</span>
+<span class="sd">            residuals (bubble artifacts, contamination spikes,</span>
+<span class="sd">            mis-segmented timepoints). Pass ``&quot;linear&quot;`` to recover</span>
+<span class="sd">            the classical unweighted-squared-residual loss, or</span>
+<span class="sd">            ``&quot;soft_l1&quot;`` / ``&quot;cauchy&quot;`` / ``&quot;arctan&quot;`` for</span>
+<span class="sd">            progressively more aggressive outlier suppression.</span>
+<span class="sd">        f_scale (float): Soft margin between inlier and outlier</span>
+<span class="sd">            residuals handed to :func:`scipy.optimize.least_squares`.</span>
+<span class="sd">            Only affects robust ``loss`` choices; ignored when</span>
+<span class="sd">            ``loss=&quot;linear&quot;``. Must be positive and finite.</span>
+<span class="sd">        verbose (bool): Whether to print detailed optimizer output.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span>
+
+    <span class="n">time_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="s2">&quot;Metadata_Time&quot;</span>
+    <span class="n">loss</span><span class="p">:</span> <span class="n">LossKind</span> <span class="o">=</span> <span class="s2">&quot;huber&quot;</span>
+    <span class="n">f_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">allow_inf_nan</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">_latest_model_scores</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Abstract model math — subclasses must implement</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+<div class="viewcode-block" id="ModelFitter.model_func">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter.model_func">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mathematical model. First positional argument is the independent variable.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_params_to_model_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map the raw optimizer vector to kwargs for ``model_func``.</span>
+
+<span class="sd">        Required only when the subclass relies on the default MSE</span>
+<span class="sd">        :meth:`_loss_func`. Subclasses that override ``_loss_func`` with a</span>
+<span class="sd">        fully custom residual (e.g. regularized) do not need to implement</span>
+<span class="sd">        this hook.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> uses the default MSE loss but does &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;not implement `_params_to_model_kwargs`. Either implement &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;it to map the optimizer vector to `model_func` kwargs, or &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;override `_loss_func` with a fully custom residual.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_loss_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">_</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Default residual vector — plain MSE against the observations.</span>
+
+<span class="sd">        ``scipy.optimize.least_squares`` minimizes half the sum of</span>
+<span class="sd">        squared residuals, so returning ``y - model_func(t, …)`` here</span>
+<span class="sd">        yields the standard MSE fit. Subclasses may override this to add</span>
+<span class="sd">        regularization, penalties, or robust loss terms (see</span>
+<span class="sd">        :class:`LogGrowthModel` for an example).</span>
+
+<span class="sd">        Extra keyword arguments are accepted but ignored so that any</span>
+<span class="sd">        hyperparameters supplied by :meth:`_hyperparam_kwargs` can be</span>
+<span class="sd">        safely forwarded without needing to match this default</span>
+<span class="sd">        signature.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">y</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_func</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_params_to_model_kwargs</span><span class="p">(</span><span class="n">params</span><span class="p">))</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Abstract fit hooks — subclasses must implement</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initial_guess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initial guess ``x0`` for :func:`scipy.optimize.least_squares`.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bounds</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``(lower, upper)`` bounds for the fitted parameters.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_unpack_params</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map optimizer output to a dict keyed by MeasurementInfo members.</span>
+
+<span class="sd">        Must include every fitted/derived parameter column produced by this</span>
+<span class="sd">        model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also</span>
+<span class="sd">        include per-group bounds that should be preserved in results</span>
+<span class="sd">        (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the</span>
+<span class="sd">        per-group fit mode emitted by :class:`DoubleSoftplus`).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_predict_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build kwargs for ``model_func(t, **kwargs)`` from a results row.</span>
+
+<span class="sd">        ``row`` is any mapping keyed by MeasurementInfo members — a dict</span>
+<span class="sd">        produced by ``_unpack_params`` at fit time, or a ``pd.Series``</span>
+<span class="sd">        drawn from the results DataFrame at plot time. Values may be</span>
+<span class="sd">        ``None`` for optional model kwargs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Optional hooks — subclasses may override</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_hyperparam_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extra kwargs forwarded to ``_loss_func`` (e.g. regularization).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Preprocess one group before ``t``/``y`` extraction.</span>
+
+<span class="sd">        Default returns the group unchanged. Subclasses override to</span>
+<span class="sd">        filter rows (e.g. saturation pruning) or synthesize helper</span>
+<span class="sd">        columns needed by the loss function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">group</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extra_loss_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-group kwargs forwarded to :meth:`_loss_func`.</span>
+
+<span class="sd">        Default is an empty dict. Subclasses override to inject</span>
+<span class="sd">        per-group arrays (e.g. weight vectors, per-group bounds)</span>
+<span class="sd">        that ``_hyperparam_kwargs`` cannot express because it is</span>
+<span class="sd">        group-agnostic. Merged *after* ``_hyperparam_kwargs`` so</span>
+<span class="sd">        per-group entries win on collision.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_post_fit_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scalar metadata columns appended to the results DataFrame.</span>
+
+<span class="sd">        Useful for recording hyperparameters (e.g. ``lam``, ``beta``) that</span>
+<span class="sd">        are constant across every fitted group.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extra_agg_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Additional ``{column: agg_func}`` entries for per-timepoint aggregation.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_hover_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``(label, column_key, format_spec)`` entries for the Plotly hover tooltip.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Shared metrics / NaN templates</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_metrics</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the generic fit-quality metrics shared by all subclasses.&quot;&quot;&quot;</span>
+        <span class="c1"># Deferred: scikit-learn is heavy and only needed at fit time, not</span>
+        <span class="c1"># at module import (this module is on the eager ``phenotypic`` path).</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">mean_absolute_error</span><span class="p">,</span>
+            <span class="n">mean_squared_error</span><span class="p">,</span>
+            <span class="n">r2_score</span><span class="p">,</span>
+            <span class="n">root_mean_squared_error</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">MAE</span> <span class="p">:</span> <span class="n">mean_absolute_error</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>
+            <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">MSE</span> <span class="p">:</span> <span class="n">mean_squared_error</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>
+            <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">RMSE</span><span class="p">:</span> <span class="n">root_mean_squared_error</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>
+            <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">R2</span>  <span class="p">:</span> <span class="n">r2_score</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y_true</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_nan_fit_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;NaN-filled row used when ``least_squares`` raises ``ValueError``.</span>
+
+<span class="sd">        Covers every MeasurementInfo member declared on the subclass plus</span>
+<span class="sd">        the full :class:`MODEL_METRICS` set (metrics + diagnostics). Any</span>
+<span class="sd">        column supplied by ``_post_fit_columns`` is excluded so the</span>
+<span class="sd">        constant hyperparameter value is preserved rather than overwritten</span>
+<span class="sd">        with NaN.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measurement_infoclass</span>
+        <span class="n">post_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_post_fit_columns</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">model_cols</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">member</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">mi</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">member</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">post_keys</span>
+        <span class="p">}</span>
+        <span class="n">metric_cols</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">member</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">__members__</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">model_cols</span><span class="p">,</span> <span class="o">**</span><span class="n">metric_cols</span><span class="p">}</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Per-group fit — replaces the old `_apply2group_func` boilerplate</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply2group_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group_key</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit one group and return a single-row DataFrame of results.&quot;&quot;&quot;</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_group</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="n">t_data</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+        <span class="n">y_data</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span>
+
+        <span class="n">loss_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_hyperparam_kwargs</span><span class="p">(),</span>
+            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_extra_loss_kwargs</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">least_squares</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_loss_func</span><span class="p">,</span>
+                    <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_initial_guess</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+                    <span class="n">bounds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">(</span><span class="n">group</span><span class="p">),</span>
+                    <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t_data</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_data</span><span class="p">,</span> <span class="o">**</span><span class="n">loss_kwargs</span><span class="p">),</span>
+                    <span class="n">verbose</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">),</span>
+                    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;trf&quot;</span><span class="p">,</span>
+                    <span class="n">loss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span>
+                    <span class="n">f_scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">f_scale</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fitted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unpack_params</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+            <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_func</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t_data</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_predict_kwargs</span><span class="p">(</span><span class="n">fitted</span><span class="p">))</span>
+            <span class="n">row</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="o">**</span><span class="n">fitted</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_compute_metrics</span><span class="p">(</span><span class="n">y_data</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">),</span>
+                <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">LOSS</span>       <span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">cost</span><span class="p">,</span>
+                <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">STATUS</span>     <span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                <span class="n">MODEL_METRICS</span><span class="o">.</span><span class="n">NUM_SAMPLES</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">t_data</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nan_fit_columns</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">row</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span>
+                        <span class="n">tuples</span><span class="o">=</span><span class="p">[</span><span class="n">group_key</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span>
+                <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Orchestration</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+<div class="viewcode-block" id="ModelFitter.analyze">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the model to every group of ``data`` and return the results.</span>
+
+<span class="sd">        Standard template: copy, float-coerce the time column, aggregate</span>
+<span class="sd">        to one sample per timepoint, dispatch per-group fits (serial or</span>
+<span class="sd">        parallel via :class:`joblib.Parallel`), concatenate, and append</span>
+<span class="sd">        constant hyperparameter columns from ``_post_fit_columns``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_float_array</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span> <span class="o">=</span> <span class="n">data</span>
+
+        <span class="n">agg_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agg_func</span><span class="p">}</span>
+        <span class="n">agg_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_extra_agg_columns</span><span class="p">())</span>
+
+        <span class="n">agg_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                <span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">],</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">agg_dict</span><span class="p">)</span>
+
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">agg_data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">as_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">model_res</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_apply2group_func</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">grouped</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model_res</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_jobs</span><span class="p">)(</span>
+                    <span class="n">delayed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_apply2group_func</span><span class="p">)(</span><span class="n">key</span><span class="p">,</span> <span class="n">group</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">grouped</span>
+            <span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">model_res</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col_key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_fit_columns</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="n">col_key</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_latest_model_scores</span> <span class="o">=</span> <span class="n">results</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_model_scores</span></div>
+
+
+<div class="viewcode-block" id="ModelFitter.results">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter.results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the most recent fit results produced by :meth:`analyze`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_model_scores</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Internal helpers for plotting</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_filter_for_plot</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">criteria</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply `criteria` (if any) to both the model-scores and measurements frames.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">criteria</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model_scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_by</span><span class="p">(</span>
+                    <span class="n">df</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_latest_model_scores</span><span class="p">,</span> <span class="n">criteria</span><span class="o">=</span><span class="n">criteria</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">measurements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_by</span><span class="p">(</span>
+                    <span class="n">df</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span><span class="p">,</span> <span class="n">criteria</span><span class="o">=</span><span class="n">criteria</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model_scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_model_scores</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">measurements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">model_scores</span><span class="p">,</span> <span class="n">measurements</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_time_axis</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">timepoints</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">tmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Derive a dense, uniform time axis for plotting prediction curves.</span>
+
+<span class="sd">        Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so</span>
+<span class="sd">        that sharp model transitions (e.g. the softplus lag/saturation</span>
+<span class="sd">        in :class:`DoubleSoftplus`) render smoothly rather than as</span>
+<span class="sd">        a polyline sampled at the observed timepoints.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">upper</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">timepoints</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">tmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">tmax</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">upper</span><span class="p">)</span> <span class="ow">or</span> <span class="n">upper</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">upper</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">upper</span><span class="p">))</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">upper</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">num</span><span class="p">)</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">upper</span> <span class="o">/</span> <span class="p">(</span><span class="n">num</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">t</span><span class="p">,</span> <span class="n">step</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_format_hover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Join `_hover_fields` into a Plotly ``&lt;extra&gt;`` payload.&quot;&quot;&quot;</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">col_key</span><span class="p">,</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hover_fields</span><span class="p">():</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">col_key</span><span class="p">]</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="nb">format</span><span class="p">(</span><span class="n">val</span><span class="p">,</span><span class="w"> </span><span class="n">fmt</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Matplotlib visualization</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+<div class="viewcode-block" id="ModelFitter.show">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter.show">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">tmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">criteria</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;tab20&quot;</span><span class="p">,</span>
+            <span class="n">legend</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot model predictions alongside measurements with optional filtering.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tmax: Upper bound of the prediction curve. If ``None``, uses</span>
+<span class="sd">                the maximum observed time.</span>
+<span class="sd">            criteria: Column/value filter applied to both fitted results</span>
+<span class="sd">                and raw measurements before plotting.</span>
+<span class="sd">            figsize: Matplotlib figure size. Used only when ``ax`` is None.</span>
+<span class="sd">            cmap: Matplotlib colormap name, a single color string, or</span>
+<span class="sd">                ``None`` for matplotlib&#39;s default color cycle.</span>
+<span class="sd">            legend: Controls legend rendering. ``True`` (default) renders</span>
+<span class="sd">                the legend with one entry per ``groupby`` combination,</span>
+<span class="sd">                labeled by the first ``groupby`` column. ``False``</span>
+<span class="sd">                hides the legend. A string must be one of</span>
+<span class="sd">                ``self.groupby``; groups sharing a value in that column</span>
+<span class="sd">                share both color and a single legend entry. The legend</span>
+<span class="sd">                is auto-removed if it is larger than the axes.</span>
+<span class="sd">            ax: Existing axes to draw into. A new figure is created when</span>
+<span class="sd">                omitted.</span>
+<span class="sd">            **kwargs: Styling overrides — ``dpi``, ``facecolor``,</span>
+<span class="sd">                ``edgecolor``, ``line_width``, ``marker_size``,</span>
+<span class="sd">                ``elinewidth``, ``capsize``, ``legend_loc``,</span>
+<span class="sd">                ``legend_fontsize``, ``label``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``(Figure, Axes)`` pair.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="n">legend</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">legend</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">show_legend</span> <span class="o">=</span> <span class="n">legend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">hue</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;legend=</span><span class="si">{</span><span class="n">hue</span><span class="si">!r}</span><span class="s2"> must be one of self.groupby=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">fig_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;dpi&quot;</span><span class="p">,</span> <span class="s2">&quot;facecolor&quot;</span><span class="p">,</span> <span class="s2">&quot;edgecolor&quot;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">line_width</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;line_width&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">marker_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;marker_size&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">elinewidth</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;elinewidth&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">capsize</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;capsize&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">legend_loc</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;legend_loc&quot;</span><span class="p">,</span> <span class="s2">&quot;best&quot;</span><span class="p">)</span>
+        <span class="n">legend_fontsize</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;legend_fontsize&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="o">**</span><span class="n">fig_kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+
+        <span class="n">model_scores</span><span class="p">,</span> <span class="n">measurements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_for_plot</span><span class="p">(</span><span class="n">criteria</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">measurements</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;No data found matching the criteria. Returning empty plot.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span>
+
+        <span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_float_array</span><span class="p">(</span>
+                <span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">model_groups</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">keys</span><span class="p">:</span> <span class="n">grp</span> <span class="k">for</span> <span class="n">keys</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">model_scores</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">meas_groups</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">keys</span><span class="p">:</span> <span class="n">grp</span> <span class="k">for</span> <span class="n">keys</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">measurements</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="n">timepoints</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="n">t</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_axis</span><span class="p">(</span><span class="n">timepoints</span><span class="p">,</span> <span class="n">tmax</span><span class="p">)</span>
+
+        <span class="n">hue_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">hue</span><span class="p">)</span> <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_hue_value</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">k</span><span class="p">[</span><span class="n">hue_idx</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">k</span>
+
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">unique_hues</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">_seen</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">model_groups</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">_hue_value</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_seen</span><span class="p">:</span>
+                    <span class="n">_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                    <span class="n">unique_hues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">n_colors</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unique_hues</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_colors</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">model_groups</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cmap_obj</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">matplotlib</span><span class="o">.</span><span class="n">colormaps</span><span class="p">[</span><span class="n">cmap</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="n">cmap</span>
+                <span class="p">)</span>
+                <span class="n">color_palette</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cmap_obj</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">n_colors</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="p">))</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+                <span class="n">color_palette</span> <span class="o">=</span> <span class="p">[</span><span class="n">cmap</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color_palette</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_colors</span>
+
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hue_color</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">h</span><span class="p">:</span> <span class="n">color_palette</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">color_palette</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_hues</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">color_iter</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">legend_seen</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hue_color</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">color_iter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">color_palette</span><span class="p">)</span>
+            <span class="n">legend_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">model_key</span><span class="p">,</span> <span class="n">model_group</span> <span class="ow">in</span> <span class="n">model_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">curr_meas</span> <span class="o">=</span> <span class="n">meas_groups</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">hue_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">h_val</span> <span class="o">=</span> <span class="n">_hue_value</span><span class="p">(</span><span class="n">model_key</span><span class="p">)</span>
+                <span class="n">curr_color</span> <span class="o">=</span> <span class="n">hue_color</span><span class="p">[</span><span class="n">h_val</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">h_val</span> <span class="ow">in</span> <span class="n">legend_seen</span><span class="p">:</span>
+                    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;_nolegend_&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">legend_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">h_val</span><span class="p">)</span>
+                    <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">h_val</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">color_iter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">curr_color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">color_iter</span><span class="p">)</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">model_group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_func</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_predict_kwargs</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+
+            <span class="n">plot_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">curr_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">plot_kwargs</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_color</span>
+            <span class="k">if</span> <span class="n">line_width</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">plot_kwargs</span><span class="p">[</span><span class="s2">&quot;linewidth&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">line_width</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="o">**</span><span class="n">plot_kwargs</span><span class="p">)</span>
+
+            <span class="n">curr_time_groups</span> <span class="o">=</span> <span class="n">curr_meas</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">)</span>
+            <span class="n">curr_mean</span> <span class="o">=</span> <span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">curr_stddev</span> <span class="o">=</span> <span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">curr_stderr</span> <span class="o">=</span> <span class="n">curr_stddev</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
+
+            <span class="c1"># noinspection PyUnresolvedReferences</span>
+            <span class="n">errorbar_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;x&quot;</span>         <span class="p">:</span> <span class="n">curr_mean</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="s2">&quot;y&quot;</span>         <span class="p">:</span> <span class="n">curr_mean</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="s2">&quot;yerr&quot;</span>      <span class="p">:</span> <span class="n">curr_stderr</span><span class="p">,</span>
+                <span class="s2">&quot;fmt&quot;</span>       <span class="p">:</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;elinewidth&quot;</span><span class="p">:</span> <span class="n">elinewidth</span><span class="p">,</span>
+                <span class="s2">&quot;capsize&quot;</span>   <span class="p">:</span> <span class="n">capsize</span><span class="p">,</span>
+                <span class="s2">&quot;label&quot;</span>     <span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">curr_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">errorbar_kwargs</span><span class="p">[</span><span class="s2">&quot;color&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_color</span>
+                <span class="n">errorbar_kwargs</span><span class="p">[</span><span class="s2">&quot;ecolor&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_color</span>
+            <span class="k">if</span> <span class="n">marker_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">errorbar_kwargs</span><span class="p">[</span><span class="s2">&quot;markersize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">marker_size</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="o">**</span><span class="n">errorbar_kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_legend</span><span class="p">:</span>
+            <span class="n">legend_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;loc&quot;</span><span class="p">:</span> <span class="n">legend_loc</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">legend_fontsize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">legend_kwargs</span><span class="p">[</span><span class="s2">&quot;fontsize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">legend_fontsize</span>
+            <span class="n">legend_obj</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="o">**</span><span class="n">legend_kwargs</span><span class="p">)</span>
+
+            <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+            <span class="n">legend_bbox</span> <span class="o">=</span> <span class="n">legend_obj</span><span class="o">.</span><span class="n">get_window_extent</span><span class="p">()</span>
+            <span class="n">axes_bbox</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_window_extent</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">legend_bbox</span><span class="o">.</span><span class="n">width</span> <span class="o">&gt;</span> <span class="n">axes_bbox</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="mf">0.95</span>
+                    <span class="ow">or</span> <span class="n">legend_bbox</span><span class="o">.</span><span class="n">height</span> <span class="o">&gt;</span> <span class="n">axes_bbox</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="mf">0.95</span>
+            <span class="p">):</span>
+                <span class="n">legend_obj</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;mean±SE&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+    <span class="c1"># Plotly visualization</span>
+    <span class="c1"># ------------------------------------------------------------------ #</span>
+<div class="viewcode-block" id="ModelFitter.dash">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.abc_.html#phenotypic.analysis.abc_.ModelFitter.dash">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">tmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">criteria</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s2">&quot;tab20&quot;</span><span class="p">,</span>
+            <span class="n">legend</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interactive Plotly version of :meth:`show`.</span>
+
+<span class="sd">        Hover tooltips are populated from ``_hover_fields`` so subclasses</span>
+<span class="sd">        can expose whichever fitted parameters and metrics are most</span>
+<span class="sd">        meaningful for their model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            legend: Controls legend rendering. ``True`` (default) renders</span>
+<span class="sd">                the legend with one entry per ``groupby`` combination</span>
+<span class="sd">                (joined with ``&quot;, &quot;``). ``False`` hides the legend. A</span>
+<span class="sd">                string must be one of ``self.groupby``; groups sharing</span>
+<span class="sd">                a value in that column share both color and a single</span>
+<span class="sd">                legend entry.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ImportError: If ``plotly`` is not installed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hue</span> <span class="o">=</span> <span class="n">legend</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">legend</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">show_legend</span> <span class="o">=</span> <span class="n">legend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">hue</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;legend=</span><span class="si">{</span><span class="n">hue</span><span class="si">!r}</span><span class="s2"> must be one of self.groupby=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._plotly_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">_require_plotly</span>
+
+        <span class="n">_require_plotly</span><span class="p">()</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">model_scores</span><span class="p">,</span> <span class="n">measurements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_for_plot</span><span class="p">(</span><span class="n">criteria</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">measurements</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;No data found matching the criteria. Returning empty figure.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+
+        <span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_float_array</span><span class="p">(</span>
+                <span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">model_groups</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">keys</span><span class="p">:</span> <span class="n">grp</span> <span class="k">for</span> <span class="n">keys</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">model_scores</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">meas_groups</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">keys</span><span class="p">:</span> <span class="n">grp</span> <span class="k">for</span> <span class="n">keys</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">measurements</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="n">timepoints</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">measurements</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+        <span class="n">t</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_axis</span><span class="p">(</span><span class="n">timepoints</span><span class="p">,</span> <span class="n">tmax</span><span class="p">)</span>
+
+        <span class="n">_OKABE_ITO</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;#003660&quot;</span><span class="p">,</span> <span class="s2">&quot;#E69F00&quot;</span><span class="p">,</span> <span class="s2">&quot;#56B4E9&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;#009E73&quot;</span><span class="p">,</span> <span class="s2">&quot;#0072B2&quot;</span><span class="p">,</span> <span class="s2">&quot;#CC79A7&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="n">hue_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">hue</span><span class="p">)</span> <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_hue_value</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">k</span><span class="p">[</span><span class="n">hue_idx</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">k</span>
+
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">unique_hues</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">_seen</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">model_groups</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">_hue_value</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_seen</span><span class="p">:</span>
+                    <span class="n">_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+                    <span class="n">unique_hues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">n_colors</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unique_hues</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_colors</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">model_groups</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cmap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cmap_obj</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">colormaps</span><span class="p">[</span><span class="n">cmap</span><span class="p">]</span>
+                <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;rgb(</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">255</span><span class="p">)</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">255</span><span class="p">)</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">255</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+                    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cmap_obj</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_colors</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="p">]</span>
+                <span class="n">color_palette</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">colors</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="n">color_palette</span> <span class="o">=</span> <span class="p">[</span><span class="n">cmap</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color_palette</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_OKABE_ITO</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hue_color</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">h</span><span class="p">:</span> <span class="n">color_palette</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">color_palette</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_hues</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">color_iter</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hue_color</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">color_iter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">color_palette</span><span class="p">)</span>
+
+        <span class="n">legend_seen</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">model_key</span><span class="p">,</span> <span class="n">model_group</span> <span class="ow">in</span> <span class="n">model_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">curr_meas</span> <span class="o">=</span> <span class="n">meas_groups</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">model_group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">y_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_func</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_predict_kwargs</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">hue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">hue_color</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">h_val</span> <span class="o">=</span> <span class="n">_hue_value</span><span class="p">(</span><span class="n">model_key</span><span class="p">)</span>
+                <span class="n">curr_color</span> <span class="o">=</span> <span class="n">hue_color</span><span class="p">[</span><span class="n">h_val</span><span class="p">]</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">h_val</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">color_iter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">curr_color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">color_iter</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_key</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">model_key</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">model_key</span><span class="p">)</span>
+
+            <span class="n">show_legend_entry</span> <span class="o">=</span> <span class="n">label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">legend_seen</span>
+            <span class="n">legend_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+
+            <span class="n">hover_extra</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_hover</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">t</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">y_pred</span><span class="p">,</span>
+                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">curr_color</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+                    <span class="n">legendgroup</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">showlegend</span><span class="o">=</span><span class="n">show_legend_entry</span><span class="p">,</span>
+                    <span class="n">hovertemplate</span><span class="o">=</span><span class="p">(</span>
+                        <span class="s2">&quot;&lt;b&gt;%</span><span class="si">{fullData.name}</span><span class="s2">&lt;/b&gt;&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;Time: %</span><span class="si">{x:.1f}</span><span class="s2">&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;Predicted: %</span><span class="si">{y:.2f}</span><span class="s2">&lt;br&gt;&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;&lt;extra&gt;</span><span class="si">{</span><span class="n">hover_extra</span><span class="si">}</span><span class="s2">&lt;/extra&gt;&quot;</span>
+                    <span class="p">),</span>
+            <span class="p">))</span>
+
+            <span class="n">curr_time_groups</span> <span class="o">=</span> <span class="n">curr_meas</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">)</span>
+            <span class="n">curr_mean</span> <span class="o">=</span> <span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">curr_stddev</span> <span class="o">=</span> <span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">curr_count</span> <span class="o">=</span> <span class="n">curr_time_groups</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+            <span class="n">curr_stderr</span> <span class="o">=</span> <span class="n">curr_stddev</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">curr_count</span><span class="p">)</span>
+
+            <span class="n">time_vals</span> <span class="o">=</span> <span class="n">curr_mean</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">mean_vals</span> <span class="o">=</span> <span class="n">curr_mean</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">stderr_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">curr_stderr</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">time_vals</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">mean_vals</span><span class="p">,</span>
+                    <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">legendgroup</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">color</span><span class="o">=</span><span class="n">curr_color</span><span class="p">,</span>
+                            <span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+                            <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">curr_color</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                    <span class="p">),</span>
+                    <span class="n">error_y</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                            <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">,</span>
+                            <span class="n">array</span><span class="o">=</span><span class="n">stderr_vals</span><span class="p">,</span>
+                            <span class="n">visible</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">color</span><span class="o">=</span><span class="n">curr_color</span><span class="p">,</span>
+                            <span class="n">thickness</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">customdata</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">time_vals</span><span class="p">,</span> <span class="n">mean_vals</span><span class="p">,</span> <span class="n">stderr_vals</span><span class="p">]),</span>
+                    <span class="n">hovertemplate</span><span class="o">=</span><span class="p">(</span>
+                        <span class="s2">&quot;&lt;b&gt;%</span><span class="si">{fullData.name}</span><span class="s2">&lt;/b&gt;&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;Time: %</span><span class="si">{customdata[0]:.1f}</span><span class="s2">&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;Mean: %</span><span class="si">{customdata[1]:.2f}</span><span class="s2">&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;SE: %</span><span class="si">{customdata[2]:.4f}</span><span class="s2">&lt;br&gt;&quot;</span>
+                        <span class="s2">&quot;&lt;extra&gt;&lt;/extra&gt;&quot;</span>
+                    <span class="p">),</span>
+            <span class="p">))</span>
+
+        <span class="n">height_px</span> <span class="o">=</span> <span class="n">figsize</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="n">autosize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">height</span><span class="o">=</span><span class="n">height_px</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">text</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;mean±SE&quot;</span><span class="p">),</span>
+                        <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Sans, system-ui, sans-serif&quot;</span><span class="p">,</span>
+                                <span class="n">size</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span>
+                                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#003660&quot;</span><span class="p">,</span>
+                        <span class="p">),</span>
+                <span class="p">),</span>
+                <span class="n">xaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">text</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;xlabel&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_label</span><span class="p">),</span>
+                                <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                        <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Mono, Courier New, monospace&quot;</span><span class="p">,</span>
+                                        <span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+                                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
+                                <span class="p">),</span>
+                        <span class="p">),</span>
+                        <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Mono, Courier New, monospace&quot;</span><span class="p">,</span>
+                                <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span>
+                        <span class="p">),</span>
+                        <span class="n">gridcolor</span><span class="o">=</span><span class="s2">&quot;#e8ecf2&quot;</span><span class="p">,</span>
+                        <span class="n">gridwidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">linecolor</span><span class="o">=</span><span class="s2">&quot;#dde3ed&quot;</span><span class="p">,</span>
+                        <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                        <span class="n">showline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">zeroline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">yaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">text</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ylabel&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">on</span><span class="p">),</span>
+                                <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                        <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Mono, Courier New, monospace&quot;</span><span class="p">,</span>
+                                        <span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+                                        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
+                                <span class="p">),</span>
+                        <span class="p">),</span>
+                        <span class="n">tickfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Mono, Courier New, monospace&quot;</span><span class="p">,</span>
+                                <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#8892a4&quot;</span><span class="p">,</span>
+                        <span class="p">),</span>
+                        <span class="n">gridcolor</span><span class="o">=</span><span class="s2">&quot;#e8ecf2&quot;</span><span class="p">,</span>
+                        <span class="n">gridwidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">linecolor</span><span class="o">=</span><span class="s2">&quot;#dde3ed&quot;</span><span class="p">,</span>
+                        <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+                        <span class="n">showline</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">zeroline</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">plot_bgcolor</span><span class="o">=</span><span class="s2">&quot;#ffffff&quot;</span><span class="p">,</span>
+                <span class="n">paper_bgcolor</span><span class="o">=</span><span class="s2">&quot;#f5f7fa&quot;</span><span class="p">,</span>
+                <span class="n">showlegend</span><span class="o">=</span><span class="n">show_legend</span><span class="p">,</span>
+                <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                                <span class="n">family</span><span class="o">=</span><span class="s2">&quot;DM Sans, system-ui, sans-serif&quot;</span><span class="p">,</span>
+                                <span class="n">size</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+                                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2e3a4e&quot;</span><span class="p">,</span>
+                        <span class="p">),</span>
+                <span class="p">),</span>
+                <span class="n">hovermode</span><span class="o">=</span><span class="s2">&quot;closest&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
