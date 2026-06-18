@@ -830,6 +830,20 @@ PICKER_PARAM_COUNT_TYPE = "param-point-picker-count"
 
 
 # ---------------------------------------------------------------------------
+# Node-output preview modal (zoomable OSD viewer + layer toggle)
+# ---------------------------------------------------------------------------
+
+MODAL_NODE_PREVIEW = "modal-node-preview"
+MODAL_NODE_PREVIEW_TITLE = "modal-node-preview-title"
+PREVIEW_OSD_DIV = "preview-osd"
+PREVIEW_LAYER_RADIO = "preview-layer-radio"
+PREVIEW_CAPTION = "preview-caption"
+PREVIEW_DZI_URL_STORE = "preview-dzi-url-store"
+STORE_PREVIEW_TARGET = "store-preview-target"
+PREVIEW_OSD_MOUNT_TRIGGER = "preview-osd-mount-trigger"
+
+
+# ---------------------------------------------------------------------------
 # Inputs
 # ---------------------------------------------------------------------------
 
