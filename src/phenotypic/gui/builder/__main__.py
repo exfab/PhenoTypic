@@ -73,7 +73,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     from phenotypic.gui.builder._app import create_app
 
-    app = create_app(image_root=args.image_root)
+    app = create_app(image_root=args.image_root, url_prefix=args.url_prefix)
     app.run(host=args.host, port=args.port, debug=args.debug)
 
 

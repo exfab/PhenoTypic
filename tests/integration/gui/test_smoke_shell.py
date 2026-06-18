@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from phenotypic.gui.run_console._callbacks import _dashboard_url
 from phenotypic.gui.shell import SandboxRoot, create_app
 
 
@@ -230,6 +231,62 @@ def test_results_assets_are_prefix_aware(sandbox: SandboxRoot) -> None:
     assert 'window.__phenotypicAppPrefix = "/results/"' in text
 
 
+def test_default_hub_nav_keeps_root_relative_prefixes(sandbox: SandboxRoot) -> None:
+    """Default launch keeps the historical browser-visible mount prefixes."""
+    app = create_app(sandbox)
+    client = app.server.test_client()
+    resp = client.get("/_dash-layout")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+
+    assert _find_string_in_json(payload, "/builder/") == "/builder/"
+    assert _find_string_in_json(payload, "/node/hz01/30099/builder/") is None
+
+
+def test_explicit_url_prefix_rewrites_chrome_navigation(
+    sandbox: SandboxRoot,
+) -> None:
+    """Top-bar links use the browser-visible OOD prefix when supplied."""
+    app = create_app(sandbox, url_prefix="/node/hz01/30099/")
+    client = app.server.test_client()
+    resp = client.get("/_dash-layout")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+
+    assert _find_string_in_json(payload, "/node/hz01/30099/") == (
+        "/node/hz01/30099/"
+    )
+    assert _find_string_in_json(payload, "/node/hz01/30099/builder/") == (
+        "/node/hz01/30099/builder/"
+    )
+
+
+def test_explicit_url_prefix_rewrites_results_browser_prefix(
+    sandbox: SandboxRoot,
+) -> None:
+    """Dash assets for mounted sub-apps use the external OOD base path."""
+    app = create_app(sandbox, url_prefix="/node/hz01/30099/")
+    client = app.server.test_client()
+    resp = client.get("/results/")
+    assert resp.status_code == 200
+    text = resp.get_data(as_text=True)
+    assert 'window.__phenotypicAppPrefix = "/node/hz01/30099/results/"' in text
+
+
+def test_explicit_url_prefix_rewrites_empty_state_api_fetches(
+    sandbox: SandboxRoot,
+) -> None:
+    """Empty-state handoff callbacks POST to the prefixed sandbox API."""
+    app = create_app(sandbox, url_prefix="/node/hz01/30099/")
+    client = app.server.test_client()
+
+    results_html = client.get("/results/").get_data(as_text=True)
+    analysis_html = client.get("/analysis/").get_data(as_text=True)
+
+    assert "/node/hz01/30099/sandbox/api/viewer/output-root" in results_html
+    assert "/node/hz01/30099/sandbox/api/viewer/output-root" in analysis_html
+
+
 def test_builder_logo_uses_prefix(sandbox: SandboxRoot) -> None:
     """Builder logo ``<img src=...>`` carries the ``/builder/`` prefix.
 
@@ -245,6 +302,40 @@ def test_builder_logo_uses_prefix(sandbox: SandboxRoot) -> None:
     found = _find_string_in_json(payload, "dashboard_logo.svg")
     assert found is not None
     assert found.startswith("/builder/")
+
+
+def test_explicit_url_prefix_rewrites_builder_logo(sandbox: SandboxRoot) -> None:
+    """Builder layout assets carry both the OOD base prefix and sub-app prefix."""
+    app = create_app(sandbox, url_prefix="/node/hz01/30099/")
+    client = app.server.test_client()
+    resp = client.get("/builder/_dash-layout")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+
+    found = _find_string_in_json(payload, "dashboard_logo.svg")
+    assert found is not None
+    assert found.startswith("/node/hz01/30099/builder/")
+
+
+def test_builder_point_picker_assets_are_not_root_hardcoded(
+    sandbox: SandboxRoot,
+) -> None:
+    """Point-picker OSD fallback assets derive from the injected app prefix."""
+    app = create_app(sandbox, url_prefix="/node/hz01/30099/")
+    client = app.server.test_client()
+    resp = client.get("/builder/assets/point_picker.js")
+    assert resp.status_code == 200
+    text = resp.get_data(as_text=True)
+
+    assert '"/results/assets/openseadragon' not in text
+    assert "resultsPrefix + \"assets/openseadragon" in text
+
+
+def test_dashboard_url_uses_explicit_url_prefix() -> None:
+    """Run dashboard iframes use the browser-visible OOD base prefix."""
+    assert _dashboard_url("out", url_prefix="/node/hz01/30099/") == (
+        "/node/hz01/30099/runs/out/deliverables/dashboard.html"
+    )
 
 
 def test_shared_logo_served_under_each_mount(sandbox: SandboxRoot) -> None:

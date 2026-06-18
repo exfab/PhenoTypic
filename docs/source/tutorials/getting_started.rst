@@ -128,6 +128,16 @@ in the GUI hub guide for the two-hop tunnel pattern. That guide also
 covers the file browser, pipeline builder, run console, and results
 viewer.
 
+For Open OnDemand-style proxies, pass the browser path as a prefix, not
+the full URL:
+
+.. code-block:: bash
+
+   uv run phenotypic-gui --root /rhome/ejaco020 --host 0.0.0.0 --port 30099 --url-prefix /node/hz01/30099/
+
+Then open the full proxy URL, for example
+``https://ondemand.hpcc.ucr.edu/node/hz01/30099/``.
+
 .. note::
 
    ``phenotypic gui`` (no hyphen, as a subcommand) is **not supported**.

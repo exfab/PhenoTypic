@@ -39,6 +39,7 @@ def test_phenotypic_gui_help_succeeds() -> None:
     assert "phenotypic-gui" in result.stdout
     assert "--root" in result.stdout
     assert "--port" in result.stdout
+    assert "--url-prefix" in result.stdout
 
 
 def test_phenotypic_gui_rejects_missing_root(tmp_path: Path) -> None:

@@ -46,10 +46,13 @@ shared names so existing imports keep working.**
 from phenotypic.gui._config import (
     DEFAULT_HOST,        # "127.0.0.1"
     DEFAULT_PORT,        # 8050
+    DEFAULT_URL_PREFIX,  # "/"
     LOG_FORMAT,          # logging.basicConfig format
     SSH_TUNNEL_HINT,     # "ssh -L 8050:localhost:8050 user@cluster"
     add_launcher_args,   # add --host/--port/--debug to a parser
     configure_launcher_logging,  # logging.basicConfig with LOG_FORMAT
+    join_url_prefix,           # prepend optional browser-visible base prefix
+    normalize_url_prefix,      # canonicalize path-only --url-prefix values
     print_launcher_banner,       # consistent banner (title + url + hint)
 )
 ```
@@ -58,6 +61,12 @@ Every `__main__.py` and `_launcher.py` calls `add_launcher_args(parser)`
 and `configure_launcher_logging(debug=args.debug)`. Don't re-implement
 either or you re-introduce drift like the `"%(name)s:"` vs
 `"%(name)s "` inconsistency we cleaned up.
+
+`--url-prefix` is shared by all GUI launchers and defaults to `/`. It is a
+path-only browser prefix for path-stripping proxies (for example Open
+OnDemand's `/node/hz01/30099/`), not a full URL. Use `join_url_prefix` for
+browser-facing links, API fetches, and iframe URLs that need to survive a
+proxy prefix.
 
 ### Mount prefixes
 
@@ -309,6 +318,10 @@ travels with the field annotation.
   mounted under `DispatcherMiddleware` see their mount prefix stripped
   before Dash routes. Standalone launches collapse to identical prefixes
   because `url_prefix` defaults to `MOUNT_HOME` ("/").
+- **External proxy prefixes are browser-facing only** — keep
+  `DispatcherMiddleware` mount keys at the internal `MOUNT_*` paths, but build
+  Dash `requests_pathname_prefix`, chrome hrefs, shell API fetches, and
+  `/runs/...` iframe URLs through `join_url_prefix(base_prefix, path)`.
 - **Don't import dash from `_config.py` or `_design.py`** — they stay
   cheap to import everywhere, including from blueprint and test code.
 - **Registry keys are split by type** — the builder's

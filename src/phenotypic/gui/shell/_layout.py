@@ -28,6 +28,7 @@ from dash import dcc, html
 from lucide import lucide_icon  # type: ignore[import-untyped]
 
 from phenotypic.gui._config import (
+    DEFAULT_URL_PREFIX,
     MOUNT_ANALYSIS,
     MOUNT_BROWSE,
     MOUNT_BUILDER,
@@ -38,6 +39,7 @@ from phenotypic.gui._config import (
     RSS_INTERVAL_MS,
     SSH_TUNNEL_HINT,
     TITLE_HUB,
+    join_url_prefix,
 )
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui.shell._callbacks import register_chrome_callbacks
@@ -119,12 +121,6 @@ def _lucide_img(icon_name: str, *, class_name: str) -> html.Img:
 #: Tab anchors. Plain ``html.A`` elements so the navigation crosses
 #: WSGI mounts cleanly once Phase 5 wires the sub-apps.
 #:
-#: TODO(reverse-proxy): these are absolute paths starting with ``/``;
-#: that's correct when the hub is served at the URL root (the v1 SSH-
-#: tunnel deployment). If a future deployment puts the hub behind a
-#: reverse proxy with a prefix (e.g. ``/phenotypic/``), thread that
-#: prefix through ``wrap_in_chrome`` and prepend it here. Tracked
-#: against the cloud-deploy hook in ``shell/_sandbox.py``.
 _TAB_HREFS = {
     SHELL_TAB_HOME: MOUNT_HOME,
     SHELL_TAB_BROWSE: MOUNT_BROWSE,
@@ -187,6 +183,7 @@ def build_top_bar(
     *,
     active_tab: str,
     sandbox: SandboxRoot,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> html.Header:
     """Build the top-bar element shown above every tool's main pane.
 
@@ -194,6 +191,7 @@ def build_top_bar(
         active_tab: One of the ``SHELL_TAB_*`` constants. The matching anchor
             gets a ``shell-tab-active`` class.
         sandbox: Sandbox root (echoed in the top-bar label).
+        url_prefix: Browser-visible base prefix for cross-mount links.
 
     Returns:
         ``html.Header`` containing the title, root display, tab nav, RSS
@@ -218,7 +216,9 @@ def build_top_bar(
             ),
             html.Nav(
                 [
-                    _build_nav_entry(entry, active_tab=active_tab)
+                    _build_nav_entry(
+                        entry, active_tab=active_tab, url_prefix=url_prefix
+                    )
                     for entry in NAV_MODEL
                 ],
                 className="shell-tab-nav",
@@ -416,6 +416,7 @@ def wrap_in_chrome(
     *,
     active_tab: str,
     sandbox: SandboxRoot,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> None:
     """Wrap ``app.layout`` in the shell chrome and register chrome callbacks.
 
@@ -427,6 +428,7 @@ def wrap_in_chrome(
             highlighted in the top bar (the chrome doesn't navigate;
             the host calling ``wrap_in_chrome`` knows which mount this is).
         sandbox: Sandbox root.
+        url_prefix: Browser-visible base prefix for chrome navigation.
 
     Side effects:
         * Sets ``app.layout`` to a new ``html.Div`` containing the chrome
@@ -447,7 +449,11 @@ def wrap_in_chrome(
 
     app.layout = html.Div(
         [
-            build_top_bar(active_tab=active_tab, sandbox=sandbox),
+            build_top_bar(
+                active_tab=active_tab,
+                sandbox=sandbox,
+                url_prefix=url_prefix,
+            ),
             html.Div(
                 [
                     build_sidebar(sandbox),
@@ -525,16 +531,24 @@ def _inject_shell_css(app) -> None:  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 def _build_nav_entry(
-    entry: "str | _NavGroup", *, active_tab: str
+    entry: "str | _NavGroup",
+    *,
+    active_tab: str,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ):  # type: ignore[no-untyped-def]
     """Render one :data:`NAV_MODEL` entry — a leaf tab or a dropdown group."""
     if isinstance(entry, _NavGroup):
-        return _build_tab_group(entry, active_tab=active_tab)
-    return _build_tab(entry, active_tab=active_tab)
+        return _build_tab_group(entry, active_tab=active_tab, url_prefix=url_prefix)
+    return _build_tab(entry, active_tab=active_tab, url_prefix=url_prefix)
 
 
-def _build_tab(tab_id: str, *, active_tab: str) -> html.A:
-    href = _TAB_HREFS[tab_id]
+def _build_tab(
+    tab_id: str,
+    *,
+    active_tab: str,
+    url_prefix: str = DEFAULT_URL_PREFIX,
+) -> html.A:
+    href = join_url_prefix(url_prefix, _TAB_HREFS[tab_id])
     label = _TAB_LABELS[tab_id]
     classes = ["shell-tab"]
     if tab_id == active_tab:
@@ -548,7 +562,10 @@ def _build_tab(tab_id: str, *, active_tab: str) -> html.A:
 
 
 def _build_tab_group(
-    group: _NavGroup, *, active_tab: str
+    group: _NavGroup,
+    *,
+    active_tab: str,
+    url_prefix: str = DEFAULT_URL_PREFIX,
 ) -> dbc.DropdownMenu:
     """Render a dropdown tab group (``Pipeline`` / ``Results``).
 
@@ -574,7 +591,7 @@ def _build_tab_group(
             dbc.DropdownMenuItem(
                 _TAB_LABELS[member],
                 id=member,
-                href=_TAB_HREFS[member],
+                href=join_url_prefix(url_prefix, _TAB_HREFS[member]),
                 active=(member == active_tab),
                 external_link=True,
                 className="shell-tab-group-item",
