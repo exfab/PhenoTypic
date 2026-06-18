@@ -36,7 +36,8 @@ pattern to all layers, per node, sourced from on-disk HDFs.
 - **Zoom/pan** into full-resolution detail.
 - **Faithful** previews: detection runs at the original image size; what you see
   matches a real run (only the rendered thumbnail is downsampled for display by
-  the tiler/zoom, never the computation).
+  the tiler/zoom, never the computation). Nodes inside a sub-pipeline are fed the
+  parent pipeline's **real** output up to the container, not the raw sample.
 - **Low RAM**: never hold N full-resolution intermediates resident; data lives on
   disk and is read on demand.
 - Reuse existing machinery (point picker pattern, DZI tiler, `_image_renderer`,
@@ -65,7 +66,7 @@ pattern to all layers, per node, sourced from on-disk HDFs.
 | DZI tile generator (`tile(png_path, output_dir, tile_size=254, overlap=1)`) — file-in/files-out; **pyvips sequential streaming** (low RAM) with Pillow fallback | `results_viewer/_dzi_tiler.py:69` | Tiler reused unchanged |
 | Channel→PNG rendering: `to_png_bytes`, `to_overlay_png_bytes`, `bytes_to_data_uri`, `render_node_preview`, `_normalize_to_uint8`, `_read_channel` | `builder/_image_renderer.py` | Staging reuses normalizer + overlay |
 | Per-node intermediate capture with optional disk persistence (`output_dir`) | `_core/.../_image_pipeline_core.py:884` (`apply_with_intermediates`) | **Extended** with `full_layers` flag |
-| v2 HDF schema: `/layers/{rgb,gray,detect_mat,objmap}` as separate gzip datasets; `save_intermediate_layers(filename, layers)`, `load_hdf5` | `_core/_image_parts/_image_io_handler.py` | Per-layer reads + per-node writes |
+| v2 HDF schema: `/layers/{rgb,gray,detect_mat,objmap}` as separate gzip datasets + `phenotypic_class`/illuminant/gamma/detect_mode; `save2hdf5`, `load_hdf5` | `_core/_image_parts/_image_io_handler.py` | Per-node full snapshot writes (faithful round-trip) + single-layer reads |
 | Per-session id + server-side cache | `STORE_SESSION_ID`, `builder/_session.py` (`IntermediatesCache`) | Session keying |
 | Node-card render + pattern-matching action ids (`linear_node_action_id(action, scope_path, block_id, surface)`, type `LINEAR_NODE_ACTION`) | `builder/_linear_layout.py:493` (`_block_card`), `builder/_ids.py` | Button id + card hook |
 | DAG→pipeline conversion + topo bake ordering | `builder/_conversion_dag.py`, `_callbacks.py:6946` (`_bake_preview_cache_dag`) | block_id↔op_key mapping |
@@ -91,21 +92,26 @@ radius on the existing, working inspector feature.
         │
         ▼
 [compute/stage callback]    # cache unit = (session, scope), not whole pipeline
-   1. scope_key = join(scope_path); scope_dir = preview_cache.ensure(session, scope_key)
-   2. current_fp = fingerprint(scope_pipeline_json, source_image_identity)
-   3. if manifest.fingerprint != current_fp:   # stale or missing
-          wipe(scope_dir)
-          scope        = scope_at_path(state.root, scope_path)
-          prefix_state = temp_state_rooted_at(scope)   # reuse Preview-here machinery
-          image        = _load_preview_image(...)       # full-res source
-          pipe         = to_pipeline_dag(prefix_state)  # scope promoted to root
-          pipe.apply_with_intermediates(image,
-                     output_dir=scope_dir, full_layers=True)   # CORE FLAG
-          write manifest.json {fingerprint, nodes:{block_id:{hdf, layers,
-                     shape, num_objects}}, error?}        # all nodes in this scope
-   4. choose default channel for this node (render_node_preview rule)
-   5. stage (scope, node, channel) → DZI  (lazy; see tile route)
-   6. write PICKER-style DZI URL store → triggers clientside OSD mount
+   compute_scope(scope_path):                    # recursive; threads real input
+     scope_dir = preview_cache.ensure(session, scope_path)
+     current_fp = fingerprint(scope_pipeline_json, input_identity)  # chained
+     if manifest.fingerprint != current_fp:       # stale or missing
+         wipe(scope_dir)
+         if scope_path is root:
+             image = _load_preview_image(...)                  # full-res source
+         else:
+             compute_scope(parent_path)                        # ensure parent fresh
+             image = load_hdf5(parent_dir / predecessor_of(container).h5)  # REAL input
+         prefix_state = temp_state_rooted_at(scope_at_path(state.root, scope_path))
+         pipe = to_pipeline_dag(prefix_state)      # scope promoted to root
+         pipe.apply_with_intermediates(image,
+                    output_dir=scope_dir, full_layers=True)     # CORE FLAG (v2 save2hdf5)
+         write manifest.json {fingerprint, nodes:{block_id:{hdf, layers,
+                    shape, num_objects}}, error?}  # all nodes in this scope
+   after compute_scope(target.scope_path):
+     a. choose default channel for this node (render_node_preview rule)
+     b. stage (scope, node, channel) → DZI  (lazy; see tile route)
+     c. write PICKER-style DZI URL store → triggers clientside OSD mount
         │
         ▼
 [clientside OSD callback]  __phenotypicPreview.mountViewer(dziUrl)
@@ -134,10 +140,10 @@ radius on the existing, working inspector feature.
 
 Add a keyword-only `full_layers: bool = False` parameter. It only has effect when
 `output_dir is not None`. Today the disk path writes **delta** layers via
-`_layers_modified_by(operation)` (plus periodic full "base" snapshots) to
-minimize disk. With `full_layers=True`, the inner `_capture` callback instead
-writes **every available layer** for each non-read-only operation to its own
-`{i:02d}_{key}.h5`:
+`_layers_modified_by(operation)` (plus periodic full "base" snapshots) in the
+**v1 flat** layout. With `full_layers=True`, the inner `_capture` callback instead
+writes a **complete v2 snapshot** for each non-read-only operation via
+`save2hdf5` to its own `{i:02d}_{key}.h5`:
 
 ```python
 def _capture(i, key, current, operation):
@@ -145,25 +151,36 @@ def _capture(i, key, current, operation):
         layers = _layers_modified_by(operation)
         if layers is None:                      # read-only (Measure, GridFinder)
             intermediates[key] = None
-        elif full_layers:                       # NEW: faithful full snapshot
-            current.copy().save_intermediate_layers(
-                output_dir / f"{i:02d}_{key}.h5", layers=_ALL_LAYERS,
-            )
+        elif full_layers:                       # NEW: faithful full v2 snapshot
+            current.copy().save2hdf5(output_dir / f"{i:02d}_{key}.h5")
             intermediates[key] = None
         elif len(layers) == 4:                  # existing delta/base logic …
             …
 ```
 
-- `_ALL_LAYERS = ("rgb", "gray", "detect_mat", "objmap")`. `save_intermediate_layers`
-  already skips `rgb` when empty, so "available" falls out automatically.
+- **Why `save2hdf5` (v2), not `save_intermediate_layers` (v1 flat):** the v2
+  layout stores `/layers/{rgb,gray,detect_mat,objmap}` as separate gzip datasets
+  **plus** `phenotypic_class`, `bit_depth`, `illuminant`, `gamma`, `detect_mode`,
+  and metadata. This matters because the threaded-input feature (§8) loads a
+  node's HDF back into an `Image`/`GridImage` to feed a nested scope — so the
+  snapshot must round-trip the class and core attributes, which the v1 flat
+  metadata layout does not. v2 also enables the efficient single-layer reads
+  `load_layer_hdf5` relies on. `save2hdf5` writes all available layers (skips
+  `rgb` when empty) automatically.
+- **GridImage requirement:** verify that `GridImage.save2hdf5`/`load_hdf5`
+  round-trips grid params (`nrows`/`ncols`/`grid_finder`). If any grid state does
+  not survive the round-trip, record it in the manifest node entry and restore it
+  on load via the GridImage reconstruction pattern. The threaded input MUST be a
+  faithful `GridImage` when the source is gridded.
+- The initial `base_00.h5` (pre-pipeline) is likewise written via `save2hdf5` in
+  `full_layers` mode, giving the input node a preview source and the first nested
+  scope a faithful root input.
 - Read-only ops (`MeasureFeatures`, `GridFinder`) keep emitting no file
   (`intermediates[key] = None`); they get no preview button anyway.
 - **Peak RAM unchanged** vs. the existing disk path: one working image + one
   transient `.copy()` per node, dropped after write. Never N intermediates
   resident.
-- The initial `base_00.h5` (pre-pipeline, all layers) is still written, giving
-  the input node a preview source.
-- Backwards compatible: default `False` preserves today's delta behavior; the
+- Backwards compatible: default `False` preserves today's delta/v1 behavior; the
   napari viewer and any `output_dir` callers are unaffected.
 
 **File:** `src/phenotypic/_core/_image_parts/_image_io_handler.py`
@@ -214,12 +231,20 @@ embedded-pipeline model (see **Embedded / nested pipelines**).
     are globally unique UUID4s, so a flat per-scope node map is unambiguous.
   - `tiles_src/<block_id>__<channel>.png` — staged source PNGs (lazy).
   - `dzi/<block_id>__<channel>.dzi` (+ `_files/`) — tile pyramids (lazy).
-- **Fingerprint (per scope):** `sha1(canonical_scope_pipeline_json + "\x00" + source_image_identity)`
-  where `scope_pipeline_json` is the serialized **scope-promoted** pipeline (just
-  that scope's blocks/edges) and `source_image_identity` = resolved image path
-  (or `SYNTHETIC_SENTINEL`) + grid usage + `nrows`/`ncols`. Whole-scope compare —
-  editing any node in a scope invalidates that scope's dir; one recompute pass
-  refreshes every node in it. Other scopes' dirs are untouched.
+- **Fingerprint (per scope, chained):**
+  `sha1(canonical_scope_pipeline_json + "\x00" + input_identity)` where
+  `scope_pipeline_json` is the serialized **scope-promoted** pipeline (just that
+  scope's blocks/edges). `input_identity` is:
+  - **root scope:** the source-image identity — resolved image path (or
+    `SYNTHETIC_SENTINEL`) + grid usage + `nrows`/`ncols`;
+  - **nested scope:** the **parent scope's fingerprint** (chaining). Because the
+    nested scope's input is derived from the parent's cache (§8), folding the
+    parent fingerprint in means any upstream edit invalidates this scope and all
+    its descendants, while a sibling-branch edit leaves it fresh.
+
+  Whole-scope compare — editing any node in a scope invalidates that scope's dir;
+  one recompute pass refreshes every node in it. Unrelated scopes' dirs are
+  untouched.
 - **API:** `ensure(session_id)`, `scope_dir(session_id, scope_key)`,
   `is_fresh(session_id, scope_key, fingerprint)`, `wipe_scope(session_id, scope_key)`,
   `manifest_path(...)`, `node_hdf_path(session_id, scope_key, block_id)`,
@@ -301,12 +326,14 @@ Add `build_node_preview_modal()` and mount it once in the boot-time `modals` Div
   1-tuple per the gui CLAUDE.md gotcha).
 - **Compute + stage** (triggered by `STORE_PREVIEW_TARGET` / modal open), with
   `State` on builder state, session id, image path, grid params:
-  1. `scope = scope_at_path(state.root, scope_path)`; build the scope-promoted
-     temp state (reuse `_linear_prefix_state_for_preview`'s scope-promotion, but
-     keep the **whole** scope, not just the prefix, so one run caches every node
-     in it); compute the scope fingerprint; if stale, `wipe_scope` and recompute
-     via the core flag — wrapped in try/except → on `MemoryError`/op error, write
-     `manifest.error` and surface it in the caption, leave OSD empty.
+  1. Call the recursive `compute_scope(target.scope_path)` (a `_preview_cache`
+     helper): it ensures the parent chain is fresh, **threads the real input**
+     (root sample, or the parent's container-predecessor HDF — see §8), builds the
+     scope-promoted temp state (reuse `_linear_prefix_state_for_preview`'s
+     promotion, keeping the **whole** scope so one run caches every node in it),
+     and recomputes via the `full_layers` core flag when the chained fingerprint is
+     stale. Wrap in try/except → on `MemoryError`/op error, write `manifest.error`
+     and surface it in the caption, leave OSD empty.
   2. resolve this node's available layers + default channel from the scope
      manifest; populate `PREVIEW_LAYER_RADIO.options/value`, `ModalTitle`,
      `PREVIEW_CAPTION`.
@@ -354,12 +381,34 @@ machinery**, by mirroring how the inspector already handles scopes:
   overwrites it. The modal's disk cache is keyed by `scope_hash`, so every scope's
   previews coexist and survive drilling — a deliberate improvement enabled by
   globally-unique `block_id`s.
-- **Fidelity caveat (matches existing behavior):** a promoted inner scope is fed
-  by the resolved sample image at the inner scope's own `InputImage`, not by the
-  parent pipeline's output up to the container (because intermediate capture does
-  not recurse into nested pipelines). This is exactly what "Preview here" does
-  today; threading the container's true input — or recursing capture into nested
-  pipelines — is a future enhancement, noted below.
+
+**Faithful inner-node input (threading the container's real input).** A promoted
+inner scope is **not** fed the raw sample image; it is fed the parent pipeline's
+actual output up to the container, so inner previews match runtime. The per-scope
+HDF cache already holds exactly this artifact:
+
+- **`compute_scope(scope_path)`** resolves the scope's input image:
+  - **root scope** → the resolved sample image (`_load_preview_image`);
+  - **nested scope `S` under container `c`** → recursively `compute_scope(parent)`
+    first, then load (`Image`/`GridImage.load_hdf5`) the HDF of **`c`'s main-flow
+    predecessor** in the parent scope's dir (or the parent's `base_00.h5` when `c`
+    is first in image-flow order). That reconstructed image **is** the
+    sub-pipeline's runtime input.
+  Then `apply_with_intermediates(input_image, output_dir=S_dir, full_layers=True)`.
+- **Predecessor identification:** the block feeding `c`'s main image-input port in
+  the parent scope's image-flow topological order (the same order
+  `_topological_image_order` / `_bake_preview_cache_dag` already compute); if `c`
+  is first in flow, the input is the parent's source state (`base_00.h5`).
+- **Why no core change:** `apply_with_intermediates` already accepts the input
+  image — we simply pass the *threaded* one instead of the sample. The recursion
+  lives entirely in the builder/cache layer. Fidelity caveat is gone.
+- **Faithfulness depends on the v2 snapshot** (§1): the predecessor HDF must
+  restore class + `detect_mat`/`objmap`/grid state, hence `save2hdf5`.
+- **Minor cold-cache cost:** a parent's full run executes its container op, which
+  runs the nested pipeline once *uncaptured*, before we re-run that nested scope
+  for its own capture — so a cold deep preview runs nested content twice. Nesting
+  is shallow in practice; truncating the parent run at the container's predecessor
+  is a listed optimization (§Future).
 
 ## RAM analysis (the binding constraint)
 
@@ -404,7 +453,8 @@ compute pass (equal to a real run) and transient per-channel staging.
 
 **Added**
 - `gui/builder/_preview_cache.py` — session/scope dirs, per-scope manifest,
-  fingerprint, scope wipe.
+  chained fingerprint, scope wipe, and the recursive `compute_scope` that threads
+  each nested scope's real input from its parent's cache.
 - `gui/builder/_preview_tiles.py` — staging + DZI tile route.
 - `gui/builder/assets/preview.js` — `__phenotypicPreview` OSD glue.
 - Tests (see below).
@@ -432,6 +482,14 @@ Reuse `load_synth_yeast_plate()`; microbiology framing in docstrings.
   parent scope dir; (b) drilling in and previewing an inner node computes/reads
   the inner scope dir (its own `scope_hash`); (c) the two scopes' dirs coexist —
   previewing the inner node does **not** wipe the parent scope's cache.
+- **Integration — faithful inner input (threading):** put an `ImageEnhancer`
+  *before* a sub-pipeline in the parent scope, and a no-op/identity inner node
+  inside it. Assert the inner node's `detect_mat` preview equals the parent
+  enhancer's output (the threaded input), **not** the raw sample's `detect_mat`.
+  Then edit the parent enhancer's params and assert the inner scope's fingerprint
+  changes (chaining) → inner preview recomputes; edit a sibling branch and assert
+  the inner scope stays fresh. Verify a gridded source threads as a `GridImage`
+  (grid state survives the HDF round-trip).
 - **Error path:** a node that raises during apply records `manifest.error` and the
   caption reflects it without a server crash.
 - **e2e (manual / Playwright, FEATURES.md `manual`):** open modal, zoom/pan,
@@ -462,9 +520,7 @@ land (pre-commit validates `Test ref` on ✅ rows).
   destroy+remount).
 - Per-node (sub-pipeline) fingerprints to avoid recomputing unaffected nodes
   after a downstream edit.
-- **Faithful inner-node input:** recurse intermediate capture into nested
-  pipelines (or thread the container's real input image into a promoted inner
-  scope) so inner-node previews reflect the parent pipeline's upstream output
-  rather than the raw sample image. v1 matches the existing "Preview here"
-  behavior instead.
+- **Truncate the parent run at the container's predecessor** when threading a
+  nested scope's input, to avoid the cold-cache double-run of nested content
+  (§8). v1 accepts the minor redundancy.
 - Preview button on measurement/post nodes (render the DataFrame/table).
