@@ -134,11 +134,16 @@ def _iter_components(component):
 def test_bulk_paste_popover_opens_left() -> None:
     """The per-row bulk-paste popover opens leftward so it stays on-screen
     inside the right-docked offcanvas."""
-    from phenotypic.gui.results_viewer._filter_panel import _render_filter_row
+    from phenotypic.gui.results_viewer._filter_panel import (
+        _normalise_spec,
+        _render_filter_row,
+    )
 
-    row = _render_filter_row("idx1", "Metadata_Dataset", ["WT"], [])
+    row = _normalise_spec([{"id": "idx1", "column": "Metadata_Dataset",
+                            "values": ["WT"]}])[0]
+    node = _render_filter_row("idx1", row, [], is_numeric=False)
     popovers = [
-        n for n in _iter_components(row) if getattr(n, "_type", None) == "Popover"
+        n for n in _iter_components(node) if getattr(n, "_type", None) == "Popover"
     ]
     assert popovers, "expected a bulk-paste popover in the rendered row"
     assert all(getattr(p, "placement", None) == "left" for p in popovers)

@@ -75,3 +75,79 @@ def test_setters_ignore_unknown_idx() -> None:
     rows = [_blank_row()]
     out = set_row_range(rows, "nope", 1.0, 2.0)
     assert out[0]["range_min"] is None
+
+
+from phenotypic.gui.results_viewer._filter_panel import _render_filter_row
+from phenotypic.gui.results_viewer._filter_state import METHOD_CONTAINS, METHOD_RANGE
+
+
+def _iter(component):
+    yield component
+    children = getattr(component, "children", None)
+    if children is None:
+        return
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        if hasattr(child, "children") or hasattr(child, "id"):
+            yield from _iter(child)
+
+
+def _type_ids(node):
+    return {
+        c.id["type"]
+        for c in _iter(node)
+        if isinstance(getattr(c, "id", None), dict) and "type" in c.id
+    }
+
+
+def test_render_row_has_method_dropdown() -> None:
+    row = _normalise_spec([{"id": "r1", "column": "Metadata_Strain"}])[0]
+    node = _render_filter_row("r1", row, [], is_numeric=False)
+    assert "filter-row-method" in _type_ids(node)
+
+
+def test_range_method_renders_min_max_inputs() -> None:
+    row = _normalise_spec(
+        [{"id": "r1", "column": "Size_Area", "method": METHOD_RANGE}]
+    )[0]
+    node = _render_filter_row("r1", row, [], is_numeric=True)
+    ids_present = _type_ids(node)
+    assert "filter-row-range-min" in ids_present
+    assert "filter-row-range-max" in ids_present
+    assert "filter-row-values" not in ids_present
+
+
+def test_contains_method_renders_text_controls() -> None:
+    row = _normalise_spec(
+        [{"id": "r1", "column": "Metadata_ImageFile", "method": METHOD_CONTAINS}]
+    )[0]
+    node = _render_filter_row("r1", row, [], is_numeric=False)
+    ids_present = _type_ids(node)
+    assert "filter-row-text-pattern" in ids_present
+    assert "filter-row-text-regex" in ids_present
+    assert "filter-row-text-case" in ids_present
+
+
+def test_method_dropdown_disables_range_compare_for_text_column() -> None:
+    row = _normalise_spec([{"id": "r1", "column": "Metadata_Strain"}])[0]
+    node = _render_filter_row("r1", row, [], is_numeric=False)
+    dropdown = next(
+        c for c in _iter(node)
+        if isinstance(getattr(c, "id", None), dict)
+        and c.id.get("type") == "filter-row-method"
+    )
+    disabled = {o["value"] for o in dropdown.options if o.get("disabled")}
+    assert {"range", "compare"} <= disabled
+
+
+def test_method_dropdown_enables_range_compare_for_numeric_column() -> None:
+    row = _normalise_spec([{"id": "r1", "column": "Size_Area"}])[0]
+    node = _render_filter_row("r1", row, [], is_numeric=True)
+    dropdown = next(
+        c for c in _iter(node)
+        if isinstance(getattr(c, "id", None), dict)
+        and c.id.get("type") == "filter-row-method"
+    )
+    disabled = {o["value"] for o in dropdown.options if o.get("disabled")}
+    assert "range" not in disabled and "compare" not in disabled

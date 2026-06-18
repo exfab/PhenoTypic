@@ -153,6 +153,18 @@ def set_row_text(
     return rows
 
 
+# Human-readable labels for each filter method, in dropdown display order.
+_METHOD_LABELS: list[tuple[str, str]] = [
+    (METHOD_IS_ANY_OF, "Is any of"),
+    (METHOD_IS_NONE_OF, "Is none of"),
+    (METHOD_RANGE, "Range (between)"),
+    (METHOD_COMPARE, "Compare"),
+    (METHOD_CONTAINS, "Contains"),
+]
+# Methods that only make sense on a numeric column; disabled otherwise.
+_NUMERIC_ONLY_METHODS = {METHOD_RANGE, METHOD_COMPARE}
+
+
 # ---------------------------------------------------------------------------
 # Layout
 # ---------------------------------------------------------------------------
@@ -365,35 +377,44 @@ def _render_paste_chips(matched: list[str], unmatched: list[str]) -> list[Compon
 
 
 def _render_filter_rows(
-    rows: list[dict[str, Any]], df: pl.DataFrame
+    rows: list[dict[str, Any]], df: pl.DataFrame, output_root: OutputRoot
 ) -> list[Component]:
     """Render the dynamic filter rows for the rows-container."""
     column_options = _column_options(df)
     children: list[Component] = []
     for row in rows:
-        idx = row["id"]
         column = row["column"]
-        values = row["values"]
-        children.append(_render_filter_row(idx, column, values, column_options))
+        is_numeric = bool(column) and output_root.is_numeric_column(column)
+        children.append(
+            _render_filter_row(row["id"], row, column_options, is_numeric=is_numeric)
+        )
     return children
 
 
-def _render_filter_row(
-    idx: str,
-    column: str,
-    values: list[str],
-    column_options: list[dict[str, str]],
+def _build_method_dropdown(
+    idx: str, method: str, *, is_numeric: bool
 ) -> Component:
-    """Build a single filter-row component tree."""
-    column_dropdown = dcc.Dropdown(
-        id=ids.filter_row_column_id(idx),
-        options=column_options,
-        value=column or None,
-        searchable=True,
+    """Method selector; range/compare options disabled for non-numeric cols."""
+    options = [
+        {
+            "label": label,
+            "value": value,
+            "disabled": (value in _NUMERIC_ONLY_METHODS and not is_numeric),
+        }
+        for value, label in _METHOD_LABELS
+    ]
+    return dcc.Dropdown(
+        id=ids.filter_row_method_id(idx),
+        options=options,
+        value=method or METHOD_IS_ANY_OF,
         clearable=False,
-        placeholder="column",
+        searchable=False,
+        className="mb-2",
     )
 
+
+def _build_list_controls(idx: str, values: list[str]) -> list[Component]:
+    """The shared multi-select + bulk-paste controls (is_any_of / is_none_of)."""
     values_dropdown = dcc.Dropdown(
         id=ids.filter_row_values_id(idx),
         options=[{"label": v, "value": v} for v in values],
@@ -401,7 +422,6 @@ def _render_filter_row(
         multi=True,
         placeholder="values",
     )
-
     paste_button = dbc.Button(
         "Paste",
         id=ids.filter_row_paste_btn_id(idx),
@@ -410,7 +430,6 @@ def _render_filter_row(
         size="sm",
         n_clicks=0,
     )
-
     paste_popover = dbc.Popover(
         dbc.PopoverBody(
             [
@@ -447,6 +466,126 @@ def _render_filter_row(
         trigger=None,
         style={"minWidth": "20rem", "maxWidth": "28rem"},
     )
+    return [
+        html.Div(values_dropdown, className="mb-2"),
+        html.Div(paste_button, className="d-flex gap-1"),
+        paste_popover,
+    ]
+
+
+def _build_range_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        html.Div(
+            [
+                dcc.Input(
+                    id=ids.filter_row_range_min_id(idx),
+                    type="number",
+                    value=row["range_min"],
+                    placeholder="min",
+                    className="form-control form-control-sm",
+                    style={"width": "45%"},
+                ),
+                html.Span("–", className="mx-1"),
+                dcc.Input(
+                    id=ids.filter_row_range_max_id(idx),
+                    type="number",
+                    value=row["range_max"],
+                    placeholder="max",
+                    className="form-control form-control-sm",
+                    style={"width": "45%"},
+                ),
+            ],
+            className="d-flex align-items-center mb-2",
+        )
+    ]
+
+
+def _build_compare_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        html.Div(
+            [
+                dcc.Dropdown(
+                    id=ids.filter_row_compare_op_id(idx),
+                    options=[{"label": op, "value": op} for op in (">", ">=", "<", "<=")],
+                    value=row["compare_op"],
+                    clearable=False,
+                    searchable=False,
+                    placeholder="op",
+                    style={"width": "40%"},
+                ),
+                dcc.Input(
+                    id=ids.filter_row_compare_value_id(idx),
+                    type="number",
+                    value=row["compare_value"],
+                    placeholder="value",
+                    className="form-control form-control-sm ms-1",
+                    style={"width": "55%"},
+                ),
+            ],
+            className="d-flex align-items-center mb-2",
+        )
+    ]
+
+
+def _build_contains_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        dbc.Input(
+            id=ids.filter_row_text_pattern_id(idx),
+            type="text",
+            value=row["text_pattern"],
+            placeholder="contains…",
+            size="sm",
+            className="mb-2",
+        ),
+        html.Div(
+            [
+                dbc.Checkbox(
+                    id=ids.filter_row_text_regex_id(idx),
+                    label="regex",
+                    value=row["text_regex"],
+                    className="me-3",
+                ),
+                dbc.Checkbox(
+                    id=ids.filter_row_text_case_id(idx),
+                    label="case-sensitive",
+                    value=row["text_case_sensitive"],
+                ),
+            ],
+            className="d-flex small mb-2",
+        ),
+    ]
+
+
+def _render_filter_row(
+    idx: str,
+    row: dict[str, Any],
+    column_options: list[dict[str, str]],
+    *,
+    is_numeric: bool,
+) -> Component:
+    """Build a single filter-row component tree for the row's active method."""
+    column = row["column"]
+    method = row["method"]
+
+    column_dropdown = dcc.Dropdown(
+        id=ids.filter_row_column_id(idx),
+        options=column_options,
+        value=column or None,
+        searchable=True,
+        clearable=False,
+        placeholder="column",
+        className="mb-2",
+    )
+    method_dropdown = _build_method_dropdown(idx, method, is_numeric=is_numeric)
+
+    if method == METHOD_RANGE:
+        method_controls = _build_range_controls(idx, row)
+    elif method == METHOD_COMPARE:
+        method_controls = _build_compare_controls(idx, row)
+    elif method == METHOD_CONTAINS:
+        method_controls = _build_contains_controls(idx, row)
+    else:  # is_any_of / is_none_of
+        method_controls = _build_list_controls(idx, row["values"])
 
     remove_button = dbc.Button(
         "✕",
@@ -460,13 +599,10 @@ def _render_filter_row(
 
     return html.Div(
         [
-            html.Div(column_dropdown, className="mb-2"),
-            html.Div(values_dropdown, className="mb-2"),
-            html.Div(
-                [paste_button, remove_button],
-                className="d-flex gap-1 justify-content-start",
-            ),
-            paste_popover,
+            html.Div(column_dropdown),
+            method_dropdown,
+            *method_controls,
+            html.Div(remove_button, className="d-flex justify-content-end"),
         ],
         id=ids.filter_row_id(idx),
         className="filter-row mb-2",
@@ -546,7 +682,7 @@ def register_callbacks(
     def _render_rows(stored: Any) -> list[Component]:
         """Render one component tree per row in the spec store."""
         rows = _normalise_spec(stored)
-        return _render_filter_rows(rows, df)
+        return _render_filter_rows(rows, df, output_root)
 
     # --- 3. Column dropdown → spec ---------------------------------------
 
