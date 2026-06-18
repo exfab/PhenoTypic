@@ -54,10 +54,18 @@ def test_unclassified_primary_member_raises():
         _ = E.A.resolved_tier
 
 
-def test_parameterization_resolves_to_derived():
-    E = _make(DerivedMeasure, A={"derivation_type": "parameterization"})
+def test_parameterization_with_tier_resolves_to_derived():
+    E = _make(DerivedMeasure, A={"derivation_type": "parameterization", "tier": 1})
     assert E.A.resolved_kind == "derived"
-    assert E.A.resolved_tier is None
+    assert E.A.resolved_tier == 1
+
+
+def test_parameterization_without_tier_raises():
+    # parameterization members must always carry an explicit tier; only
+    # normalization legitimately defers its tier to the runtime target.
+    E = _make(DerivedMeasure, A={"derivation_type": "parameterization"})
+    with pytest.raises(ValueError):
+        _ = E.A.resolved_tier
 
 
 def test_primary_straddler_without_tier_raises():
@@ -173,3 +181,11 @@ def test_rst_table_includes_use_column():
     assert "Discriminative feature" in txt
     # Identity enums have no tier/use semantics -> column suppressed
     assert "Use" not in METADATA.rst_table()
+
+
+def test_derived_tier1_columns_surface_use_badge():
+    from phenotypic.schema import LOG_GROWTH_MODEL
+    txt = LOG_GROWTH_MODEL.rst_table()
+    assert "Use" in txt
+    assert "Tier 1" in txt
+    assert LOG_GROWTH_MODEL.R_FIT.use_label == "Direct phenotype (Tier 1)"

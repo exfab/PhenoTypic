@@ -17,6 +17,11 @@ _USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
     (1, "primary"): "Direct phenotype (Tier 1)",
     (2, "primary"): "Descriptive trait (Tier 2)",
     (3, "primary"): "Discriminative feature (Tier 3)",
+    # Derived Tier-1/Tier-2 columns (parameterization members) carry the same
+    # trust contract as their primary counterparts, so they reuse the exact
+    # same badge strings — no "(derived)" suffix.
+    (1, "derived"): "Direct phenotype (Tier 1)",
+    (2, "derived"): "Descriptive trait (Tier 2)",
 }
 
 
@@ -157,6 +162,12 @@ def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
     if member.derivation_type == "parameterization":
         # Explicit tier annotation overrides the default (None) for parameterization members
         # so that kinetics/magnitude params can be flagged Tier 1 while shape params are Tier 2.
+        # Unlike normalization (whose tier legitimately defers to the runtime target),
+        # parameterization members must always declare a tier.
+        if member.tier_override is None:
+            raise ValueError(
+                f"{member!r}: parameterization member needs an explicit Entry(tier=...)"
+            )
         return ("derived", member.tier_override)
     if member.tier_override is not None:
         return (cls.kind() or "primary", member.tier_override)
