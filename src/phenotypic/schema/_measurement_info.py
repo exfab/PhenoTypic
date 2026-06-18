@@ -141,9 +141,11 @@ def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
         return ("quality", None)
     if member.derivation_type == "normalization":
         return ("derived", None)  # tier inherited from the runtime target
-    if member.derivation_type == "parameterization":
-        return ("derived", None)
     cls = type(member)
+    if member.derivation_type == "parameterization":
+        # Explicit tier annotation overrides the default (None) for parameterization members
+        # so that kinetics/magnitude params can be flagged Tier 1 while shape params are Tier 2.
+        return ("derived", member.tier_override)
     if member.tier_override is not None:
         return (cls.kind() or "primary", member.tier_override)
     kind, tier = cls.kind(), cls.tier()

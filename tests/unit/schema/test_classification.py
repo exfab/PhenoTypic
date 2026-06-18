@@ -79,6 +79,35 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", derivation_type="bogus")
 
 
+def test_derived_growth_models_and_edge_correction():
+    from phenotypic.schema import (
+        LOG_GROWTH_MODEL, LINEAR_SOFTPLUS_MODEL, DOUBLE_SOFTPLUS_MODEL, EDGE_CORRECTION,
+    )
+    # LOG_GROWTH: kinetics -> Tier 1; regularization knobs -> diagnostic/quality
+    assert LOG_GROWTH_MODEL.R_FIT.resolved_tier == 1
+    assert LOG_GROWTH_MODEL.K_FIT.resolved_tier == 1
+    assert LOG_GROWTH_MODEL.N0_FIT.resolved_tier == 1
+    assert LOG_GROWTH_MODEL.GROWTH_RATE.resolved_tier == 1
+    for knob in (LOG_GROWTH_MODEL.LAM, LOG_GROWTH_MODEL.BETA, LOG_GROWTH_MODEL.K_MAX):
+        assert knob.resolved_kind == "quality"
+    # LINEAR_SOFTPLUS: v/s0/lam Tier 1; alpha Tier 2
+    assert LINEAR_SOFTPLUS_MODEL.v.resolved_tier == 1
+    assert LINEAR_SOFTPLUS_MODEL.s0.resolved_tier == 1
+    assert LINEAR_SOFTPLUS_MODEL.lam.resolved_tier == 1
+    assert LINEAR_SOFTPLUS_MODEL.alpha.resolved_tier == 2
+    # DOUBLE_SOFTPLUS: v/s0/lam/smax Tier 1; alpha/beta Tier 2; mode diagnostic
+    for m in (DOUBLE_SOFTPLUS_MODEL.v, DOUBLE_SOFTPLUS_MODEL.s0,
+              DOUBLE_SOFTPLUS_MODEL.lam, DOUBLE_SOFTPLUS_MODEL.smax):
+        assert m.resolved_tier == 1, m
+    assert DOUBLE_SOFTPLUS_MODEL.alpha.resolved_tier == 2
+    assert DOUBLE_SOFTPLUS_MODEL.beta.resolved_tier == 2
+    assert DOUBLE_SOFTPLUS_MODEL.mode.resolved_kind == "quality"
+    # EDGE_CORRECTION: normalization, tier deferred to target
+    for m in EDGE_CORRECTION:
+        assert m.resolved_kind == "derived"
+        assert m.resolved_tier is None
+
+
 def test_shape_straddles_tier1_and_tier2():
     from phenotypic.schema import SHAPE
     tier1 = {SHAPE.AREA, SHAPE.CONVEX_AREA, SHAPE.MEDIAN_RADIUS, SHAPE.MEAN_RADIUS,
