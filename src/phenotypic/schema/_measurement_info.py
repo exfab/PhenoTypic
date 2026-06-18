@@ -9,6 +9,9 @@ from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from typing import Final
 
+_DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diagnostic"})
+_VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
+
 
 @dataclass(frozen=True, slots=True)
 class Entry:
@@ -31,6 +34,9 @@ class Entry:
     _: KW_ONLY
     bio_desc: str = ""
     image: str | None = None
+    tier: int | None = None
+    derivation_type: str | None = None
+    derives_from: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -40,6 +46,14 @@ class Entry:
                 raise TypeError(f"Entry.{name} must be a string")
         if self.image is not None and not isinstance(self.image, str):
             raise TypeError("Entry.image must be a string path or None")
+        if self.tier is not None and self.tier not in (1, 2, 3):
+            raise ValueError("Entry.tier must be 1, 2, 3, or None")
+        if self.derivation_type is not None and self.derivation_type not in _DERIVATION_TYPES:
+            raise ValueError(
+                f"Entry.derivation_type must be one of {sorted(_DERIVATION_TYPES)} or None"
+            )
+        if self.derives_from is not None and not isinstance(self.derives_from, str):
+            raise TypeError("Entry.derives_from must be a string token or None")
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -114,6 +128,35 @@ def _render_info_table(
             else:
                 lines.append("     -")
     return "\n".join(lines)
+
+
+def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
+    """Resolve (kind, tier) for a member; raise if unclassified.
+
+    Precedence: diagnostic/normalization derivation_type, then an explicit
+    Entry tier override, then the member's base-class kind()/tier().
+    """
+    if member.derivation_type == "diagnostic":
+        return ("quality", None)
+    if member.derivation_type == "normalization":
+        return ("derived", None)  # tier inherited from the runtime target
+    if member.derivation_type == "parameterization":
+        return ("derived", None)
+    cls = type(member)
+    if member.tier_override is not None:
+        return (cls.kind() or "primary", member.tier_override)
+    kind, tier = cls.kind(), cls.tier()
+    if kind is None:
+        raise ValueError(f"{member!r}: no kind assigned (re-parent to a classification base)")
+    if kind == "primary" and tier is None:
+        raise ValueError(
+            f"{member!r}: primary member needs a tier (a tier base class or Entry(tier=...))"
+        )
+    if kind == "derived" and tier is None:
+        raise ValueError(
+            f"{member!r}: derived member needs a derivation_type or Entry(tier=...)"
+        )
+    return (kind, tier)
 
 
 class MeasurementInfo(str, Enum):
@@ -218,6 +261,9 @@ class MeasurementInfo(str, Enum):
     bio_desc: str
     image: str | None
     pair: tuple[str, str]
+    tier_override: int | None
+    derivation_type: str | None
+    derives_from: str | None
 
     @classmethod
     def category(cls) -> str:
@@ -236,6 +282,16 @@ class MeasurementInfo(str, Enum):
             NotImplementedError: If not implemented by a subclass.
         """
         raise NotImplementedError
+
+    @classmethod
+    def kind(cls) -> str | None:
+        """Coarse classification kind, or None until assigned by a base class."""
+        return None
+
+    @classmethod
+    def tier(cls) -> int | None:
+        """Trust tier (1/2/3) for primary measurements, or None."""
+        return None
 
     @property
     def CATEGORY(self) -> str:
@@ -271,6 +327,9 @@ class MeasurementInfo(str, Enum):
         obj.bio_desc = entry.bio_desc
         obj.image = entry.image
         obj.pair = (entry.label, entry.desc)
+        obj.tier_override = entry.tier
+        obj.derivation_type = entry.derivation_type
+        obj.derives_from = entry.derives_from
         return obj
 
     def __str__(self) -> str:
@@ -284,6 +343,16 @@ class MeasurementInfo(str, Enum):
             str: The full prefixed name of the measurement (e.g., '{category}_{label}').
         """
         return self._value_
+
+    @property
+    def resolved_kind(self) -> str:
+        """The coarse kind for this member (identity/quality/primary/derived)."""
+        return _classify(self)[0]
+
+    @property
+    def resolved_tier(self) -> int | None:
+        """The trust tier (1/2/3) for this member, or None for non-primary."""
+        return _classify(self)[1]
 
     @classmethod
     def get_labels(cls) -> list[str]:
