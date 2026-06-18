@@ -54,9 +54,16 @@ import dash
 from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 from flask import current_app
 
-from phenotypic.gui._config import CFG_IMAGE_ROOT, CFG_OPERATION_REGISTRY
+from phenotypic.gui._config import (
+    CFG_IMAGE_ROOT,
+    CFG_OPERATION_REGISTRY,
+    CFG_URL_PREFIX,
+)
 from phenotypic.gui.builder import _ids as ids
+from phenotypic.gui.builder import _preview_cache as pc
 from phenotypic.gui.builder._ids import LoadPickerPage
+from phenotypic.gui.builder._preview_callbacks import build_preview_payload
+from phenotypic.gui.builder._preview_tiles import preview_dzi_url
 from phenotypic.gui.builder._directory_browser import (
     IMAGE_EXTS,
     PIPELINE_EXTS,
@@ -6522,6 +6529,117 @@ def register_callbacks(app: dash.Dash) -> None:
         """,
         Output(ids.PICKER_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
         Input(ids.MODAL_POINT_PICKER, "is_open"),
+        prevent_initial_call=True,
+    )
+
+    # ----------------------------------------------------------------------
+    # 9b. Node-output preview modal (zoomable OSD viewer + layer toggle).
+    # ----------------------------------------------------------------------
+    @app.callback(
+        Output(ids.MODAL_NODE_PREVIEW, "is_open", allow_duplicate=True),
+        Output(ids.STORE_PREVIEW_TARGET, "data"),
+        Input({"type": ids.LINEAR_NODE_ACTION, "surface": ALL, "action": "preview",
+               "scope_path": ALL, "block_id": ALL}, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def open_node_preview(_clicks):
+        if not isinstance(ctx.triggered_id, dict) or not ctx.triggered \
+                or not ctx.triggered[0].get("value"):
+            return no_update, no_update
+        tid = ctx.triggered_id
+        scope_path = _decode_linear_scope_path(tid.get("scope_path"))
+        block_id = _decode_linear_optional(tid.get("block_id"))
+        return True, {"block_id": block_id, "scope_path": scope_path}
+
+    @app.callback(
+        Output(ids.PREVIEW_LAYER_RADIO, "options"),
+        Output(ids.PREVIEW_LAYER_RADIO, "value"),
+        Output(ids.MODAL_NODE_PREVIEW_TITLE, "children"),
+        Output(ids.PREVIEW_CAPTION, "children"),
+        Output(ids.PREVIEW_DZI_URL_STORE, "data"),
+        Input(ids.STORE_PREVIEW_TARGET, "data"),
+        State(ids.STORE_SESSION_ID, "data"),
+        State(ids.STORE_BUILDER_STATE, "data"),
+        State(ids.STORE_IMAGE_PATH, "data"),
+        State(ids.INPUT_NROWS, "value"),
+        State(ids.INPUT_NCOLS, "value"),
+        prevent_initial_call=True,
+    )
+    def compute_node_preview(target, session_id, state_data, image_path,
+                             nrows, ncols):
+        if not target or not state_data:
+            return no_update, no_update, no_update, no_update, no_update
+        if not session_id:
+            session_id = uuid.uuid4().hex
+        url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
+        try:
+            payload = build_preview_payload(
+                session_id=session_id, state_data=state_data,
+                block_id=target["block_id"], scope_path=target["scope_path"],
+                image_path=image_path, nrows=nrows, ncols=ncols,
+                url_prefix=url_prefix,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Node preview failed")
+            return [], None, "Preview", _format_exception(exc), None
+        return (payload["options"], payload["value"], payload["title"],
+                payload["caption"], payload["dzi_url"])
+
+    @app.callback(
+        Output(ids.PREVIEW_DZI_URL_STORE, "data", allow_duplicate=True),
+        Output(ids.PREVIEW_CAPTION, "children", allow_duplicate=True),
+        Input(ids.PREVIEW_LAYER_RADIO, "value"),
+        State(ids.STORE_PREVIEW_TARGET, "data"),
+        State(ids.STORE_SESSION_ID, "data"),
+        prevent_initial_call=True,
+    )
+    def switch_preview_layer(channel, target, session_id):
+        if not channel or not target or not session_id:
+            return no_update, no_update
+        scope_path = target["scope_path"]
+        shash = pc.scope_hash(scope_path)
+        url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
+        url = preview_dzi_url(url_prefix, session_id, shash, target["block_id"], channel)
+        # Keep the W×H prefix consistent with compute_node_preview's caption.
+        manifest = pc.read_manifest(session_id, scope_path) or {}
+        node = manifest.get("nodes", {}).get(target["block_id"], {})
+        h, w = node.get("shape", [0, 0])
+        return url, f"{w}×{h} · {channel}"
+
+    @app.callback(
+        Output(ids.MODAL_NODE_PREVIEW, "is_open", allow_duplicate=True),
+        Input("btn-preview-close", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def close_node_preview(_clicks):
+        return (False,)
+
+    app.clientside_callback(
+        """
+        function(dziUrl) {
+            const ns = window.__phenotypicNodePreview;
+            if (!ns || !ns.mountViewer) { return window.dash_clientside.no_update; }
+            if (!dziUrl) { if (ns.disposeViewer) ns.disposeViewer(); return window.dash_clientside.no_update; }
+            requestAnimationFrame(function () { ns.mountViewer("preview-osd", dziUrl); });
+            return Date.now();
+        }
+        """,
+        Output(ids.PREVIEW_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.PREVIEW_DZI_URL_STORE, "data"),
+        prevent_initial_call=True,
+    )
+
+    app.clientside_callback(
+        """
+        function(isOpen) {
+            const ns = window.__phenotypicNodePreview;
+            if (!ns || !ns.disposeViewer) { return window.dash_clientside.no_update; }
+            if (!isOpen) { ns.disposeViewer(); }
+            return Date.now();
+        }
+        """,
+        Output(ids.PREVIEW_OSD_MOUNT_TRIGGER, "data", allow_duplicate=True),
+        Input(ids.MODAL_NODE_PREVIEW, "is_open"),
         prevent_initial_call=True,
     )
 
