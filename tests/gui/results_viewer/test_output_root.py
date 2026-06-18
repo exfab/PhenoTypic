@@ -369,3 +369,33 @@ def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
     assert out.column_value_sets["Metadata_Strain"] == sorted(
         df.get_column("Metadata_Strain").to_list()
     )
+
+
+def test_is_numeric_column_true_for_float_measurement(tmp_path) -> None:
+    _make_minimal_output(tmp_path)  # Size_Area is Float64
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Size_Area") is True
+
+
+def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1", "d1"],
+            "Metadata_ImageFile": ["a", "b"],
+            "Metadata_Time": ["6", "24"],
+        }
+    )
+    _write_master_parquet(tmp_path, df)
+    for stem in ("a", "b"):
+        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Metadata_Time") is True
+
+
+def test_is_numeric_column_false_for_text_and_missing(tmp_path) -> None:
+    _make_minimal_output(tmp_path)  # Metadata_Strain = s1, s2
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Metadata_Strain") is False
+    assert out.is_numeric_column("NoSuchColumn") is False

@@ -277,6 +277,22 @@ class OutputRoot:
             )
         ]
 
+    def is_numeric_column(self, column: str) -> bool:
+        """Return ``True`` if ``column`` can be filtered numerically.
+
+        True when the column's polars dtype is numeric (covers every
+        ``Size_*`` / ``Shape_*`` / ``Intensity_*`` measurement column for
+        free), or when its filter value-set parses entirely as floats
+        (covers numeric-valued string metadata like ``Metadata_Time``).
+        Unknown columns return ``False``. Drives the Range/Compare gate in
+        the filter sidebar.
+        """
+        if column not in self.master_df.columns:
+            return False
+        if self.master_df.schema[column].is_numeric():
+            return True
+        return _all_parse_as_float(self.column_value_sets.get(column, []))
+
 
 def _ensure_required_columns(
     df: pl.DataFrame,
