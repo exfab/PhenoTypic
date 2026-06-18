@@ -2,7 +2,7 @@ import pytest
 from phenotypic.schema import Entry
 from phenotypic.schema._tiers import (
     DirectPhenotype, DescriptiveTrait, DiscriminativeFeature,
-    IdentityInfo, QualityInfo, DerivedMeasure,
+    IdentityInfo, QualityInfo, DerivedMeasure, PrimaryMeasure,
 )
 
 
@@ -52,6 +52,24 @@ def test_unclassified_primary_member_raises():
     E = _make(DerivedMeasure, A={})        # derived, no tier, no derivation_type
     with pytest.raises(ValueError):
         _ = E.A.resolved_tier
+
+
+def test_parameterization_resolves_to_derived():
+    E = _make(DerivedMeasure, A={"derivation_type": "parameterization"})
+    assert E.A.resolved_kind == "derived"
+    assert E.A.resolved_tier is None
+
+
+def test_primary_straddler_without_tier_raises():
+    E = _make(PrimaryMeasure, A={})
+    with pytest.raises(ValueError):
+        _ = E.A.resolved_tier
+
+
+def test_primary_straddler_with_entry_tier():
+    E = _make(PrimaryMeasure, A={"tier": 2})
+    assert E.A.resolved_kind == "primary"
+    assert E.A.resolved_tier == 2
 
 
 def test_entry_validates_tier_and_derivation_type():

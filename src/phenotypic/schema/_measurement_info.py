@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Final
 
 _DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diagnostic"})
+# Not used by _classify; consumed by the Task 10 coverage-gate test.
 _VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
 
 
@@ -154,7 +155,8 @@ def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
         )
     if kind == "derived" and tier is None:
         raise ValueError(
-            f"{member!r}: derived member needs a derivation_type or Entry(tier=...)"
+            f"{member!r}: derived member needs a derivation_type "
+            "(diagnostic/normalization/parameterization)"
         )
     return (kind, tier)
 
