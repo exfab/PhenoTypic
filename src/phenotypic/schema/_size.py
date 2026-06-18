@@ -1,9 +1,10 @@
 """The labels and descriptions of the size measurements."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DirectPhenotype
 
 
-class SIZE(MeasurementInfo):
+class SIZE(DirectPhenotype):
     """Measure colony area and integrated intensity as lightweight size proxies.
 
     Extract two fundamental size metrics per detected colony: pixel area

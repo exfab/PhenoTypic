@@ -1,9 +1,10 @@
 """Per-object grayscale intensity summary statistics."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DirectPhenotype
 
 
-class INTENSITY(MeasurementInfo):
+class INTENSITY(DirectPhenotype):
     """Measure grayscale intensity statistics of detected colonies.
 
     Compute per-colony intensity metrics from the grayscale channel:

@@ -79,6 +79,13 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", derivation_type="bogus")
 
 
+def test_tier1_primary_enums():
+    from phenotypic.schema import SIZE, INTENSITY
+    for enum in (SIZE, INTENSITY):
+        assert all(m.resolved_kind == "primary" for m in enum), enum.__name__
+        assert all(m.resolved_tier == 1 for m in enum), enum.__name__
+
+
 def test_quality_enums_resolve_quality():
     from phenotypic.schema import (
         QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
