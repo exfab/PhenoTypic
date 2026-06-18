@@ -257,9 +257,14 @@ the gate:
   it imports before `from_json`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` + `require_license_acceptance`
   (`detect/nn/_checkpoint_manager.py`) gate gated-weight downloads — the hook for Spec 2's
   SAM3/DINOv3. Third-party licensing scaffolding: root `NOTICE` + `licenses/` + `MANIFEST.in`.
-- **HPCC SLURM CPU heterogeneity:** on a mixed partition, pre-AVX CPU nodes can SIGILL
-  ("Illegal instruction (core dumped)") the modern numpy/scipy wheels — this affects ALL
-  phenotypic SLURM runs, not just the staged engine. Pin to a modern partition/constraint.
+- **HPCC SLURM CPU heterogeneity (polars build):** the cluster has pre-AVX2 nodes
+  (`abu_dhabi` = c01–30, `ivy` = h01–06). The stock `polars` wheel bakes AVX2 into its
+  baseline with no runtime fallback, so it SIGILLs ("Illegal instruction (core dumped)")
+  there. We therefore **ship `polars-lts-cpu` by default** (baseline-ISA build, runs
+  everywhere). numpy/scipy use runtime SIMD dispatch and are fine on those nodes. On
+  AVX2-capable machines you can swap in the faster stock `polars` build (same
+  `import polars` API) — see `docs/source/how_to/pages/polars_cpu_build.md`. Pinning
+  jobs to AVX2 partitions/constraints is an alternative if you prefer the stock build.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
