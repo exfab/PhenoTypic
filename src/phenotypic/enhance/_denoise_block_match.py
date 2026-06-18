@@ -9,11 +9,11 @@ from bm3d.profiles import BM3DStages
 from pydantic import Field
 
 from ..abc_ import ImageDenoiser
-from ..tools_.mixin import _GATSupportMixin
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.typing_ import TuneSpec
 
 
-class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
+class DenoiseBlockMatch(_GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
 
     Groups similar image patches across the plate and filters them jointly

@@ -16,19 +16,19 @@ class TestPointPickerWidget:
     """Tests for the public PointPickerWidget interface."""
 
     def test_init_stores_max_points(self):
-        from phenotypic.tools_.napari_ import PointPickerWidget
+        from phenotypic.sdk_.napari_ import PointPickerWidget
 
         w = PointPickerWidget(max_points=5)
         assert w._max_points == 5
 
     def test_init_default_max_points_is_none(self):
-        from phenotypic.tools_.napari_ import PointPickerWidget
+        from phenotypic.sdk_.napari_ import PointPickerWidget
 
         w = PointPickerWidget()
         assert w._max_points is None
 
     def test_run_raises_import_error_without_napari(self):
-        from phenotypic.tools_.napari_ import PointPickerWidget
+        from phenotypic.sdk_.napari_ import PointPickerWidget
 
         w = PointPickerWidget()
         with patch(
@@ -56,7 +56,7 @@ def _make_mock_panel(
     exercise ``_on_data_changed``, ``_delete_selected``, ``_clear_all``, and
     ``_confirm`` directly.
     """
-    from phenotypic.tools_.napari_._point_picker_widget import _PointPickerPanel
+    from phenotypic.sdk_.napari_._point_picker_widget import _PointPickerPanelLogic
 
     panel = MagicMock()
 
@@ -83,13 +83,13 @@ def _make_mock_panel(
     # confirmed_points default
     panel.confirmed_points = np.empty((0, 2))
 
-    # Bind real methods from the class to the mock instance
-    panel._on_data_changed = lambda event=None: _PointPickerPanel._on_data_changed(
+    # Bind real methods from the logic class to the mock instance
+    panel._on_data_changed = lambda event=None: _PointPickerPanelLogic._on_data_changed(
         panel, event
     )
-    panel._delete_selected = lambda: _PointPickerPanel._delete_selected(panel)
-    panel._clear_all = lambda: _PointPickerPanel._clear_all(panel)
-    panel._confirm = lambda: _PointPickerPanel._confirm(panel)
+    panel._delete_selected = lambda: _PointPickerPanelLogic._delete_selected(panel)
+    panel._clear_all = lambda: _PointPickerPanelLogic._clear_all(panel)
+    panel._confirm = lambda: _PointPickerPanelLogic._confirm(panel)
 
     return panel
 
@@ -236,3 +236,34 @@ class TestConfirm:
         panel._confirm()
 
         assert panel.confirmed_points.shape == (0, 2)
+
+
+class TestRealPanelConstruction:
+    """Build the actual Qt dock widget (regression for the __bases__ bug).
+
+    The MagicMock-based tests never instantiate a real QWidget, so they could
+    not catch ``TypeError: __bases__ assignment: 'QWidget' deallocator differs
+    from 'object'`` raised by the old ``__new__`` trick under PyQt6. Requires a
+    live Qt binding (qt-test group, offscreen platform).
+    """
+
+    def test_factory_builds_qwidget_and_confirm_writes_points(self, qtbot):
+        from qtpy.QtWidgets import QWidget
+
+        from phenotypic.sdk_.napari_._point_picker_widget import (
+            _make_point_picker_panel,
+        )
+
+        points_layer = MagicMock()
+        points_layer.data = np.array([[1.0, 2.0], [3.0, 4.0]])
+        viewer = MagicMock()
+
+        panel = _make_point_picker_panel(viewer, points_layer, max_points=None)
+        qtbot.addWidget(panel)
+
+        assert isinstance(panel, QWidget)
+
+        panel._confirm()
+
+        np.testing.assert_array_equal(panel.confirmed_points, points_layer.data)
+        viewer.close.assert_called_once()

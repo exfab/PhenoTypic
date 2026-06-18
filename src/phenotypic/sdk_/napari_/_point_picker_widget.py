@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 if TYPE_CHECKING:
-    import napari
+    import napari  # noqa: F401
 
 
 class PointPickerWidget:
@@ -44,12 +44,16 @@ class PointPickerWidget:
             )
         import napari
 
+        from ._layers import add_image_layer
+
         viewer = napari.Viewer(title="Point Picker")
 
+        # Non-stretched contrast (integer → full dtype range, normalized float →
+        # (0, 1)) so reference layers render at true brightness.
         if not image.rgb.isempty():
-            image.rgb.napari(viewer=viewer, layer_name="rgb")
-        image.gray.napari(viewer=viewer, layer_name="gray")
-        image.detect_mat.napari(viewer=viewer, layer_name="detect_mat")
+            add_image_layer(viewer, image.rgb[:], name="rgb")
+        add_image_layer(viewer, image.gray[:], name="gray")
+        add_image_layer(viewer, image.detect_mat[:], name="detect_mat")
 
         points_layer = viewer.add_points(
             np.empty((0, 2)),
@@ -60,7 +64,9 @@ class PointPickerWidget:
         )
         points_layer.mode = "add"
 
-        panel = _PointPickerPanel(viewer, points_layer, max_points=self._max_points)
+        panel = _make_point_picker_panel(
+            viewer, points_layer, max_points=self._max_points
+        )
         viewer.window.add_dock_widget(panel, name="Point Picker", area="right")
 
         napari.run()
@@ -68,79 +74,24 @@ class PointPickerWidget:
         return panel.confirmed_points
 
 
-class _PointPickerPanel:
-    """Dock widget providing point list management and confirmation controls.
+class _PointPickerPanelLogic:
+    """Qt-independent point-list/confirmation logic for the point picker dock.
 
-    Inherits from ``QWidget`` at runtime (via ``__new__``) so that ``qtpy``
-    is not imported at module level.
-
-    Args:
-        viewer: The napari viewer instance.
-        points_layer: The napari Points layer to manage.
-        max_points: Maximum number of points allowed. None means unlimited.
+    Kept separate from the ``QWidget`` subclass (built lazily in
+    :func:`_make_point_picker_panel`) so the behaviour is importable and
+    unit-testable without a Qt event loop. The concrete dock widget mixes this
+    into ``QWidget`` and supplies ``_viewer``, ``_points_layer``,
+    ``_max_points``, ``_updating``, ``_list_widget``, and ``confirmed_points``.
     """
 
-    def __new__(cls, *args, **kwargs):  # noqa: ARG003
-        from qtpy.QtWidgets import QWidget
+    _viewer: Any
+    _points_layer: Any
+    _list_widget: Any
+    _max_points: int | None
+    _updating: bool
+    confirmed_points: np.ndarray
 
-        # Dynamically create a subclass that has QWidget in its MRO.
-        if not issubclass(cls, QWidget):
-            cls.__bases__ = (QWidget,)
-        instance = QWidget.__new__(cls)
-        return instance
-
-    def __init__(
-        self,
-        viewer: napari.Viewer,
-        points_layer,
-        *,
-        max_points: int | None = None,
-    ) -> None:
-        from qtpy.QtCore import Qt
-        from qtpy.QtWidgets import (
-            QHBoxLayout,
-            QLabel,
-            QListWidget,
-            QPushButton,
-            QVBoxLayout,
-            QWidget,
-        )
-
-        QWidget.__init__(self)  # type: ignore[arg-type]
-
-        self._viewer = viewer
-        self._points_layer = points_layer
-        self._max_points = max_points
-        self._updating = False
-        self.confirmed_points: np.ndarray = np.empty((0, 2))
-
-        layout = QVBoxLayout(self)  # type: ignore[call-overload]
-        layout.setContentsMargins(4, 4, 4, 4)
-
-        header = QLabel("Selected Points (y, x)")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(header)
-
-        self._list_widget = QListWidget()
-        layout.addWidget(self._list_widget)
-
-        btn_row = QHBoxLayout()
-        self._delete_btn = QPushButton("Delete Selected")
-        self._clear_btn = QPushButton("Clear All")
-        btn_row.addWidget(self._delete_btn)
-        btn_row.addWidget(self._clear_btn)
-        layout.addLayout(btn_row)
-
-        self._confirm_btn = QPushButton("Confirm")
-        layout.addWidget(self._confirm_btn)
-
-        self._delete_btn.clicked.connect(self._delete_selected)
-        self._clear_btn.clicked.connect(self._clear_all)
-        self._confirm_btn.clicked.connect(self._confirm)
-
-        self._points_layer.events.data.connect(self._on_data_changed)
-
-    def _on_data_changed(self, event=None) -> None:  # noqa: ARG001
+    def _on_data_changed(self, event=None) -> None:  # noqa: ARG002
         """Rebuild list widget from the current points layer data."""
         if self._updating:
             return
@@ -178,3 +129,70 @@ class _PointPickerPanel:
         """Store the current points and close the viewer."""
         self.confirmed_points = self._points_layer.data.copy()
         self._viewer.close()
+
+
+def _make_point_picker_panel(viewer, points_layer, *, max_points: int | None = None):
+    """Build the napari dock widget with point-list and confirmation controls.
+
+    The ``QWidget`` subclass is defined here (lazily, on first call) rather than
+    at module import so ``qtpy`` stays an optional dependency. Defining it with
+    ``QWidget`` as a real base at class-creation time also avoids mutating
+    ``__bases__`` after the fact, which CPython forbids when the base's
+    deallocator differs (PyQt6's sip-wrapped ``QWidget`` vs ``object``).
+
+    Args:
+        viewer: The napari viewer instance.
+        points_layer: The napari Points layer to manage.
+        max_points: Maximum number of points allowed. None means unlimited.
+
+    Returns:
+        A ``QWidget`` dock panel wired to the :class:`_PointPickerPanelLogic`
+        callbacks.
+    """
+    from qtpy.QtCore import Qt
+    from qtpy.QtWidgets import (
+        QHBoxLayout,
+        QLabel,
+        QListWidget,
+        QPushButton,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    class _PointPickerPanel(QWidget, _PointPickerPanelLogic):
+        def __init__(self) -> None:
+            QWidget.__init__(self)
+
+            self._viewer = viewer
+            self._points_layer = points_layer
+            self._max_points = max_points
+            self._updating = False
+            self.confirmed_points = np.empty((0, 2))
+
+            layout = QVBoxLayout(self)
+            layout.setContentsMargins(4, 4, 4, 4)
+
+            header = QLabel("Selected Points (y, x)")
+            header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(header)
+
+            self._list_widget = QListWidget()
+            layout.addWidget(self._list_widget)
+
+            btn_row = QHBoxLayout()
+            self._delete_btn = QPushButton("Delete Selected")
+            self._clear_btn = QPushButton("Clear All")
+            btn_row.addWidget(self._delete_btn)
+            btn_row.addWidget(self._clear_btn)
+            layout.addLayout(btn_row)
+
+            self._confirm_btn = QPushButton("Confirm")
+            layout.addWidget(self._confirm_btn)
+
+            self._delete_btn.clicked.connect(self._delete_selected)
+            self._clear_btn.clicked.connect(self._clear_all)
+            self._confirm_btn.clicked.connect(self._confirm)
+
+            self._points_layer.events.data.connect(self._on_data_changed)
+
+    return _PointPickerPanel()
