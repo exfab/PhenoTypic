@@ -16,11 +16,13 @@ node's output, with a **layer toggle** over the layers that exist at that node
 
 Previews are computed **faithfully at full resolution** (identical to a real
 single-image run) and cached as **full-resolution HDF5 files on disk**, one per
-node, under a per-session temp directory. Zoom is served by the **existing DZI
-tiler** via a per-`(node, channel)` staging step, so steady-state RAM is near
-zero. Cache freshness is decided by comparing the **stored pipeline** (plus the
-source-image identity) against the current pipeline; a mismatch wipes and
-recomputes.
+node, under a per-session **per-scope** temp directory (the scope unit is what
+makes this compose with nested sub-pipelines — see **Embedded / nested
+pipelines**). Zoom is served by the **existing DZI tiler** via a per-`(node,
+channel)` staging step, so steady-state RAM is near zero. Cache freshness is
+decided per scope by comparing the **stored (scope) pipeline** plus the
+source-image identity against the current one; a mismatch wipes and recomputes
+just that scope.
 
 This feature is overwhelmingly an **extension of existing infrastructure**. The
 builder's **point picker** is already an OSD-in-modal viewer with a channel
@@ -67,6 +69,7 @@ pattern to all layers, per node, sourced from on-disk HDFs.
 | Per-session id + server-side cache | `STORE_SESSION_ID`, `builder/_session.py` (`IntermediatesCache`) | Session keying |
 | Node-card render + pattern-matching action ids (`linear_node_action_id(action, scope_path, block_id, surface)`, type `LINEAR_NODE_ACTION`) | `builder/_linear_layout.py:493` (`_block_card`), `builder/_ids.py` | Button id + card hook |
 | DAG→pipeline conversion + topo bake ordering | `builder/_conversion_dag.py`, `_callbacks.py:6946` (`_bake_preview_cache_dag`) | block_id↔op_key mapping |
+| Scope promotion (drill into a sub-pipeline scope as a temp root) | `_callbacks.py:1706` (`_linear_prefix_state_for_preview`), `:5470` (`run_linear_prefix_preview`), `_linear_model.py:146` (`scope_at_path`) | Per-scope compute for nested nodes |
 | Source-image resolution (loaded path or synthetic) | `_callbacks.py:7022` (`_load_preview_image`), `SYNTHETIC_SENTINEL` | Compute input |
 | Sandbox-safe path components / token charset guards | `_shared/tiles.py` (`is_safe_path_component`) | Route validation |
 | Ephemeral temp cache wiped on launch + `atexit` | `browse/_source_render.py` (`init_cache`/`wipe_cache`) | Lifecycle precedent |
@@ -82,37 +85,46 @@ radius on the existing, working inspector feature.
 
 ```
 [node card preview button click]
-        │  (block_id via ctx.triggered_id)
+        │  (block_id AND scope_path via ctx.triggered_id)
         ▼
 [open callback] ── opens dbc.Modal (backdrop="static") + dcc.Loading
         │
         ▼
-[compute/stage callback]
-   1. resolve session_dir = preview_cache.ensure(session_id)
-   2. current_fp = fingerprint(pipeline_json, source_image_identity)
+[compute/stage callback]    # cache unit = (session, scope), not whole pipeline
+   1. scope_key = join(scope_path); scope_dir = preview_cache.ensure(session, scope_key)
+   2. current_fp = fingerprint(scope_pipeline_json, source_image_identity)
    3. if manifest.fingerprint != current_fp:   # stale or missing
-          wipe(session_dir)
-          image  = _load_preview_image(...)               # full-res source
-          pipe   = to_pipeline_dag(state)
+          wipe(scope_dir)
+          scope        = scope_at_path(state.root, scope_path)
+          prefix_state = temp_state_rooted_at(scope)   # reuse Preview-here machinery
+          image        = _load_preview_image(...)       # full-res source
+          pipe         = to_pipeline_dag(prefix_state)  # scope promoted to root
           pipe.apply_with_intermediates(image,
-                     output_dir=session_dir, full_layers=True)   # CORE FLAG
+                     output_dir=scope_dir, full_layers=True)   # CORE FLAG
           write manifest.json {fingerprint, nodes:{block_id:{hdf, layers,
-                     shape, num_objects}}, error?}
+                     shape, num_objects}}, error?}        # all nodes in this scope
    4. choose default channel for this node (render_node_preview rule)
-   5. stage (node, channel) → DZI  (lazy; see tile route)
+   5. stage (scope, node, channel) → DZI  (lazy; see tile route)
    6. write PICKER-style DZI URL store → triggers clientside OSD mount
         │
         ▼
 [clientside OSD callback]  __phenotypicPreview.mountViewer(dziUrl)
 
-[layer radio change] → stage (node, new_channel) → DZI url store → remount
+[layer radio change] → stage (scope, node, new_channel) → DZI url store → remount
 
-[GET /tiles/preview/<session>/<block_id>/<channel>.dzi (+ _files/...)]
-   → resolve manifest → hdf path
+[GET /tiles/preview/<session>/<scope_hash>/<block_id>/<channel>.dzi (+ _files/...)]
+   → resolve scope manifest → hdf path
    → stage PNG if absent: load_layer_hdf5(hdf, channel) → uint8/colorized PNG
    → _dzi_tiler.tile(png, dzi_dir)   # idempotent, pyvips-streamed
    → send_from_directory(tile)
 ```
+
+> A **container (sub-pipeline) node** is one top-level op of its parent scope, so
+> its preview HDF (the whole sub-pipeline's *final* output) lives in the **parent
+> scope's** dir. Previewing nodes *inside* a sub-pipeline requires drilling into
+> it (the builder renders one scope's cards at a time); those cards' buttons carry
+> the inner `scope_path`, so they compute/read that inner scope's dir. See
+> **Embedded / nested pipelines** below.
 
 ## Component design
 
@@ -171,7 +183,11 @@ sub-region reads are a possible future optimization but **not required** for v1
 
 ### 2. Preview disk cache — `builder/_preview_cache.py` (new)
 
-Per-session directory under a wiped-on-launch root.
+**Cache unit = one scope** (root or a drilled-into sub-pipeline scope), under a
+per-session directory, under a wiped-on-launch root. This is the integration
+decision: the modal keeps its **own** disk cache, **independent** of the
+inspector's in-memory PNG cache, but keyed by scope so it composes with the
+embedded-pipeline model (see **Embedded / nested pipelines**).
 
 - **Root:** `Path(tempfile.gettempdir()) / "phenotypic" / "pipeline-preview"`.
   `init_cache()` wipes it on import/app start; `atexit` wipes it on shutdown
@@ -179,38 +195,49 @@ Per-session directory under a wiped-on-launch root.
 - **Session dir:** `ensure(session_id)` → `tempfile.mkdtemp(prefix=session_id + "-", dir=root)`
   remembered in a process-global `{session_id: dir}` map. `mkdtemp` handles
   uniqueness + 0700 perms (multi-user HPCC safety).
-- **Layout inside a session dir:**
-  - `base_00.h5`, `{NN}_{key}.h5` — full-res per-node intermediates (written by
-    the core flag).
-  - `manifest.json` — `{ "fingerprint": str, "nodes": { block_id: { "hdf":
-    filename, "layers": [available channel names], "shape": [H, W],
-    "num_objects": int } }, "error": str | null }`. The input node's
-    `block_id` maps to `base_00.h5`; each operation node's `block_id` maps to its
-    `{NN}_{key}.h5` via the existing op_key↔block_id zip in
-    `_bake_preview_cache_dag`.
+- **Scope dir:** `<session_dir>/<scope_hash>/` where `scope_hash = sha1(scope_key)`
+  (`scope_key` is the joined `scope_path`, i.e. the breadcrumb of container
+  `block_id`s; the root scope's key is the empty string). Each scope's previews
+  live in their own subdir, so **drilling between scopes never clobbers** another
+  scope's cache (strictly better than the inspector's flat in-memory cache, which
+  holds only the last-converted scope).
+- **Layout inside a scope dir:**
+  - `base_00.h5`, `{NN}_{key}.h5` — full-res per-node intermediates for that
+    scope's blocks (written by the core flag against the scope-promoted pipeline).
+  - `manifest.json` — `{ "fingerprint": str, "scope_key": str, "nodes": {
+    block_id: { "hdf": filename, "layers": [available channel names], "shape":
+    [H, W], "num_objects": int } }, "error": str | null }`. The scope's input
+    node maps to `base_00.h5`; each operation node maps to its `{NN}_{key}.h5`
+    via the same op_key↔block_id topological zip `_bake_preview_cache_dag`
+    already uses **for a single converted scope** (valid precisely because that
+    scope was promoted to root, so its blocks are the top-level ops). `block_id`s
+    are globally unique UUID4s, so a flat per-scope node map is unambiguous.
   - `tiles_src/<block_id>__<channel>.png` — staged source PNGs (lazy).
   - `dzi/<block_id>__<channel>.dzi` (+ `_files/`) — tile pyramids (lazy).
-- **Fingerprint:** `sha1(canonical_pipeline_json + "\x00" + source_image_identity)`
-  where `source_image_identity` = resolved image path (or `SYNTHETIC_SENTINEL`)
-  + grid usage + `nrows`/`ncols`. Global (whole-pipeline) compare — simple, per
-  the approved staleness model. Editing any node invalidates the cache; one
-  recompute pass refreshes everything.
-- **API:** `ensure(session_id)`, `is_fresh(session_id, fingerprint)`,
-  `wipe(session_id)`, `manifest_path(session_id)`, `node_hdf_path(session_id,
-  block_id)`, `staged_png_path(...)`, `dzi_dir(...)`.
+- **Fingerprint (per scope):** `sha1(canonical_scope_pipeline_json + "\x00" + source_image_identity)`
+  where `scope_pipeline_json` is the serialized **scope-promoted** pipeline (just
+  that scope's blocks/edges) and `source_image_identity` = resolved image path
+  (or `SYNTHETIC_SENTINEL`) + grid usage + `nrows`/`ncols`. Whole-scope compare —
+  editing any node in a scope invalidates that scope's dir; one recompute pass
+  refreshes every node in it. Other scopes' dirs are untouched.
+- **API:** `ensure(session_id)`, `scope_dir(session_id, scope_key)`,
+  `is_fresh(session_id, scope_key, fingerprint)`, `wipe_scope(session_id, scope_key)`,
+  `manifest_path(...)`, `node_hdf_path(session_id, scope_key, block_id)`,
+  `staged_png_path(...)`, `dzi_dir(...)`.
 
 ### 3. HDF→PNG→DZI staging + tile route — `builder/_preview_tiles.py` (new)
 
 Registered on the Flask server in `builder/_app.py` (alongside the point-picker
 route registration).
 
-- **Route:** `GET /tiles/preview/<session_id>/<block_id>/<channel>.dzi` and the
-  matching `…/<channel>_files/<level>/<col>_<row>.png`. Mirrors the point
-  picker's `/tiles/<session_id>/<source>.dzi`.
-- **Validation:** `is_safe_path_component` on `session_id`/`block_id`;
+- **Route:** `GET /tiles/preview/<session_id>/<scope_hash>/<block_id>/<channel>.dzi`
+  and the matching `…/<channel>_files/<level>/<col>_<row>.png`. Mirrors the point
+  picker's `/tiles/<session_id>/<source>.dzi`, with `scope_hash` selecting the
+  scope subdir.
+- **Validation:** `is_safe_path_component` on `session_id`/`scope_hash`/`block_id`;
   `channel ∈ {rgb, gray, detect_mat, objmap, overlay}`. Reject → 404.
-- **Resolution:** read `manifest.json` → node entry → `hdf` path. If the node or
-  channel is absent → 404.
+- **Resolution:** read the scope's `manifest.json` → node entry → `hdf` path. If
+  the scope, node, or channel is absent → 404.
 - **Staging (lazy, idempotent):** if `tiles_src/<block>__<channel>.png` is
   missing/stale, build it:
   - `rgb` → `load_layer_hdf5(hdf, "rgb")` (already uint8) → PNG.
@@ -268,31 +295,71 @@ Add `build_node_preview_modal()` and mount it once in the boot-time `modals` Div
 
 - **Open** (`ALL`-matched on the preview action):
   `Input({"type": LINEAR_NODE_ACTION, "action": "preview", ...: ALL}, "n_clicks")`
-  → set `MODAL_NODE_PREVIEW.is_open = True`, write `ctx.triggered_id["block_id"]`
-  to `STORE_PREVIEW_BLOCK`. Guard the all-zero/initial fire (Dash
-  `allow_duplicate` single-output → wrap return in a 1-tuple per the gui
-  CLAUDE.md gotcha).
-- **Compute + stage** (triggered by `STORE_PREVIEW_BLOCK` / modal open), with
+  → set `MODAL_NODE_PREVIEW.is_open = True`, write **both** `block_id` and
+  `scope_path` from `ctx.triggered_id` to `STORE_PREVIEW_TARGET`. Guard the
+  all-zero/initial fire (Dash `allow_duplicate` single-output → wrap return in a
+  1-tuple per the gui CLAUDE.md gotcha).
+- **Compute + stage** (triggered by `STORE_PREVIEW_TARGET` / modal open), with
   `State` on builder state, session id, image path, grid params:
-  1. `ensure(session_id)`; compute fingerprint; recompute via the core flag if
-     stale (wrapped in try/except → on `MemoryError`/op error, write
-     `manifest.error` and surface it in the caption, leave OSD empty).
-  2. resolve this node's available layers + default channel; populate
-     `PREVIEW_LAYER_RADIO.options/value`, `ModalTitle`, `PREVIEW_CAPTION`.
+  1. `scope = scope_at_path(state.root, scope_path)`; build the scope-promoted
+     temp state (reuse `_linear_prefix_state_for_preview`'s scope-promotion, but
+     keep the **whole** scope, not just the prefix, so one run caches every node
+     in it); compute the scope fingerprint; if stale, `wipe_scope` and recompute
+     via the core flag — wrapped in try/except → on `MemoryError`/op error, write
+     `manifest.error` and surface it in the caption, leave OSD empty.
+  2. resolve this node's available layers + default channel from the scope
+     manifest; populate `PREVIEW_LAYER_RADIO.options/value`, `ModalTitle`,
+     `PREVIEW_CAPTION`.
   3. stage default channel; write `PREVIEW_DZI_URL_STORE`
-     (`/tiles/preview/<session>/<block>/<channel>.dzi`, prefixed by the app's
-     `requests_pathname_prefix`).
-- **Layer toggle:** `Input(PREVIEW_LAYER_RADIO, "value")` → stage that channel →
-  update caption + `PREVIEW_DZI_URL_STORE`.
+     (`/tiles/preview/<session>/<scope_hash>/<block>/<channel>.dzi`, prefixed by
+     the app's `requests_pathname_prefix`).
+- **Layer toggle:** `Input(PREVIEW_LAYER_RADIO, "value")` → stage that channel in
+  the same scope → update caption + `PREVIEW_DZI_URL_STORE`.
 - **Clientside OSD:** `Input(PREVIEW_DZI_URL_STORE, "data")` →
   `__phenotypicPreview.mountViewer`.
 
 ### 7. IDs / stores — `builder/_ids.py`
 
 Add: `MODAL_NODE_PREVIEW`, `PREVIEW_OSD_DIV`, `PREVIEW_LAYER_RADIO`,
-`PREVIEW_CAPTION`, `PREVIEW_DZI_URL_STORE`, `STORE_PREVIEW_BLOCK`,
-`MODAL_NODE_PREVIEW_TITLE`. Reuse `LINEAR_NODE_ACTION` with `action="preview"`
-via the existing `linear_node_action_id` factory (no new type constant).
+`PREVIEW_CAPTION`, `PREVIEW_DZI_URL_STORE`, `STORE_PREVIEW_TARGET` (holds
+`{block_id, scope_path}`), `MODAL_NODE_PREVIEW_TITLE`. Reuse `LINEAR_NODE_ACTION`
+with `action="preview"` via the existing `linear_node_action_id` factory (no new
+type constant; `scope_path` already travels in the id).
+
+### 8. Embedded / nested pipelines
+
+The builder nests sub-pipelines (a container `BlockNode` with
+`class_name == "ImagePipeline"` whose `nested` field holds a child scope;
+unbounded depth). The preview design composes with this **without new pipeline
+machinery**, by mirroring how the inspector already handles scopes:
+
+- **Conversion nests, not flattens.** `to_pipeline_dag` makes a sub-pipeline one
+  top-level op (a nested `ImagePipeline`); `apply_with_intermediates` captures
+  only top-level op outputs and does **not** recurse into a nested pipeline
+  (`_image_pipeline_core.py:779`, `:858`). So a single top-level run can only ever
+  produce previews for the **current scope's** blocks.
+- **One scope at a time.** The builder renders exactly one scope's cards per the
+  breadcrumb, and each node-action button is stamped with its `scope_path`
+  (`linear_node_action_id`). A container card previews the **whole sub-pipeline's
+  final output** (its single top-level intermediate, cached in the parent scope's
+  dir). To preview nodes *inside* it, the user drills in; those cards carry the
+  inner `scope_path` and compute/read the inner scope's dir.
+- **Scope promotion = the compute primitive.** For any clicked node we promote its
+  scope to a temporary root (the exact mechanism `run_linear_prefix_preview` /
+  `_linear_prefix_state_for_preview` already use, `_callbacks.py:1706`,`:5470`),
+  so that scope's inner blocks become top-level ops and the same op_key↔block_id
+  topological zip from `_bake_preview_cache_dag` maps them correctly.
+- **Per-scope dirs avoid the inspector's clobbering.** The inspector's flat
+  in-memory cache only ever holds the last-converted scope; drilling in/out
+  overwrites it. The modal's disk cache is keyed by `scope_hash`, so every scope's
+  previews coexist and survive drilling — a deliberate improvement enabled by
+  globally-unique `block_id`s.
+- **Fidelity caveat (matches existing behavior):** a promoted inner scope is fed
+  by the resolved sample image at the inner scope's own `InputImage`, not by the
+  parent pipeline's output up to the container (because intermediate capture does
+  not recurse into nested pipelines). This is exactly what "Preview here" does
+  today; threading the container's true input — or recursing capture into nested
+  pipelines — is a future enhancement, noted below.
 
 ## RAM analysis (the binding constraint)
 
@@ -328,12 +395,16 @@ compute pass (equal to a real run) and transient per-channel staging.
 - `gui/builder/_linear_layout.py` — SVG preview button in `_block_card`.
 - `gui/builder/_layout.py` — `build_node_preview_modal()`, mount in `modals`.
 - `gui/builder/_ids.py` — new ids/stores.
-- `gui/builder/_callbacks.py` — open / compute+stage / layer-toggle / clientside.
+- `gui/builder/_callbacks.py` — open / compute+stage / layer-toggle / clientside;
+  the compute path reuses `scope_at_path` + `_linear_prefix_state_for_preview`'s
+  scope-promotion (factor a shared "promote scope to temp root" helper if not
+  already cleanly callable).
 - `gui/builder/_app.py` — register the preview tile route.
 - `gui/FEATURES.md` — new rows (CI-gated).
 
 **Added**
-- `gui/builder/_preview_cache.py` — session dirs, manifest, fingerprint, wipe.
+- `gui/builder/_preview_cache.py` — session/scope dirs, per-scope manifest,
+  fingerprint, scope wipe.
 - `gui/builder/_preview_tiles.py` — staging + DZI tile route.
 - `gui/builder/assets/preview.js` — `__phenotypicPreview` OSD glue.
 - Tests (see below).
@@ -351,11 +422,16 @@ Reuse `load_synth_yeast_plate()`; microbiology framing in docstrings.
 - **Unit — cache/staleness:** fingerprint stable across no-op reloads; changes
   when a param/op/source changes; `ensure`/`wipe` lifecycle; root wiped on
   `init_cache`.
-- **Integration — route:** `/tiles/preview/<s>/<b>/<c>.dzi` returns a DZI
-  manifest and a tile PNG; path-traversal/invalid channel → 404.
+- **Integration — route:** `/tiles/preview/<s>/<scope>/<b>/<c>.dzi` returns a DZI
+  manifest and a tile PNG; path-traversal/invalid channel/scope → 404.
 - **Integration — open callback:** clicking a node's preview action opens the
   modal, populates the layer radio with available layers, sets the DZI URL store;
   measurement nodes have no button.
+- **Integration — nested pipelines:** build a pipeline containing a sub-pipeline;
+  assert (a) the container card previews the sub-pipeline's final output from the
+  parent scope dir; (b) drilling in and previewing an inner node computes/reads
+  the inner scope dir (its own `scope_hash`); (c) the two scopes' dirs coexist —
+  previewing the inner node does **not** wipe the parent scope's cache.
 - **Error path:** a node that raises during apply records `manifest.error` and the
   caption reflects it without a server crash.
 - **e2e (manual / Playwright, FEATURES.md `manual`):** open modal, zoom/pan,
@@ -370,8 +446,8 @@ Rows under the builder section, columns
 - Node preview button (`linear-node-action`/`preview` SVG icon button).
 - Node preview modal (`MODAL_NODE_PREVIEW`, blocking OSD viewer).
 - Preview layer toggle (`PREVIEW_LAYER_RADIO`, available layers only).
-- Preview tile route (`/tiles/preview/...`).
-- Preview disk cache + staleness (`_preview_cache`, pipeline-compare).
+- Preview tile route (`/tiles/preview/<session>/<scope>/<block>/<channel>.dzi`).
+- Preview disk cache + per-scope staleness (`_preview_cache`, scope-keyed).
 
 Start as 🚧/🧪 with concrete `Test ref`s; flip to ✅ when the referenced tests
 land (pre-commit validates `Test ref` on ✅ rows).
@@ -386,4 +462,9 @@ land (pre-commit validates `Test ref` on ✅ rows).
   destroy+remount).
 - Per-node (sub-pipeline) fingerprints to avoid recomputing unaffected nodes
   after a downstream edit.
+- **Faithful inner-node input:** recurse intermediate capture into nested
+  pipelines (or thread the container's real input image into a promoted inner
+  scope) so inner-node previews reflect the parent pipeline's upstream output
+  rather than the raw sample image. v1 matches the existing "Preview here"
+  behavior instead.
 - Preview button on measurement/post nodes (render the DataFrame/table).
