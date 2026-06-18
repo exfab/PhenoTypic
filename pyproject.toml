@@ -52,12 +52,6 @@ dependencies = [
     "threadpoolctl>=3.6.0",
     "pympler>=1.0.1",
     "exifread>=3.5.1",
-    # polars-lts-cpu is the baseline-instruction-set build (no AVX2/AVX512
-    # required), so the default install runs on the cluster's pre-AVX2 nodes
-    # (e.g. abu_dhabi/ivy) without SIGILL. On AVX2-capable machines, swap in the
-    # faster stock `polars` build (same `import polars` API) -- see
-    # docs/source/how_to/pages/polars_cpu_build.md.
-    "polars-lts-cpu>=1.0.0",
     "click>=8.3.0",
     "bm3d>=4.0.3",
     "wand>=0.6.13",
@@ -77,10 +71,11 @@ dependencies = [
     "dash-bootstrap-components>=2.0.4",
     "pydantic>=2.12.5",
     "python-lucide>=0.2.24",
+    "polars[rtcompat]>=1.41.2",
 ]
 
 [project.urls]
-Repository = "https://github.com/Wheeldon-Lab/PhenoTypic"
+Repository = "https://github.com/exfab/PhenoTypic"
 
 [project.optional-dependencies]
 
