@@ -1,9 +1,10 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
-from ._measurement_info import Entry, MeasurementInfo, _render_info_table
+from ._measurement_info import Entry, _render_info_table
+from ._tiers import QualityInfo
 
 
-class QUALITY_CHECK(MeasurementInfo):
+class QUALITY_CHECK(QualityInfo):
     """Generic QC output columns emitted by every QualityCheck subclass.
 
     The category convention used elsewhere in the codebase would produce

@@ -1,9 +1,10 @@
 """Measurement info container for expected-vs-detected colony count QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_COUNT(MeasurementInfo):
+class QUALITY_COUNT(QualityInfo):
     """Measurement info for the expected-vs-detected colony count QC check.
 
     Carries the per-group colony counts compared by the count quality check:

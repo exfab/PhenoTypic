@@ -1,9 +1,10 @@
 """Measurement info container for replicate-agreement Tukey-fence QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_TUKEY(MeasurementInfo):
+class QUALITY_TUKEY(QualityInfo):
     """Measurement info for the replicate-agreement Tukey-fence QC check.
 
     Documents the per-check extra columns behind the Tukey-fence agreement

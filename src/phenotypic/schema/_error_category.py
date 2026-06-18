@@ -15,10 +15,11 @@ user-defined custom categories, registered at runtime (not enum members).
 
 from __future__ import annotations
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class ErrorCategory(MeasurementInfo):
+class ErrorCategory(QualityInfo):
     """Closed taxonomy of detection-error categories for object triage.
 
     The enum *value* is the category-prefixed header (``ErrorCategory_<label>``)

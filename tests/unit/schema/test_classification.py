@@ -79,6 +79,18 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", derivation_type="bogus")
 
 
+def test_quality_enums_resolve_quality():
+    from phenotypic.schema import (
+        QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
+        QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
+        GRID_LINREG_STATS, GRID_SPATIAL, GRID_SPREAD,
+    )
+    for enum in (QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
+                 QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
+                 GRID_LINREG_STATS, GRID_SPATIAL, GRID_SPREAD):
+        assert all(m.resolved_kind == "quality" for m in enum), enum.__name__
+
+
 def test_identity_enums_resolve_identity():
     from phenotypic.schema import (
         METADATA, BBOX, OBJECT, GRID,

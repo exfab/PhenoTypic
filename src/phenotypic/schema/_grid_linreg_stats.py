@@ -1,9 +1,10 @@
 """Grid linear regression statistics and residual errors."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class GRID_LINREG_STATS(MeasurementInfo):
+class GRID_LINREG_STATS(QualityInfo):
     """Evaluate grid alignment quality using row-wise and column-wise linear regression.
 
     Fit linear regressions to colony centroid positions along each row

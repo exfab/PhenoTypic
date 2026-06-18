@@ -1,9 +1,10 @@
 """Measurement info container for replicate-agreement ICC QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_ICC(MeasurementInfo):
+class QUALITY_ICC(QualityInfo):
     """Measurement info for the replicate-agreement ICC QC check.
 
     Documents the per-check extra columns produced by the intraclass
