@@ -1,4 +1,4 @@
-"""Tests for LabelEditorWidget and _LabelEditorPanel logic."""
+"""Tests for LabelEditorWidget and _LabelEditorPanelLogic."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 class TestLabelEditorWidget:
     def test_run_raises_import_error_without_napari(self):
-        from phenotypic.tools_.napari_ import LabelEditorWidget
+        from phenotypic.sdk_.napari_ import LabelEditorWidget
 
         w = LabelEditorWidget()
         with patch(
@@ -26,18 +26,18 @@ class TestLabelEditorWidget:
 
 
 # ---------------------------------------------------------------------------
-# _LabelEditorPanel logic (tested without real Qt)
+# _LabelEditorPanelLogic (tested without real Qt)
 # ---------------------------------------------------------------------------
 
 
 def _make_mock_panel(*, image, accessor_name: str, layer_data: np.ndarray) -> MagicMock:
-    """Mimic a ``_LabelEditorPanel`` for logic testing without Qt.
+    """Mimic a label-editor panel for logic testing without Qt.
 
-    Mirrors ``tests/unit/tools_/test_point_picker_widget.py::_make_mock_panel``:
-    build a ``MagicMock`` with the same attributes and bind the real class
-    methods so ``_save``/``_discard`` run against a real Image.
+    Build a ``MagicMock`` with the same attributes and bind the real
+    ``_LabelEditorPanelLogic`` methods so ``_save``/``_discard`` run against a
+    real Image without constructing a QWidget.
     """
-    from phenotypic.tools_.napari_._label_editor_widget import _LabelEditorPanel
+    from phenotypic.sdk_.napari_._label_editor_widget import _LabelEditorPanelLogic
 
     panel = MagicMock()
 
@@ -50,8 +50,8 @@ def _make_mock_panel(*, image, accessor_name: str, layer_data: np.ndarray) -> Ma
     panel._viewer = MagicMock()
     panel.saved_labels = None
 
-    panel._save = lambda: _LabelEditorPanel._save(panel)
-    panel._discard = lambda: _LabelEditorPanel._discard(panel)
+    panel._save = lambda: _LabelEditorPanelLogic._save(panel)
+    panel._discard = lambda: _LabelEditorPanelLogic._discard(panel)
 
     return panel
 
@@ -146,7 +146,7 @@ class TestDrawMethod:
             "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",
             True,
         ), patch(
-            "phenotypic.tools_.napari_.LabelEditorWidget.run"
+            "phenotypic.sdk_.napari_.LabelEditorWidget.run"
         ) as mock_run:
             mock_run.return_value = None
 
@@ -164,7 +164,7 @@ class TestDrawMethod:
             "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base._HAS_NAPARI",
             True,
         ), patch(
-            "phenotypic.tools_.napari_.LabelEditorWidget.run"
+            "phenotypic.sdk_.napari_.LabelEditorWidget.run"
         ) as mock_run:
             mock_run.return_value = None
 
@@ -172,3 +172,55 @@ class TestDrawMethod:
 
             args, _ = mock_run.call_args
             assert args[1] == "objmask"
+
+
+class TestRealPanelConstruction:
+    """Build the actual Qt dock widget (regression for the __bases__ bug).
+
+    The MagicMock-based tests above never instantiate a real QWidget, so they
+    could not catch ``TypeError: __bases__ assignment: 'QWidget' deallocator
+    differs from 'object'`` raised by the old ``__new__`` trick under PyQt6.
+    These tests require a live Qt binding (qt-test group, offscreen platform).
+    """
+
+    def test_factory_builds_qwidget_and_save_writes_back(self, qtbot, detected_image):
+        from qtpy.QtWidgets import QWidget
+
+        from phenotypic.sdk_.napari_._label_editor_widget import (
+            _make_label_editor_panel,
+        )
+
+        edited = detected_image.objmap[:].copy()
+        edited[0:3, 0:3] = 777
+        labels_layer = MagicMock()
+        labels_layer.data = edited
+        viewer = MagicMock()
+
+        panel = _make_label_editor_panel(viewer, labels_layer, detected_image, "objmap")
+        qtbot.addWidget(panel)
+
+        assert isinstance(panel, QWidget)
+
+        panel._save()
+
+        np.testing.assert_array_equal(detected_image.objmap[:], edited)
+        viewer.close.assert_called_once()
+
+    def test_factory_discard_does_not_mutate(self, qtbot, detected_image):
+        from phenotypic.sdk_.napari_._label_editor_widget import (
+            _make_label_editor_panel,
+        )
+
+        before = detected_image.objmap[:].copy()
+        labels_layer = MagicMock()
+        labels_layer.data = np.full_like(before, 9)
+        viewer = MagicMock()
+
+        panel = _make_label_editor_panel(viewer, labels_layer, detected_image, "objmap")
+        qtbot.addWidget(panel)
+
+        panel._discard()
+
+        np.testing.assert_array_equal(detected_image.objmap[:], before)
+        assert panel.saved_labels is None
+        viewer.close.assert_called_once()

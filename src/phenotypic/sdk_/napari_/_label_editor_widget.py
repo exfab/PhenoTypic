@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -73,7 +73,9 @@ class LabelEditorWidget:
         labels_layer.mode = "paint"
         active_viewer.layers.selection.active = labels_layer
 
-        panel = _LabelEditorPanel(active_viewer, labels_layer, image, accessor_name)
+        panel = _make_label_editor_panel(
+            active_viewer, labels_layer, image, accessor_name
+        )
         active_viewer.window.add_dock_widget(panel, name="Label Editor", area="right")
 
         # Only drive a blocking event loop when we own the viewer. When the
@@ -85,49 +87,21 @@ class LabelEditorWidget:
         return panel.saved_labels
 
 
-class _LabelEditorPanel:
-    """Dock widget with Save/Discard controls for the labels editor.
+class _LabelEditorPanelLogic:
+    """Qt-independent Save/Discard logic for the label editor dock widget.
 
-    Inherits from ``QWidget`` at runtime (via ``__new__``) so that ``qtpy`` is
-    not imported at module level.
-
-    Args:
-        viewer: The napari viewer instance.
-        labels_layer: The editable napari Labels layer.
-        image: The PhenoTypic ``Image`` to write edits back to.
-        accessor_name: ``"objmap"`` or ``"objmask"``.
+    Kept separate from the ``QWidget`` subclass (built lazily in
+    :func:`_make_label_editor_panel`) so the write-back behaviour is importable
+    and unit-testable without a Qt event loop. The concrete dock widget mixes
+    this into ``QWidget`` and supplies ``_viewer``, ``_labels_layer``,
+    ``_image``, ``_accessor_name``, and ``saved_labels``.
     """
 
-    def __new__(cls, *args, **kwargs):  # noqa: ARG003
-        from qtpy.QtWidgets import QWidget
-
-        # Dynamically create a subclass that has QWidget in its MRO.
-        if not issubclass(cls, QWidget):
-            cls.__bases__ = (QWidget,)
-        instance = QWidget.__new__(cls)
-        return instance
-
-    def __init__(self, viewer, labels_layer, image, accessor_name: str) -> None:
-        from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget
-
-        QWidget.__init__(self)  # type: ignore[arg-type]
-
-        self._viewer = viewer
-        self._labels_layer = labels_layer
-        self._image = image
-        self._accessor_name = accessor_name
-        self.saved_labels: np.ndarray | None = None
-
-        layout = QVBoxLayout(self)  # type: ignore[call-overload]
-        layout.setContentsMargins(4, 4, 4, 4)
-
-        self._save_btn = QPushButton("Save to Image")
-        self._discard_btn = QPushButton("Discard & Close")
-        layout.addWidget(self._save_btn)
-        layout.addWidget(self._discard_btn)
-
-        self._save_btn.clicked.connect(self._save)
-        self._discard_btn.clicked.connect(self._discard)
+    _viewer: Any
+    _labels_layer: Any
+    _image: Any
+    _accessor_name: str
+    saved_labels: np.ndarray | None
 
     def _save(self) -> None:
         """Write the edited labels back through the accessor, then close.
@@ -148,3 +122,48 @@ class _LabelEditorPanel:
     def _discard(self) -> None:
         """Close the viewer without writing any edits back."""
         self._viewer.close()
+
+
+def _make_label_editor_panel(viewer, labels_layer, image, accessor_name: str):
+    """Build the napari dock widget with Save/Discard controls.
+
+    The ``QWidget`` subclass is defined here (lazily, on first call) rather than
+    at module import so ``qtpy`` stays an optional dependency. Defining it with
+    ``QWidget`` as a real base at class-creation time also avoids mutating
+    ``__bases__`` after the fact, which CPython forbids when the base's
+    deallocator differs (PyQt6's sip-wrapped ``QWidget`` vs ``object``).
+
+    Args:
+        viewer: The napari viewer instance.
+        labels_layer: The editable napari Labels layer.
+        image: The PhenoTypic ``Image`` to write edits back to.
+        accessor_name: ``"objmap"`` or ``"objmask"``.
+
+    Returns:
+        A ``QWidget`` dock panel with Save/Discard buttons wired to the
+        :class:`_LabelEditorPanelLogic` callbacks.
+    """
+    from qtpy.QtWidgets import QPushButton, QVBoxLayout, QWidget
+
+    class _LabelEditorPanel(QWidget, _LabelEditorPanelLogic):
+        def __init__(self) -> None:
+            QWidget.__init__(self)
+
+            self._viewer = viewer
+            self._labels_layer = labels_layer
+            self._image = image
+            self._accessor_name = accessor_name
+            self.saved_labels = None
+
+            layout = QVBoxLayout(self)
+            layout.setContentsMargins(4, 4, 4, 4)
+
+            self._save_btn = QPushButton("Save to Image")
+            self._discard_btn = QPushButton("Discard & Close")
+            layout.addWidget(self._save_btn)
+            layout.addWidget(self._discard_btn)
+
+            self._save_btn.clicked.connect(self._save)
+            self._discard_btn.clicked.connect(self._discard)
+
+    return _LabelEditorPanel()
