@@ -44,6 +44,7 @@ from phenotypic.gui._design import (
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filter_state import (
     COMPARE_OPS,
+    FilterRow,
     FilterSpec,
     METHOD_COMPARE,
     METHOD_CONTAINS,
@@ -248,8 +249,12 @@ def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
     """Coerce the store payload into a list of full, defaulted row dicts.
 
     Each row gains ``id``, ``column``, ``method`` (default is_any_of), and
-    every method payload field. Malformed entries are dropped; legacy rows
-    (``{column, values}`` with no ``method``) are backfilled.
+    every method payload field. Malformed (non-dict) entries are dropped;
+    legacy rows (``{column, values}`` with no ``method``) are backfilled.
+
+    Field coercion is delegated to :meth:`FilterRow.from_dict` (the single
+    source of truth for the flat row shape); this helper only layers on the
+    sidebar-only ``id`` key, which the pure data layer doesn't carry.
     """
     if not isinstance(stored, list):
         return []
@@ -257,20 +262,8 @@ def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
     for entry in stored:
         if not isinstance(entry, dict):
             continue
-        row = _blank_row(str(entry.get("column", "") or ""))
-        row["id"] = entry.get("id") or row["id"]
-        method = entry.get("method") or METHOD_IS_ANY_OF
-        row["method"] = method if method in VALID_METHODS else METHOD_IS_ANY_OF
-        raw_values = entry.get("values") or []
-        row["values"] = [str(v) for v in raw_values] if isinstance(raw_values, list) else []
-        row["range_min"] = _coerce_float(entry.get("range_min"))
-        row["range_max"] = _coerce_float(entry.get("range_max"))
-        op = entry.get("compare_op")
-        row["compare_op"] = op if op in COMPARE_OPS else None
-        row["compare_value"] = _coerce_float(entry.get("compare_value"))
-        row["text_pattern"] = str(entry.get("text_pattern", "") or "")
-        row["text_regex"] = bool(entry.get("text_regex", False))
-        row["text_case_sensitive"] = bool(entry.get("text_case_sensitive", False))
+        row = FilterRow.from_dict(entry).to_dict()
+        row["id"] = entry.get("id") or uuid.uuid4().hex
         rows.append(row)
     return rows
 

@@ -26,15 +26,7 @@ import dash
 from dash import Input, Output, State
 
 from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._filter_state import (
-    COMPARE_OPS,
-    METHOD_COMPARE,
-    METHOD_CONTAINS,
-    METHOD_IS_ANY_OF,
-    METHOD_IS_NONE_OF,
-    METHOD_RANGE,
-    _coerce_float,
-)
+from phenotypic.gui.results_viewer._filter_state import FilterRow
 
 
 def next_offcanvas_state(n_clicks: int | None, is_open: bool | None) -> bool:
@@ -53,29 +45,17 @@ def row_is_active(row: Any) -> bool:
 
     Mirrors the "unset = skip" rule in
     :meth:`phenotypic.gui.results_viewer._filter_state.FilterRow.to_expr`:
-    a row needs a column AND a usable payload for its method.
+    a row needs a column AND a usable payload for its method. The
+    per-method payload check is delegated to ``to_expr`` (the single
+    source of truth) so the two never drift; this helper adds only the
+    dict guard and the blank/whitespace-column reject that ``to_expr``'s
+    callers don't need.
     """
     if not isinstance(row, dict):
         return False
     if not str(row.get("column", "") or "").strip():
         return False
-    method = row.get("method") or METHOD_IS_ANY_OF
-    if method in (METHOD_IS_ANY_OF, METHOD_IS_NONE_OF):
-        values = row.get("values") or []
-        return isinstance(values, list) and len(values) > 0
-    if method == METHOD_RANGE:
-        return (
-            _coerce_float(row.get("range_min")) is not None
-            or _coerce_float(row.get("range_max")) is not None
-        )
-    if method == METHOD_COMPARE:
-        return (
-            row.get("compare_op") in COMPARE_OPS
-            and _coerce_float(row.get("compare_value")) is not None
-        )
-    if method == METHOD_CONTAINS:
-        return bool(str(row.get("text_pattern", "") or "").strip())
-    return False
+    return FilterRow.from_dict(row).to_expr() is not None
 
 
 def active_filter_count(spec: Any) -> int:
