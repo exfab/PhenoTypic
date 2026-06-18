@@ -1,0 +1,62 @@
+phenotypic.abc\_.ContrastAdjustment
+===================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: ContrastAdjustment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastAdjustment.__init__
+      ~ContrastAdjustment.apply
+      ~ContrastAdjustment.construct
+      ~ContrastAdjustment.copy
+      ~ContrastAdjustment.dict
+      ~ContrastAdjustment.from_json
+      ~ContrastAdjustment.from_orm
+      ~ContrastAdjustment.json
+      ~ContrastAdjustment.model_construct
+      ~ContrastAdjustment.model_copy
+      ~ContrastAdjustment.model_dump
+      ~ContrastAdjustment.model_dump_json
+      ~ContrastAdjustment.model_json_schema
+      ~ContrastAdjustment.model_parametrized_name
+      ~ContrastAdjustment.model_post_init
+      ~ContrastAdjustment.model_rebuild
+      ~ContrastAdjustment.model_validate
+      ~ContrastAdjustment.model_validate_json
+      ~ContrastAdjustment.model_validate_strings
+      ~ContrastAdjustment.parse_file
+      ~ContrastAdjustment.parse_obj
+      ~ContrastAdjustment.parse_raw
+      ~ContrastAdjustment.schema
+      ~ContrastAdjustment.schema_json
+      ~ContrastAdjustment.to_json
+      ~ContrastAdjustment.update_forward_refs
+      ~ContrastAdjustment.validate
+      ~ContrastAdjustment.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastAdjustment.model_computed_fields
+      ~ContrastAdjustment.model_config
+      ~ContrastAdjustment.model_extra
+      ~ContrastAdjustment.model_fields
+      ~ContrastAdjustment.model_fields_set
+   
+   

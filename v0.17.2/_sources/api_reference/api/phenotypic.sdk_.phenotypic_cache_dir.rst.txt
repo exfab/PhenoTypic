@@ -1,0 +1,6 @@
+phenotypic.sdk\_.phenotypic\_cache\_dir
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: phenotypic_cache_dir

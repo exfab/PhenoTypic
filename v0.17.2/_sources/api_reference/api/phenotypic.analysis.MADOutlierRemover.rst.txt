@@ -1,0 +1,67 @@
+phenotypic.analysis.MADOutlierRemover
+=====================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: MADOutlierRemover
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MADOutlierRemover.__init__
+      ~MADOutlierRemover.analyze
+      ~MADOutlierRemover.construct
+      ~MADOutlierRemover.copy
+      ~MADOutlierRemover.dash
+      ~MADOutlierRemover.dict
+      ~MADOutlierRemover.from_orm
+      ~MADOutlierRemover.json
+      ~MADOutlierRemover.model_construct
+      ~MADOutlierRemover.model_copy
+      ~MADOutlierRemover.model_dump
+      ~MADOutlierRemover.model_dump_json
+      ~MADOutlierRemover.model_json_schema
+      ~MADOutlierRemover.model_parametrized_name
+      ~MADOutlierRemover.model_post_init
+      ~MADOutlierRemover.model_rebuild
+      ~MADOutlierRemover.model_validate
+      ~MADOutlierRemover.model_validate_json
+      ~MADOutlierRemover.model_validate_strings
+      ~MADOutlierRemover.parse_file
+      ~MADOutlierRemover.parse_obj
+      ~MADOutlierRemover.parse_raw
+      ~MADOutlierRemover.results
+      ~MADOutlierRemover.schema
+      ~MADOutlierRemover.schema_json
+      ~MADOutlierRemover.show
+      ~MADOutlierRemover.update_forward_refs
+      ~MADOutlierRemover.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MADOutlierRemover.model_computed_fields
+      ~MADOutlierRemover.model_config
+      ~MADOutlierRemover.model_extra
+      ~MADOutlierRemover.model_fields
+      ~MADOutlierRemover.model_fields_set
+      ~MADOutlierRemover.agg_func
+      ~MADOutlierRemover.threshold
+      ~MADOutlierRemover.on
+      ~MADOutlierRemover.groupby
+      ~MADOutlierRemover.n_jobs
+   
+   

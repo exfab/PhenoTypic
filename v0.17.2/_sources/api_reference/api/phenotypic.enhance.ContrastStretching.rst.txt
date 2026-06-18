@@ -1,0 +1,64 @@
+phenotypic.enhance.ContrastStretching
+=====================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: ContrastStretching
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ContrastStretching.__init__
+      ~ContrastStretching.apply
+      ~ContrastStretching.construct
+      ~ContrastStretching.copy
+      ~ContrastStretching.dict
+      ~ContrastStretching.from_json
+      ~ContrastStretching.from_orm
+      ~ContrastStretching.json
+      ~ContrastStretching.model_construct
+      ~ContrastStretching.model_copy
+      ~ContrastStretching.model_dump
+      ~ContrastStretching.model_dump_json
+      ~ContrastStretching.model_json_schema
+      ~ContrastStretching.model_parametrized_name
+      ~ContrastStretching.model_post_init
+      ~ContrastStretching.model_rebuild
+      ~ContrastStretching.model_validate
+      ~ContrastStretching.model_validate_json
+      ~ContrastStretching.model_validate_strings
+      ~ContrastStretching.parse_file
+      ~ContrastStretching.parse_obj
+      ~ContrastStretching.parse_raw
+      ~ContrastStretching.schema
+      ~ContrastStretching.schema_json
+      ~ContrastStretching.to_json
+      ~ContrastStretching.update_forward_refs
+      ~ContrastStretching.validate
+      ~ContrastStretching.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContrastStretching.model_computed_fields
+      ~ContrastStretching.model_config
+      ~ContrastStretching.model_extra
+      ~ContrastStretching.model_fields
+      ~ContrastStretching.model_fields_set
+      ~ContrastStretching.lower_percentile
+      ~ContrastStretching.upper_percentile
+   
+   

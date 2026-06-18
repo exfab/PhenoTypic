@@ -1,0 +1,42 @@
+phenotypic.sdk\_.slurm
+======================
+
+.. automodule:: phenotypic.sdk_.slurm
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      calculate_optimal_array_chunks
+      estimate_concurrent_capacity
+      format_sbatch_directives
+      generate_dispatcher_chain
+      generate_dispatcher_script
+      get_slurm_array_limit
+      get_slurm_max_submit_jobs
+      parse_job_id
+      submit_drip_feed_start
+      submit_script
+      validate_array_chunk
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

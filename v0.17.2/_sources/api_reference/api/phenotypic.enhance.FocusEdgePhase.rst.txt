@@ -1,0 +1,72 @@
+phenotypic.enhance.FocusEdgePhase
+=================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: FocusEdgePhase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~FocusEdgePhase.__init__
+      ~FocusEdgePhase.apply
+      ~FocusEdgePhase.construct
+      ~FocusEdgePhase.copy
+      ~FocusEdgePhase.dict
+      ~FocusEdgePhase.from_json
+      ~FocusEdgePhase.from_orm
+      ~FocusEdgePhase.json
+      ~FocusEdgePhase.model_construct
+      ~FocusEdgePhase.model_copy
+      ~FocusEdgePhase.model_dump
+      ~FocusEdgePhase.model_dump_json
+      ~FocusEdgePhase.model_json_schema
+      ~FocusEdgePhase.model_parametrized_name
+      ~FocusEdgePhase.model_post_init
+      ~FocusEdgePhase.model_rebuild
+      ~FocusEdgePhase.model_validate
+      ~FocusEdgePhase.model_validate_json
+      ~FocusEdgePhase.model_validate_strings
+      ~FocusEdgePhase.parse_file
+      ~FocusEdgePhase.parse_obj
+      ~FocusEdgePhase.parse_raw
+      ~FocusEdgePhase.schema
+      ~FocusEdgePhase.schema_json
+      ~FocusEdgePhase.to_json
+      ~FocusEdgePhase.update_forward_refs
+      ~FocusEdgePhase.validate
+      ~FocusEdgePhase.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FocusEdgePhase.model_computed_fields
+      ~FocusEdgePhase.model_config
+      ~FocusEdgePhase.model_extra
+      ~FocusEdgePhase.model_fields
+      ~FocusEdgePhase.model_fields_set
+      ~FocusEdgePhase.n_scale
+      ~FocusEdgePhase.n_orient
+      ~FocusEdgePhase.min_wavelength
+      ~FocusEdgePhase.mult
+      ~FocusEdgePhase.sigma_onf
+      ~FocusEdgePhase.k
+      ~FocusEdgePhase.cutoff
+      ~FocusEdgePhase.g
+      ~FocusEdgePhase.noise_method
+      ~FocusEdgePhase.output
+   
+   

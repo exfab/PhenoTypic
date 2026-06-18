@@ -1,0 +1,65 @@
+phenotypic.refine.MaskClosing
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskClosing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskClosing.__init__
+      ~MaskClosing.apply
+      ~MaskClosing.construct
+      ~MaskClosing.copy
+      ~MaskClosing.dict
+      ~MaskClosing.from_json
+      ~MaskClosing.from_orm
+      ~MaskClosing.json
+      ~MaskClosing.model_construct
+      ~MaskClosing.model_copy
+      ~MaskClosing.model_dump
+      ~MaskClosing.model_dump_json
+      ~MaskClosing.model_json_schema
+      ~MaskClosing.model_parametrized_name
+      ~MaskClosing.model_post_init
+      ~MaskClosing.model_rebuild
+      ~MaskClosing.model_validate
+      ~MaskClosing.model_validate_json
+      ~MaskClosing.model_validate_strings
+      ~MaskClosing.parse_file
+      ~MaskClosing.parse_obj
+      ~MaskClosing.parse_raw
+      ~MaskClosing.schema
+      ~MaskClosing.schema_json
+      ~MaskClosing.to_json
+      ~MaskClosing.update_forward_refs
+      ~MaskClosing.validate
+      ~MaskClosing.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskClosing.model_computed_fields
+      ~MaskClosing.model_config
+      ~MaskClosing.model_extra
+      ~MaskClosing.model_fields
+      ~MaskClosing.model_fields_set
+      ~MaskClosing.shape
+      ~MaskClosing.width
+      ~MaskClosing.n_iter
+   
+   

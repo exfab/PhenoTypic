@@ -1,0 +1,53 @@
+Metadata
+========
+
+Schema enums in the **Metadata** group. Each page documents an enum's
+DataFrame column labels and descriptions.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Metadata
+
+   METADATA <metadata>
+   ACQUISITION_METADATA <acquisition_metadata>
+   CONDITION_METADATA <condition_metadata>
+   EXPERIMENT_METADATA <experiment_metadata>
+   GENETIC_METADATA <genetic_metadata>
+   INCUBATION_METADATA <incubation_metadata>
+   PLATE_METADATA <plate_metadata>
+   SAMPLE_METADATA <sample_metadata>
+
+
+Metadata Tag Overview
+---------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Tag class
+     - Includes
+     - Use for
+   * - :doc:`METADATA <metadata>`
+     - Framework-populated image bookkeeping, including image names, UUIDs, file formats, image types, bit depth, and file suffixes.
+     - Use when reading provenance emitted by PhenoTypic itself; these are not the biological metadata columns users normally supply.
+   * - :doc:`ACQUISITION_METADATA <acquisition_metadata>`
+     - Image acquisition details, including imaging date, instrument, experimenter, resolution, and exposure time.
+     - Use when tracking imaging batches or diagnosing acquisition effects.
+   * - :doc:`CONDITION_METADATA <condition_metadata>`
+     - Media, nutrients, supplements, treatments, compounds, doses, and stress conditions applied to colonies.
+     - Use when comparing phenotypes across growth environments or perturbations.
+   * - :doc:`EXPERIMENT_METADATA <experiment_metadata>`
+     - Experiment-level bookkeeping, including experiment IDs, projects, datasets, protocols, and notes.
+     - Use when organizing outputs across projects, protocols, or datasets.
+   * - :doc:`GENETIC_METADATA <genetic_metadata>`
+     - Organism and genetic identity, including species, strain, genotype, background, alleles, plasmids, markers, mating type, and ploidy.
+     - Use when grouping or filtering colonies by genetic background.
+   * - :doc:`INCUBATION_METADATA <incubation_metadata>`
+     - Temperature, elapsed time, time units, timepoints, day indices, generation, humidity, and atmosphere.
+     - Use for time-course analyses and incubation-condition grouping.
+   * - :doc:`PLATE_METADATA <plate_metadata>`
+     - Assay plate and physical layout, including plate IDs, batches, array density, and incubator position.
+     - Use when grouping measurements by plate, batch, or spatial assay layout.
+   * - :doc:`SAMPLE_METADATA <sample_metadata>`
+     - Sample identity and provenance, including sample IDs, replicates, clones, source plate/well, library IDs, barcodes, and controls.
+     - Use for sample-level biological identity and for linking colonies back to source materials.

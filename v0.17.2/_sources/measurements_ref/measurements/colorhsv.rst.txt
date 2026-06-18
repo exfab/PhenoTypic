@@ -1,0 +1,25 @@
+ColorHSV
+========
+
+Python object: ``phenotypic.schema._color_hsv.ColorHSV``
+
+Robust HSV summary for a colony.
+
+HSV hue is circular and HSV is not perceptually uniform, so the robust
+center is computed as the geometric median of cone-Cartesian coordinates
+(S*V*cosθ, S*V*sinθ, V) and converted back to H,S,V. ``HSVConeVariance`` is
+the trace of the cone-Cartesian covariance.
+
+.. list-table:: Category: **ColorHSV**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``ColorHSV_HueRobustMean``
+     - Hue of the cone-embedded geometric-median robust center (circular-correct)
+   * - ``ColorHSV_SaturationRobustMean``
+     - Saturation of the cone-embedded geometric-median robust center
+   * - ``ColorHSV_ValueRobustMean``
+     - Value (brightness) of the cone-embedded geometric-median robust center
+   * - ``ColorHSV_HSVConeVariance``
+     - Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)

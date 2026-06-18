@@ -1,0 +1,7 @@
+phenotypic.sdk\_.viz.figures package
+====================================
+
+.. automodule:: phenotypic.sdk_.viz.figures
+   :members:
+   :show-inheritance:
+   :undoc-members:

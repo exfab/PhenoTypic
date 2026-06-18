@@ -1,0 +1,37 @@
+phenotypic.sdk\_ package
+========================
+
+.. automodule:: phenotypic.sdk_
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.sdk_.branch_pathfinding
+   phenotypic.sdk_.mixin
+   phenotypic.sdk_.napari_
+   phenotypic.sdk_.register
+   phenotypic.sdk_.slurm
+   phenotypic.sdk_.viz
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   phenotypic.sdk_.colourspace
+   phenotypic.sdk_.constants_
+   phenotypic.sdk_.exceptions_
+   phenotypic.sdk_.funcs_
+   phenotypic.sdk_.generate_report
+   phenotypic.sdk_.hdf_
+   phenotypic.sdk_.monitor_slurm_jobs
+   phenotypic.sdk_.slurm_
+   phenotypic.sdk_.submitit_
+   phenotypic.sdk_.typing_

@@ -1,0 +1,967 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.detect._composite_detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=12bb177f"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/detect/_composite_detector';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.2/_modules/phenotypic/detect/_composite_detector.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.detect._composite_detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.detect._composite_detector</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">field_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span><span class="p">,</span> <span class="n">RoundPeaksDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationField</span><span class="p">,</span> <span class="n">TuneSpec</span>
+
+
+<div class="viewcode-block" id="CompositeDetector">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.detect.html#phenotypic.detect.CompositeDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CompositeDetector</span><span class="p">(</span><span class="n">ObjectDetector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect colonies by combining multiple detectors via union, intersection, or overlap filtering.</span>
+
+<span class="sd">    Apply two or more detection algorithms (or preprocessing pipelines ending</span>
+<span class="sd">    in a detector) to the same plate image and merge their binary masks.</span>
+<span class="sd">    Ensemble combination improves sensitivity (union), specificity</span>
+<span class="sd">    (intersection), or both (overlap filtering). This is especially useful</span>
+<span class="sd">    for challenging plates where no single algorithm captures all colonies</span>
+<span class="sd">    reliably. For a full comparison see</span>
+<span class="sd">    :doc:`/explanation/detection_strategies_compared`.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plates where different colony sub-populations respond to different</span>
+<span class="sd">          detection algorithms (e.g., bright colonies via Otsu, faint</span>
+<span class="sd">          colonies via triangle thresholding).</span>
+<span class="sd">        - Consensus-based quality control that accepts only colonies</span>
+<span class="sd">          confirmed by all methods.</span>
+<span class="sd">        - Ensemble strategies that maximise recall by unioning masks from</span>
+<span class="sd">          complementary algorithms.</span>
+<span class="sd">        - Benchmarking workflows that compare detector agreement across</span>
+<span class="sd">          methods.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`OtsuDetector` or :class:`HysteresisDetector` when a</span>
+<span class="sd">          single detector already captures all colonies reliably.</span>
+<span class="sd">        - :class:`WatershedDetector` when the primary challenge is</span>
+<span class="sd">          separating touching colonies rather than combining detection</span>
+<span class="sd">          strategies.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or</span>
+<span class="sd">            :class:`~phenotypic.ImagePipeline` instances to combine.</span>
+<span class="sd">            Pipelines allow preprocessing steps before detection. Defaults</span>
+<span class="sd">            to ``[OtsuDetector(), RoundPeaksDetector()]`` when not</span>
+<span class="sd">            specified.</span>
+<span class="sd">        mode: Combination strategy. ``&#39;union&#39;`` marks a pixel as colony if</span>
+<span class="sd">            any detector flags it (logical OR, maximises sensitivity).</span>
+<span class="sd">            ``&#39;intersection&#39;`` requires all detectors to agree (logical AND,</span>
+<span class="sd">            maximises specificity). ``&#39;overlap&#39;`` retains whole objects that</span>
+<span class="sd">            have mutual spatial overlap across masks (balances sensitivity</span>
+<span class="sd">            and specificity). Default: ``&#39;overlap&#39;``.</span>
+<span class="sd">        min_overlap_ratio: For ``&#39;overlap&#39;`` mode, minimum fraction of</span>
+<span class="sd">            object pixels that must overlap with another mask before an</span>
+<span class="sd">            object is retained. At the default 0.0 any mutually overlapping</span>
+<span class="sd">            object is kept; larger values bias towards objects confirmed by</span>
+<span class="sd">            more than one detector. Typical range: 0.0--0.5. Default: 0.0.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: Input image with ``objmask`` set to the combined binary</span>
+<span class="sd">        colony mask and ``objmap`` derived from the merged mask.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If ``detectors`` is empty or ``mode`` is not one of</span>
+<span class="sd">            ``&#39;union&#39;``, ``&#39;intersection&#39;``, or ``&#39;overlap&#39;``.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :doc:`/tutorials/notebooks/02_detecting_colonies`</span>
+<span class="sd">            Step-by-step tutorial for basic colony detection.</span>
+<span class="sd">        :doc:`/how_to/notebooks/choose_detection_algorithm`</span>
+<span class="sd">            Guide for selecting the right detector for your plate images.</span>
+<span class="sd">        :doc:`/explanation/detection_strategies_compared`</span>
+<span class="sd">            In-depth comparison of all detection strategies.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Each detector may be an ``ObjectDetector`` or a nested</span>
+    <span class="c1"># ``ImagePipeline``. ``OperationField`` keeps the concrete class of</span>
+    <span class="c1"># each entry across a JSON round-trip (a bare ``model_dump`` of an</span>
+    <span class="c1"># ``ObjectDetector | ImagePipeline`` union would lose the subclass).</span>
+    <span class="c1"># ``| None`` permits an empty list slot: the GUI builder marks an</span>
+    <span class="c1"># unfilled detector slot in an in-progress pipeline with ``None``</span>
+    <span class="c1"># (pre-migration the un-validated list accepted these implicitly).</span>
+    <span class="n">detectors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">OperationField</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">OtsuDetector</span><span class="p">(),</span> <span class="n">RoundPeaksDetector</span><span class="p">()]</span>
+    <span class="p">)</span>
+    <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;union&#39;</span><span class="p">,</span> <span class="s1">&#39;intersection&#39;</span><span class="p">,</span> <span class="s1">&#39;overlap&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;overlap&#39;</span>
+    <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;detectors&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_default_detectors</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map an explicit ``None`` onto the default detector pair.</span>
+
+<span class="sd">        The pre-migration ``__init__`` accepted ``detectors=None`` as the</span>
+<span class="sd">        &quot;unset&quot; sentinel and substituted ``[OtsuDetector(),</span>
+<span class="sd">        RoundPeaksDetector()]``. The ``default_factory`` covers the</span>
+<span class="sd">        omitted-argument case; this validator preserves the legacy</span>
+<span class="sd">        explicit-``None`` call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">OtsuDetector</span><span class="p">(),</span> <span class="n">RoundPeaksDetector</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply all detectors/pipelines and combine their objmask outputs.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;At least one detector must be provided to CompositeDetector&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;union&#39;</span><span class="p">,</span> <span class="s1">&#39;intersection&#39;</span><span class="p">,</span> <span class="s1">&#39;overlap&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Invalid mode &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Must be &#39;union&#39;, &#39;intersection&#39;, or &#39;overlap&#39;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Import here to avoid circular dependency</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+
+        <span class="c1"># Apply all detectors/pipelines and collect masks</span>
+        <span class="n">objmaps</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># An unfilled list slot (the GUI builder marks an empty</span>
+                <span class="c1"># detector slot with None); nothing to apply — skip it.</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">detector</span><span class="p">,</span> <span class="n">ImagePipeline</span><span class="p">):</span>
+                <span class="c1"># Apply pipeline (preprocessing + detection)</span>
+                <span class="n">detected_image</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span>
+                                                <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                                <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">objmaps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detected_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Apply detector directly (ObjectDetector)</span>
+                <span class="n">detected_image</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">objmaps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detected_image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">))</span>
+
+        <span class="c1"># Combine masks based on mode</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;union&#39;</span><span class="p">:</span>
+            <span class="c1"># Pixel is True if True in ANY mask (logical OR)</span>
+            <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">objmaps</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;intersection&#39;</span><span class="p">:</span>
+            <span class="c1"># Pixel is True if True in ALL masks (logical AND)</span>
+            <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">objmaps</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;overlap&#39;</span><span class="p">:</span>
+            <span class="c1"># Keep entire objects from any mask that have mutual overlap</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">objmaps</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Only one detector, just use its mask</span>
+                <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">objmaps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Start with first two masks</span>
+                <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
+                        <span class="n">objmaps</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="n">objmaps</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">min_overlap_ratio</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_overlap_ratio</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># For additional masks, progressively filter to keep mutual overlaps</span>
+                <span class="k">for</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">objmaps</span><span class="p">[</span><span class="mi">2</span><span class="p">:]:</span>
+                    <span class="n">combined_mask</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
+                            <span class="n">combined_mask</span><span class="p">,</span>
+                            <span class="n">mask</span><span class="p">,</span>
+                            <span class="n">min_overlap_ratio</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_overlap_ratio</span><span class="p">,</span>
+                    <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Invalid mode &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Must be &#39;union&#39;, &#39;intersection&#39;, or &#39;overlap&#39;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Set objmask</span>
+        <span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">combined_mask</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">image</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_filter_mask_by_overlap_bidirectional</span><span class="p">(</span>
+            <span class="n">mask_a</span><span class="p">,</span>
+            <span class="n">mask_b</span><span class="p">,</span>
+            <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retain objects in both masks that have mutual overlap.</span>
+
+<span class="sd">        Objects are kept if they overlap with objects in the other mask by at</span>
+<span class="sd">        least ``min_overlap_ratio`` of their own area. Returns a single merged</span>
+<span class="sd">        mask containing all pixels from retained objects.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mask_a (np.ndarray): First binary mask (2D boolean or uint8)</span>
+<span class="sd">            mask_b (np.ndarray): Second binary mask (2D boolean or uint8)</span>
+<span class="sd">            min_overlap_ratio (float): Minimum object-area fraction that must</span>
+<span class="sd">                overlap with the other mask. At 0.0, any non-zero overlap keeps</span>
+<span class="sd">                the object.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Merged binary mask with same dtype as mask_a, containing</span>
+<span class="sd">                        pixels from objects with mutual overlap</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If masks have incompatible shapes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Label connected components in both masks</span>
+        <span class="n">labeled_a</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask_a</span><span class="p">)</span>
+        <span class="n">labeled_b</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask_b</span><span class="p">)</span>
+
+        <span class="c1"># Handle potential size mismatch by finding overlapping region</span>
+        <span class="n">min_h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">min_w</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mask_a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">mask_b</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">crop_a</span> <span class="o">=</span> <span class="n">labeled_a</span><span class="p">[:</span><span class="n">min_h</span><span class="p">,</span> <span class="p">:</span><span class="n">min_w</span><span class="p">]</span>
+        <span class="n">crop_b</span> <span class="o">=</span> <span class="n">labeled_b</span><span class="p">[:</span><span class="n">min_h</span><span class="p">,</span> <span class="p">:</span><span class="n">min_w</span><span class="p">]</span>
+
+        <span class="c1"># Find pixels where both masks have objects</span>
+        <span class="n">overlap_region</span> <span class="o">=</span> <span class="p">(</span><span class="n">crop_a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">crop_b</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">overlapping_labels_a</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+                <span class="n">crop_a</span><span class="p">,</span>
+                <span class="n">overlap_region</span><span class="p">,</span>
+                <span class="n">min_overlap_ratio</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">overlapping_labels_b</span> <span class="o">=</span> <span class="n">CompositeDetector</span><span class="o">.</span><span class="n">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+                <span class="n">crop_b</span><span class="p">,</span>
+                <span class="n">overlap_region</span><span class="p">,</span>
+                <span class="n">min_overlap_ratio</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create filtered masks retaining only mutually overlapping objects</span>
+        <span class="n">filtered_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">labeled_a</span><span class="p">,</span> <span class="n">overlapping_labels_a</span><span class="p">)</span>
+        <span class="n">filtered_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">labeled_b</span><span class="p">,</span> <span class="n">overlapping_labels_b</span><span class="p">)</span>
+
+        <span class="c1"># Merge into single mask</span>
+        <span class="n">merged_mask</span> <span class="o">=</span> <span class="n">filtered_a</span> <span class="o">|</span> <span class="n">filtered_b</span>
+
+        <span class="k">return</span> <span class="n">merged_mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">mask_a</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_labels_meeting_overlap_ratio</span><span class="p">(</span>
+            <span class="n">labeled_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">overlap_region</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return labels whose overlap fraction meets the configured threshold.&quot;&quot;&quot;</span>
+        <span class="n">kept_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label_id</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labeled_mask</span><span class="p">[</span><span class="n">labeled_mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]):</span>
+            <span class="n">object_pixels</span> <span class="o">=</span> <span class="n">labeled_mask</span> <span class="o">==</span> <span class="n">label_id</span>
+            <span class="n">overlap_pixels</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">object_pixels</span> <span class="o">&amp;</span> <span class="n">overlap_region</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">overlap_pixels</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">min_overlap_ratio</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">kept_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label_id</span><span class="p">))</span>
+                <span class="k">continue</span>
+
+            <span class="n">object_area</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">object_pixels</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">overlap_pixels</span> <span class="o">/</span> <span class="n">object_area</span> <span class="o">&gt;=</span> <span class="n">min_overlap_ratio</span><span class="p">:</span>
+                <span class="n">kept_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label_id</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">kept_labels</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_filter_mask_by_overlap</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="p">,</span> <span class="n">reference_mask</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retain only objects in mask that overlap with reference_mask.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mask_to_clean (np.ndarray): Binary mask to filter (2D boolean or uint8)</span>
+<span class="sd">            reference_mask (np.ndarray): Binary mask defining valid regions (2D boolean or uint8)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Filtered binary mask with same shape as mask</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If masks don&#39;t have compatible spatial overlap</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
+
+        <span class="c1"># Label connected components in mask to clean</span>
+        <span class="n">labeled</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="p">)</span>
+        <span class="n">reference_mask</span> <span class="o">=</span> <span class="n">reference_mask</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># Handle potential size mismatch by finding overlapping region</span>
+        <span class="n">min_h</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">reference_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">min_w</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reference_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Compute intersection in overlapping region</span>
+        <span class="n">intersection</span> <span class="o">=</span> <span class="n">labeled</span><span class="p">[:</span><span class="n">min_h</span><span class="p">,</span> <span class="p">:</span><span class="n">min_w</span><span class="p">]</span> <span class="o">*</span> <span class="n">reference_mask</span><span class="p">[:</span><span class="n">min_h</span><span class="p">,</span> <span class="p">:</span><span class="n">min_w</span><span class="p">]</span>
+
+        <span class="c1"># Find which labels have overlap</span>
+        <span class="n">overlapping_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">intersection</span><span class="p">[</span><span class="n">intersection</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">])</span>
+
+        <span class="c1"># Create output mask retaining only overlapping objects</span>
+        <span class="n">filtered_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">labeled</span><span class="p">,</span> <span class="n">overlapping_labels</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">filtered_mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">mask_to_clean</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

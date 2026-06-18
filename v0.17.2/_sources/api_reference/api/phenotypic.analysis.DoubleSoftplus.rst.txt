@@ -1,0 +1,79 @@
+phenotypic.analysis.DoubleSoftplus
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: DoubleSoftplus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DoubleSoftplus.__init__
+      ~DoubleSoftplus.analyze
+      ~DoubleSoftplus.construct
+      ~DoubleSoftplus.copy
+      ~DoubleSoftplus.dash
+      ~DoubleSoftplus.dict
+      ~DoubleSoftplus.from_orm
+      ~DoubleSoftplus.json
+      ~DoubleSoftplus.model_construct
+      ~DoubleSoftplus.model_copy
+      ~DoubleSoftplus.model_dump
+      ~DoubleSoftplus.model_dump_json
+      ~DoubleSoftplus.model_func
+      ~DoubleSoftplus.model_json_schema
+      ~DoubleSoftplus.model_parametrized_name
+      ~DoubleSoftplus.model_post_init
+      ~DoubleSoftplus.model_rebuild
+      ~DoubleSoftplus.model_validate
+      ~DoubleSoftplus.model_validate_json
+      ~DoubleSoftplus.model_validate_strings
+      ~DoubleSoftplus.parse_file
+      ~DoubleSoftplus.parse_obj
+      ~DoubleSoftplus.parse_raw
+      ~DoubleSoftplus.results
+      ~DoubleSoftplus.schema
+      ~DoubleSoftplus.schema_json
+      ~DoubleSoftplus.show
+      ~DoubleSoftplus.update_forward_refs
+      ~DoubleSoftplus.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DoubleSoftplus.model_computed_fields
+      ~DoubleSoftplus.model_config
+      ~DoubleSoftplus.model_extra
+      ~DoubleSoftplus.model_fields
+      ~DoubleSoftplus.model_fields_set
+      ~DoubleSoftplus.smax
+      ~DoubleSoftplus.beta
+      ~DoubleSoftplus.shoulder_slope_ratio
+      ~DoubleSoftplus.stderr_label
+      ~DoubleSoftplus.s0_prior
+      ~DoubleSoftplus.s0_prior_cv
+      ~DoubleSoftplus.s0_prior_sigma
+      ~DoubleSoftplus.s0_prior_groupby
+      ~DoubleSoftplus.time_label
+      ~DoubleSoftplus.loss
+      ~DoubleSoftplus.f_scale
+      ~DoubleSoftplus.verbose
+      ~DoubleSoftplus.on
+      ~DoubleSoftplus.groupby
+      ~DoubleSoftplus.agg_func
+      ~DoubleSoftplus.n_jobs
+   
+   

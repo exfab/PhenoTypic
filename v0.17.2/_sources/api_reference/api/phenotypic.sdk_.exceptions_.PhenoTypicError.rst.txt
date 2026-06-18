@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.PhenoTypicError
+=============================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: PhenoTypicError

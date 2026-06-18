@@ -1,0 +1,6 @@
+phenotypic.sdk\_.checkpoint\_lock\_filename
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: checkpoint_lock_filename

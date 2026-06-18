@@ -1,0 +1,79 @@
+phenotypic.analysis.RelativeMAD
+===============================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: RelativeMAD
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RelativeMAD.__init__
+      ~RelativeMAD.analyze
+      ~RelativeMAD.construct
+      ~RelativeMAD.copy
+      ~RelativeMAD.dash
+      ~RelativeMAD.dict
+      ~RelativeMAD.flag_col
+      ~RelativeMAD.flagged_keys
+      ~RelativeMAD.from_orm
+      ~RelativeMAD.group_members
+      ~RelativeMAD.json
+      ~RelativeMAD.metric_col
+      ~RelativeMAD.model_construct
+      ~RelativeMAD.model_copy
+      ~RelativeMAD.model_dump
+      ~RelativeMAD.model_dump_json
+      ~RelativeMAD.model_json_schema
+      ~RelativeMAD.model_parametrized_name
+      ~RelativeMAD.model_post_init
+      ~RelativeMAD.model_rebuild
+      ~RelativeMAD.model_validate
+      ~RelativeMAD.model_validate_json
+      ~RelativeMAD.model_validate_strings
+      ~RelativeMAD.parse_file
+      ~RelativeMAD.parse_obj
+      ~RelativeMAD.parse_raw
+      ~RelativeMAD.results
+      ~RelativeMAD.schema
+      ~RelativeMAD.schema_json
+      ~RelativeMAD.show
+      ~RelativeMAD.status_col
+      ~RelativeMAD.summary
+      ~RelativeMAD.update_forward_refs
+      ~RelativeMAD.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RelativeMAD.model_computed_fields
+      ~RelativeMAD.model_config
+      ~RelativeMAD.model_extra
+      ~RelativeMAD.model_fields
+      ~RelativeMAD.model_fields_set
+      ~RelativeMAD.name
+      ~RelativeMAD.warn_threshold
+      ~RelativeMAD.fail_threshold
+      ~RelativeMAD.time_label
+      ~RelativeMAD.min_replicates
+      ~RelativeMAD.eps
+      ~RelativeMAD.unmatched_groups
+      ~RelativeMAD.on
+      ~RelativeMAD.groupby
+      ~RelativeMAD.agg_func
+      ~RelativeMAD.n_jobs
+   
+   

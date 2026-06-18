@@ -1,0 +1,25 @@
+QUALITY_MAD
+===========
+
+Python object: ``phenotypic.schema._quality_mad.QUALITY_MAD``
+
+Measurement info for the replicate-agreement MAD QC check.
+
+Documents the per-check extra columns produced by the median absolute
+deviation (MAD) agreement check, which gauges how tightly biological
+replicates or detection runs agree on a colony phenotype. The MAD is a
+robust spread estimate that resists single contaminated or mis-segmented
+colonies, so these columns help flag groups whose disagreement signals
+imaging artifacts rather than real biology.
+
+.. list-table:: Category: **QC_MAD**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_MAD_Median``
+     - Group median of the measurement.
+   * - ``QC_MAD_MAD``
+     - Median absolute deviation (raw, before normalization).
+   * - ``QC_MAD_NumMembers``
+     - Members contributing to the statistic.

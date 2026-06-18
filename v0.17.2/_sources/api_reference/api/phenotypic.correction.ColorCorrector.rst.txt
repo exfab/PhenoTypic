@@ -1,0 +1,67 @@
+phenotypic.correction.ColorCorrector
+====================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColorCorrector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColorCorrector.__init__
+      ~ColorCorrector.apply
+      ~ColorCorrector.construct
+      ~ColorCorrector.copy
+      ~ColorCorrector.dashboard
+      ~ColorCorrector.dict
+      ~ColorCorrector.from_json
+      ~ColorCorrector.from_orm
+      ~ColorCorrector.json
+      ~ColorCorrector.model_construct
+      ~ColorCorrector.model_copy
+      ~ColorCorrector.model_dump
+      ~ColorCorrector.model_dump_json
+      ~ColorCorrector.model_json_schema
+      ~ColorCorrector.model_parametrized_name
+      ~ColorCorrector.model_post_init
+      ~ColorCorrector.model_rebuild
+      ~ColorCorrector.model_validate
+      ~ColorCorrector.model_validate_json
+      ~ColorCorrector.model_validate_strings
+      ~ColorCorrector.parse_file
+      ~ColorCorrector.parse_obj
+      ~ColorCorrector.parse_raw
+      ~ColorCorrector.schema
+      ~ColorCorrector.schema_json
+      ~ColorCorrector.to_json
+      ~ColorCorrector.update_forward_refs
+      ~ColorCorrector.validate
+      ~ColorCorrector.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColorCorrector.correction_matrix
+      ~ColorCorrector.degree
+      ~ColorCorrector.model_computed_fields
+      ~ColorCorrector.model_config
+      ~ColorCorrector.model_extra
+      ~ColorCorrector.model_fields
+      ~ColorCorrector.model_fields_set
+      ~ColorCorrector.profile
+      ~ColorCorrector.output_illuminant
+   
+   

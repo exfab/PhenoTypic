@@ -1,0 +1,65 @@
+phenotypic.detect.UserThreshold
+===============================
+
+.. currentmodule:: phenotypic.detect
+
+.. autoclass:: UserThreshold
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~UserThreshold.__init__
+      ~UserThreshold.apply
+      ~UserThreshold.construct
+      ~UserThreshold.copy
+      ~UserThreshold.dict
+      ~UserThreshold.from_json
+      ~UserThreshold.from_orm
+      ~UserThreshold.json
+      ~UserThreshold.model_construct
+      ~UserThreshold.model_copy
+      ~UserThreshold.model_dump
+      ~UserThreshold.model_dump_json
+      ~UserThreshold.model_json_schema
+      ~UserThreshold.model_parametrized_name
+      ~UserThreshold.model_post_init
+      ~UserThreshold.model_rebuild
+      ~UserThreshold.model_validate
+      ~UserThreshold.model_validate_json
+      ~UserThreshold.model_validate_strings
+      ~UserThreshold.parse_file
+      ~UserThreshold.parse_obj
+      ~UserThreshold.parse_raw
+      ~UserThreshold.schema
+      ~UserThreshold.schema_json
+      ~UserThreshold.to_json
+      ~UserThreshold.update_forward_refs
+      ~UserThreshold.validate
+      ~UserThreshold.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UserThreshold.model_computed_fields
+      ~UserThreshold.model_config
+      ~UserThreshold.model_extra
+      ~UserThreshold.model_fields
+      ~UserThreshold.model_fields_set
+      ~UserThreshold.threshold
+      ~UserThreshold.ignore_zeros
+      ~UserThreshold.ignore_borders
+   
+   

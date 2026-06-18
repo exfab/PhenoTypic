@@ -1,0 +1,67 @@
+phenotypic.refine.RemoveByFeature
+=================================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: RemoveByFeature
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RemoveByFeature.__init__
+      ~RemoveByFeature.apply
+      ~RemoveByFeature.construct
+      ~RemoveByFeature.copy
+      ~RemoveByFeature.dict
+      ~RemoveByFeature.from_json
+      ~RemoveByFeature.from_orm
+      ~RemoveByFeature.json
+      ~RemoveByFeature.model_construct
+      ~RemoveByFeature.model_copy
+      ~RemoveByFeature.model_dump
+      ~RemoveByFeature.model_dump_json
+      ~RemoveByFeature.model_json_schema
+      ~RemoveByFeature.model_parametrized_name
+      ~RemoveByFeature.model_post_init
+      ~RemoveByFeature.model_rebuild
+      ~RemoveByFeature.model_validate
+      ~RemoveByFeature.model_validate_json
+      ~RemoveByFeature.model_validate_strings
+      ~RemoveByFeature.parse_file
+      ~RemoveByFeature.parse_obj
+      ~RemoveByFeature.parse_raw
+      ~RemoveByFeature.schema
+      ~RemoveByFeature.schema_json
+      ~RemoveByFeature.to_json
+      ~RemoveByFeature.update_forward_refs
+      ~RemoveByFeature.validate
+      ~RemoveByFeature.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RemoveByFeature.model_computed_fields
+      ~RemoveByFeature.model_config
+      ~RemoveByFeature.model_extra
+      ~RemoveByFeature.model_fields
+      ~RemoveByFeature.model_fields_set
+      ~RemoveByFeature.feature
+      ~RemoveByFeature.value
+      ~RemoveByFeature.min_value
+      ~RemoveByFeature.max_value
+      ~RemoveByFeature.measure_kwargs
+   
+   

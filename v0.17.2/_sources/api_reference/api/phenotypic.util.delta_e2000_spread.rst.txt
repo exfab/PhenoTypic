@@ -1,0 +1,6 @@
+phenotypic.util.delta\_e2000\_spread
+====================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: delta_e2000_spread

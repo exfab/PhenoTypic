@@ -1,0 +1,6 @@
+phenotypic.sdk\_.task\_status\_filename
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: task_status_filename

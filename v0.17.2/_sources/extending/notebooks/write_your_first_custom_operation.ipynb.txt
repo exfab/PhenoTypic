@@ -1,0 +1,220 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Write Your First Custom Operation\n",
+    "\n",
+    "PhenoTypic is designed to be extended. In this tutorial you will create\n",
+    "a custom `ImageEnhancer` from scratch, implement its `_operate()` method,\n",
+    "and use it inside an `ImagePipeline`.\n",
+    "\n",
+    "**What you will learn:**\n",
+    "\n",
+    "1. Subclass `ImageEnhancer`\n",
+    "2. Implement `_operate(self, image) -> image`\n",
+    "3. Add your custom operation to a pipeline"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import phenotypic as pht\n",
+    "from phenotypic.abc_ import ImageEnhancer\n",
+    "from phenotypic.data import load_yeast_plate\n",
+    "from phenotypic.detect import OtsuDetector"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Step 1: Define the Class\n",
+    "\n",
+    "The simplest operation to start with is an enhancer, since it only\n",
+    "modifies `detect_mat`. You don't need to worry about `objmask`, `objmap`,\n",
+    "or grid state.\n",
+    "\n",
+    "Let's create an enhancer that inverts the detection matrix — making\n",
+    "dark colonies bright and bright background dark. This is useful when\n",
+    "your colonies are darker than the agar."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class InvertDetectMat(ImageEnhancer):\n",
+    "    \"\"\"Invert the detection matrix so dark features become bright.\"\"\"\n",
+    "\n",
+    "    def _operate(self, image):\n",
+    "        # Read the current detection matrix\n",
+    "        mat = image.detect_mat[:]\n",
+    "\n",
+    "        # Invert: subtract from the maximum value\n",
+    "        inverted = mat.max() - mat\n",
+    "\n",
+    "        # Write back\n",
+    "        image.detect_mat[:] = inverted\n",
+    "\n",
+    "        return image"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "That's the entire implementation. The `_operate()` contract is simple:\n",
+    "\n",
+    "1. Receive an `Image` (or `GridImage`)\n",
+    "2. Read from and write to accessors\n",
+    "3. Return the modified image\n",
+    "\n",
+    "For an enhancer, you read `detect_mat`, transform it, and write it back.\n",
+    "Never modify `rgb` or `gray` — those belong to the original image data."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Step 2: Test It"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plate = load_yeast_plate()\n",
+    "plate.detect_mat.dash()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "inverter = InvertDetectMat()\n",
+    "plate = inverter.apply(plate)\n",
+    "plate.detect_mat.dash()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The detection matrix is now inverted — dark regions became bright."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Step 3: Use It in a Pipeline\n",
+    "\n",
+    "Custom operations work seamlessly with `ImagePipeline` — just include\n",
+    "them in the `ops` list like any built-in operation."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pipeline = pht.ImagePipeline(\n",
+    "    ops=[InvertDetectMat(), OtsuDetector()],\n",
+    ")\n",
+    "\n",
+    "plate = load_yeast_plate()\n",
+    "result = pipeline.apply(plate)\n",
+    "result.dash(overlay=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Adding Parameters\n",
+    "\n",
+    "Most operations need configurable parameters. Declare them as\n",
+    "annotated class-level fields — operations are pydantic models, so\n",
+    "there is no `__init__` — and access them via `self` in `_operate()`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class ScaleDetectMat(ImageEnhancer):\n",
+    "    \"\"\"Scale the detection matrix by a constant factor.\n",
+    "\n",
+    "    Args:\n",
+    "        factor: Multiplier applied to detect_mat.\n",
+    "    \"\"\"\n",
+    "\n",
+    "    factor: float = 2.0\n",
+    "\n",
+    "    def _operate(self, image):\n",
+    "        image.detect_mat[:] = np.clip(\n",
+    "            image.detect_mat[:] * self.factor, 0, 1\n",
+    "        )\n",
+    "        return image\n",
+    "\n",
+    "\n",
+    "# Use it\n",
+    "scaler = ScaleDetectMat(factor=1.5)\n",
+    "print(f\"Factor: {scaler.factor}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Summary\n",
+    "\n",
+    "You have written a custom `ImageEnhancer` and used it in a pipeline.\n",
+    "The key points:\n",
+    "\n",
+    "- Subclass the appropriate ABC (`ImageEnhancer`, `ObjectDetector`,\n",
+    "  `ObjectRefiner`, `MeasureFeatures`, etc.)\n",
+    "- Implement `_operate(self, image) -> image`\n",
+    "- Access image data through accessors (`image.detect_mat[:]`,\n",
+    "  `image.objmask[:]`, etc.)\n",
+    "- Declare parameters as annotated class-level fields\n",
+    "- Your operation works automatically with `ImagePipeline`, JSON\n",
+    "  serialization, and the CLI\n",
+    "\n",
+    "For more on each ABC type, see the how-to guides for\n",
+    "[custom detectors](../pages/custom_detector.md),\n",
+    "[custom refiners](../pages/custom_refiner.md), and\n",
+    "[custom measurements](../pages/custom_measurement.md)."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.11.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

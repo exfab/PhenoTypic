@@ -1,0 +1,67 @@
+phenotypic.grid.ManualGridFinder
+================================
+
+.. currentmodule:: phenotypic.grid
+
+.. autoclass:: ManualGridFinder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ManualGridFinder.__init__
+      ~ManualGridFinder.construct
+      ~ManualGridFinder.copy
+      ~ManualGridFinder.dict
+      ~ManualGridFinder.from_json
+      ~ManualGridFinder.from_orm
+      ~ManualGridFinder.get_col_edges
+      ~ManualGridFinder.get_row_edges
+      ~ManualGridFinder.json
+      ~ManualGridFinder.measure
+      ~ManualGridFinder.model_construct
+      ~ManualGridFinder.model_copy
+      ~ManualGridFinder.model_dump
+      ~ManualGridFinder.model_dump_json
+      ~ManualGridFinder.model_json_schema
+      ~ManualGridFinder.model_parametrized_name
+      ~ManualGridFinder.model_post_init
+      ~ManualGridFinder.model_rebuild
+      ~ManualGridFinder.model_validate
+      ~ManualGridFinder.model_validate_json
+      ~ManualGridFinder.model_validate_strings
+      ~ManualGridFinder.parse_file
+      ~ManualGridFinder.parse_obj
+      ~ManualGridFinder.parse_raw
+      ~ManualGridFinder.schema
+      ~ManualGridFinder.schema_json
+      ~ManualGridFinder.to_json
+      ~ManualGridFinder.update_forward_refs
+      ~ManualGridFinder.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ManualGridFinder.model_computed_fields
+      ~ManualGridFinder.model_config
+      ~ManualGridFinder.model_extra
+      ~ManualGridFinder.model_fields
+      ~ManualGridFinder.model_fields_set
+      ~ManualGridFinder.nrows
+      ~ManualGridFinder.ncols
+      ~ManualGridFinder.row_edges
+      ~ManualGridFinder.col_edges
+   
+   

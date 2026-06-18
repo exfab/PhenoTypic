@@ -1,0 +1,28 @@
+phenotypic.sdk\_.register.PlotterRegistry
+=========================================
+
+.. currentmodule:: phenotypic.sdk_.register
+
+.. autoclass:: PlotterRegistry
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PlotterRegistry.__init__
+      ~PlotterRegistry.available
+      ~PlotterRegistry.get
+      ~PlotterRegistry.register
+   
+   
+
+   
+   
+   

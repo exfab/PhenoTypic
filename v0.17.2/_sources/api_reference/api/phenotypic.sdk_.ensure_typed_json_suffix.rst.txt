@@ -1,0 +1,6 @@
+phenotypic.sdk\_.ensure\_typed\_json\_suffix
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: ensure_typed_json_suffix

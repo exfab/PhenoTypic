@@ -1,0 +1,18 @@
+CURATION
+========
+
+Python object: ``phenotypic.schema._curation.CURATION``
+
+Curation-state columns attached to derived measurement frames.
+
+``Curation_Category`` carries the ``ErrorCategory`` bare label (or a
+custom category token) for each removed object in the per-category error
+parquets.
+
+.. list-table:: Category: **Curation**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Curation_Category``
+     - Error-category token assigned to a removed/triaged object.

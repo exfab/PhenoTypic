@@ -1,0 +1,1453 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic._core._image_parts.accessors._objmask_accessor &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../../_static/documentation_options.js?v=12bb177f"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/_core/_image_parts/accessors/_objmask_accessor';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.2/_modules/phenotypic/_core/_image_parts/accessors/_objmask_accessor.html" />
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic._core._image_parts.accessors._objmask_accessor</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic._core._image_parts.accessors._objmask_accessor</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">label</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">SingleChannelAccessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin</span><span class="w"> </span><span class="kn">import</span> \
+    <span class="n">NapariLabelsMixin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">InvalidMaskValueError</span><span class="p">,</span>
+    <span class="n">InvalidMaskScalarValueError</span><span class="p">,</span>
+    <span class="n">ArrayKeyValueShapeMismatchError</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ObjectMask">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ObjectMask</span><span class="p">(</span><span class="n">NapariLabelsMixin</span><span class="p">,</span> <span class="n">SingleChannelAccessor</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages a binary object mask linked to a parent image.</span>
+
+<span class="sd">    ObjectMask provides array-like access and manipulation of a binary mask indicating</span>
+<span class="sd">    object locations in the parent image. It supports slicing, item assignment, copying,</span>
+<span class="sd">    and visualization. The mask is backed by a sparse representation stored in the parent</span>
+<span class="sd">    image&#39;s `sparse_object_map`, with automatic relabeling via scikit-image&#39;s `label()`</span>
+<span class="sd">    function to maintain consistent object IDs after modifications.</span>
+
+<span class="sd">    The object mask distinguishes between foreground (object) pixels (True) and</span>
+<span class="sd">    background pixels (False). Any modification to the mask via `__setitem__` triggers</span>
+<span class="sd">    automatic relabeling to ensure object label consistency across the parent image&#39;s</span>
+<span class="sd">    object map.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        _root_image (Image): The parent Image object containing this mask.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Changes to the object mask will trigger automatic relabeling of the object map</span>
+<span class="sd">        to maintain consistent object IDs. This ensures data integrity when mask regions</span>
+<span class="sd">        are directly modified.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Basic access and slicing:</span>
+
+<span class="sd">        &gt;&gt;&gt; # Access the mask as a dense array</span>
+<span class="sd">        &gt;&gt;&gt; mask_array = np.array(objmask)</span>
+<span class="sd">        &gt;&gt;&gt; # Slice operations</span>
+<span class="sd">        &gt;&gt;&gt; region = objmask[10:50, 20:60]</span>
+<span class="sd">        &gt;&gt;&gt; # Modify mask regions</span>
+<span class="sd">        &gt;&gt;&gt; objmask[10:50, 20:60] = np.zeros((40, 40))</span>
+
+<span class="sd">        Creating foreground images:</span>
+
+<span class="sd">        &gt;&gt;&gt; # Get foreground of a grayscale channel</span>
+<span class="sd">        &gt;&gt;&gt; foreground = image.gray.foreground()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_accessor_property_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;objmask&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the sparse matrix backend of the object mask.</span>
+
+<span class="sd">        Provides direct access to the underlying sparse representation of the binary</span>
+<span class="sd">        mask stored in the parent image&#39;s data structure. This avoids redundant</span>
+<span class="sd">        dense conversions for internal operations.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            scipy.sparse matrix: The sparse matrix representation of the object mask,</span>
+<span class="sd">                matching the shape and values of the parent image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span>
+
+<div class="viewcode-block" id="ObjectMask.__array__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__array__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__array__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implement the NumPy array interface for seamless integration with NumPy.</span>
+
+<span class="sd">        Converts the sparse binary mask to a dense NumPy array, enabling direct use</span>
+<span class="sd">        of NumPy functions and operations on the ObjectMask. The mask is returned</span>
+<span class="sd">        as bool (False for background, True for foreground).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dtype (type, optional): Target NumPy dtype for the returned array. If None,</span>
+<span class="sd">                defaults to bool. Defaults to None.</span>
+<span class="sd">            copy (bool, optional): If True, ensures the returned array is a copy.</span>
+<span class="sd">                Ignored if dtype is specified. For NumPy 2.0+ compatibility.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A dense bool array of shape matching the parent image</span>
+<span class="sd">                (True/False values), or the specified dtype.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Using with NumPy functions and type conversion:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Use with NumPy functions</span>
+<span class="sd">            &gt;&gt;&gt; num_foreground_pixels = np.count_nonzero(objmask)</span>
+<span class="sd">            &gt;&gt;&gt; total_pixels = np.sum(objmask)</span>
+<span class="sd">            &gt;&gt;&gt; # Explicit type conversion</span>
+<span class="sd">            &gt;&gt;&gt; mask_float = np.array(objmask, dtype=np.float32)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span> <span class="k">if</span> <span class="n">copy</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">copy</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">copy</span><span class="p">:</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">arr</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__getitem__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__getitem__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a slice of the binary object mask with NumPy-compatible indexing.</span>
+
+<span class="sd">        Supports all standard NumPy slicing operations (integer indexing, slice objects,</span>
+<span class="sd">        boolean masks, fancy indexing). The sparse mask is converted to dense form and</span>
+<span class="sd">        bool values (True/False) are returned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key (int, slice, tuple, np.ndarray): Index or slice to retrieve. Follows</span>
+<span class="sd">                NumPy indexing conventions for 2D arrays.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Bool array (True/False values) representing the sliced region of</span>
+<span class="sd">                the mask, with the same shape as the indexed region.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            NumPy slicing and indexing operations:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Single row</span>
+<span class="sd">            &gt;&gt;&gt; row = objmask[10]</span>
+<span class="sd">            &gt;&gt;&gt; # Rectangular region</span>
+<span class="sd">            &gt;&gt;&gt; region = objmask[10:50, 20:60]</span>
+<span class="sd">            &gt;&gt;&gt; # Column</span>
+<span class="sd">            &gt;&gt;&gt; col = objmask[:, 5]</span>
+<span class="sd">            &gt;&gt;&gt; # Boolean indexing</span>
+<span class="sd">            &gt;&gt;&gt; foreground_indices = objmask &gt; 0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__setitem__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__setitem__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update mask values at specified locations with automatic relabeling.</span>
+
+<span class="sd">        Sets mask values at the specified indices or slices, then automatically</span>
+<span class="sd">        relabels the entire mask using scikit-image&#39;s `label()` function to ensure</span>
+<span class="sd">        object IDs remain consistent across the parent image. This maintains data</span>
+<span class="sd">        integrity when mask regions are directly modified.</span>
+
+<span class="sd">        The operation accepts scalar values (0, 1, bool) or arrays. Non-zero values</span>
+<span class="sd">        are converted to 1 (foreground), zero values to 0 (background). The updated</span>
+<span class="sd">        mask is then relabeled atomically to avoid inconsistent states.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key (int, slice, tuple): Index or slice indicating which mask elements</span>
+<span class="sd">                to update. Follows NumPy indexing conventions.</span>
+<span class="sd">            value (int, bool, np.ndarray): Value(s) to set. Scalars are normalized</span>
+<span class="sd">                to binary (0 or 1). Arrays are converted to binary and must match</span>
+<span class="sd">                the shape of mask[key].</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            InvalidMaskScalarValueError: If a scalar value cannot be converted to</span>
+<span class="sd">                a valid binary value (not int, bool, or convertible to these types).</span>
+<span class="sd">            InvalidMaskValueError: If value is not an int, bool, or ndarray.</span>
+<span class="sd">            ArrayKeyValueShapeMismatchError: If an ndarray value&#39;s shape does not</span>
+<span class="sd">                match the shape of the indexed mask region.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Setting mask regions with scalars and arrays:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Set a rectangular region to background (0)</span>
+<span class="sd">            &gt;&gt;&gt; objmask[10:50, 20:60] = 0</span>
+<span class="sd">            &gt;&gt;&gt; # Set with a matching array</span>
+<span class="sd">            &gt;&gt;&gt; region_mask = np.ones((40, 40))</span>
+<span class="sd">            &gt;&gt;&gt; objmask[10:50, 20:60] = region_mask</span>
+<span class="sd">            &gt;&gt;&gt; # Set single pixel</span>
+<span class="sd">            &gt;&gt;&gt; objmask[5, 10] = True</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            The entire mask is relabeled after any modification. This ensures</span>
+<span class="sd">            that object IDs in the parent image remain consistent, but may</span>
+<span class="sd">            change existing object labels if the relabeling alters connectivity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get current mask as dense array (convert once)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># Apply the value based on type</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="n">mask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidMaskScalarValueError</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="c1"># Check arr and section have matching shape</span>
+            <span class="k">if</span> <span class="n">mask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArrayKeyValueShapeMismatchError</span>
+
+            <span class="c1"># Sets the section of the binary mask to the value array</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidMaskValueError</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+        <span class="c1"># Relabel the mask and update the backend atomically</span>
+        <span class="c1"># This is where the relabeling occurs to maintain consistent object IDs</span>
+        <span class="n">relabeled</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span>
+        <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the shape of the object mask.</span>
+
+<span class="sd">        The shape is always identical to the parent image&#39;s shape, since the mask</span>
+<span class="sd">        covers the entire image extent.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[int, ...]: Shape of the mask as (height, width), matching the</span>
+<span class="sd">                parent image dimensions.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Accessing mask shape:</span>
+
+<span class="sd">            &gt;&gt;&gt; height, width = objmask.shape</span>
+<span class="sd">            &gt;&gt;&gt; assert objmask.shape == image.gray.shape</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">shape</span>
+
+<div class="viewcode-block" id="ObjectMask.copy">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.copy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return an independent copy of the binary object mask.</span>
+
+<span class="sd">        Creates a new bool array containing the same values (True/False) as the</span>
+<span class="sd">        current mask. Modifications to the returned array do not affect the original</span>
+<span class="sd">        mask or the parent image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A dense copy of the binary mask with bool dtype, independent</span>
+<span class="sd">                of the original sparse representation.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Creating an independent mask copy:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Create a modifiable copy for processing</span>
+<span class="sd">            &gt;&gt;&gt; mask_copy = objmask.copy()</span>
+<span class="sd">            &gt;&gt;&gt; mask_copy[10:50, 20:60] = 0  # Doesn&#39;t affect objmask</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.reset">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset the object mask and linked object map to a cleared state.</span>
+
+<span class="sd">        Delegates to the parent image&#39;s object map&#39;s reset method, which clears</span>
+<span class="sd">        the mask and resets all object labels and properties. This is useful when</span>
+<span class="sd">        re-segmenting the image or clearing previous detection results.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Resetting the mask to cleared state:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Clear the mask and object map</span>
+<span class="sd">            &gt;&gt;&gt; objmask.reset()</span>
+<span class="sd">            &gt;&gt;&gt; # Now objmask contains only background (0s)</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This operation affects both the object mask and the parent image&#39;s object</span>
+<span class="sd">            map and properties. Use with caution as it discards all segmentation data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.show">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.show">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">ax</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span>
+            <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Display the binary object mask as a Matplotlib image.</span>
+
+<span class="sd">        Renders the object mask using Matplotlib&#39;s imshow with customizable appearance.</span>
+<span class="sd">        The mask is shown as a grayscale image where white represents foreground</span>
+<span class="sd">        (objects) and black represents background.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ax (plt.Axes, optional): An existing Matplotlib Axes object to plot on.</span>
+<span class="sd">                If None, a new figure and axes are created. Defaults to None.</span>
+<span class="sd">            figsize (tuple[int, int], optional): Size of the figure in inches as</span>
+<span class="sd">                (width, height). Only used if ax is None. Defaults to None</span>
+<span class="sd">                (uses default size).</span>
+<span class="sd">            cmap (str, optional): Colormap to apply. Defaults to &#39;gray&#39;, which shows</span>
+<span class="sd">                foreground pixels in white and background in black.</span>
+<span class="sd">            title (str, optional): Title for the plot. If None, no title is displayed.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[plt.Figure, plt.Axes]: Matplotlib Figure and Axes objects containing</span>
+<span class="sd">                the rendered mask.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Displaying the mask with various options:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Display with default settings</span>
+<span class="sd">            &gt;&gt;&gt; fig = objmask.show()</span>
+<span class="sd">            &gt;&gt;&gt; # Display with custom size and title</span>
+<span class="sd">            &gt;&gt;&gt; fig = objmask.show(figsize=(8, 8), title=&#39;Object Mask&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">)</span>
+        <span class="n">cmap</span><span class="o">.</span><span class="n">set_bad</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mpl_plot</span><span class="p">(</span>
+                <span class="n">arr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_subject_arr</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_foreground</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">bg_label</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract foreground from an array using the object mask.</span>
+
+<span class="sd">        Applies the binary object mask to an input array, setting all background</span>
+<span class="sd">        pixels (where mask is 0) to a specified value. For multi-channel arrays,</span>
+<span class="sd">        the mask is replicated across channels. This is equivalent to masked array</span>
+<span class="sd">        fill operation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array (np.ndarray): Input array to mask. Can be 2D (single channel)</span>
+<span class="sd">                or 3D (multi-channel). Must have shape matching the parent image.</span>
+<span class="sd">            bg_label (int, optional): Value to assign to background pixels (where</span>
+<span class="sd">                mask is 0). Defaults to 0.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A copy of array with background pixels set to bg_label.</span>
+<span class="sd">                Foreground pixels retain their original values.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Extracting foreground from various array types:</span>
+
+<span class="sd">            &gt;&gt;&gt; # Extract foreground from a grayscale image</span>
+<span class="sd">            &gt;&gt;&gt; foreground = objmask._create_foreground(image.gray[:])</span>
+<span class="sd">            &gt;&gt;&gt; # Extract foreground from RGB image</span>
+<span class="sd">            &gt;&gt;&gt; foreground_rgb = objmask._create_foreground(image.rgb[:])</span>
+<span class="sd">            &gt;&gt;&gt; # Set background to white (255 for uint8)</span>
+<span class="sd">            &gt;&gt;&gt; foreground = objmask._create_foreground(image.gray[:], bg_label=255)</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This is an internal method used by the parent image&#39;s accessor classes</span>
+<span class="sd">            to implement the `foreground()` functionality. For 3D arrays, the mask</span>
+<span class="sd">            is automatically broadcasted across all channels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="n">mask</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="n">array</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">bg_label</span>
+        <span class="k">return</span> <span class="n">array</span>
+
+<div class="viewcode-block" id="ObjectMask.vmax">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.vmax">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">vmax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the maximum value for the object mask (True for foreground).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.vmin">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.vmin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">vmin</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the minimum value for the object mask (False for background).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_subject_arr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the dense binary representation of the object mask.</span>
+
+<span class="sd">        Converts the sparse backend representation to a dense NumPy array with</span>
+<span class="sd">        bool values. This property is used internally by parent class methods</span>
+<span class="sd">        (e.g., `show()`, `histogram()`) for visualization and analysis.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Dense bool array, same shape as the parent image.</span>
+<span class="sd">                Values are False (background) and True (foreground).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="ObjectMask.__and__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__and__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform element-wise logical AND with the object mask.</span>
+
+<span class="sd">        Returns the element-wise logical AND between the mask and another operand.</span>
+<span class="sd">        This is useful for intersecting masks or filtering foreground regions based</span>
+<span class="sd">        on additional criteria.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to AND with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Bool array with AND results (True/False).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Intersect two masks to find overlapping regions:</span>
+
+<span class="sd">            &gt;&gt;&gt; mask1 = image.objmask</span>
+<span class="sd">            &gt;&gt;&gt; mask2 = other_image.objmask</span>
+<span class="sd">            &gt;&gt;&gt; intersection = mask1 &amp; mask2</span>
+<span class="sd">            &gt;&gt;&gt; print(intersection.shape)</span>
+<span class="sd">            (1024, 1024)</span>
+
+<span class="sd">            Filter mask using a region of interest:</span>
+
+<span class="sd">            &gt;&gt;&gt; roi = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; roi[100:500, 100:500] = True</span>
+<span class="sd">            &gt;&gt;&gt; filtered_mask = image.objmask &amp; roi</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">self_mask</span> <span class="o">&amp;</span> <span class="n">other_mask</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__or__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__or__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform element-wise logical OR with the object mask.</span>
+
+<span class="sd">        Returns the element-wise logical OR between the mask and another operand.</span>
+<span class="sd">        Useful for combining masks from different detections or merging foreground</span>
+<span class="sd">        regions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to OR with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Bool array with OR results (True/False).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Combine detections from two different methods:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic.detect import OtsuDetector, CannyDetector</span>
+<span class="sd">            &gt;&gt;&gt; otsu_result = OtsuDetector().operate(image)</span>
+<span class="sd">            &gt;&gt;&gt; canny_result = CannyDetector().operate(image)</span>
+<span class="sd">            &gt;&gt;&gt; combined_mask = otsu_result.objmask | canny_result.objmask</span>
+
+<span class="sd">            Add a manually drawn region to existing detections:</span>
+
+<span class="sd">            &gt;&gt;&gt; manual_region = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; manual_region[50:150, 50:150] = True</span>
+<span class="sd">            &gt;&gt;&gt; expanded_mask = image.objmask | manual_region</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">self_mask</span> <span class="o">|</span> <span class="n">other_mask</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__xor__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__xor__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__xor__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform element-wise logical XOR with the object mask.</span>
+
+<span class="sd">        Returns the element-wise logical XOR between the mask and another operand.</span>
+<span class="sd">        Useful for finding symmetric differences between masks or detecting regions</span>
+<span class="sd">        unique to each mask.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to XOR with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Bool array with XOR results (True/False).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Find regions detected by one method but not the other:</span>
+
+<span class="sd">            &gt;&gt;&gt; detector1_mask = detector1.operate(image).objmask</span>
+<span class="sd">            &gt;&gt;&gt; detector2_mask = detector2.operate(image).objmask</span>
+<span class="sd">            &gt;&gt;&gt; unique_regions = detector1_mask ^ detector2_mask</span>
+
+<span class="sd">            Invert mask in a specific ROI:</span>
+
+<span class="sd">            &gt;&gt;&gt; roi = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; roi[200:400, 200:400] = True</span>
+<span class="sd">            &gt;&gt;&gt; modified = image.objmask ^ roi  # Flip bits in ROI</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">self_mask</span> <span class="o">^</span> <span class="n">other_mask</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__invert__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__invert__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__invert__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform logical NOT on the object mask.</span>
+
+<span class="sd">        Returns the logical negation of the mask, inverting foreground and background</span>
+<span class="sd">        pixels. Useful for selecting background regions or creating inverted masks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Bool array with inverted mask values.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Get background pixels for analysis:</span>
+
+<span class="sd">            &gt;&gt;&gt; background_mask = ~image.objmask</span>
+<span class="sd">            &gt;&gt;&gt; background_intensity = image.gray[:][background_mask].mean()</span>
+
+<span class="sd">            Combine with other operations to exclude detected regions:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic.enhance import GaussianBlur</span>
+<span class="sd">            &gt;&gt;&gt; # Apply blur only to background</span>
+<span class="sd">            &gt;&gt;&gt; blurred = GaussianBlur(sigma=2.0).operate(image)</span>
+<span class="sd">            &gt;&gt;&gt; combined = image.gray[:] * image.objmask[:] + blurred.gray[:] * ~image.objmask</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">self_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="o">~</span><span class="n">self_mask</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__iand__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__iand__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iand__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform in-place logical AND with the object mask.</span>
+
+<span class="sd">        Modifies the mask by performing element-wise logical AND with another operand.</span>
+<span class="sd">        After modification, automatically relabels the mask to maintain consistent</span>
+<span class="sd">        object IDs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to AND with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ObjectMask: Returns self for method chaining.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Remove objects outside a region of interest:</span>
+
+<span class="sd">            &gt;&gt;&gt; roi = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; roi[100:900, 100:900] = True</span>
+<span class="sd">            &gt;&gt;&gt; image.objmask &amp;= roi  # Keep only objects in ROI</span>
+
+<span class="sd">            Intersect with another detection result:</span>
+
+<span class="sd">            &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">            &gt;&gt;&gt; detector = OtsuDetector()</span>
+<span class="sd">            &gt;&gt;&gt; refined_result = detector.apply(image)</span>
+<span class="sd">            &gt;&gt;&gt; image.objmask &amp;= refined_result.objmask</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This operation triggers automatic relabeling of the object map to</span>
+<span class="sd">            maintain consistent object IDs. Existing object labels may change.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">mask</span> <span class="o">&amp;=</span> <span class="n">other_mask</span>
+
+        <span class="c1"># Relabel and update backend (same as __setitem__ pattern)</span>
+        <span class="n">relabeled</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span>
+        <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__ior__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__ior__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__ior__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform in-place logical OR with the object mask.</span>
+
+<span class="sd">        Modifies the mask by performing element-wise logical OR with another operand.</span>
+<span class="sd">        Useful for progressively adding detections or manually expanding mask regions.</span>
+<span class="sd">        Automatically relabels after modification.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to OR with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ObjectMask: Returns self for method chaining.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Add manually drawn colonies to existing detection:</span>
+
+<span class="sd">            &gt;&gt;&gt; manual_additions = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; manual_additions[250:300, 250:300] = True</span>
+<span class="sd">            &gt;&gt;&gt; image.objmask |= manual_additions</span>
+
+<span class="sd">            Combine multiple detection passes:</span>
+
+<span class="sd">            &gt;&gt;&gt; for detector in [OtsuDetector(), CannyDetector(), WatershedDetector()]:</span>
+<span class="sd">            &gt;&gt;&gt;     result = detector.operate(image)</span>
+<span class="sd">            &gt;&gt;&gt;     image.objmask |= result.objmask</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This operation triggers automatic relabeling, which may change</span>
+<span class="sd">            existing object IDs. Use with caution in measurement workflows.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">mask</span> <span class="o">|=</span> <span class="n">other_mask</span>
+
+        <span class="c1"># Relabel and update backend (same as __setitem__ pattern)</span>
+        <span class="n">relabeled</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span>
+        <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="ObjectMask.__ixor__">
+<a class="viewcode-back" href="../../../../../api_reference/core/image_methods.html#phenotypic._core._image_parts.accessors._objmask_accessor.ObjectMask.__ixor__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__ixor__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ObjectMask</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform in-place logical XOR with the object mask.</span>
+
+<span class="sd">        Modifies the mask by performing element-wise logical XOR with another operand.</span>
+<span class="sd">        Useful for selectively toggling mask regions or removing specific patterns.</span>
+<span class="sd">        Automatically relabels after modification.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Operand to XOR with. Can be:</span>
+<span class="sd">                - ObjectMask: Uses its binary mask values</span>
+<span class="sd">                - np.ndarray or array-like: Must match mask shape</span>
+<span class="sd">                - bool: Applied to all mask elements</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ObjectMask: Returns self for method chaining.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If array operand shape doesn&#39;t match mask shape.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            Toggle mask values in a specific region:</span>
+
+<span class="sd">            &gt;&gt;&gt; toggle_region = np.zeros(image.shape, dtype=bool)</span>
+<span class="sd">            &gt;&gt;&gt; toggle_region[300:400, 300:400] = True</span>
+<span class="sd">            &gt;&gt;&gt; image.objmask ^= toggle_region  # Flip mask in region</span>
+
+<span class="sd">            Remove overlapping regions between two masks:</span>
+
+<span class="sd">            &gt;&gt;&gt; artifact_mask = artifact_detector.operate(image).objmask</span>
+<span class="sd">            &gt;&gt;&gt; image.objmask ^= artifact_mask &amp; image.objmask</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            This operation triggers automatic relabeling. XOR with True will</span>
+<span class="sd">            invert the entire mask.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">ObjectMask</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="n">other_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Shape mismatch: mask shape </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> != operand shape </span><span class="si">{</span><span class="n">other_arr</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">other_mask</span> <span class="o">=</span> <span class="n">other_arr</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+        <span class="n">mask</span> <span class="o">^=</span> <span class="n">other_mask</span>
+
+        <span class="c1"># Relabel and update backend (same as __setitem__ pattern)</span>
+        <span class="n">relabeled</span> <span class="o">=</span> <span class="n">label</span><span class="p">(</span><span class="n">mask</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_sparse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">objmap</span><span class="o">.</span><span class="n">_dense_to_sparse</span><span class="p">(</span><span class="n">relabeled</span><span class="p">)</span>
+        <span class="n">new_sparse</span><span class="o">.</span><span class="n">eliminate_zeros</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_image</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">sparse_object_map</span> <span class="o">=</span> <span class="n">new_sparse</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

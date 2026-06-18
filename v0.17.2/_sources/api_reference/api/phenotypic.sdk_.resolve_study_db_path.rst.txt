@@ -1,0 +1,6 @@
+phenotypic.sdk\_.resolve\_study\_db\_path
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: resolve_study_db_path

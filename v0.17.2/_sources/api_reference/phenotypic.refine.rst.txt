@@ -1,0 +1,7 @@
+phenotypic.refine package
+=========================
+
+.. automodule:: phenotypic.refine
+   :members:
+   :show-inheritance:
+   :undoc-members:

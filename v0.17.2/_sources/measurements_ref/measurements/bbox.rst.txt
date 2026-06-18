@@ -1,0 +1,37 @@
+BBOX
+====
+
+Python object: ``phenotypic.schema._bbox.BBOX``
+
+Extract bounding box coordinates and centroids of detected colonies.
+
+Compute the axis-aligned bounding box and centroid (geometric and
+intensity-weighted) for each detected colony. These spatial
+measurements form the foundation for region-of-interest extraction,
+grid alignment assessment, and neighbor-distance calculations.
+
+.. list-table:: Category: **Bbox**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``Bbox_CenterRR``
+     - The row coordinate of the center of the bounding box.
+   * - ``Bbox_MinRR``
+     - The smallest row coordinate of the bounding box.
+   * - ``Bbox_MaxRR``
+     - The largest row coordinate of the bounding box.
+   * - ``Bbox_CenterCC``
+     -  The column coordinate of the center of the bounding box.
+   * - ``Bbox_MinCC``
+     -  The smallest column coordinate of the bounding box.
+   * - ``Bbox_MaxCC``
+     -  The largest column coordinate of the bounding box.
+   * - ``Bbox_IntensityWeightedCenterRR``
+     - The intensity-weighted center row coordinate of the object (skimage ``centroid_weighted``).
+   * - ``Bbox_IntensityWeightedCenterCC``
+     - The intensity-weighted center column coordinate of the object (skimage ``centroid_weighted``).
+   * - ``Bbox_DistWeightedCenterRR``
+     - Row coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.
+   * - ``Bbox_DistWeightedCenterCC``
+     - Column coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.

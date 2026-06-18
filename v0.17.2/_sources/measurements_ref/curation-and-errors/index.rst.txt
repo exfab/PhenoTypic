@@ -1,0 +1,12 @@
+Curation & Errors
+=================
+
+Schema enums in the **Curation & Errors** group. Each page documents an enum's
+DataFrame column labels and descriptions.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Curation & Errors
+
+   Curation <curation>
+   ErrorCategory <errorcategory>

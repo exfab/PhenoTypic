@@ -1,0 +1,65 @@
+phenotypic.enhance.SubtractRollingBall
+======================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SubtractRollingBall
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SubtractRollingBall.__init__
+      ~SubtractRollingBall.apply
+      ~SubtractRollingBall.construct
+      ~SubtractRollingBall.copy
+      ~SubtractRollingBall.dict
+      ~SubtractRollingBall.from_json
+      ~SubtractRollingBall.from_orm
+      ~SubtractRollingBall.json
+      ~SubtractRollingBall.model_construct
+      ~SubtractRollingBall.model_copy
+      ~SubtractRollingBall.model_dump
+      ~SubtractRollingBall.model_dump_json
+      ~SubtractRollingBall.model_json_schema
+      ~SubtractRollingBall.model_parametrized_name
+      ~SubtractRollingBall.model_post_init
+      ~SubtractRollingBall.model_rebuild
+      ~SubtractRollingBall.model_validate
+      ~SubtractRollingBall.model_validate_json
+      ~SubtractRollingBall.model_validate_strings
+      ~SubtractRollingBall.parse_file
+      ~SubtractRollingBall.parse_obj
+      ~SubtractRollingBall.parse_raw
+      ~SubtractRollingBall.schema
+      ~SubtractRollingBall.schema_json
+      ~SubtractRollingBall.to_json
+      ~SubtractRollingBall.update_forward_refs
+      ~SubtractRollingBall.validate
+      ~SubtractRollingBall.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SubtractRollingBall.model_computed_fields
+      ~SubtractRollingBall.model_config
+      ~SubtractRollingBall.model_extra
+      ~SubtractRollingBall.model_fields
+      ~SubtractRollingBall.model_fields_set
+      ~SubtractRollingBall.radius
+      ~SubtractRollingBall.kernel
+      ~SubtractRollingBall.nansafe
+   
+   

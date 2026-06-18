@@ -1,0 +1,65 @@
+phenotypic.refine.MaskOpening
+=============================
+
+.. currentmodule:: phenotypic.refine
+
+.. autoclass:: MaskOpening
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MaskOpening.__init__
+      ~MaskOpening.apply
+      ~MaskOpening.construct
+      ~MaskOpening.copy
+      ~MaskOpening.dict
+      ~MaskOpening.from_json
+      ~MaskOpening.from_orm
+      ~MaskOpening.json
+      ~MaskOpening.model_construct
+      ~MaskOpening.model_copy
+      ~MaskOpening.model_dump
+      ~MaskOpening.model_dump_json
+      ~MaskOpening.model_json_schema
+      ~MaskOpening.model_parametrized_name
+      ~MaskOpening.model_post_init
+      ~MaskOpening.model_rebuild
+      ~MaskOpening.model_validate
+      ~MaskOpening.model_validate_json
+      ~MaskOpening.model_validate_strings
+      ~MaskOpening.parse_file
+      ~MaskOpening.parse_obj
+      ~MaskOpening.parse_raw
+      ~MaskOpening.schema
+      ~MaskOpening.schema_json
+      ~MaskOpening.to_json
+      ~MaskOpening.update_forward_refs
+      ~MaskOpening.validate
+      ~MaskOpening.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MaskOpening.model_computed_fields
+      ~MaskOpening.model_config
+      ~MaskOpening.model_extra
+      ~MaskOpening.model_fields
+      ~MaskOpening.model_fields_set
+      ~MaskOpening.shape
+      ~MaskOpening.width
+      ~MaskOpening.n_iter
+   
+   

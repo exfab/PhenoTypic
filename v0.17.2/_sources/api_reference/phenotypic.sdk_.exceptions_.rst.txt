@@ -1,0 +1,7 @@
+phenotypic.sdk\_.exceptions\_ module
+====================================
+
+.. automodule:: phenotypic.sdk_.exceptions_
+   :members:
+   :show-inheritance:
+   :undoc-members:

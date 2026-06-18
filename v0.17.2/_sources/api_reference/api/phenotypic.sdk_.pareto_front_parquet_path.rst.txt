@@ -1,0 +1,6 @@
+phenotypic.sdk\_.pareto\_front\_parquet\_path
+=============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: pareto_front_parquet_path

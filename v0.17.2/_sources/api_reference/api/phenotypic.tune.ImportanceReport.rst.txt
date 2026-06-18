@@ -1,0 +1,61 @@
+phenotypic.tune.ImportanceReport
+================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: ImportanceReport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImportanceReport.__init__
+      ~ImportanceReport.construct
+      ~ImportanceReport.copy
+      ~ImportanceReport.dict
+      ~ImportanceReport.from_orm
+      ~ImportanceReport.json
+      ~ImportanceReport.model_construct
+      ~ImportanceReport.model_copy
+      ~ImportanceReport.model_dump
+      ~ImportanceReport.model_dump_json
+      ~ImportanceReport.model_json_schema
+      ~ImportanceReport.model_parametrized_name
+      ~ImportanceReport.model_post_init
+      ~ImportanceReport.model_rebuild
+      ~ImportanceReport.model_validate
+      ~ImportanceReport.model_validate_json
+      ~ImportanceReport.model_validate_strings
+      ~ImportanceReport.parse_file
+      ~ImportanceReport.parse_obj
+      ~ImportanceReport.parse_raw
+      ~ImportanceReport.schema
+      ~ImportanceReport.schema_json
+      ~ImportanceReport.update_forward_refs
+      ~ImportanceReport.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImportanceReport.model_computed_fields
+      ~ImportanceReport.model_config
+      ~ImportanceReport.model_extra
+      ~ImportanceReport.model_fields
+      ~ImportanceReport.model_fields_set
+      ~ImportanceReport.importances
+      ~ImportanceReport.method
+      ~ImportanceReport.interactions_estimated
+   
+   

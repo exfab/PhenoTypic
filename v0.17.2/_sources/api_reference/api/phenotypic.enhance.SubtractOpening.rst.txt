@@ -1,0 +1,65 @@
+phenotypic.enhance.SubtractOpening
+==================================
+
+.. currentmodule:: phenotypic.enhance
+
+.. autoclass:: SubtractOpening
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SubtractOpening.__init__
+      ~SubtractOpening.apply
+      ~SubtractOpening.construct
+      ~SubtractOpening.copy
+      ~SubtractOpening.dict
+      ~SubtractOpening.from_json
+      ~SubtractOpening.from_orm
+      ~SubtractOpening.json
+      ~SubtractOpening.model_construct
+      ~SubtractOpening.model_copy
+      ~SubtractOpening.model_dump
+      ~SubtractOpening.model_dump_json
+      ~SubtractOpening.model_json_schema
+      ~SubtractOpening.model_parametrized_name
+      ~SubtractOpening.model_post_init
+      ~SubtractOpening.model_rebuild
+      ~SubtractOpening.model_validate
+      ~SubtractOpening.model_validate_json
+      ~SubtractOpening.model_validate_strings
+      ~SubtractOpening.parse_file
+      ~SubtractOpening.parse_obj
+      ~SubtractOpening.parse_raw
+      ~SubtractOpening.schema
+      ~SubtractOpening.schema_json
+      ~SubtractOpening.to_json
+      ~SubtractOpening.update_forward_refs
+      ~SubtractOpening.validate
+      ~SubtractOpening.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SubtractOpening.model_computed_fields
+      ~SubtractOpening.model_config
+      ~SubtractOpening.model_extra
+      ~SubtractOpening.model_fields
+      ~SubtractOpening.model_fields_set
+      ~SubtractOpening.shape
+      ~SubtractOpening.width
+      ~SubtractOpening.n_iter
+   
+   

@@ -1,0 +1,1203 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.tune._screening_freeze &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=12bb177f"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/tune/_screening_freeze';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.17.2';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.17.2/_modules/phenotypic/tune/_screening_freeze.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.tune._screening_freeze</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.tune._screening_freeze</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Two-round screening freeze — explore → freeze → focused (screening-importance.md).</span>
+
+<span class="sd">The :class:`ScreeningController` turns the screening lifecycle (§3) into a</span>
+<span class="sd">runnable two-round flow:</span>
+
+<span class="sd">1. **Explore round** — all params free, **pruning off** (the survivorship-bias</span>
+<span class="sd">   guard, §4): a full-fidelity importance sample.</span>
+<span class="sd">2. **Freeze gate** — compute importance (fANOVA / RF dispatch, G1), and freeze</span>
+<span class="sd">   the least-important params whose **cumulative total** importance is ``&lt; ε``</span>
+<span class="sd">   (§6). A param with a small main effect but large interaction share has a large</span>
+<span class="sd">   *total* importance and is never frozen. Each frozen param is pinned to the</span>
+<span class="sd">   **central tendency** (median numeric / mode categorical) of its value across</span>
+<span class="sd">   the top-k explore trials, as a :class:`~phenotypic.tune.Fixed` knob in a</span>
+<span class="sd">   reduced :class:`~phenotypic.tune.SearchSpace`.</span>
+<span class="sd">3. **Focused round** — a **fresh study** on the reduced space, **warm-started**</span>
+<span class="sd">   with the top-k explore configs (§3); pruning is whatever the spec configures.</span>
+
+<span class="sd">Guards: screening is **off below** ``free_param_floor`` free params; a **warm-up</span>
+<span class="sd">floor** ``W = max(warmup_floor, warmup_c · n_params)`` blocks a premature freeze;</span>
+<span class="sd">the RF-permutation path freezes **fewer** params and flags interactions</span>
+<span class="sd">unverified (§6). The **winner is the best held-out trial across both rounds**, so</span>
+<span class="sd">freezing can never make the result worse than the explore best; if the focused</span>
+<span class="sd">round underperforms the explore best on held-out, the freeze is **flagged** and</span>
+<span class="sd">the explore best is returned with a re-run recommendation (G3, §6).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._screening</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImportanceMethod</span><span class="p">,</span> <span class="n">ImportanceReport</span><span class="p">,</span> <span class="n">compute_param_importance_report</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._search_space</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fixed</span><span class="p">,</span> <span class="n">Knob</span><span class="p">,</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuningSpec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._study_store</span><span class="w"> </span><span class="kn">import</span> <span class="n">JournalStudyStore</span><span class="p">,</span> <span class="n">Trial</span>
+
+
+<div class="viewcode-block" id="ScreeningConfig">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.ScreeningConfig">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScreeningConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Conservative, config-exposed freeze thresholds (screening-importance §14).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        free_param_floor: Screening is off until the space has **more than** this</span>
+<span class="sd">            many free (non-``Fixed``) params (default ``6``).</span>
+<span class="sd">        freeze_epsilon: The cumulative-tail budget ``ε``: freeze the least-important</span>
+<span class="sd">            params whose total importance collectively stays ``&lt; ε`` (default</span>
+<span class="sd">            ``0.10`` → keep the params covering ~90% of explained variance).</span>
+<span class="sd">        warmup_floor: The absolute warm-up trial floor (default ``20``).</span>
+<span class="sd">        warmup_c: The per-param warm-up multiplier; the freeze-grade floor is</span>
+<span class="sd">            ``max(warmup_floor, warmup_c · n_params)`` (default ``3``).</span>
+<span class="sd">        top_k: How many best explore trials feed the central-tendency freeze value</span>
+<span class="sd">            and the focused round&#39;s warm-start (default ``10``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">free_param_floor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">freeze_epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
+    <span class="n">warmup_floor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">warmup_c</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">top_k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span></div>
+
+
+
+<div class="viewcode-block" id="ScreeningResult">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.ScreeningResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScreeningResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The outcome of a (possibly two-round) screening run.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        winner: The best held-out :class:`Trial` across both rounds (``None`` only</span>
+<span class="sd">            if nothing succeeded).</span>
+<span class="sd">        frozen: ``{frozen_key: pinned_value}`` — empty when no freeze occurred.</span>
+<span class="sd">        method: The importance method used (fANOVA vs RF-permutation).</span>
+<span class="sd">        interactions_estimated: Whether ``method`` accounts for interactions.</span>
+<span class="sd">        screened: Whether the focused (freeze) round actually ran.</span>
+<span class="sd">        freeze_flagged: ``True`` when the focused round underperformed explore on</span>
+<span class="sd">            held-out and the freeze was flagged as likely-bad (G3).</span>
+<span class="sd">        reduced_space: The reduced (frozen) space the focused round searched, or</span>
+<span class="sd">            ``None`` when no freeze occurred.</span>
+<span class="sd">        recommendation: A plain-English next step for the operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">winner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span>
+    <span class="n">frozen</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">ImportanceMethod</span> <span class="o">=</span> <span class="s2">&quot;rf-permutation&quot;</span>
+    <span class="n">interactions_estimated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">screened</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">freeze_flagged</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">reduced_space</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SearchSpace</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">recommendation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<span class="c1"># --- pure helpers -------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="count_free_params">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.count_free_params">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_free_params</span><span class="p">(</span><span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count the free (non-``Fixed``) knobs in ``space``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        space: The search space.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The number of knobs whose domain is not :class:`Fixed`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">knob</span> <span class="ow">in</span> <span class="n">space</span><span class="o">.</span><span class="n">knobs</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">knob</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">Fixed</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="screening_warmup_floor">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.screening_warmup_floor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">screening_warmup_floor</span><span class="p">(</span><span class="n">n_params</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">floor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The freeze-grade warm-up floor ``W = max(floor, c · n_params)`` (§4).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_params: The number of free params.</span>
+<span class="sd">        floor: The absolute trial floor.</span>
+<span class="sd">        c: The per-param multiplier.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The minimum explore-trial count before a freeze is trustworthy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">floor</span><span class="p">,</span> <span class="n">c</span> <span class="o">*</span> <span class="n">n_params</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="select_params_to_freeze">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.select_params_to_freeze">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">select_params_to_freeze</span><span class="p">(</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ImportanceReport</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The cumulative-tail freeze set over **total** importance (§6).</span>
+
+<span class="sd">    Walks params from least to most important, accumulating their importance</span>
+<span class="sd">    shares; freezes each one while the running cumulative stays **strictly below**</span>
+<span class="sd">    ``epsilon``. Because the importances are *total* (main + interaction on the</span>
+<span class="sd">    fANOVA path), a low-main/high-interaction param carries a large share and is</span>
+<span class="sd">    never reached by the tail. On the RF-permutation path (interactions</span>
+<span class="sd">    unverified) the threshold is **halved** so freezing is strictly more</span>
+<span class="sd">    conservative — it freezes a subset of what fANOVA would freeze (§6).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        report: The importance estimate + honesty flags.</span>
+<span class="sd">        epsilon: The cumulative-tail budget over total importance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The keys to freeze (least-important first); empty if nothing fits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">report</span><span class="o">.</span><span class="n">importances</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="c1"># RF-permutation can&#39;t see interactions → be conservative (freeze fewer).</span>
+    <span class="n">budget</span> <span class="o">=</span> <span class="n">epsilon</span> <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">interactions_estimated</span> <span class="k">else</span> <span class="n">epsilon</span> <span class="o">/</span> <span class="mf">2.0</span>
+
+    <span class="n">ascending</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">importances</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">kv</span><span class="p">:</span> <span class="n">kv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">frozen</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">share</span> <span class="ow">in</span> <span class="n">ascending</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cumulative</span> <span class="o">+</span> <span class="n">share</span> <span class="o">&lt;</span> <span class="n">budget</span><span class="p">:</span>
+            <span class="n">cumulative</span> <span class="o">+=</span> <span class="n">share</span>
+            <span class="n">frozen</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="k">return</span> <span class="n">frozen</span></div>
+
+
+
+<div class="viewcode-block" id="freeze_value">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.freeze_value">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">freeze_value</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">top_k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The central-tendency value of ``key`` across the top-k explore trials (§6).</span>
+
+<span class="sd">    Numeric values → the **median**; non-numeric (categorical/bool) → the **mode**</span>
+<span class="sd">    (&quot;the value good configs tend to use&quot;, robust to single-trial noise). Only the</span>
+<span class="sd">    ``top_k`` lowest-cost non-failed trials that actually carry ``key`` count.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: The frozen param&#39;s combo key.</span>
+<span class="sd">        trials: The explore-round trials.</span>
+<span class="sd">        top_k: How many best trials to take the central tendency over.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The pinned value for the frozen knob.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If no top-k trial carries ``key`` (nothing to freeze at).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ranked</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">params</span><span class="p">),</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
+        <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>            <span class="c1"># cost: lowest score = best</span>
+    <span class="p">)[:</span><span class="n">top_k</span><span class="p">]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">ranked</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;no top-k trial carries </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2">; cannot pick a freeze value&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span>
+    <span class="p">):</span>
+        <span class="c1"># Booleans are ints in Python but are categorical here → mode.</span>
+        <span class="k">return</span> <span class="n">Counter</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">most_common</span><span class="p">(</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">statistics</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">values</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="build_reduced_space">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.build_reduced_space">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_reduced_space</span><span class="p">(</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">frozen_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pin every ``frozen_values`` key to a :class:`Fixed` domain (§6).</span>
+
+<span class="sd">    Kept knobs retain their original domain; a frozen knob&#39;s domain is replaced by</span>
+<span class="sd">    ``Fixed(value=...)`` so the focused round treats it as a constant, never a</span>
+<span class="sd">    trial dimension. Provenance and conditioning are preserved.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        space: The explore-round (full) space.</span>
+<span class="sd">        frozen_values: ``{key: pinned_value}`` for the params to freeze.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new :class:`SearchSpace` with the frozen knobs pinned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_knobs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">knob</span> <span class="ow">in</span> <span class="n">space</span><span class="o">.</span><span class="n">knobs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">knob</span><span class="o">.</span><span class="n">key</span> <span class="ow">in</span> <span class="n">frozen_values</span><span class="p">:</span>
+            <span class="n">new_knobs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">knob</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="n">Fixed</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">frozen_values</span><span class="p">[</span><span class="n">knob</span><span class="o">.</span><span class="n">key</span><span class="p">])})</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_knobs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">knob</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">SearchSpace</span><span class="p">(</span><span class="n">knobs</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">new_knobs</span><span class="p">))</span></div>
+
+
+
+<span class="c1"># --- orchestration ------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="ScreeningController">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.ScreeningController">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScreeningController</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Orchestrate the explore → freeze → focused two-round screening flow.</span>
+
+<span class="sd">    The controller is engine-opt-in: a caller hands it a :class:`TuningSpec` and a</span>
+<span class="sd">    :class:`ScreeningConfig`, and :meth:`run` returns a :class:`ScreeningResult`</span>
+<span class="sd">    with the winner, the freeze decision, and the honesty flags. Both rounds&#39;</span>
+<span class="sd">    stores are exposed (:attr:`explore_store`, :attr:`focused_store`) for the CLI</span>
+<span class="sd">    to journal and for the winner-across-both-rounds rule.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        spec: The tuning recipe (its ``search_space`` is the explore space; the</span>
+<span class="sd">            focused round runs the reduced space).</span>
+<span class="sd">        config: The freeze thresholds.</span>
+<span class="sd">        importance_report_fn: Override for the importance computation (defaults to</span>
+<span class="sd">            :func:`compute_param_importance_report`); injected in tests to force a</span>
+<span class="sd">            deterministic freeze decision.</span>
+<span class="sd">        engine_factory: Builds a tuning engine from ``(spec, store)``; defaults to</span>
+<span class="sd">            the real :class:`~phenotypic.tune.TuningEngine`. Injectable for tests.</span>
+<span class="sd">        _focused_score_penalty: Test seam — add this to every fresh</span>
+<span class="sd">            focused-round score (raise its cost) to exercise the wrong-freeze</span>
+<span class="sd">            recovery path. Never set in production (default ``0.0``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">ScreeningConfig</span> <span class="o">=</span> <span class="n">ScreeningConfig</span><span class="p">(),</span>
+        <span class="n">importance_report_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+            <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">ImportanceReport</span><span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">engine_factory</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">TuningSpec</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">_focused_score_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span> <span class="o">=</span> <span class="n">spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_importance_report_fn</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">importance_report_fn</span> <span class="ow">or</span> <span class="n">compute_param_importance_report</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_engine_factory</span> <span class="o">=</span> <span class="n">engine_factory</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span> <span class="o">=</span> <span class="n">_focused_score_penalty</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="p">:</span> <span class="n">JournalStudyStore</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">JournalStudyStore</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1">#: How many leading focused-store trials are warm-start seeds (re-journaled</span>
+        <span class="c1">#: explore configs), not genuinely-focused trials. Set in :meth:`run`.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_default_engine</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuningEngine</span>
+
+        <span class="k">return</span> <span class="n">TuningEngine</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="n">store</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ScreeningController.run">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.ScreeningController.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScreeningResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the (possibly two-round) screening flow over ``images``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            images: The calibration images (non-empty).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The :class:`ScreeningResult` (winner across both rounds, the freeze</span>
+<span class="sd">            decision, and the honesty flags).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># -- explore round (all params free; the spec&#39;s own channel) ----------</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">()</span>
+        <span class="n">explore_engine</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine_factory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="p">)</span>
+        <span class="n">explore_best</span> <span class="o">=</span> <span class="n">explore_engine</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+
+        <span class="n">report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_importance_report_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="p">)</span>
+
+        <span class="c1"># -- freeze gate ------------------------------------------------------</span>
+        <span class="n">n_free</span> <span class="o">=</span> <span class="n">count_free_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">search_space</span><span class="p">)</span>
+        <span class="n">warmup</span> <span class="o">=</span> <span class="n">screening_warmup_floor</span><span class="p">(</span>
+            <span class="n">n_free</span><span class="p">,</span> <span class="n">floor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">warmup_floor</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">warmup_c</span>
+        <span class="p">)</span>
+        <span class="n">gate_open</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">n_free</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">free_param_floor</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">completed_count</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="n">warmup</span>
+        <span class="p">)</span>
+
+        <span class="n">frozen_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">gate_open</span><span class="p">:</span>
+            <span class="n">frozen_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_freeze</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">frozen_values</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ScreeningResult</span><span class="p">(</span>
+                <span class="n">winner</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">interactions_estimated</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">interactions_estimated</span><span class="p">,</span>
+                <span class="n">screened</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">reduced_space</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">recommendation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_no_freeze_recommendation</span><span class="p">(</span><span class="n">n_free</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># -- focused round (fresh study on the reduced space, warm-started) ---</span>
+        <span class="n">reduced</span> <span class="o">=</span> <span class="n">build_reduced_space</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span> <span class="n">frozen_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warm_started_store</span><span class="p">(</span><span class="n">reduced</span><span class="p">,</span> <span class="n">images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="p">)</span>
+        <span class="n">focused_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;search_space&quot;</span><span class="p">:</span> <span class="n">reduced</span><span class="p">})</span>
+        <span class="n">focused_engine</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_engine_factory</span><span class="p">(</span><span class="n">focused_spec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="p">)</span>
+        <span class="n">focused_engine</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_focused_penalty</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_winner</span><span class="p">(</span><span class="n">explore_best</span><span class="p">,</span> <span class="n">frozen_values</span><span class="p">,</span> <span class="n">report</span><span class="p">,</span> <span class="n">reduced</span><span class="p">)</span></div>
+
+
+    <span class="c1"># -- freeze gate internals ------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_freeze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="n">ImportanceReport</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pick the freeze set and its central-tendency pinned values.&quot;&quot;&quot;</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="n">select_params_to_freeze</span><span class="p">(</span>
+            <span class="n">report</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">freeze_epsilon</span>
+        <span class="p">)</span>
+        <span class="n">frozen</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">frozen</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">freeze_value</span><span class="p">(</span>
+                    <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">top_k</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="c1"># No top-k trial carried the key (e.g. a never-active conditional)</span>
+                <span class="c1"># → nothing to freeze it at; leave it free.</span>
+                <span class="k">continue</span>
+        <span class="k">return</span> <span class="n">frozen</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_warm_started_store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reduced</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JournalStudyStore</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Seed a fresh focused store with the top-k explore configs (§3 warm-start).</span>
+
+<span class="sd">        Each warm-start trial echoes a top explore config projected onto the</span>
+<span class="sd">        reduced space (frozen knobs pinned to their ``Fixed`` value, kept knobs</span>
+<span class="sd">        retained), so the focused round reuses what explore learned about the kept</span>
+<span class="sd">        params and the winner-across-both-rounds union already includes them.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">frozen_keys</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">knob</span><span class="o">.</span><span class="n">key</span>
+            <span class="k">for</span> <span class="n">knob</span> <span class="ow">in</span> <span class="n">reduced</span><span class="o">.</span><span class="n">knobs</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">knob</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">Fixed</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">fixed_values</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">knob</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">knob</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">for</span> <span class="n">knob</span> <span class="ow">in</span> <span class="n">reduced</span><span class="o">.</span><span class="n">knobs</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">knob</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">Fixed</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">),</span>
+            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
+            <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>            <span class="c1"># cost: lowest score = best</span>
+        <span class="p">)[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">top_k</span><span class="p">]</span>
+
+        <span class="n">store</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">trial</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">top</span><span class="p">):</span>
+            <span class="n">projected</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">key</span><span class="p">:</span> <span class="p">(</span><span class="n">fixed_values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">frozen_keys</span> <span class="k">else</span> <span class="n">value</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">projected</span> <span class="o">==</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+                <span class="n">store</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;number&quot;</span><span class="p">:</span> <span class="n">offset</span><span class="p">}))</span>
+                <span class="k">continue</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">evaluator</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">pipeline</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_spec</span><span class="o">.</span><span class="n">scorer</span><span class="p">,</span>
+                <span class="n">projected</span><span class="p">,</span>
+                <span class="n">images</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Trial</span><span class="p">(</span>
+                    <span class="n">number</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+                    <span class="n">params</span><span class="o">=</span><span class="n">projected</span><span class="p">,</span>
+                    <span class="n">score</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
+                    <span class="n">terms</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">terms</span><span class="p">,</span>
+                    <span class="n">n_images</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">n_images</span><span class="p">,</span>
+                    <span class="n">objectives</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">objectives</span><span class="p">,</span>
+                    <span class="n">failed</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">failed</span><span class="p">,</span>
+                    <span class="n">pruned</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">pruned</span><span class="p">,</span>
+                    <span class="n">gap</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">gap</span><span class="p">,</span>
+                    <span class="n">suspicious</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">suspicious</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">store</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_focused_penalty</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Penalize genuinely-focused scores (test-only seam for G3 recovery).</span>
+
+<span class="sd">        Under the cost convention a penalty ADDS cost (makes a focused trial</span>
+<span class="sd">        worse), so a positive penalty pushes the genuinely-focused best above the</span>
+<span class="sd">        explore best and trips the wrong-freeze recovery branch.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">penalized</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">trial</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">trial</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+                <span class="n">penalized</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">trial</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span>
+                        <span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">score</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_focused_penalty</span><span class="p">}</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">penalized</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="o">=</span> <span class="n">JournalStudyStore</span><span class="p">(</span><span class="n">penalized</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_genuinely_focused_best</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The best trial the focused round *produced* (excluding warm-start seeds).</span>
+
+<span class="sd">        The recovery decision compares this against the explore best: warm-start</span>
+<span class="sd">        seeds are re-journaled explore configs, so counting them as the focused</span>
+<span class="sd">        result would mask a freeze that actually hurt the genuinely-focused</span>
+<span class="sd">        search.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">fresh</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">t</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_warm_count</span> <span class="p">:]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fresh</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">fresh</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_winner</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">explore_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">],</span>
+        <span class="n">frozen_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">report</span><span class="p">:</span> <span class="n">ImportanceReport</span><span class="p">,</span>
+        <span class="n">reduced</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScreeningResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pick the winner across both rounds + the wrong-freeze recovery (G3).&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="n">explore_score</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">explore_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">explore_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">focused_best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_genuinely_focused_best</span><span class="p">()</span>
+        <span class="n">focused_score</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">focused_best</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">focused_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Wrong-freeze recovery: the genuinely-focused round underperformed</span>
+        <span class="c1"># explore on held-out (focused cost exceeded explore cost) → flag the</span>
+        <span class="c1"># freeze, return the explore best, recommend re-run (no mid-study unfreeze).</span>
+        <span class="k">if</span> <span class="n">focused_score</span> <span class="o">&gt;</span> <span class="n">explore_score</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ScreeningResult</span><span class="p">(</span>
+                <span class="n">winner</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>
+                <span class="n">frozen</span><span class="o">=</span><span class="n">frozen_values</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">interactions_estimated</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">interactions_estimated</span><span class="p">,</span>
+                <span class="n">screened</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">freeze_flagged</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">reduced_space</span><span class="o">=</span><span class="n">reduced</span><span class="p">,</span>
+                <span class="n">recommendation</span><span class="o">=</span><span class="p">(</span>
+                    <span class="s2">&quot;Focused round underperformed explore on held-out — the &quot;</span>
+                    <span class="s2">&quot;freeze was likely wrong. Returning the explore best; &quot;</span>
+                    <span class="s2">&quot;re-run without freezing (--no-screen) to confirm.&quot;</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Winner = best held-out across both rounds (the full union, including</span>
+        <span class="c1"># warm-start seeds), so freezing never beats the explore best by accident.</span>
+        <span class="n">union</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explore_store</span><span class="o">.</span><span class="n">trials</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">focused_store</span><span class="o">.</span><span class="n">trials</span>
+        <span class="n">winner</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">union</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">),</span>
+            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">score</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="n">explore_best</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ScreeningResult</span><span class="p">(</span>
+            <span class="n">winner</span><span class="o">=</span><span class="n">winner</span><span class="p">,</span>
+            <span class="n">frozen</span><span class="o">=</span><span class="n">frozen_values</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">interactions_estimated</span><span class="o">=</span><span class="n">report</span><span class="o">.</span><span class="n">interactions_estimated</span><span class="p">,</span>
+            <span class="n">screened</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">freeze_flagged</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">reduced_space</span><span class="o">=</span><span class="n">reduced</span><span class="p">,</span>
+            <span class="n">recommendation</span><span class="o">=</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Froze </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">frozen_values</span><span class="p">)</span><span class="si">}</span><span class="s2"> low-importance param(s); &quot;</span>
+                <span class="s2">&quot;focused round held its own on held-out.&quot;</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_no_freeze_recommendation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_free</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The recommendation string when no freeze occurred.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_free</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">free_param_floor</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_free</span><span class="si">}</span><span class="s2"> free param(s) ≤ floor &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">free_param_floor</span><span class="si">}</span><span class="s2">: screening reports importance &quot;</span>
+                <span class="s2">&quot;only (no freeze).&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="s2">&quot;Importance is still warming up (not freeze-grade); ran a single &quot;</span>
+            <span class="s2">&quot;round without freezing.&quot;</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

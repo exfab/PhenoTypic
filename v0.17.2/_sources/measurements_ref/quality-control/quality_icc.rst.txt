@@ -1,0 +1,26 @@
+QUALITY_ICC
+===========
+
+Python object: ``phenotypic.schema._quality_icc.QUALITY_ICC``
+
+Measurement info for the replicate-agreement ICC QC check.
+
+Documents the per-check extra columns produced by the intraclass
+correlation coefficient (ICC) agreement check, which models colony
+phenotypes with a two-way design to quantify how consistently replicates
+(raters) reproduce each subject's measurement. Low agreement between
+replicates often signals contamination, edge artifacts, or imaging issues
+rather than real biology, so these columns support curation decisions
+downstream of the QC pipeline.
+
+.. list-table:: Category: **QC_ICC**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_ICC_NumSubjects``
+     - Distinct subjects (e.g. timepoints) in the two-way model.
+   * - ``QC_ICC_NumRaters``
+     - Replicates per subject in the two-way model.
+   * - ``QC_ICC_NumMembers``
+     - Total measurements contributing to the ICC.

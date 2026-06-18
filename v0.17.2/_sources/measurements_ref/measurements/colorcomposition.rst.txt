@@ -1,0 +1,41 @@
+ColorComposition
+================
+
+Python object: ``phenotypic.schema._color_composition.ColorComposition``
+
+Classify colony pixels into 11 perceptual color categories and measure composition.
+
+Applies a priority-based color model (neutrals → special colors → hues)
+to classify each colony pixel into one of 11 categories: Black, White,
+Gray, Pink, Brown, Red, Orange, Yellow, Green, Cyan, Blue, Purple.
+Returns per-colony percentage breakdowns as DataFrame columns.
+
+.. list-table:: Category: **ColorComposition**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``ColorComposition_BlackPct``
+     - Percentage of pixels classified as black (Value < 20)
+   * - ``ColorComposition_WhitePct``
+     - Percentage of pixels classified as white (Saturation < 15, Value > 85)
+   * - ``ColorComposition_GrayPct``
+     - Percentage of pixels classified as gray (Saturation < 15, Value 20-85)
+   * - ``ColorComposition_PinkPct``
+     - Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value > 80)
+   * - ``ColorComposition_BrownPct``
+     - Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)
+   * - ``ColorComposition_RedPct``
+     - Percentage of pixels classified as red (Hue 0-15° or 345-360°)
+   * - ``ColorComposition_OrangePct``
+     - Percentage of pixels classified as orange (Hue 15-45°)
+   * - ``ColorComposition_YellowPct``
+     - Percentage of pixels classified as yellow (Hue 45-75°)
+   * - ``ColorComposition_GreenPct``
+     - Percentage of pixels classified as green (Hue 75-150°)
+   * - ``ColorComposition_CyanPct``
+     - Percentage of pixels classified as cyan (Hue 150-180°)
+   * - ``ColorComposition_BluePct``
+     - Percentage of pixels classified as blue (Hue 180-250°)
+   * - ``ColorComposition_PurplePct``
+     - Percentage of pixels classified as purple/magenta (Hue 250-345°)
