@@ -61,9 +61,10 @@ def test_registry_lists_quality_checks(output_root) -> None:
     app = create_app(output_root=output_root)
     registry = app.server.config[CFG_OPERATION_REGISTRY]
     names = {info.name for info in registry.get_by_category("quality_check")}
-    # The six shipping checks (Count, ICC, ZMax, MAD, SE, Tukey).
+    # The shipping checks (Count, Occupancy, ICC, ZMax, MAD, SE, Tukey).
     expected = {
         "ExpectedVsDetectedCount",
+        "GridOccupancy",
         "ICC",
         "MaxModifiedZScore",
         "RelativeMAD",

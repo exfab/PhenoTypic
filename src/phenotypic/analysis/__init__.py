@@ -20,6 +20,7 @@ from ._log_growth_model import LogGrowthModel
 from ._mad_outlier import MADOutlierRemover
 from .qc import (
     ExpectedVsDetectedCount,
+    GridOccupancy,
     ICC,
     MaxModifiedZScore,
     RelativeMAD,
@@ -33,6 +34,7 @@ __all__ = [
     "EdgeCorrector",
     "ErrorCutoffFinder",
     "ExpectedVsDetectedCount",
+    "GridOccupancy",
     "ICC",
     "LinearSoftplus",
     "LogGrowthModel",

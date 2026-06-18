@@ -174,7 +174,9 @@ class ExpectedVsDetectedCount(QualityCheck):
     name: ClassVar[str] = "Count"
     _HIGHER_IS_BAD: ClassVar[bool] = True
     _exposes_agg_func: ClassVar[bool] = False
-    _measurement_infoclass = QUALITY_COUNT
+    # Annotate with the base ClassVar type (not a bare assignment) so
+    # subclasses may override it with their own MeasurementInfo enum.
+    _measurement_infoclass: ClassVar[type | None] = QUALITY_COUNT
 
     warn_threshold: float = 0.05
     fail_threshold: float = 0.10
