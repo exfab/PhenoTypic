@@ -17,25 +17,98 @@ import polars as pl
 
 logger = logging.getLogger(__name__)
 
+METHOD_IS_ANY_OF = "is_any_of"
+METHOD_IS_NONE_OF = "is_none_of"
+METHOD_RANGE = "range"
+METHOD_COMPARE = "compare"
+METHOD_CONTAINS = "contains"
+
+VALID_METHODS: frozenset[str] = frozenset(
+    {METHOD_IS_ANY_OF, METHOD_IS_NONE_OF, METHOD_RANGE, METHOD_COMPARE, METHOD_CONTAINS}
+)
+
+#: Ordering-only comparison operators. Equality is intentionally excluded —
+#: exact float equality is fragile; use list mode for exact match.
+COMPARE_OPS: frozenset[str] = frozenset({">", ">=", "<", "<="})
+
+
+def _coerce_float(value: Any) -> float | None:
+    """Best-effort float coercion; blanks / unparseable values become None."""
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
 
 @dataclass
 class FilterRow:
-    """A single filter clause: one column, many accepted values.
+    """A single filter clause: one column matched by one ``method``.
 
-    The values list is interpreted as an OR — a row matches if the cell's
-    string representation is in ``values``. Stored as strings because the
-    Dash JSON store round-trips numerics as numbers, and we always compare
-    against ``pl.col(...).cast(pl.String)``.
+    Only the fields relevant to ``method`` are read by :meth:`to_expr`:
 
-    Attributes:
-        column: Name of the column to filter on. Empty string means the row
-            is unset (skipped at apply time).
-        values: Accepted string values for the column. Empty list means the
-            row is unset (skipped — NOT a "match nothing" sentinel).
+    - ``is_any_of`` / ``is_none_of`` → ``values``
+    - ``range`` → ``range_min`` / ``range_max`` (either bound optional)
+    - ``compare`` → ``compare_op`` (in :data:`COMPARE_OPS`) / ``compare_value``
+    - ``contains`` → ``text_pattern`` / ``text_regex`` / ``text_case_sensitive``
+
+    An unset clause (no column, or no usable payload for ``method``) is a
+    no-op at apply time — never a "match nothing" sentinel.
     """
 
     column: str
-    values: list[str]
+    method: str = METHOD_IS_ANY_OF
+    values: list[str] = field(default_factory=list)
+    range_min: float | None = None
+    range_max: float | None = None
+    compare_op: str | None = None
+    compare_value: float | None = None
+    text_pattern: str = ""
+    text_regex: bool = False
+    text_case_sensitive: bool = False
+
+    @classmethod
+    def from_dict(cls, entry: dict[str, Any]) -> "FilterRow":
+        """Build a row from a (possibly legacy / partial) store dict."""
+        method = entry.get("method") or METHOD_IS_ANY_OF
+        if method not in VALID_METHODS:
+            method = METHOD_IS_ANY_OF
+        raw_values = entry.get("values") or []
+        if not isinstance(raw_values, list):
+            raw_values = []
+        compare_op = entry.get("compare_op")
+        if compare_op not in COMPARE_OPS:
+            compare_op = None
+        return cls(
+            column=str(entry.get("column", "") or ""),
+            method=method,
+            values=[str(v) for v in raw_values],
+            range_min=_coerce_float(entry.get("range_min")),
+            range_max=_coerce_float(entry.get("range_max")),
+            compare_op=compare_op,
+            compare_value=_coerce_float(entry.get("compare_value")),
+            text_pattern=str(entry.get("text_pattern", "") or ""),
+            text_regex=bool(entry.get("text_regex", False)),
+            text_case_sensitive=bool(entry.get("text_case_sensitive", False)),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a flat, JSON-store-friendly dict."""
+        return {
+            "column": self.column,
+            "method": self.method,
+            "values": list(self.values),
+            "range_min": self.range_min,
+            "range_max": self.range_max,
+            "compare_op": self.compare_op,
+            "compare_value": self.compare_value,
+            "text_pattern": self.text_pattern,
+            "text_regex": self.text_regex,
+            "text_case_sensitive": self.text_case_sensitive,
+        }
 
 
 @dataclass
@@ -75,12 +148,7 @@ class FilterSpec:
         for entry in payload:
             if not isinstance(entry, dict) or "column" not in entry:
                 continue
-            column = entry["column"]
-            raw_values: Any = entry.get("values", [])
-            if raw_values is None:
-                raw_values = []
-            values = [str(v) for v in raw_values]
-            rows.append(FilterRow(column=str(column), values=values))
+            rows.append(FilterRow.from_dict(entry))
         return cls(rows=rows)
 
     def to_store(self) -> list[dict]:
@@ -91,7 +159,7 @@ class FilterSpec:
             ``values`` list is shallow-copied so downstream mutations on the
             store don't leak back into this spec.
         """
-        return [{"column": row.column, "values": list(row.values)} for row in self.rows]
+        return [row.to_dict() for row in self.rows]
 
     def apply_to(self, df: pl.DataFrame) -> pl.DataFrame:
         """Apply every active row to ``df`` as ``AND`` across rows.

@@ -177,3 +177,76 @@ def test_string_coercion_uses_polars_default_cast() -> None:
     ).apply_to(df)
     assert matches.height == 2
     assert sorted(matches.get_column("Size_Area").to_list()) == [100.0, 200.0]
+
+
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    _coerce_float,
+)
+
+
+def test_legacy_row_defaults_to_is_any_of() -> None:
+    """A pre-method store row keeps working as an is_any_of list filter."""
+    spec = FilterSpec.from_store([{"column": "a", "values": ["x"]}])
+    assert spec.rows[0].method == METHOD_IS_ANY_OF
+    assert spec.rows[0].values == ["x"]
+
+
+def test_coerce_float_handles_blanks_and_numbers() -> None:
+    assert _coerce_float("") is None
+    assert _coerce_float(None) is None
+    assert _coerce_float("3.5") == 3.5
+    assert _coerce_float(7) == 7.0
+    assert _coerce_float("not-a-number") is None
+
+
+def test_from_store_reads_range_and_compare_and_contains() -> None:
+    payload = [
+        {"column": "Size_Area", "method": METHOD_RANGE,
+         "range_min": "100", "range_max": "5000"},
+        {"column": "Shape_Circularity", "method": METHOD_COMPARE,
+         "compare_op": ">=", "compare_value": "0.85"},
+        {"column": "Metadata_ImageFile", "method": METHOD_CONTAINS,
+         "text_pattern": "plate_02", "text_regex": False,
+         "text_case_sensitive": True},
+    ]
+    spec = FilterSpec.from_store(payload)
+    assert spec.rows[0].method == METHOD_RANGE
+    assert spec.rows[0].range_min == 100.0 and spec.rows[0].range_max == 5000.0
+    assert spec.rows[1].method == METHOD_COMPARE
+    assert spec.rows[1].compare_op == ">=" and spec.rows[1].compare_value == 0.85
+    assert spec.rows[2].method == METHOD_CONTAINS
+    assert spec.rows[2].text_pattern == "plate_02"
+    assert spec.rows[2].text_case_sensitive is True
+
+
+def test_invalid_compare_op_coerced_to_none() -> None:
+    spec = FilterSpec.from_store(
+        [{"column": "a", "method": METHOD_COMPARE, "compare_op": "~=",
+          "compare_value": "1"}]
+    )
+    assert spec.rows[0].compare_op is None
+
+
+def test_to_store_round_trips_all_methods() -> None:
+    original = FilterSpec.from_store(
+        [
+            {"column": "Size_Area", "method": METHOD_RANGE, "range_min": 1.0,
+             "range_max": None},
+            {"column": "n", "method": METHOD_IS_NONE_OF, "values": ["1"]},
+        ]
+    )
+    rebuilt = FilterSpec.from_store(original.to_store())
+    assert rebuilt.rows[0].method == METHOD_RANGE
+    assert rebuilt.rows[0].range_min == 1.0 and rebuilt.rows[0].range_max is None
+    assert rebuilt.rows[1].method == METHOD_IS_NONE_OF
+    assert rebuilt.rows[1].values == ["1"]
+
+
+def test_compare_ops_set_is_ordering_only() -> None:
+    assert COMPARE_OPS == frozenset({">", ">=", "<", "<="})
