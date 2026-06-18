@@ -79,6 +79,12 @@ def test_entry_validates_tier_and_derivation_type():
         Entry("x", "d", derivation_type="bogus")
 
 
+def test_tier2_primary_enums():
+    from phenotypic.schema import ColorLab, ColorHSV, RADIAL_EXPANSION, SYMMETRIC_ZONES
+    for enum in (ColorLab, ColorHSV, RADIAL_EXPANSION, SYMMETRIC_ZONES):
+        assert all(m.resolved_tier == 2 for m in enum), enum.__name__
+
+
 def test_tier1_primary_enums():
     from phenotypic.schema import SIZE, INTENSITY
     for enum in (SIZE, INTENSITY):

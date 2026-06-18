@@ -1,9 +1,10 @@
 """Radial expansion measurements for filamentous fungal colonies."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DescriptiveTrait
 
 
-class RADIAL_EXPANSION(MeasurementInfo):
+class RADIAL_EXPANSION(DescriptiveTrait):
     """Radial expansion measurements for filamentous fungal colonies.
 
     Quantifies branching morphology by decomposing colony structure into a
