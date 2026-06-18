@@ -20,6 +20,8 @@ import pytest
 from PIL import Image as PILImage
 from playwright.sync_api import Page
 
+from playwright.sync_api import expect
+
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -75,13 +77,27 @@ def _build_master() -> pl.DataFrame:
 
 
 def _seed_viewer_output(sandbox: Path) -> Path:
-    """Seed a CLI output dir with master + measurements + overlay PNGs."""
+    """Seed a CLI output dir with master + measurements + overlay PNGs.
+
+    Both the clean master archive and the post-applied mirror now live under
+    ``<out>/deliverables/`` (the deliverables/ cutover); ``OutputRoot.discover``
+    requires the master there. Resolve the paths via the ``phenotypic.sdk_``
+    helpers rather than hand-joining names.
+    """
+    from phenotypic.sdk_ import (
+        master_measurements_parquet_path,
+        measurements_parquet_path,
+    )
+
     out = sandbox / "results" / _OUTPUT_NAME
     out.mkdir(parents=True, exist_ok=True)
 
     master = _build_master()
-    master.write_parquet(out / "master_measurements.parquet")
-    master.write_parquet(out / "measurements.parquet")
+    master_path = master_measurements_parquet_path(out)
+    mirror_path = measurements_parquet_path(out)
+    master_path.parent.mkdir(parents=True, exist_ok=True)
+    master.write_parquet(master_path)
+    master.write_parquet(mirror_path)
 
     # Overlay PNGs — seed ds1 overlays so the viewer can resolve them.
     overlays = out / "results" / "ds1" / "overlays"
@@ -190,6 +206,28 @@ def _pick_listbox_option(page: Page, label_text: str) -> None:
     page.locator('[role="listbox"] [role="option"]', has_text=label_text).first.click()
 
 
+def _open_offcanvas(page: Page) -> None:
+    """Click the sticky tab-row Filters button and wait for the panel to open.
+
+    Mirrors Step 3 of :func:`test_filter_offcanvas_toggle_and_filtering`: the
+    Dash callback flips ``is_open`` which re-renders the ``dbc.Offcanvas`` with
+    ``rect.width > 0``.
+    """
+    page.locator("#btn-filters-toggle").click()
+    page.wait_for_function(
+        "() => {"
+        "  const el = document.querySelector('#filter-offcanvas');"
+        "  if (!el) return false;"
+        "  const rect = el.getBoundingClientRect();"
+        "  return rect.width > 0;"
+        "}",
+        timeout=12_000,
+    )
+    assert _offcanvas_is_visible(page), (
+        "filter offcanvas should be visible after clicking #btn-filters-toggle"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
@@ -251,23 +289,32 @@ def test_filter_offcanvas_toggle_and_filtering(page: Page, hub_url: str) -> None
     _pick_listbox_option(page, "Metadata_Dataset")
     page.wait_for_timeout(800)  # let Dash callback write the spec store
 
-    # Assert the badge now shows "1" (one configured filter row).
+    # Under the method-aware redesign a row is only "active" once it has a
+    # usable payload (here: at least one selected value). Picking only the
+    # column is a no-op, so the badge must STAY hidden/empty at this point.
     badge = page.locator("#filter-toggle-badge")
-    badge.wait_for(state="visible", timeout=8_000)
-    badge_text = badge.inner_text()
-    assert badge_text.strip() == "1", (
-        f"#filter-toggle-badge expected '1' after selecting a column; got {badge_text!r}"
+    assert badge.inner_text().strip() == "", (
+        "#filter-toggle-badge should stay empty after selecting only a column "
+        f"(no values yet); got {badge.inner_text()!r}"
     )
 
-    # Step 5 — choose "ds1" in the values dropdown (second dcc.Dropdown,
-    # index 1). Wait for its options to populate after the column selection.
+    # Step 5 — choose "ds1" in the values dropdown (second dcc.Dropdown for a
+    # text column: column=0, method=1, values=2). Wait for its options to
+    # populate after the column selection.
     page.wait_for_timeout(400)  # let values dropdown repopulate
 
-    _open_filter_row_dropdown(page, row_index=0, dropdown_index=1)
+    _open_filter_row_dropdown(page, row_index=0, dropdown_index=2)
     page.wait_for_timeout(200)
 
     _pick_listbox_option(page, "ds1")
     page.wait_for_timeout(800)  # let filter callback resolve image pairs
+
+    # Now the row is active — the badge shows "1".
+    badge.wait_for(state="visible", timeout=8_000)
+    badge_text = badge.inner_text()
+    assert badge_text.strip() == "1", (
+        f"#filter-toggle-badge expected '1' after selecting a value; got {badge_text!r}"
+    )
 
     # Assert the match-count chip reflects the narrowed result.
     match_count = page.locator("#filter-match-count")
@@ -302,3 +349,117 @@ def test_filter_offcanvas_toggle_and_filtering(page: Page, hub_url: str) -> None
     assert not _offcanvas_is_visible(page), (
         "filter offcanvas should be hidden after closing via backdrop"
     )
+
+
+def test_range_method_filters_picker(page: Page, hub_url: str) -> None:
+    """Switching a numeric row to Range (between) actually filters the picker.
+
+    Drives the new per-method controls LIVE so a callback-wiring 500 on
+    ``/_dash-update-component`` (which unit tests never exercise) surfaces:
+
+    1. Open the offcanvas from the sticky tab-row Filters button.
+    2. Add a row and pick the numeric ``Size_Area`` column.
+    3. Switch the Method dropdown to "Range (between)" → assert the
+       range-min/range-max inputs render.
+    4. Type a min bound that excludes some rows → assert the
+       ``#filter-match-count`` chip text changes (the range filter ran).
+    5. Assert NO console error and NO failed ``/_dash-update-component``
+       request fired during the interaction.
+    """
+    console_errors: list[str] = []
+    page.on(
+        "console",
+        lambda msg: console_errors.append(msg.text) if msg.type == "error" else None,
+    )
+    failed_updates: list[str] = []
+
+    def _record_failed(response) -> None:
+        url = response.url
+        if "_dash-update-component" in url and response.status >= 400:
+            failed_updates.append(f"{response.status} {url}")
+
+    page.on("response", _record_failed)
+
+    _open_viewer(page, hub_url)
+    _open_offcanvas(page)
+
+    # Step 2 — add a row and pick the numeric Size_Area column.
+    page.locator("#btn-add-filter-row").click()
+    page.wait_for_selector(".filter-row", state="attached", timeout=10_000)
+    page.wait_for_timeout(400)
+
+    _open_filter_row_dropdown(page, row_index=0, dropdown_index=0)
+    page.wait_for_timeout(200)
+    _pick_listbox_option(page, "Size_Area")
+    page.wait_for_timeout(800)
+
+    # Step 3 — switch the Method dropdown to "Range (between)". The method
+    # dropdown is index 1 inside the row (column dropdown is index 0); for a
+    # numeric column the list-mode values dropdown is replaced by the method
+    # controls, so index 1 is the method selector.
+    _open_filter_row_dropdown(page, row_index=0, dropdown_index=1)
+    page.wait_for_timeout(200)
+    _pick_listbox_option(page, "Range (between)")
+    page.wait_for_timeout(800)
+
+    # The range-min / range-max numeric inputs should now exist.
+    range_min = page.locator('input[id*="filter-row-range-min"]')
+    range_max = page.locator('input[id*="filter-row-range-max"]')
+    range_min.wait_for(state="attached", timeout=8_000)
+    range_max.wait_for(state="attached", timeout=8_000)
+
+    # Capture the pre-filter chip text, then apply a min bound and assert the
+    # chip text changes. ``Size_Area`` is ``100 + r*10 + c`` (111..123) and is
+    # identical across every seeded image file, so a *narrowing* range can't
+    # change the per-image count; a min above the max (200) drops every object
+    # and unambiguously proves the range predicate ran ("0 images match").
+    match_count = page.locator("#filter-match-count")
+    before_text = match_count.inner_text()
+    assert "images match" in before_text, (
+        f"#filter-match-count expected baseline 'images match'; got {before_text!r}"
+    )
+
+    range_min.fill("200")
+    # Commit the value the way a user tabbing out would, so the dcc.Input
+    # debounce / blur fires the Dash callback.
+    range_min.press("Tab")
+    page.wait_for_timeout(900)  # let the range-sync + filter callbacks resolve
+
+    after_text = match_count.inner_text()
+    assert "images match" in after_text, (
+        f"#filter-match-count expected text containing 'images match'; "
+        f"got {after_text!r}"
+    )
+    assert after_text != before_text, (
+        f"range filter should have changed the match-count chip; "
+        f"before={before_text!r} after={after_text!r}"
+    )
+
+    # Step 5 — no live callback errors. A range-control wiring bug would show
+    # up here as a 500 on /_dash-update-component or a JS console error.
+    assert not failed_updates, (
+        f"/_dash-update-component returned an error during the range filter "
+        f"interaction: {failed_updates}"
+    )
+    assert not console_errors, (
+        f"unexpected browser console errors during the range filter "
+        f"interaction: {console_errors}"
+    )
+
+
+def test_filters_button_sticky_after_scroll(page: Page, hub_url: str) -> None:
+    """The tab-row Filters button stays visible after scrolling tab content.
+
+    The button lives in ``.results-viewer-tabbar__actions`` (``position:
+    sticky``). Scrolling the page must not scroll it out of the viewport.
+    """
+    _open_viewer(page, hub_url)
+
+    filters_button = page.locator("#btn-filters-toggle")
+    expect(filters_button).to_be_visible()
+
+    # Scroll the tab content well past a viewport height.
+    page.mouse.wheel(0, 2000)
+    page.wait_for_timeout(400)
+
+    expect(filters_button).to_be_visible()
