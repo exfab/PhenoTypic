@@ -156,23 +156,22 @@ def _load_image_auto(path: Path):
     return Image.load_hdf5(path)
 
 
-def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline, result,
+def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline,
                     sdir) -> dict:
     """Map the scope's input + op blocks to their HDF files + layer metadata."""
     from phenotypic.gui.builder._conversion_dag import (
         _find_input_block, _topological_image_order,
     )
-    from phenotypic.gui.builder._state import PIPELINE_CLASS_NAME, stage_of
+    from phenotypic.gui.builder._state import stage_of
 
     import h5py
 
     input_block = _find_input_block(scope)
     order = _topological_image_order(scope, input_block)
     non_input = [b for b in order if b.block_id != input_block.block_id]
-    ops_blocks = [
-        b for b in non_input
-        if b.class_name == PIPELINE_CLASS_NAME or stage_of(b.class_name) == "ops"
-    ]
+    # ``stage_of`` returns "ops" for both real ops and the ImagePipeline
+    # container sentinel, so this single check covers nested pipelines too.
+    ops_blocks = [b for b in non_input if stage_of(b.class_name) == "ops"]
 
     nodes: dict = {}
 
@@ -206,7 +205,7 @@ def _build_manifest(fingerprint, fingerprint_inputs, scope, pipeline, result,
     return {
         "fingerprint": fingerprint,
         "fingerprint_inputs": fingerprint_inputs,
-        "scope_key": "/".join([]),  # filled by caller via manifest mutation
+        "scope_key": "",  # overwritten by the caller with the real scope key
         "nodes": nodes,
         "error": None,
     }
@@ -270,11 +269,11 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
                 pred_file = parent_manifest["nodes"][pred_id]["hdf"]
             image = _load_image_auto(parent_dir / pred_file)
 
-        result = pipeline.apply_with_intermediates(
-            image, output_dir=sdir, full_layers=True,
-        )
+        # Side effect: writes one full-layer HDF snapshot per node into ``sdir``;
+        # ``_build_manifest`` rebuilds the manifest from those on-disk files.
+        pipeline.apply_with_intermediates(image, output_dir=sdir, full_layers=True)
         manifest = _build_manifest(
-            fingerprint, fingerprint_inputs, scope, pipeline, result, sdir,
+            fingerprint, fingerprint_inputs, scope, pipeline, sdir,
         )
         manifest["scope_key"] = "/".join(scope_path)
     except Exception as exc:  # noqa: BLE001

@@ -6567,10 +6567,11 @@ def register_callbacks(app: dash.Dash) -> None:
     )
     def compute_node_preview(target, session_id, state_data, image_path,
                              nrows, ncols):
-        if not target or not state_data:
+        # ``init_session_id`` always populates STORE_SESSION_ID before a preview
+        # click, so a falsy session_id here means the store hasn't initialised
+        # yet — bail rather than minting an orphan id the layer toggle can't reuse.
+        if not target or not state_data or not session_id:
             return no_update, no_update, no_update, no_update, no_update
-        if not session_id:
-            session_id = uuid.uuid4().hex
         url_prefix = current_app.config.get(CFG_URL_PREFIX, "/")
         try:
             payload = build_preview_payload(

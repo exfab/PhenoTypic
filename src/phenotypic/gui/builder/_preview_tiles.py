@@ -7,6 +7,7 @@ With pyvips installed the tiler streams; resident RAM stays near zero.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -109,7 +110,6 @@ def register_node_preview_routes(app: dash.Dash) -> None:
         manifest_path = sdir / "manifest.json"
         if not manifest_path.exists():
             return _json_error("scope not cached", 404)
-        import json
         nodes = json.loads(manifest_path.read_text()).get("nodes", {})
         node = nodes.get(block_id)
         if node is None:
