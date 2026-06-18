@@ -1,4 +1,4 @@
-"""Tests for the private GAT math helpers in :mod:`phenotypic.tools_._anscombe`.
+"""Tests for the private GAT math helpers in :mod:`phenotypic.sdk_._anscombe`.
 
 Covers forward/inverse mathematics, round-trip identity, NaN handling, and
 ``resolve_scale_factor`` bit-depth dispatch. The user-facing classes
@@ -10,7 +10,7 @@ math-correctness portion of the deleted ``test_anscombe_denoise.py``.
 import numpy as np
 
 from phenotypic import Image
-from phenotypic.tools_._anscombe import (
+from phenotypic.sdk_._anscombe import (
     gat_forward,
     gat_inverse,
     resolve_scale_factor,

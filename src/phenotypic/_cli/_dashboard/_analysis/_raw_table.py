@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from phenotypic.tools_.register import register_analysis
+from phenotypic.sdk_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
 

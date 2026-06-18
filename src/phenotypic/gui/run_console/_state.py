@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from phenotypic.tools_.typing_ import ExecutionMode
+from phenotypic.sdk_.typing_ import ExecutionMode
 
 
 __all__ = [

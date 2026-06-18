@@ -18,7 +18,7 @@ from PIL import Image as PIL_Image
 
 import phenotypic
 from phenotypic.schema import METADATA
-from phenotypic.tools_.constants_ import IO
+from phenotypic.sdk_.constants_ import IO
 
 HAS_EXIFTOOL = shutil.which("exiftool") is not None
 
@@ -847,7 +847,10 @@ class TestLegacyMetadataKeyShim:
         )
 
         unpickler = _BackCompatUnpickler(_io.BytesIO(b""))
-        # The moved symbol resolves to the current schema.METADATA ...
+        # The moved symbol resolves to the current schema.METADATA. The legacy
+        # path is the genuinely-old ``tools_`` location pre-existing pickles were
+        # written with (the package has since been renamed to ``sdk_``); the
+        # shim must keep matching it verbatim.
         assert (
             unpickler.find_class("phenotypic.tools_.constants_", "METADATA")
             is METADATA

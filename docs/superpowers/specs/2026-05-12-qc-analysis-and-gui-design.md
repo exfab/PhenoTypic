@@ -180,7 +180,7 @@ src/phenotypic/analysis/
 ├── _replicate_agreement.py         # NEW: ReplicateAgreement
 └── __init__.py                     # MOD: export the new public names
 
-src/phenotypic/tools_/measurement_info/
+src/phenotypic/sdk_/measurement_info/
 ├── _quality_check.py               # NEW: QUALITY_CHECK MI (generic;
 │                                     overrides append_rst_to_doc to
 │                                     accept a per-check name kwarg)

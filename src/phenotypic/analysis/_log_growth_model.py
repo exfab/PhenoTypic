@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_ import ModelFitter
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS
 
 

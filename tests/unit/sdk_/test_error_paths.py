@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     curation_labels_parquet_path,
     custom_categories_json_path,
     deliverables_dir,

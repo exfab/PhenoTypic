@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 
 from pydantic import field_validator, PrivateAttr
 
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import EDGE_CORRECTION
 from .abc_ import SetAnalyzer
 

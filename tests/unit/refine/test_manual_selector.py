@@ -76,7 +76,7 @@ class TestManualSelectorInit:
 
     def test_inherits_point_picker_mixin(self):
         """ManualRefine mixes in PointPickerMixin and exposes its marker."""
-        from phenotypic.tools_.mixin import PointPickerMixin
+        from phenotypic.sdk_.mixin import PointPickerMixin
 
         sel = ManualRefine()
         assert isinstance(sel, PointPickerMixin)
@@ -236,7 +236,7 @@ class TestManualSelectorNapari:
 
     def test_napari_sets_centers(self):
         sel = ManualRefine()
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.array([[50, 60], [100, 120]])
             result = sel.napari(MagicMock())
@@ -249,7 +249,7 @@ class TestManualSelectorNapari:
     def test_napari_empty_result_preserves_existing_centers(self):
         original = [[10, 20], [30, 40]]
         sel = ManualRefine(centers=original)
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             mock_instance = MockWidget.return_value
             mock_instance.run.return_value = np.empty((0, 2))
             sel.napari(MagicMock())

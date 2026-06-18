@@ -15,7 +15,7 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.measure import MeasureShape
 from phenotypic.prefab import HeavyOtsuPipeline
 from phenotypic.refine import RemoveBorderObjects, SmallObjectRemover
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     CONFIG_SUFFIX_OPERATION,
     CONFIG_SUFFIX_PIPELINE,
     ensure_typed_json_suffix,

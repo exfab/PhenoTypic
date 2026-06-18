@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import pytest
 
 from phenotypic.abc_ import Control, FigureProvider, figure
-from phenotypic.tools_.viz.notebook._adapter import (
+from phenotypic.sdk_.viz.notebook._adapter import (
     control_owners,
     initial_control_state,
     spec_control_kwargs,

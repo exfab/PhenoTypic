@@ -233,7 +233,7 @@ def _seed_error_triage_labels() -> None:
     import polars as pl
 
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.tools_ import (
+    from phenotypic.sdk_ import (
         curation_labels_parquet_path,
         master_measurements_parquet_path,
         measurements_parquet_path,
@@ -298,7 +298,7 @@ def run_tune_once() -> None:
     Grid (not Optuna) keeps the import surface optuna-free and the run sub-second.
     Skips when the marker already exists (re-running is cheap but avoidable).
     """
-    from phenotypic.tools_ import _io_constants as io
+    from phenotypic.sdk_ import _io_constants as io
 
     if io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
         print(
@@ -388,7 +388,7 @@ def _finalize_tune_run_as_parquet_only() -> None:
     """
     import json as _json
 
-    from phenotypic.tools_ import _io_constants as io
+    from phenotypic.sdk_ import _io_constants as io
 
     marker_path = io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR)
     marker = _json.loads(marker_path.read_text())
@@ -1788,7 +1788,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
     # over the hermetic ``TUNE_OUTPUT_DIR``. Dispatched from this function (one
     # of the two WORKFLOWS.md dispatch entry points) so the round-trip gate sees
     # ``_capture_tune_copilot`` wired in. A missing tune marker skips it.
-    from phenotypic.tools_ import _io_constants as io
+    from phenotypic.sdk_ import _io_constants as io
 
     if not io.tune_cache_run_marker_path(TUNE_OUTPUT_DIR).exists():
         print("[shot]   tune_copilot: no tune output marker — capture skipped")

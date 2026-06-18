@@ -20,7 +20,7 @@ server.
 
 | Need                                     | File                                                  |
 | ---------------------------------------- | ----------------------------------------------------- |
-| New CLI-produced output filename / dirname (consumed by GUI) | [`phenotypic.tools_._io_constants`](../tools_/_io_constants.py) (`MASTER_MEASUREMENTS_PARQUET`, `DIR_RESULTS`, `JOB_METADATA_JSON`, …) |
+| New CLI-produced output filename / dirname (consumed by GUI) | [`phenotypic.sdk_._io_constants`](../tools_/_io_constants.py) (`MASTER_MEASUREMENTS_PARQUET`, `DIR_RESULTS`, `JOB_METADATA_JSON`, …) |
 | New CLI default / port / log format      | [_config.py](_config.py) (`DEFAULT_*`, `LOG_FORMAT`)  |
 | New brand color / type / radius / shadow | [_design.py](_design.py) (`COLOR_*`, `TEXT_*`, …)     |
 | New mount prefix                         | [_config.py](_config.py) (`MOUNT_*`) + register in [shell/_app.py](shell/_app.py) |
@@ -33,7 +33,7 @@ server.
 move it to `_config.py` (Python identifiers) or `_design.py` (CSS-shaped values).
 Don't re-spell. **For CLI-produced output artifact filenames (anything the
 CLI writes that the GUI reads), the canonical home is
-`phenotypic.tools_._io_constants` instead — `_config.py` re-exports the
+`phenotypic.sdk_._io_constants` instead — `_config.py` re-exports the
 shared names so existing imports keep working.**
 
 ---
@@ -135,7 +135,7 @@ ThreadPoolExecutor(thread_name_prefix=f"{THREAD_NAME_PREFIX}-slurm")
 threading.Thread(name=f"{THREAD_NAME_PREFIX}-idle-release", ...)
 ```
 
-### CLI-produced output filenames (re-exported from `phenotypic.tools_`)
+### CLI-produced output filenames (re-exported from `phenotypic.sdk_`)
 
 ```python
 from phenotypic.gui._config import (
@@ -153,9 +153,9 @@ from phenotypic.gui._config import (
 ```
 
 These are re-exports of the canonical constants in
-`phenotypic.tools_._io_constants`; importing from either location
+`phenotypic.sdk_._io_constants`; importing from either location
 yields the same string. Use `_config.py` for ergonomic GUI imports; reach
-for `phenotypic.tools_` directly when in non-GUI code that consumes these
+for `phenotypic.sdk_` directly when in non-GUI code that consumes these
 filenames (e.g. test fixtures, CLI integration tests).
 
 **Output layout — `deliverables/`.** These are *filenames*, not full
@@ -164,8 +164,8 @@ paths. The user-facing run artifacts (`master_measurements.*`,
 `dashboard.html`, `analysis.html`, `processing_report.html`,
 `README.md`, `pipeline.json`) now live under `<output>/deliverables/`
 (`DELIVERABLES_DIRNAME` = `"deliverables"`, underlying
-`DIR_DELIVERABLES` in `phenotypic.tools_`). Join them via the
-`phenotypic.tools_` path helpers (`deliverables_dir(output)`,
+`DIR_DELIVERABLES` in `phenotypic.sdk_`). Join them via the
+`phenotypic.sdk_` path helpers (`deliverables_dir(output)`,
 `master_measurements_parquet_path(output)`, …) so the subfolder stays
 single-sourced. The root-level directories `RESULTS_DIRNAME` (`results/`,
 per-image hdf/measurements/overlays), `PROGRESS_DIRNAME` (`progress/`),
@@ -279,12 +279,12 @@ badge contrast variants and prohibited combinations.
 Filter / model params that name a column in
 `deliverables/measurements.parquet`
 should be annotated with `ColumnRef` / `ColumnRefList` from
-`phenotypic.tools_` instead of bare `str` / `list[str]`. Analyzers are
+`phenotypic.sdk_` instead of bare `str` / `list[str]`. Analyzers are
 pydantic models, so these are declared as annotated **class-level
 fields** (there is no `__init__`):
 
 ```python
-from phenotypic.tools_ import ColumnRef, ColumnRefList
+from phenotypic.sdk_ import ColumnRef, ColumnRefList
 
 class MyFilter(SetAnalyzer):
     on: ColumnRef
@@ -365,7 +365,7 @@ menu**, not a binary remove. The shared component is
   **live** as the user curates (via `CurationLabels._save_locked`), and the CLI
   **re-emits** them on the next finalize/recompile from the durable
   `qc/curation_labels.parquet` (which the CLI never wipes). Resolve these paths
-  via `phenotypic.tools_` helpers (`errors_dir`, `error_category_parquet_path`,
+  via `phenotypic.sdk_` helpers (`errors_dir`, `error_category_parquet_path`,
   `curation_labels_parquet_path`), never by hand-joining names.
 
 ---
@@ -410,7 +410,7 @@ and `_ids.py` (all-static component ids, e.g. `error-cutoff-table`,
   `[category, *RESULT_COLUMNS]`) from the durable `qc/curation_labels.parquet`,
   so headless output matches the live GUI. `verified.parquet` is **GUI-only**
   — finalize never writes it (it would be stale: `review_state.json` is reset
-  on recompile). Resolve every path via `phenotypic.tools_` helpers
+  on recompile). Resolve every path via `phenotypic.sdk_` helpers
   (`error_analysis_parquet_path`, `errors_dir`, `verified_parquet_path`, …),
   never by hand-joining names.
 

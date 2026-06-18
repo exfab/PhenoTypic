@@ -12,8 +12,8 @@ import pytest
 from phenotypic.abc_ import FigureProvider, figure
 from phenotypic._core._image_parts.plot_accessor._base_plotter import BasePlotter
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.tools_.register import register_plotter
-from phenotypic.tools_.register._plotter_registry import PlotterRegistry
+from phenotypic.sdk_.register import register_plotter
+from phenotypic.sdk_.register._plotter_registry import PlotterRegistry
 
 
 class _DummyDashPlotter(BasePlotter, FigureProvider):

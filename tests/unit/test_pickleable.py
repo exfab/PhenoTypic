@@ -14,7 +14,7 @@ _pickleable_public = [
     if (
             ("phenotypic.phenotypicCLI" not in qualname)
             and ("phenotypic._cli" not in qualname)
-            and ("phenotypic.tools_" not in qualname)
+            and ("phenotypic.sdk_" not in qualname)
     )
 ]
 

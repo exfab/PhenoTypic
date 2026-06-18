@@ -2,7 +2,7 @@
 
 Aggregates unchunked per-image Parquet files into dashboard chunks,
 rebuilds the combined analysis file, and updates the master CSV
-(:data:`~phenotypic.tools_.MASTER_MEASUREMENTS_CSV`) so users can download
+(:data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_CSV`) so users can download
 partial results mid-run.
 
 Note: this writer intentionally bypasses
@@ -28,7 +28,7 @@ import polars as pl
 from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write, join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
     CHUNK_MANIFEST_JSON,
@@ -311,7 +311,7 @@ def _run_analysis_plugins(
     """
     try:
         from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
-        from phenotypic.tools_.register import AnalysisPluginRegistry
+        from phenotypic.sdk_.register import AnalysisPluginRegistry
         # Trigger plugin registration
         from ._dashboard._analysis import (  # noqa: F401
             _image_viewer,

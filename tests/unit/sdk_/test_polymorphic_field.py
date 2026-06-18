@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from phenotypic.tools_.typing_ import OperationField, polymorphic_field
+from phenotypic.sdk_.typing_ import OperationField, polymorphic_field
 
 
 # --- A live, non-operation pydantic base to prove base-parameterization ---
@@ -59,7 +59,7 @@ def test_operationfield_roundtrips_real_operation():
 def test_operationfield_keeps_gui_marker():
     # The GUI OperationRegistry detects operation params via _OperationFieldMarker
     # in the Annotated chain. OperationField must keep it after the refactor.
-    from phenotypic.tools_.typing_ import _OperationFieldMarker
+    from phenotypic.sdk_.typing_ import _OperationFieldMarker
 
     meta = OperationField.__metadata__
     assert any(isinstance(m, _OperationFieldMarker) for m in meta)

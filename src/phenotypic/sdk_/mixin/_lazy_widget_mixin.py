@@ -474,7 +474,7 @@ class LazyWidgetMixin:
         Supports Google, NumPy, and Sphinx/ReST styles.
 
         Thin wrapper around the shared
-        :func:`~phenotypic.tools_._docstring_params.parse_param_descriptions`
+        :func:`~phenotypic.sdk_._docstring_params.parse_param_descriptions`
         — the canonical home of this parser since the pydantic v2
         migration. Operation parameter descriptions are now read straight
         from ``FieldInfo.description`` during widget generation; this
@@ -483,7 +483,7 @@ class LazyWidgetMixin:
         Returns:
             dict: A dictionary mapping parameter names to their description strings.
         """
-        from phenotypic.tools_._docstring_params import parse_param_descriptions
+        from phenotypic.sdk_._docstring_params import parse_param_descriptions
 
         return parse_param_descriptions(self.__doc__)
 

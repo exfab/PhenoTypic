@@ -24,7 +24,7 @@ itself remains import-cheap.
 edits to that file (including moving it), delete the on-disk cache:
 
 ```bash
-find src/phenotypic/tools_/branch_pathfinding -name __pycache__ -exec rm -rf {} +
+find src/phenotypic/sdk_/branch_pathfinding -name __pycache__ -exec rm -rf {} +
 ```
 
 Otherwise numba may try to reuse a stale signature and throw a

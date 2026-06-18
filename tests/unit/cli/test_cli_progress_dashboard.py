@@ -44,8 +44,8 @@ from phenotypic._cli._dashboard._manifest_builder import (
 )
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
-from phenotypic.tools_ import analysis_html_path, dashboard_html_path
-from phenotypic.tools_ import progress_dir as _progress_dir
+from phenotypic.sdk_ import analysis_html_path, dashboard_html_path
+from phenotypic.sdk_ import progress_dir as _progress_dir
 
 
 # ──────────────────────────────────────────────────────────────────────

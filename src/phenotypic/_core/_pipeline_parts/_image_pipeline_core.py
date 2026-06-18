@@ -35,8 +35,8 @@ from phenotypic.analysis.abc_._set_analyzer import SetAnalyzer
 # Import the entry type from the qc._recipe *submodule* (not the package
 # __init__) so the edge stays ``_core -> qc._recipe -> analysis.abc_`` and
 # never pulls in qc._runner / _cli / gui at module load.
-from phenotypic.tools_._qc_recipe import QcRecipeEntry
-from phenotypic.tools_.mixin import LazyWidgetMixin
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_.mixin import LazyWidgetMixin
 
 logger = logging.getLogger("ImagePipeline")
 

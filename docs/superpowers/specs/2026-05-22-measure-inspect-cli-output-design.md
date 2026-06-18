@@ -90,7 +90,7 @@ Add `ImagePipeline.iter_measurers() -> Iterator[tuple[str, MeasureFeatures]]` to
 
 The measurer step key is whatever the pipeline assigned (typically the class name, with `_1`, `_2` suffixes for duplicates). Two `MeasureSymmetricZones` configured differently in one pipeline land in distinct subdirs.
 
-A new `DIR_INSPECT: Final[str] = "inspect"` lives in `phenotypic.tools_._io_constants` and is re-exported via `phenotypic.tools_.__init__` and `phenotypic.gui._config` (the latter for GUI imports per the CLAUDE.md convention).
+A new `DIR_INSPECT: Final[str] = "inspect"` lives in `phenotypic.sdk_._io_constants` and is re-exported via `phenotypic.sdk_.__init__` and `phenotypic.gui._config` (the latter for GUI imports per the CLAUDE.md convention).
 
 ### 4.5 OutputManager
 

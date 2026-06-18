@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import phenotypic
-import phenotypic.tools_.constants_  # noqa: F401  (GAMMA_ENCODINGS, PIPE_STATUS)
+import phenotypic.sdk_.constants_  # noqa: F401  (GAMMA_ENCODINGS, PIPE_STATUS)
 from phenotypic.schema import MeasurementInfo
 
 _ASSETS = Path(phenotypic.__file__).resolve().parent / "_assets" / "measurements"

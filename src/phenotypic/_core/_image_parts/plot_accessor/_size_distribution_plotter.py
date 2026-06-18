@@ -9,7 +9,7 @@ from matplotlib.gridspec import GridSpec
 from scipy.stats import gaussian_kde
 from skimage.measure import regionprops_table
 
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 
 # Check for optional interactive widgets
 HAS_WIDGETS = all(

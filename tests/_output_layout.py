@@ -11,7 +11,7 @@ output root.
 
 Tests that synthesize one of these layouts should route through these
 helpers (which compose from the production path-builders in
-``phenotypic.tools_``) so the on-disk layout auto-tracks any future
+``phenotypic.sdk_``) so the on-disk layout auto-tracks any future
 relocation of the deliverables folder. Never hard-code
 ``tmp_path / "master_measurements.parquet"`` — it will silently drift.
 
@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     deliverables_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
@@ -109,7 +109,7 @@ def write_dashboard(root: Path, *, execution_mode: str = "local") -> Path:
 
     _ensure_deliverables(root)
     generate_dashboard(root, execution_mode=execution_mode)
-    from phenotypic.tools_ import dashboard_html_path
+    from phenotypic.sdk_ import dashboard_html_path
 
     return dashboard_html_path(root)
 

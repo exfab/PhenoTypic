@@ -2,7 +2,7 @@
 
 Utility mixins, helpers, and constants.
 
-## Mixins (`phenotypic.tools_.mixin`)
+## Mixins (`phenotypic.sdk_.mixin`)
 
 ### FootprintMixin
 Morphological structuring elements via `_make_footprint(shape, width)`.

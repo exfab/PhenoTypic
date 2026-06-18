@@ -29,4 +29,4 @@ def test_base_class_reexported_identically_from_abc():
 
 def test_old_measurement_info_path_is_gone():
     with pytest.raises(ModuleNotFoundError):
-        importlib.import_module("phenotypic.tools_.measurement_info")
+        importlib.import_module("phenotypic.sdk_.measurement_info")

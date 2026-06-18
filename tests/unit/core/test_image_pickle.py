@@ -278,7 +278,7 @@ class TestPickleEdgeCases:
 
     def test_roundtrip_empty_rgb_array(self):
         """Test pickle with empty RGB array (grayscale-only image)."""
-        from phenotypic.tools_.exceptions_ import NoArrayError
+        from phenotypic.sdk_.exceptions_ import NoArrayError
 
         gray_array = np.random.randint(0, 256, (100, 100), dtype=np.uint8)
         img = Image(gray_array)

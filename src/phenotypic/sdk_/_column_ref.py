@@ -11,7 +11,7 @@ through ``typing.get_type_hints(..., include_extras=True)``.
 
 Usage::
 
-    from phenotypic.tools_ import ColumnRef, ColumnRefList
+    from phenotypic.sdk_ import ColumnRef, ColumnRefList
 
     class MyAnalyzer(SetAnalyzer):
         def __init__(self, on: ColumnRef, groupby: ColumnRefList): ...

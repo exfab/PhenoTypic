@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS, event_log_path
+from phenotypic.sdk_ import DIR_LOGS, DIR_SLURM_SCRIPTS, event_log_path
 
 # Sentinel value inserted into the image list to trigger checkpoint aggregation
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"

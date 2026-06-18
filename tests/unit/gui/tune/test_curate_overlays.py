@@ -201,7 +201,7 @@ def test_poll_self_heals_from_cache_after_sibling_resubmit_drops_future(
     from phenotypic.gui.tune._callbacks import _poll_curate_overlays
     from phenotypic.gui.tune._overlays import get_overlay_cache
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     # A discoverable (legacy parquet) run so the poll resolves the SAME per-run
@@ -264,7 +264,7 @@ def test_poll_returns_no_update_when_nothing_cached_or_pending(tmp_path: Path) -
     from phenotypic.gui.tune import _curate_overlays as ov
     from phenotypic.gui.tune._callbacks import _poll_curate_overlays
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     run_dir = tmp_path / "empty_run"

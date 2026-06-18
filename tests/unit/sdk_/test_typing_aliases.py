@@ -1,6 +1,6 @@
 from typing import get_args
 
-from phenotypic.tools_.typing_ import DinoSize, DinoVersion, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import DinoSize, DinoVersion, ProcessOnlyLayer
 
 
 def test_process_only_layer_values():

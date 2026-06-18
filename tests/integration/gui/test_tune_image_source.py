@@ -34,7 +34,7 @@ def sandbox(tmp_path: Path) -> SandboxRoot:
 def _run_with_images(tmp_path: Path, images_dir: Path) -> object:
     """Write a run.json marker carrying ``images_dir`` and discover the root."""
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import tune_cache_run_marker_path
+    from phenotypic.sdk_ import tune_cache_run_marker_path
 
     marker = tune_cache_run_marker_path(tmp_path)
     marker.parent.mkdir(parents=True, exist_ok=True)
@@ -113,7 +113,7 @@ def test_load_plate_grid_reads_a_real_plate(sandbox: SandboxRoot) -> None:
 def test_curate_view_exposes_picker_ids(tmp_path: Path) -> None:
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     images = tmp_path / "calibration"
@@ -211,7 +211,7 @@ def test_curate_prompt_when_image_source_unset(tmp_path: Path) -> None:
     """A run with no images_dir shows a 'point me at the plate images' prompt."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     parquet = trials_parquet_path(tmp_path)

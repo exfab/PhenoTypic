@@ -5,7 +5,7 @@ from typing import Annotated, Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 from phenotypic.abc_ import Smoothing
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 from skimage.filters import median
 

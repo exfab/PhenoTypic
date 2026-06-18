@@ -9,8 +9,8 @@ import numpy as np
 from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.mixin import FootprintMixin
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.mixin import FootprintMixin
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
 class MaskWhiteTophat(ObjectRefiner, FootprintMixin):

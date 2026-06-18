@@ -23,7 +23,7 @@ from phenotypic.tune._study_store import Trial
 
 
 def _root(tmp_path: Path) -> TuneRunRoot:
-    from phenotypic.tools_ import best_pipeline_path
+    from phenotypic.sdk_ import best_pipeline_path
 
     return TuneRunRoot(
         path=tmp_path,

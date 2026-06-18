@@ -7,7 +7,7 @@ tailored to agar plate imaging, building on `MeasurementInfo`, `MeasureFeatures`
 """
 
 from phenotypic.schema import MeasurementInfo
-from phenotypic.tools_ import FootprintMixin
+from phenotypic.sdk_ import FootprintMixin
 from ._measure_features import MeasureFeatures
 from ._image_operation import ImageOperation
 from ._image_enhancer import ImageEnhancer

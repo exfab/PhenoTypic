@@ -364,7 +364,7 @@ class NapariLabelsMixin:
                 "Install with: pip install phenotypic[napari]"
             )
 
-        from phenotypic.tools_.napari_ import LabelEditorWidget
+        from phenotypic.sdk_.napari_ import LabelEditorWidget
 
         LabelEditorWidget().run(
             self._root_image, self._accessor_property_name, viewer=viewer

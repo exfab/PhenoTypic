@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.detect import OtsuDetector, RoundPeaksDetector
-from phenotypic.tools_.typing_ import OperationField, TuneSpec
+from phenotypic.sdk_.typing_ import OperationField, TuneSpec
 
 
 class CompositeDetector(ObjectDetector):

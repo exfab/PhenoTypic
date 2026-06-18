@@ -117,7 +117,7 @@ def plot_paths_over_image(
         ImportError: If plotly is not installed.
         ValueError: If ``background`` is neither (H, W) nor (H, W, 3).
     """
-    from phenotypic.tools_._plotly_helpers import _require_plotly
+    from phenotypic.sdk_._plotly_helpers import _require_plotly
 
     _require_plotly()
     import plotly.graph_objects as go
@@ -254,7 +254,7 @@ def plot_cost_distance_heatmap(
     Raises:
         ImportError: If plotly is not installed.
     """
-    from phenotypic.tools_._plotly_helpers import _require_plotly
+    from phenotypic.sdk_._plotly_helpers import _require_plotly
 
     _require_plotly()
     import plotly.graph_objects as go

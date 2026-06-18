@@ -2,7 +2,7 @@
 
 Reuses the **forward CLI's drip-feed submission layer** (``format_sbatch_directives``
 / ``generate_dispatcher_chain`` / ``submit_drip_feed_start`` in
-``phenotypic.tools_.slurm``) — the queue-throttle plumbing that keeps occupancy at
+``phenotypic.sdk_.slurm``) — the queue-throttle plumbing that keeps occupancy at
 ~one array + one dispatcher — but emits a **fresh tune-specific array body** with
 **no image-chunk sentinels**. One array task = one worker running
 ``python -m phenotypic.tune._tune_cli._worker``, an ask→evaluate→tell loop bound to
@@ -24,8 +24,8 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence, TypeVar, cast
 
-from phenotypic.tools_ import DIR_LOGS, DIR_SLURM_SCRIPTS
-from phenotypic.tools_.slurm import (
+from phenotypic.sdk_ import DIR_LOGS, DIR_SLURM_SCRIPTS
+from phenotypic.sdk_.slurm import (
     format_sbatch_directives,
     generate_dispatcher_chain,
     submit_drip_feed_start,

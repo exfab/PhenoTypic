@@ -26,7 +26,7 @@ class ClipControlMixin:
     Example:
         Creating a clip-disabled copy of an enhancer:
 
-        >>> from phenotypic.tools_ import ClipControlMixin
+        >>> from phenotypic.sdk_ import ClipControlMixin
         >>> from phenotypic.enhance import LocalEdgeDenoise
         >>>
         >>> enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)
@@ -80,7 +80,7 @@ class ClipControlMixin:
             safe in practice.
 
         Example:
-            >>> from phenotypic.tools_ import ClipControlMixin
+            >>> from phenotypic.sdk_ import ClipControlMixin
             >>> from phenotypic.enhance import LocalEdgeDenoise
             >>>
             >>> enh = LocalEdgeDenoise(sigma_spatial=5, clip=True)

@@ -6,7 +6,7 @@ The QC tab body composes:
   success toast;
 * a load-warning banner mounted via :data:`QC_LOAD_WARNING_BANNER_ID`
   (visibility toggled by the layout factory based on
-  :class:`~phenotypic.tools_._qc_recipe.QcRecipe.load_warnings`);
+  :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings`);
 * a cards container hosting one ``dbc.Card`` per enabled QC entry; the
   cards themselves use pattern-matching ids keyed by ``instance_id``;
 * a single ``dbc.Modal`` shared by the add / edit / duplicate flows.

@@ -272,7 +272,7 @@ class TestColumnWidgets:
         return ColumnRefSpec(source="measurements", multi=True, with_alt=False)
 
     def test_scalar_dropdown_renders_for_columnref(self):
-        from phenotypic.tools_ import ColumnRef
+        from phenotypic.sdk_ import ColumnRef
 
         p = _StubParamInfo("on", ColumnRef, column_ref=self._scalar_spec())
         w = _widget_for_param(
@@ -290,7 +290,7 @@ class TestColumnWidgets:
         }
 
     def test_multi_dropdown_renders_for_columnreflist(self):
-        from phenotypic.tools_ import ColumnRefList
+        from phenotypic.sdk_ import ColumnRefList
 
         p = _StubParamInfo(
             "groupby", ColumnRefList, column_ref=self._multi_spec()
@@ -306,7 +306,7 @@ class TestColumnWidgets:
         assert w.value == ["Metadata_Strain"]
 
     def test_stale_value_renders_with_tooltip(self):
-        from phenotypic.tools_ import ColumnRef
+        from phenotypic.sdk_ import ColumnRef
 
         p = _StubParamInfo("on", ColumnRef, column_ref=self._scalar_spec())
         w = _widget_for_param(
@@ -320,7 +320,7 @@ class TestColumnWidgets:
         assert "MissingCol" in w.title
 
     def test_columnref_or_none_renders_two_button_toggle(self):
-        from phenotypic.tools_ import ColumnRef
+        from phenotypic.sdk_ import ColumnRef
 
         p = _StubParamInfo(
             "Kmax_label",
@@ -343,7 +343,7 @@ class TestColumnWidgets:
         assert radio.value == "column"  # current is a string -> column mode
 
     def test_columnref_or_none_default_mode_is_none_when_value_is_none(self):
-        from phenotypic.tools_ import ColumnRef
+        from phenotypic.sdk_ import ColumnRef
 
         p = _StubParamInfo(
             "Kmax_label",
@@ -371,7 +371,7 @@ class TestColumnWidgets:
         on a list value.
         """
         from phenotypic.gui._operation_registry import ColumnRefSpec
-        from phenotypic.tools_ import ColumnRefList
+        from phenotypic.sdk_ import ColumnRefList
 
         p = _StubParamInfo(
             "future_param",

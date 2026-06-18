@@ -7,7 +7,7 @@ long-running SLURM jobs.
 
 Usage::
 
-    python -m phenotypic.tools_.generate_report OUTPUT_DIR
+    python -m phenotypic.sdk_.generate_report OUTPUT_DIR
 """
 
 import sys
@@ -23,7 +23,7 @@ from phenotypic._cli._cli_types import (
     ImageFailure,
 )
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     processing_report_html_path,
     resolve_event_log_path,
     resolve_processing_state_path,
@@ -56,10 +56,10 @@ def generate_cli_report(output_dir: Path):
 
     Examples:
         # Generate report after processing completes
-        python -m phenotypic.tools_.generate_report ./results
+        python -m phenotypic.sdk_.generate_report ./results
 
         # Generate report during long-running SLURM job
-        python -m phenotypic.tools_.generate_report ./phenotypic_results_20260108_143022
+        python -m phenotypic.sdk_.generate_report ./phenotypic_results_20260108_143022
     """
     click.echo(f"Generating report for {output_dir}...")
 

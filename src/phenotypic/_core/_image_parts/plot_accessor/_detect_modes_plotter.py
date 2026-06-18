@@ -15,8 +15,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from phenotypic.abc_ import FigureProvider, figure
-from phenotypic.tools_._plotly_helpers import plotly_imshow
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_._plotly_helpers import plotly_imshow
+from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 
@@ -94,7 +94,7 @@ class DetectModesPlotter(BasePlotter, FigureProvider):
         Computes each registered :class:`DetectionMode` over the root image,
         plus the current ``detect_mat``, and arranges them in a roughly square
         subplot grid. Each panel is a grayscale image layer built with
-        :func:`~phenotypic.tools_._plotly_helpers.plotly_imshow`; axes are hidden
+        :func:`~phenotypic.sdk_._plotly_helpers.plotly_imshow`; axes are hidden
         and aspect-locked so the panels read as thumbnails. The house theme is
         applied automatically by the ``@figure`` decorator.
 

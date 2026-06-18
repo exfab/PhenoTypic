@@ -1,7 +1,7 @@
 """Every MeasurementInfo member exposes the universal Entry attribute surface."""
 
 import phenotypic  # noqa: F401  (registers all enum modules)
-import phenotypic.tools_.constants_  # noqa: F401  (GAMMA_ENCODINGS, PIPE_STATUS)
+import phenotypic.sdk_.constants_  # noqa: F401  (GAMMA_ENCODINGS, PIPE_STATUS)
 from phenotypic.schema import MeasurementInfo
 
 

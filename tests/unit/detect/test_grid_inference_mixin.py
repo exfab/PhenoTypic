@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 import scipy.ndimage as ndimage
 from phenotypic.detect import RoundPeaksDetector, SinePeakDetector
-from phenotypic.tools_.mixin import GridInferenceMixin
+from phenotypic.sdk_.mixin import GridInferenceMixin
 
 from ..resources.TestHelper import timeit
 

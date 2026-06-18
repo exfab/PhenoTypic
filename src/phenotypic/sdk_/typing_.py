@@ -64,8 +64,8 @@ GridSearchConfig = List[Tuple["ImageOperation", Dict[str, List[Any]]]]
 
 # ---------------------------------------------------------------------------
 # CLI / GUI closed value sets — single source of truth, imported by callers
-# rather than re-spelled. Pair with phenotypic.tools_.constants_.IMAGE_TYPES
-# (paired Enum + Literal alignment is asserted in tests/unit/tools_/test_io_constants.py).
+# rather than re-spelled. Pair with phenotypic.sdk_.constants_.IMAGE_TYPES
+# (paired Enum + Literal alignment is asserted in tests/unit/sdk_/test_io_constants.py).
 # ---------------------------------------------------------------------------
 
 #: Forward-run / recompile execution backend. Bare-string carrier for
@@ -156,7 +156,7 @@ def _ndarray_to_list(value: np.ndarray) -> list:
 #: Example:
 #:     >>> import numpy as np
 #:     >>> from pydantic import BaseModel, ConfigDict
-#:     >>> from phenotypic.tools_.typing_ import NdArrayField
+#:     >>> from phenotypic.sdk_.typing_ import NdArrayField
 #:     >>> class KernelOp(BaseModel):
 #:     ...     model_config = ConfigDict(arbitrary_types_allowed=True)
 #:     ...     kernel: NdArrayField
@@ -217,7 +217,7 @@ def _serialize_operation_value(value: Any) -> Any:
         type error).
     """
     # Lazy import: the serializer module imports operation classes, so a
-    # top-level import here would create a cycle through ``tools_``.
+    # top-level import here would create a cycle through ``sdk_``.
     from phenotypic._core._pipeline_parts._serializable_pipeline import (
         SerializablePipeline,
     )
@@ -284,7 +284,7 @@ def _make_require_value(base: "type | Callable[[], type]"):
 
     ``base`` may be a concrete type or a zero-arg callable that returns the
     type (resolved lazily, so ``OperationField`` can name ``BaseOperation``
-    without importing it at ``tools_`` load time — avoiding the import cycle).
+    without importing it at ``sdk_`` load time — avoiding the import cycle).
 
     Args:
         base: The class the value must be an instance of, or a zero-arg
@@ -346,11 +346,11 @@ class _OperationFieldMarker:
 
     :data:`OperationField` erases its core type to ``Any`` (it cannot
     name the operation base classes without an import cycle through
-    ``tools_``). That erasure also hides the field from the GUI's
+    ``sdk_``). That erasure also hides the field from the GUI's
     ``OperationRegistry``, which detects operation-valued parameters by
     inspecting the annotation. This marker is the distinguishing token
     the registry scans for — analogous to
-    :class:`~phenotypic.tools_._column_ref._ColumnRefMarker` — so a
+    :class:`~phenotypic.sdk_._column_ref._ColumnRefMarker` — so a
     field typed ``OperationField`` (or ``list[OperationField]`` /
     ``OperationField | None``) is still recognised as accepting an
     operation **or** a nested pipeline.
@@ -389,7 +389,7 @@ def _lazy_base_operation() -> type:
 #: losslessly.
 #:
 #: The core type is ``Any`` (naming the operation base classes here would
-#: create an import cycle through ``tools_``); an ``AfterValidator``
+#: create an import cycle through ``sdk_``); an ``AfterValidator``
 #: restores the operation/pipeline type guard. The trailing
 #: :class:`_OperationFieldMarker` lets the GUI ``OperationRegistry``
 #: recognise the field despite the ``Any`` erasure.

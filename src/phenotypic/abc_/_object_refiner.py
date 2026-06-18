@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from ._image_operation import ImageOperation
-from phenotypic.tools_.funcs_ import validate_operation_integrity
+from phenotypic.sdk_.funcs_ import validate_operation_integrity
 from abc import ABC, abstractmethod
 
 
@@ -202,7 +202,7 @@ class ObjectRefiner(ImageOperation, ABC):
     .. code-block:: python
 
         from phenotypic.abc_ import ObjectRefiner
-        from phenotypic.tools_ import FootprintMixin
+        from phenotypic.sdk_ import FootprintMixin
         from phenotypic import Image
         from skimage.morphology import dilation
 

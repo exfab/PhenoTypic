@@ -1,5 +1,5 @@
 from phenotypic._cli._cli_execution_strategies import LocalParallelStrategy
-from phenotypic.tools_ import deliverables_dir, manifest_json_path
+from phenotypic.sdk_ import deliverables_dir, manifest_json_path
 
 
 def test_local_process_only_writes_layers_and_manifest_no_deliverables(

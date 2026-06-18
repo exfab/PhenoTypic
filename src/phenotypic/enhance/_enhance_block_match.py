@@ -13,7 +13,7 @@ from ..sdk_.mixin import _GATSupportMixin
 from ..sdk_.typing_ import TuneSpec
 
 
-class DenoiseBlockMatch(_GATSupportMixin, ImageDenoiser):
+class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
     """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
 
     Groups similar image patches across the plate and filters them jointly
@@ -121,7 +121,10 @@ class DenoiseBlockMatch(_GATSupportMixin, ImageDenoiser):
         block-matching and collaborative filtering.
     """
 
-    _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma_psd": 1.0}
+    _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {
+        "use_gat"  : True,
+        "sigma_psd": 1.0
+    }
     _GAT_DEFER_ATTRS: ClassVar[tuple[str, ...]] = ("clip",)
 
     sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = Field(0.02, ge=0.0)

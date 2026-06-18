@@ -69,7 +69,7 @@ Each module imports **only** `MeasurementInfo` from the schema base — no other
 - [x] Create `src/phenotypic/schema/_metadata.py` with `METADATA(MeasurementInfo)`
       (category `"Metadata"`, prefix-stripping `__new__` NOT reintroduced; clean the
       misplaced inner docstring into a proper class docstring).
-- [x] Remove the `METADATA` class from `src/phenotypic/tools_/constants_.py`.
+- [x] Remove the `METADATA` class from `src/phenotypic/sdk_/constants_.py`.
 - [x] Fix the `constants_.py` module docstring import example (drop `METADATA`).
 
 ### Phase 2 — Add the experimental tag vocabulary
@@ -132,7 +132,7 @@ Tests (2):
       old files), public keys remapped.
     - **Pickle** — `load_pickle` now uses `_BackCompatUnpickler`, whose
       `find_class` remaps the *moved* `METADATA` class
-      (`phenotypic.tools_.constants_` → `phenotypic.schema`) so pre-move pickles
+      (`phenotypic.sdk_.constants_` → `phenotypic.schema`) so pre-move pickles
       load at all; since enum members resolve by name, keys+values auto-upgrade
       to the prefixed members. (The plain bare-key remap is a no-op for pickles,
       whose metadata keys are enum members, not strings — the class remap is the

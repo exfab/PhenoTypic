@@ -30,7 +30,7 @@ from dash import (
     no_update,
 )
 
-from phenotypic.tools_ import ModulePath, measurements_parquet_path
+from phenotypic.sdk_ import ModulePath, measurements_parquet_path
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,

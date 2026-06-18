@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List
 
-from phenotypic.tools_.register import register_analysis
-from phenotypic.tools_ import DIR_RESULTS, DIR_OVERLAYS, OVERLAY_MANIFEST_JSON
+from phenotypic.sdk_.register import register_analysis
+from phenotypic.sdk_ import DIR_RESULTS, DIR_OVERLAYS, OVERLAY_MANIFEST_JSON
 
 from ._base_plugin import BaseAnalysisPlugin
 

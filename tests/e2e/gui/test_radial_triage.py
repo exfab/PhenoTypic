@@ -23,7 +23,7 @@ import pytest
 from PIL import Image as PILImage
 from playwright.sync_api import Page, expect
 
-from phenotypic.tools_ import error_category_parquet_path
+from phenotypic.sdk_ import error_category_parquet_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
 

@@ -1,4 +1,4 @@
-"""Unit tests for the pipeline-backed :class:`phenotypic.tools_._qc_recipe._recipe.QcRecipe`.
+"""Unit tests for the pipeline-backed :class:`phenotypic.sdk_._qc_recipe._recipe.QcRecipe`.
 
 Covers the Phase B recipe adapter contract:
 
@@ -21,8 +21,8 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
-from phenotypic.tools_._qc_recipe import QcRecipe, QcRecipeEntry
-from phenotypic.tools_ import pipeline_json_path
+from phenotypic.sdk_._qc_recipe import QcRecipe, QcRecipeEntry
+from phenotypic.sdk_ import pipeline_json_path
 
 
 def _seed_pipeline_json(output_dir: Path) -> Path:

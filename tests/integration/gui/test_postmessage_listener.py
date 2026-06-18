@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 from phenotypic._cli._dashboard._generator import generate_dashboard
-from phenotypic.tools_ import dashboard_html_path
+from phenotypic.sdk_ import dashboard_html_path
 
 
 def _generate_html(tmp_path: Path) -> str:

@@ -32,7 +32,7 @@ from phenotypic.gui.builder._callbacks import (
     _gate_toast_for_issue,
     _write_pipeline_config,
 )
-from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 from phenotypic.gui.builder._state import (
     BlockNode,
     Edge,

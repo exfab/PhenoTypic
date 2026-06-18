@@ -8,7 +8,7 @@ from matplotlib.colors import TwoSlopeNorm
 from matplotlib.gridspec import GridSpec
 from skimage.measure import regionprops_table
 
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 

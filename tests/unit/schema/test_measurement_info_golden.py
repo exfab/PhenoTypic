@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import phenotypic  # noqa: F401
-import phenotypic.tools_.constants_  # noqa: F401
+import phenotypic.sdk_.constants_  # noqa: F401
 from phenotypic.schema import MeasurementInfo
 
 _GOLDEN = Path(__file__).parent / "_golden" / "measurement_info_values.json"

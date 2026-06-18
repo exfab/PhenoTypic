@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.tools_._json_io.read_json_source``."""
+"""Unit tests for ``phenotypic.sdk_._json_io.read_json_source``."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from phenotypic.tools_._json_io import read_json_source
+from phenotypic.sdk_._json_io import read_json_source
 
 
 def test_dict_passthrough():

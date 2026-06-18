@@ -1,7 +1,7 @@
 """Plotly/Dash visualization layer for image accessors.
 
 Provides interactive Plotly-based plotting and absorbs the helper
-functions formerly in ``phenotypic.tools_._plotly_helpers``.
+functions formerly in ``phenotypic.sdk_._plotly_helpers``.
 """
 from __future__ import annotations
 
@@ -36,14 +36,14 @@ if TYPE_CHECKING:
 
 # Mapping from matplotlib colormap names to plotly colorscale names
 _MPL_TO_PLOTLY = {
-    "gray": "gray",
-    "viridis": "Viridis",
-    "inferno": "Inferno",
-    "plasma": "Plasma",
-    "magma": "Magma",
-    "hot": "Hot",
-    "jet": "Jet",
-    "RdBu": "RdBu",
+    "gray"    : "gray",
+    "viridis" : "Viridis",
+    "inferno" : "Inferno",
+    "plasma"  : "Plasma",
+    "magma"   : "Magma",
+    "hot"     : "Hot",
+    "jet"     : "Jet",
+    "RdBu"    : "RdBu",
     "coolwarm": "RdBu",
 }
 
@@ -60,10 +60,10 @@ class AccessorDashHandler(AccessorMplHandler):
     Plotly-specific rendering, decoration, and utility static methods.
     """
 
-    PLOTLY_CONFIG: dict = {"scrollZoom": True}
+    _PLOTLY_CONFIG: dict = {"scrollZoom": True}
 
     # ------------------------------------------------------------------
-    # Plotly helper static methods (formerly in tools_/_plotly_helpers.py)
+    # Plotly helper static methods (formerly in sdk_/_plotly_helpers.py)
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -71,13 +71,13 @@ class AccessorDashHandler(AccessorMplHandler):
         """Raise ImportError if plotly is not installed."""
         if not PLOTLY_AVAILABLE:
             raise ImportError(
-                "plotly is required for interactive visualization. "
-                "Install it with: pip install plotly>=6.0.0  "
-                "or install the gui extras: pip install phenotypic[gui]"
+                    "plotly is required for interactive visualization. "
+                    "Install it with: pip install plotly>=6.0.0  "
+                    "or install the gui extras: pip install phenotypic[gui]"
             )
 
     @staticmethod
-    def mpl_cmap_to_plotly(cmap_name: str) -> str | list:
+    def _mpl_cmap_to_plotly(cmap_name: str) -> str | list:
         """Convert a matplotlib colormap name to a plotly colorscale.
 
         Args:
@@ -93,6 +93,7 @@ class AccessorDashHandler(AccessorMplHandler):
             return _MPL_TO_PLOTLY[cmap_name]
 
         import matplotlib
+
         cmap = matplotlib.colormaps[cmap_name]
         n = 256
         scale = []
@@ -103,11 +104,11 @@ class AccessorDashHandler(AccessorMplHandler):
         return scale
 
     @staticmethod
-    def plotly_imshow(
-        arr: np.ndarray,
-        title: str | None = None,
-        cmap: str = "gray",
-        figsize: tuple[int, int] | None = None,
+    def _plotly_imshow(
+            arr: np.ndarray,
+            title: str | None = None,
+            cmap: str = "gray",
+            figsize: tuple[int, int] | None = None,
     ) -> go.Figure:
         """Render an image array as an interactive Plotly figure.
 
@@ -132,9 +133,9 @@ class AccessorDashHandler(AccessorMplHandler):
         if arr.ndim == 3:
             fig = px.imshow(arr, binary_string=True)
         else:
-            colorscale = AccessorDashHandler.mpl_cmap_to_plotly(cmap)
+            colorscale = AccessorDashHandler._mpl_cmap_to_plotly(cmap)
             fig = px.imshow(
-                arr, color_continuous_scale=colorscale, binary_string=True,
+                    arr, color_continuous_scale=colorscale, binary_string=True,
             )
 
         if figsize is not None:
@@ -147,25 +148,25 @@ class AccessorDashHandler(AccessorMplHandler):
             size_kwargs = {"autosize": True, "height": aspect_height}
 
         fig.update_layout(
-            **size_kwargs,
-            dragmode="zoom",
-            xaxis=dict(showticklabels=False, showgrid=False),
-            yaxis=dict(
-            showticklabels=False, showgrid=False,
-            scaleanchor="x", constrain="domain", constraintoward="top",
-        ),
-            title=title,
+                **size_kwargs,
+                dragmode="zoom",
+                xaxis=dict(showticklabels=False, showgrid=False),
+                yaxis=dict(
+                        showticklabels=False, showgrid=False,
+                        scaleanchor="x", constrain="domain", constraintoward="top",
+                ),
+                title=title,
         )
 
         return fig
 
     @staticmethod
-    def add_plotly_gridlines(
-        fig: go.Figure,
-        col_edges: np.ndarray,
-        row_edges: np.ndarray,
-        ncols: int,
-        nrows: int,
+    def _add_plotly_gridlines(
+            fig: go.Figure,
+            col_edges: np.ndarray,
+            row_edges: np.ndarray,
+            ncols: int,
+            nrows: int,
     ) -> None:
         """Add cyan dashed gridlines and row/column axis tick labels to a Plotly figure.
 
@@ -195,13 +196,13 @@ class AccessorDashHandler(AccessorMplHandler):
 
         for x in col_edges:
             shapes.append(dict(
-                type="line", x0=float(x), x1=float(x),
-                y0=y_min, y1=y_max, line=line_style,
+                    type="line", x0=float(x), x1=float(x),
+                    y0=y_min, y1=y_max, line=line_style,
             ))
         for y in row_edges:
             shapes.append(dict(
-                type="line", x0=x_min, x1=x_max,
-                y0=float(y), y1=float(y), line=line_style,
+                    type="line", x0=x_min, x1=x_max,
+                    y0=float(y), y1=float(y), line=line_style,
             ))
 
         tickfont = dict(color="cyan", size=10)
@@ -211,42 +212,42 @@ class AccessorDashHandler(AccessorMplHandler):
             col_centers = (col_edges[:-1] + col_edges[1:]) / 2
             n_col_labels = min(ncols, len(col_centers))
             layout_kwargs["xaxis"] = dict(
-                tickmode="array",
-                tickvals=[float(v) for v in col_centers[:n_col_labels]],
-                ticktext=[str(i) for i in range(n_col_labels)],
-                showticklabels=True,
-                showgrid=False,
-                side="top",
-                automargin=True,
-                tickfont=tickfont,
+                    tickmode="array",
+                    tickvals=[float(v) for v in col_centers[:n_col_labels]],
+                    ticktext=[str(i) for i in range(n_col_labels)],
+                    showticklabels=True,
+                    showgrid=False,
+                    side="top",
+                    automargin=True,
+                    tickfont=tickfont,
             )
 
         if len(row_edges) > 1:
             row_centers = (row_edges[:-1] + row_edges[1:]) / 2
             n_row_labels = min(nrows, len(row_centers))
             layout_kwargs["yaxis"] = dict(
-                tickmode="array",
-                tickvals=[float(v) for v in row_centers[:n_row_labels]],
-                ticktext=[str(i) for i in range(n_row_labels)],
-                showticklabels=True,
-                showgrid=False,
-                side="right",
-                automargin=True,
-                tickfont=tickfont,
-                scaleanchor="x",
-                constrain="domain",
-                constraintoward="top",
+                    tickmode="array",
+                    tickvals=[float(v) for v in row_centers[:n_row_labels]],
+                    ticktext=[str(i) for i in range(n_row_labels)],
+                    showticklabels=True,
+                    showgrid=False,
+                    side="right",
+                    automargin=True,
+                    tickfont=tickfont,
+                    scaleanchor="x",
+                    constrain="domain",
+                    constraintoward="top",
             )
 
         fig.update_layout(**layout_kwargs)
 
     @staticmethod
-    def add_plotly_section_boxes(
-        fig: go.Figure,
-        min_rr: np.ndarray,
-        max_rr: np.ndarray,
-        min_cc: np.ndarray,
-        max_cc: np.ndarray,
+    def _add_plotly_section_boxes(
+            fig: go.Figure,
+            min_rr: np.ndarray,
+            max_rr: np.ndarray,
+            min_cc: np.ndarray,
+            max_cc: np.ndarray,
     ) -> None:
         """Add colored bounding-box rectangles around objects in each grid section.
 
@@ -270,6 +271,7 @@ class AccessorDashHandler(AccessorMplHandler):
             return
 
         import matplotlib
+
         tab20 = matplotlib.colormaps["tab20"]
         palette = [tab20(i) for i in range(tab20.N)]
 
@@ -279,26 +281,26 @@ class AccessorDashHandler(AccessorMplHandler):
                 continue
             rgba = palette[i % len(palette)]
             color_str = (
-                f"rgba({int(rgba[0]*255)},{int(rgba[1]*255)},"
-                f"{int(rgba[2]*255)},{rgba[3]:.2f})"
+                f"rgba({int(rgba[0] * 255)},{int(rgba[1] * 255)},"
+                f"{int(rgba[2] * 255)},{rgba[3]:.2f})"
             )
             shapes.append(dict(
-                type="rect",
-                x0=float(min_cc[i]), x1=float(max_cc[i]),
-                y0=float(min_rr[i]), y1=float(max_rr[i]),
-                line=dict(color=color_str, width=2),
+                    type="rect",
+                    x0=float(min_cc[i]), x1=float(max_cc[i]),
+                    y0=float(min_rr[i]), y1=float(max_rr[i]),
+                    line=dict(color=color_str, width=2),
             ))
 
         fig.update_layout(shapes=shapes)
 
     @staticmethod
-    def add_plotly_obj_labels(
-        fig: go.Figure,
-        root_image,
-        object_label: int | None = None,
-        color: str = "white",
-        size: int = 10,
-        bgcolor: str = "black",
+    def _add_plotly_obj_labels(
+            fig: go.Figure,
+            root_image,
+            object_label: int | None = None,
+            color: str = "white",
+            size: int = 10,
+            bgcolor: str = "black",
     ) -> None:
         """Add centroid labels for detected objects to a Plotly figure.
 
@@ -319,13 +321,13 @@ class AccessorDashHandler(AccessorMplHandler):
                 continue
             rr, cc = prop.centroid
             annotations.append(dict(
-                x=cc,
-                y=rr,
-                text=str(prop.label),
-                showarrow=False,
-                font=dict(color=color, size=size),
-                bgcolor=bgcolor,
-                opacity=0.6,
+                    x=cc,
+                    y=rr,
+                    text=str(prop.label),
+                    showarrow=False,
+                    font=dict(color=color, size=size),
+                    bgcolor=bgcolor,
+                    opacity=0.6,
             ))
         existing = list(fig.layout.annotations or [])
         fig.update_layout(annotations=existing + annotations)
@@ -335,14 +337,14 @@ class AccessorDashHandler(AccessorMplHandler):
     # ------------------------------------------------------------------
 
     def _plotly_overlay(
-        self,
-        arr: np.ndarray,
-        objmap: np.ndarray,
-        figsize: tuple[int, int] | None = None,
-        title: str | bool | None = None,
-        *,
-        overlay_settings: dict | None = None,
-        plotly_settings: dict | None = None,
+            self,
+            arr: np.ndarray,
+            objmap: np.ndarray,
+            figsize: tuple[int, int] | None = None,
+            title: str | bool | None = None,
+            *,
+            overlay_settings: dict | None = None,
+            plotly_settings: dict | None = None,
     ) -> go.Figure:
         """Plot an array with object map overlay using Plotly.
 
@@ -362,7 +364,7 @@ class AccessorDashHandler(AccessorMplHandler):
             A ``plotly.graph_objects.Figure``.
         """
         overlay_arr = self._compose_overlay(arr, objmap, overlay_settings)
-        fig = self.plotly_imshow(arr=overlay_arr, figsize=figsize, title=title)
+        fig = self._plotly_imshow(arr=overlay_arr, figsize=figsize, title=title)
         if plotly_settings is not None:
             fig.update_layout(**plotly_settings)
 
@@ -373,14 +375,14 @@ class AccessorDashHandler(AccessorMplHandler):
     # ------------------------------------------------------------------
 
     def _decorate_plotly_overlay(
-        self,
-        fig: go.Figure,
-        *,
-        has_objects: bool,
-        object_label: int | None = None,
-        show_labels: bool = False,
-        show_grid: bool = True,
-        label_settings: dict | None = None,
+            self,
+            fig: go.Figure,
+            *,
+            has_objects: bool,
+            object_label: int | None = None,
+            show_labels: bool = False,
+            show_grid: bool = True,
+            label_settings: dict | None = None,
     ) -> None:
         """Add labels, gridlines, and section boxes to a Plotly overlay.
 
@@ -396,26 +398,26 @@ class AccessorDashHandler(AccessorMplHandler):
         if label_settings is None:
             label_settings = {}
         if show_labels:
-            self.add_plotly_obj_labels(
-                fig=fig,
-                root_image=self._root_image,
-                object_label=object_label,
-                color=label_settings.get("color", "white"),
-                size=label_settings.get("size", 12),
-                bgcolor=label_settings.get("facecolor", "red"),
+            self._add_plotly_obj_labels(
+                    fig=fig,
+                    root_image=self._root_image,
+                    object_label=object_label,
+                    color=label_settings.get("color", "white"),
+                    size=label_settings.get("size", 12),
+                    bgcolor=label_settings.get("facecolor", "red"),
             )
         if show_grid and hasattr(self._root_image, 'grid_finder'):
             col_edges = self._root_image.grid.get_col_edges()
             row_edges = self._root_image.grid.get_row_edges()
-            self.add_plotly_gridlines(
-                fig=fig, col_edges=col_edges, row_edges=row_edges,
-                ncols=self._root_image.ncols, nrows=self._root_image.nrows,
+            self._add_plotly_gridlines(
+                    fig=fig, col_edges=col_edges, row_edges=row_edges,
+                    ncols=self._root_image.ncols, nrows=self._root_image.nrows,
             )
             if has_objects:
                 min_rr, max_rr, min_cc, max_cc = (
                     self._root_image.grid._get_section_object_bounds_arrays()
                 )
-                self.add_plotly_section_boxes(
-                    fig=fig, min_rr=min_rr, max_rr=max_rr,
-                    min_cc=min_cc, max_cc=max_cc,
+                self._add_plotly_section_boxes(
+                        fig=fig, min_rr=min_rr, max_rr=max_rr,
+                        min_cc=min_cc, max_cc=max_cc,
                 )

@@ -10,7 +10,7 @@ from pydantic import AliasChoices, Field
 from phenotypic.abc_ import GridObjectRefiner
 from phenotypic.measure import MeasureGridLinRegStats
 from phenotypic.schema import GRID_LINREG_STATS, GRID
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class RemoveGridOutliers(GridObjectRefiner):

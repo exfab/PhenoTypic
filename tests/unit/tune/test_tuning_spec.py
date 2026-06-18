@@ -22,7 +22,7 @@ from phenotypic.tune import (
 )
 from phenotypic.tune._search_space._targets import Param
 from phenotypic.tune._spec import Budget, TuningSpec
-from phenotypic.tools_ import CONFIG_SUFFIX_TUNING, ensure_typed_json_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_TUNING, ensure_typed_json_suffix
 
 #: The frozen Phase-1 ``tuning_spec.json`` (strategy block in the original
 #: discriminated-union form ``{"seed": 0, "kind": "grid"}``) — proves that

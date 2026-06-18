@@ -10,7 +10,7 @@ from skimage.filters.rank import median
 from skimage.util import img_as_ubyte, img_as_float
 
 from phenotypic.abc_ import Smoothing
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class RankMedianEnhancer(Smoothing):

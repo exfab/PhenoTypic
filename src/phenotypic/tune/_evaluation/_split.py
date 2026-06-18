@@ -28,8 +28,8 @@ from typing import Literal, Optional, TypeAlias
 
 import numpy as np
 
-from phenotypic.tools_ import _io_constants as _io
-from phenotypic.tools_ import atomic_write_text
+from phenotypic.sdk_ import _io_constants as _io
+from phenotypic.sdk_ import atomic_write_text
 
 #: The held-out partition tier (robust-eval split policy):
 #: - ``"group"``: a whole metadata group is held out (the strongest test of

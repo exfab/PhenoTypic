@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from phenotypic.gui.shell._runs_registry import RunRegistry
-from phenotypic.tools_ import manifest_json_path
+from phenotypic.sdk_ import manifest_json_path
 
 
 def _write_manifest(

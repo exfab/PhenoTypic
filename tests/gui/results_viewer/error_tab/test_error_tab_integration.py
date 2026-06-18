@@ -25,7 +25,7 @@ from phenotypic.gui.results_viewer._error_tab import (
 )
 from phenotypic.gui.results_viewer._error_tab import _callbacks, _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     error_analysis_parquet_path,
     qc_members_parquet_path,
     qc_summary_parquet_path,

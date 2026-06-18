@@ -15,7 +15,7 @@ def _launch_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """Build a loaded tune app over a 1-trial journal + a marked run."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     images = tmp_path / "calibration"
@@ -68,7 +68,7 @@ def test_launch_initial_command_is_a_valid_run_invocation(tmp_path: Path) -> Non
     import shlex
 
     from phenotypic.gui.tune._command import render_launch_command
-    from phenotypic.tools_ import tuning_spec_path
+    from phenotypic.sdk_ import tuning_spec_path
 
     app = _launch_app(tmp_path)
     card = _find_component(app.layout, "tune-launch-command")

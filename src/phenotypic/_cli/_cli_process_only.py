@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from phenotypic import GridImage, Image, ImagePipeline
-from phenotypic.tools_.typing_ import ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import ImageTypeName, ProcessOnlyLayer
 
 logger = logging.getLogger(__name__)
 

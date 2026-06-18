@@ -1,4 +1,4 @@
-# Design: `phenotypic.tools_.measurement_info` → `phenotypic.schema`
+# Design: `phenotypic.sdk_.measurement_info` → `phenotypic.schema`
 
 **Date:** 2026-05-28
 **Status:** Approved (brainstorming complete; ready for implementation plan)
@@ -6,7 +6,7 @@
 
 ## Goal
 
-Promote the internal `phenotypic.tools_.measurement_info` package to a public,
+Promote the internal `phenotypic.sdk_.measurement_info` package to a public,
 discoverable `phenotypic.schema` subpackage so downstream users can import the
 measurement **headers / column-name enums** to align their own DataFrames and
 code with PhenoTypic outputs. The trailing-underscore-free name `schema`
@@ -19,7 +19,7 @@ signals "blessed public API", in contrast to the framework-internal `tools_`,
    class (moved out of `abc_`) **and** the 24 measurement-info enums. The whole
    header/column-name machinery lives in one public home.
 2. **Back-compat:** **hard break.** All internal call sites are rewritten to
-   import from `phenotypic.schema`; the old `phenotypic.tools_.measurement_info`
+   import from `phenotypic.schema`; the old `phenotypic.sdk_.measurement_info`
    path is deleted. (Pre-1.0 library, version 0.15.2 — hard breaks acceptable.)
 3. **Layout:** **Approach A — flat mirror.** Keep the current flat,
    one-class-per-file shape; the diff is almost purely *move files + rewrite
@@ -28,7 +28,7 @@ signals "blessed public API", in contrast to the framework-internal `tools_`,
 ## Non-goals (YAGNI)
 
 - `ConstantLabels` / `GAMMA_ENCODINGS` and other documented enums stay in
-  `phenotypic.tools_.constants_`. (They subclass `MeasurementInfo`, so they
+  `phenotypic.sdk_.constants_`. (They subclass `MeasurementInfo`, so they
   will now import the base from `phenotypic.schema`, but they do not move.)
 - No header-registry / "dump all headers" helper.
 - No operation `model_json_schema()` "contract hub".
@@ -81,9 +81,9 @@ to work for internal callers.
 Three package-import shapes to rewrite across **31 source files + 12 test
 files**:
 
-- `from phenotypic.tools_.measurement_info import …`
+- `from phenotypic.sdk_.measurement_info import …`
   → `from phenotypic.schema import …` (~33 sites)
-- `from ..tools_.measurement_info import …`
+- `from ..sdk_.measurement_info import …`
   → `from phenotypic.schema import …` (~7 sites; note relative→absolute)
 - 3 deep imports, e.g. `…measurement_info._quality_se import QUALITY_SE`
   → `from phenotypic.schema import QUALITY_SE`
@@ -101,7 +101,7 @@ Top-level:
 Deletions (hard break):
 
 - `phenotypic/abc_/_measurement_info.py`
-- `phenotypic/tools_/measurement_info/` (entire directory)
+- `phenotypic/sdk_/measurement_info/` (entire directory)
 
 Doctest fix: in the moved base-class module, update
 `>>> from phenotypic.abc_ import MeasurementInfo`
@@ -111,14 +111,14 @@ Doctest fix: in the moved base-class module, update
 
 - **Sphinx extension** `docs/source/_extensions/measurements_ref.py`: rewrite
   the `_REGISTRY` qualified-path strings
-  `phenotypic.tools_.measurement_info.SIZE` → `phenotypic.schema.SIZE`
+  `phenotypic.sdk_.measurement_info.SIZE` → `phenotypic.schema.SIZE`
   (all entries).
 - `docs/source/measurements_ref/index.rst` is **auto-regenerated** at build
   time — rebuild docs and commit the regenerated file; do not hand-edit.
 - **CLAUDE.md updates:**
   - `src/phenotypic/abc_/CLAUDE.md` — "Standalone: MeasurementInfo (enum base)"
     re-points to `phenotypic.schema`.
-  - `src/phenotypic/tools_/CLAUDE.md` — `constants_.py` note clarifies the
+  - `src/phenotypic/sdk_/CLAUDE.md` — `constants_.py` note clarifies the
     `MeasurementInfo` base now lives in `phenotypic.schema`.
   - Add a short `src/phenotypic/schema/CLAUDE.md` module guide.
   - Root `CLAUDE.md` "Module Guides" list gains a `schema` entry.
@@ -134,7 +134,7 @@ Doctest fix: in the moved base-class module, update
   - `phenotypic.schema.SHAPE.get_headers()` returns the expected prefixed names.
   - `phenotypic.abc_.MeasurementInfo is phenotypic.schema.MeasurementInfo`
     (re-export identity).
-  - `import phenotypic.tools_.measurement_info` raises `ModuleNotFoundError`
+  - `import phenotypic.sdk_.measurement_info` raises `ModuleNotFoundError`
     (hard break confirmed).
 - Gates:
   - `uv run ruff check --fix`

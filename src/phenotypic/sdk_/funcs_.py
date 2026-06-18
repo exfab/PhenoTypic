@@ -11,7 +11,7 @@ import inspect
 import mmh3
 from functools import wraps
 
-from phenotypic.tools_.exceptions_ import OperationIntegrityError
+from phenotypic.sdk_.exceptions_ import OperationIntegrityError
 from phenotypic.settings_ import VALIDATE_OPS
 
 # this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception

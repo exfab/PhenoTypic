@@ -15,7 +15,7 @@ import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_parquet_path,
 )

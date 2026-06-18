@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ...tools_.exceptions_ import IllegalAssignmentError, NoObjectsError
+from ...sdk_.exceptions_ import IllegalAssignmentError, NoObjectsError
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image

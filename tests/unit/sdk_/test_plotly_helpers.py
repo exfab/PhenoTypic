@@ -9,7 +9,7 @@ import pytest
 
 go = pytest.importorskip("plotly.graph_objects")
 
-from phenotypic.tools_._plotly_helpers import (  # noqa: E402
+from phenotypic.sdk_._plotly_helpers import (  # noqa: E402
     PLOTLY_CONFIG,
     add_plotly_gridlines,
     add_plotly_obj_labels,

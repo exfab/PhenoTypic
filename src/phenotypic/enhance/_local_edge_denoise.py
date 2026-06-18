@@ -9,8 +9,8 @@ from pydantic import Field, field_validator
 from skimage.restoration import denoise_bilateral
 
 from ..abc_ import ImageDenoiser
-from ..tools_.mixin import _GATSupportMixin
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.typing_ import TuneSpec
 
 
 class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
@@ -36,7 +36,7 @@ class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
     Consider Also:
         - :class:`NonLocalMeansDenoiser` when repetitive agar texture warrants
           whole-image patch search for stronger denoising.
-        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal
+        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
           at higher computational cost.
         - :class:`SubtractGaussian` when the primary problem is a slow-varying
           illumination gradient rather than pixel-level noise.

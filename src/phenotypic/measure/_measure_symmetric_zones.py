@@ -1469,7 +1469,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
             scroll-to-zoom, call
             ``fig.show(config={"scrollZoom": True})``.
         """
-        from phenotypic.tools_._plotly_helpers import _require_plotly
+        from phenotypic.sdk_._plotly_helpers import _require_plotly
 
         _require_plotly()
 
@@ -1554,7 +1554,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
         Returns:
             plotly.graph_objects.Figure.
         """
-        from phenotypic.tools_._plotly_helpers import (
+        from phenotypic.sdk_._plotly_helpers import (
             plotly_imshow,
             add_plotly_obj_labels,
         )

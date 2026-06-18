@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 from pydantic import PrivateAttr
 
 from ._base_operation import BaseOperation
-from phenotypic.tools_.mixin import LazyWidgetMixin
+from phenotypic.sdk_.mixin import LazyWidgetMixin
 
 from abc import ABC, abstractmethod
 import traceback

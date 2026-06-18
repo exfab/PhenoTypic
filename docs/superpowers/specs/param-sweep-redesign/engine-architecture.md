@@ -300,7 +300,7 @@ src/phenotypic/tune/
   _screening.py          # importance (fANOVA | RF-permutation fallback) + freezing
   _tune_cli/             # the `python -m phenotypic.tune` CLI; uses _execution
 src/phenotypic/_execution/   # Executor Protocol + LocalExecutor (Phase 1) / SlurmExecutor (Phase 2)
-src/phenotypic/tools_/typing_.py   # polymorphic_field(base=...); OperationField becomes an alias
+src/phenotypic/sdk_/typing_.py   # polymorphic_field(base=...); OperationField becomes an alias
 # src/phenotypic/sweep/      # DELETED at end of Phase 1 (hard cutover — grid is `--strategy grid`)
 ```
 

@@ -11,12 +11,12 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
-from ..tools_.typing_ import TuneSpec
-from ..tools_._anscombe import gat_forward, gat_inverse
-from ..tools_.colourspace import decode_srgb, encode_srgb
+from ..sdk_.typing_ import TuneSpec
+from ..sdk_._anscombe import gat_forward, gat_inverse
+from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
-class StableDenoise(ImageCorrector):
+class DenoiseBlockMatch(ImageCorrector):
     """Denoise the grayscale channel using GAT-stabilized BM3D collaborative filtering.
 
     Combine the Generalized Anscombe Transform (GAT) with BM3D block-matching
@@ -40,7 +40,7 @@ class StableDenoise(ImageCorrector):
     Consider Also:
         - :class:`BayesShrinkCorrector` when all image components including
           RGB need simultaneous wavelet denoising.
-        - :class:`BM3DDenoiser` for BM3D applied only to the detection matrix
+        - :class:`EnhanceBlockMatch` for BM3D applied only to the detection matrix
           without altering the grayscale channel.
         - :class:`VisuShrinkCorrector` for a faster wavelet alternative when
           Poisson noise modelling is not required.

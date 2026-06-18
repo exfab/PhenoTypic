@@ -118,7 +118,7 @@ from phenotypic.gui.builder._validation import validate
 from phenotypic.gui.builder._validation import Issue
 from phenotypic.gui.shell._ids import SHELL_SOURCE_IMAGE_ROOT_STORE
 from phenotypic.gui.shell._source_context import SOURCE_PAYLOAD_VERSION
-from phenotypic.tools_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
 
 logger = logging.getLogger(__name__)
 

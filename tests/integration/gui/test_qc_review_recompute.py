@@ -32,9 +32,9 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.tools_._qc_recipe import QcRecipeEntry
-from phenotypic.tools_._qc_recipe._runner import run_qc
-from phenotypic.tools_ import (
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.sdk_ import (
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,

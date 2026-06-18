@@ -10,7 +10,7 @@ import numpy as np
 from pydantic import field_validator, model_validator
 
 from phenotypic.abc_ import GridFinder
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class ManualGridFinder(GridFinder):

@@ -36,7 +36,7 @@ from typing import Any, Final, Mapping, Optional
 import pandas as pd
 from pydantic import ConfigDict, PrivateAttr, model_validator
 
-from phenotypic.tools_.typing_ import CompositeBlend
+from phenotypic.sdk_.typing_ import CompositeBlend
 
 from ._orient import clamp01
 from ._scorer import Scorer, ScorerField, project_objectives_to_scalar

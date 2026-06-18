@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from phenotypic.tools_.mixin import PointPickerMixin
+from phenotypic.sdk_.mixin import PointPickerMixin
 
 
 class _Dummy(PointPickerMixin):
@@ -50,7 +50,7 @@ class TestNapariMethod:
 
     def test_napari_writes_picks(self):
         d = _Dummy()
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             MockWidget.return_value.run.return_value = np.array(
                     [[10.0, 20.0], [30.0, 40.0]]
             )
@@ -60,14 +60,14 @@ class TestNapariMethod:
 
     def test_napari_empty_preserves_existing(self):
         d = _Dummy(centers=[[1, 2]])
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             MockWidget.return_value.run.return_value = np.empty((0, 2))
             d.napari(MagicMock())
         np.testing.assert_array_equal(d.centers, [[1, 2]])
 
     def test_napari_uses_param_name_attribute(self):
         c = _CustomParam()
-        with patch("phenotypic.tools_.napari_.PointPickerWidget") as MockWidget:
+        with patch("phenotypic.sdk_.napari_.PointPickerWidget") as MockWidget:
             MockWidget.return_value.run.return_value = np.array([[7.0, 8.0]])
             c.napari(MagicMock())
         np.testing.assert_array_equal(c.points, [[7.0, 8.0]])

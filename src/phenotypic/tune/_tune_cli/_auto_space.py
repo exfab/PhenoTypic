@@ -20,7 +20,7 @@ Example:
     >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
     >>> from pathlib import Path
     >>> from tempfile import TemporaryDirectory
-    >>> from phenotypic.tools_ import _io_constants as io
+    >>> from phenotypic.sdk_ import _io_constants as io
     >>> with TemporaryDirectory() as d:
     ...     proposal = run_auto_space(pipe, d)
     ...     io.tuning_spec_path(Path(d)).exists()
@@ -32,8 +32,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.tools_ import _io_constants as io
-from phenotypic.tools_ import atomic_write_text
+from phenotypic.sdk_ import _io_constants as io
+from phenotypic.sdk_ import atomic_write_text
 
 from .._search_space import InferredSearchSpace, infer_search_space
 

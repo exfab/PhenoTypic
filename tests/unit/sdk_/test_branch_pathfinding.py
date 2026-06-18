@@ -1,6 +1,6 @@
 """Tests for the branch pathfinding subpackage.
 
-Unit tests for the modules under ``phenotypic.tools_.branch_pathfinding``
+Unit tests for the modules under ``phenotypic.sdk_.branch_pathfinding``
 (cost surface composition, fragment prescreening, path quality filtering,
 Dijkstra kernels, dataclasses) and integration tests that exercise them
 via ``FilamentousFungiDetector``.
@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from phenotypic.tools_.branch_pathfinding import (
+from phenotypic.sdk_.branch_pathfinding import (
     # Cost surface
     compute_anisotropy,
     compute_orientation_coherence,

@@ -38,8 +38,8 @@ helpers rather than ad hoc suffix checks.
 
 - Add guard logic so save paths for each user-facing config type automatically
   receive the correct suffix when the caller omits it.
-- Centralize every suffix string in `phenotypic.tools_._io_constants` and
-  re-export it from `phenotypic.tools_`.
+- Centralize every suffix string in `phenotypic.sdk_._io_constants` and
+  re-export it from `phenotypic.sdk_`.
 - Do not spell the same suffix literal in more than one source location.
 - Keep old plain `.json` files readable.
 - Update canonical CLI and GUI output names to the new suffixes.
@@ -138,8 +138,8 @@ recipes and profiles, not every JSON blob PhenoTypic writes.
 ## 5. Naming source of truth
 
 All suffix names and derived config filenames live in
-`src/phenotypic/tools_/_io_constants.py`. The package-level
-`src/phenotypic/tools_/__init__.py` must re-export them.
+`src/phenotypic/sdk_/_io_constants.py`. The package-level
+`src/phenotypic/sdk_/__init__.py` must re-export them.
 
 ### 5.1 New constants
 
@@ -527,7 +527,7 @@ prioritizes queryability by PhenoTypic config type.
 ## 14. Acceptance criteria
 
 - All new reusable config saves append the configured typed suffix when needed.
-- No code outside `phenotypic.tools_._io_constants` defines the typed suffix
+- No code outside `phenotypic.sdk_._io_constants` defines the typed suffix
   literals.
 - Canonical output roots use:
   - `pipeline.json.pht-pipe`

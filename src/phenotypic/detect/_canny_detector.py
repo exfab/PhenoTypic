@@ -11,7 +11,7 @@ from skimage import feature, morphology
 from scipy import ndimage
 
 from phenotypic.abc_ import ThresholdDetector
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class CannyDetector(ThresholdDetector):

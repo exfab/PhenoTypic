@@ -6,14 +6,14 @@ Constants are organized by module and functionality.
 Note: Class names are defined in ALL_CAPS to avoid namespace conflicts with actual classes
     in the codebase (e.g., GRID_DEP vs an actual Grid class). When importing, use the format::
 
-        from phenotypic.tools_.constants_ import IMAGE_MODE, IMAGE_TYPES
+        from phenotypic.sdk_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 See also
 --------
-:mod:`phenotypic.tools_._io_constants`
+:mod:`phenotypic.sdk_._io_constants`
     CLI artifact filenames, directory names, JSON contract keys, environment
     variable names, and path helpers shared between the CLI and GUI.
-:mod:`phenotypic.tools_.typing_`
+:mod:`phenotypic.sdk_.typing_`
     Literal type aliases for closed value sets used at public boundaries.
 """
 

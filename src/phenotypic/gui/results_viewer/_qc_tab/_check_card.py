@@ -1,6 +1,6 @@
 """Per-check ``dbc.Card`` builder for the QC tab.
 
-Each card pairs a :class:`~phenotypic.tools_._qc_recipe.QcRecipeEntry`
+Each card pairs a :class:`~phenotypic.sdk_._qc_recipe.QcRecipeEntry`
 with a stable pattern-matching id namespace (see :mod:`._ids`) so the
 card-body refresh callback can address every card by instance id.
 
@@ -26,8 +26,8 @@ from phenotypic.gui._design import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
 )
-from phenotypic.tools_._qc_recipe import QcRecipeEntry
-from phenotypic.tools_.viz.figures import apply_theme
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_.viz.figures import apply_theme
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 
 

@@ -12,7 +12,7 @@ from skimage.measure import regionprops_table
 import math
 
 from ..abc_ import ObjectRefiner
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 from phenotypic.schema import OBJECT
 
 

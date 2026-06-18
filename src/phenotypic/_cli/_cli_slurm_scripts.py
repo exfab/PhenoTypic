@@ -12,8 +12,8 @@ import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.tools_ import DIR_LOGS, event_log_path
-from phenotypic.tools_.slurm._sbatch import (
+from phenotypic.sdk_ import DIR_LOGS, event_log_path
+from phenotypic.sdk_.slurm._sbatch import (
     format_sbatch_directives as _format_sbatch_directives,
 )
 
@@ -25,7 +25,7 @@ def generate_slurm_directives(
 ) -> str:
     """Generate SBATCH directive lines for SLURM script.
 
-    Delegates to ``phenotypic.tools_.slurm._sbatch.format_sbatch_directives``.
+    Delegates to ``phenotypic.sdk_.slurm._sbatch.format_sbatch_directives``.
 
     Args:
         job_name: Job name.

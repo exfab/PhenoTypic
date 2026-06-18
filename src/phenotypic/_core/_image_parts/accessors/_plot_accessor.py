@@ -32,7 +32,7 @@ from phenotypic._core._image_parts.plot_accessor._spatial_plotter import (
 from phenotypic._core._image_parts.plot_accessor._threshold_plotter import (
     ThresholdPlotter,
 )
-from phenotypic.tools_.register import available_plotters, get_plotter
+from phenotypic.sdk_.register import available_plotters, get_plotter
 
 # Import plot_accessor package to trigger @register_plotter decorators
 import phenotypic._core._image_parts.plot_accessor  # noqa: F401

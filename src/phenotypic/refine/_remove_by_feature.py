@@ -10,7 +10,7 @@ from pydantic import field_validator, model_validator
 from typing_extensions import Self
 
 from ..abc_ import ObjectRefiner
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 from phenotypic.schema import OBJECT
 
 

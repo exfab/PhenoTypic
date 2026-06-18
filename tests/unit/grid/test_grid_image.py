@@ -3,7 +3,7 @@ import pytest
 from phenotypic import Image, GridImage
 from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
 from phenotypic.detect import OtsuDetector
-from phenotypic.tools_.exceptions_ import IllegalAssignmentError
+from phenotypic.sdk_.exceptions_ import IllegalAssignmentError
 
 from ..resources.TestHelper import timeit
 
@@ -363,7 +363,7 @@ class TestGridAccessorSlicing:
                                                                  plate_grid_images_with_detection):
         """Test that sliced images have GRID_SECTION metadata."""
         from phenotypic.schema import METADATA
-        from phenotypic.tools_.constants_ import IMAGE_TYPES
+        from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
         grid_image = plate_grid_images_with_detection
         sliced = grid_image.grid[0:12]

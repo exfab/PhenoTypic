@@ -19,8 +19,8 @@ from typing import Any, Dict, Iterator, Optional
 
 from phenotypic import GridImage, Image
 from phenotypic.abc_ import GpuDetector
-from phenotypic.tools_ import dataset_hdf_dir
-from phenotypic.tools_.typing_ import ImageTypeName
+from phenotypic.sdk_ import dataset_hdf_dir
+from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan

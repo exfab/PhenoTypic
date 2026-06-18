@@ -1,6 +1,6 @@
 """Pipeline-backed QC recipe types and runner, shared by CLI and GUI.
 
-Moved from ``phenotypic.qc`` into ``phenotypic.tools_`` so the recipe
+Moved from ``phenotypic.qc`` into ``phenotypic.sdk_`` so the recipe
 types live alongside other pipeline-support utilities.
 """
 

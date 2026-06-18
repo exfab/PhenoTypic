@@ -95,7 +95,7 @@ machinery (`study.db`, `trials.parquet`, selective per-trial outputs, `splits/`,
 `screening/`, `progress/`, resume state) sits at the `OUTPUT_DIR` root. **See
 [master §8](2026-06-01-parameter-tuning-engine-design.md) for the canonical folder tree, the
 disk-retention policy, and the resume/handoff semantics** (resolve paths via the
-`phenotypic.tools_` helpers, never hand-joined).
+`phenotypic.sdk_` helpers, never hand-joined).
 
 ---
 

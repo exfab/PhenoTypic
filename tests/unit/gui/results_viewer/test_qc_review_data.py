@@ -32,7 +32,7 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     decode_group_key,
     encode_group_key,
 )
-from phenotypic.tools_ import measurements_parquet_path
+from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror
 
@@ -266,7 +266,7 @@ def test_review_state_unmark(tmp_path: Path) -> None:
 
 def test_review_state_reset_when_file_cleared(tmp_path: Path) -> None:
     """Deleting review_state.json (CLI finalize reset) starts progress over."""
-    from phenotypic.tools_ import qc_review_state_path
+    from phenotypic.sdk_ import qc_review_state_path
 
     state = ReviewState.load(tmp_path)
     state.mark_reviewed("m", ("g1",))

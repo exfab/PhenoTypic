@@ -17,7 +17,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-import phenotypic.tools_ as tools_
+import phenotypic.sdk_ as tools_
 from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
 
 pytestmark = pytest.mark.skipif(

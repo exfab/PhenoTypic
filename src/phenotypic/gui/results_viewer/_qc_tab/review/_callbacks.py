@@ -709,7 +709,7 @@ def _recompute_after_curation(
     if output_root is None or pipeline is None or not pipeline.get_qc():
         return None
 
-    from phenotypic.tools_._qc_recipe._runner import run_qc
+    from phenotypic.sdk_._qc_recipe._runner import run_qc
 
     removed = _removed_keys_locked()
     frame = _data.build_recompute_frame(output_root, removed)

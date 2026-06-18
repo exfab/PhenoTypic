@@ -1,7 +1,7 @@
 """SLURM headroom calculation and submission validation utilities.
 
 .. deprecated::
-    This module re-exports from ``phenotypic.tools_.slurm._slurm_headroom``
+    This module re-exports from ``phenotypic.sdk_.slurm._slurm_headroom``
     for backward compatibility.  Import directly from that module instead.
 """
 

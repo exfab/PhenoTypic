@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 from phenotypic.abc_ import ImageCorrector
 from phenotypic.abc_ import GridOperation
-from phenotypic.tools_.exceptions_ import GridImageInputError, OutputValueError
+from phenotypic.sdk_.exceptions_ import GridImageInputError, OutputValueError
 from abc import ABC
 
 

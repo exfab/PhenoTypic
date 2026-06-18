@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, List, Optional
 from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
     pipeline_json_path,
     resolve_pipeline_config_path,

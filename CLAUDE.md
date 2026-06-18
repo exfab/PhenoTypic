@@ -165,7 +165,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — execution strategies, staged GPU engine, SLURM chaining
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
 - [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (`MeasurementInfo` base + header enums)
-- [tools_/CLAUDE.md](src/phenotypic/tools_/CLAUDE.md) — mixins, utilities
+- [tools_/CLAUDE.md](src/phenotypic/sdk_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
 - [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
@@ -192,12 +192,12 @@ Define the `Literal` alias once as a `TypeAlias` and reuse. If both `Enum` and `
 exist, add a test asserting their values match.
 
 **Closed value sets needing user-visible documentation: prefer `MeasurementInfo` /
-`ConstantLabels`** (in `phenotypic.tools_.constants_`). Each member is a
+`ConstantLabels`** (in `phenotypic.sdk_.constants_`). Each member is a
 `(label, description)` tuple, the description is accessible to callers, and the existing
 pattern (override `category()` classmethod, optionally `__new__` for bare-label values)
 is the project convention. The `MeasurementInfo` base class lives in the public
 `phenotypic.schema` package; framework-config constant enums (`GAMMA_ENCODINGS`,
-`PIPE_STATUS`, `METADATA`) stay in `phenotypic.tools_.constants_`, while the
+`PIPE_STATUS`, `METADATA`) stay in `phenotypic.sdk_.constants_`, while the
 per-feature measurement-column enums live in `phenotypic.schema`. Do not modify these
 classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
 coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
@@ -262,7 +262,7 @@ the gate:
 - **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
   `Intensity_MeanIntensity`, etc. The header enums are the **public**
   `phenotypic.schema` package (`from phenotypic.schema import SHAPE, SIZE, ...`);
-  the old `phenotypic.tools_.measurement_info` path was removed.
+  the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
 - **Authoring `MeasurementInfo` members:** members are declared with
@@ -287,7 +287,7 @@ the gate:
   `deliverables/README.md`, and `deliverables/pipeline.json`. The
   **per-image** parquets in `results/<ds>/measurements/` (and the rest
   of `results/`, `qc/`, `progress/`, `processing_state.json`) stay at the
-  output-dir **root**. Resolve these paths via the `phenotypic.tools_`
+  output-dir **root**. Resolve these paths via the `phenotypic.sdk_`
   helpers (`deliverables_dir`, `master_measurements_parquet_path`, etc.),
   not by hand-joining names.
 - **Master vs. mirror outputs:** `deliverables/master_measurements.{csv,parquet}`

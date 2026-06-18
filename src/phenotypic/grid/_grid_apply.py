@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import GridCorrector
-from phenotypic.tools_.typing_ import OperationField
+from phenotypic.sdk_.typing_ import OperationField
 
 
 class GridApply(GridCorrector):

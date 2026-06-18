@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 from phenotypic.schema import METADATA
-from phenotypic.tools_.constants_ import IMAGE_MODE, IMAGE_TYPES
+from phenotypic.sdk_.constants_ import IMAGE_MODE, IMAGE_TYPES
 
 
 @dataclass

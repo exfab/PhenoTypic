@@ -52,11 +52,11 @@ def test_operation(qualname, obj, detected_grid_image):
     image2 = instance.apply(image)
 
     # bm3d denoiser likely has unintended randomness from precision conversion
-    # (ColorDenoise + StableDenoise + BM3D all wrap bm3d.bm3d_rgb / bm3d).
+    # (ColorDenoise + DenoiseBlockMatch + BM3D all wrap bm3d.bm3d_rgb / bm3d).
     if (
-        ("BM3D" not in qualname)
-        and ("StableDenoise" not in qualname)
-        and ("ColorDenoise" not in qualname)
+            ("BM3D" not in qualname)
+            and ("DenoiseBlockMatch" not in qualname)
+            and ("ColorDenoise" not in qualname)
     ):
         assert image1 == image2, "Operation was not reproducible"
 
@@ -101,9 +101,9 @@ def test_detector_objmap_objmask_consistency(qualname, obj, detected_grid_image)
     image = detected_grid_image.copy()
     obj().apply(image, inplace=True)
     np.testing.assert_array_equal(
-        image.objmap[:] > 0,
-        image.objmask[:],
-        err_msg=f"{qualname}: objmap > 0 must equal objmask",
+            image.objmap[:] > 0,
+            image.objmask[:],
+            err_msg=f"{qualname}: objmap > 0 must equal objmask",
     )
 
 

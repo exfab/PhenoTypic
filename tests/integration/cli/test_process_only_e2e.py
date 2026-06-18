@@ -5,7 +5,7 @@ import tifffile
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     deliverables_dir,
     manifest_json_path,
     phenotypic_cache_dir,

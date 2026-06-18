@@ -76,18 +76,18 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
         if overlay and has_objects:
             objmap = self._get_filtered_objmap(object_label)
             fig, ax = self._plot_overlay(
-                arr=arr, objmap=objmap, figsize=figsize, title=title,
-                overlay_settings=overlay_settings,
+                    arr=arr, objmap=objmap, figsize=figsize, title=title,
+                    overlay_settings=overlay_settings,
             )
             self._decorate_mpl_overlay(
-                ax, has_objects=has_objects, object_label=object_label,
-                show_labels=show_labels, show_grid=show_grid,
-                label_settings=label_settings,
+                    ax, has_objects=has_objects, object_label=object_label,
+                    show_labels=show_labels, show_grid=show_grid,
+                    label_settings=label_settings,
             )
             return fig, ax
 
         return self._mpl_plot(
-            arr=arr, figsize=figsize, title=title, cmap=cmap or "gray",
+                arr=arr, figsize=figsize, title=title, cmap=cmap or "gray",
         )
 
     def dash(
@@ -138,8 +138,8 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
 
         if not PLOTLY_AVAILABLE:
             raise ImportError(
-                "plotly is required for .dash(). "
-                "Install it with: pip install plotly"
+                    "plotly is required for .dash(). "
+                    "Install it with: pip install plotly"
             )
 
         arr = self[:] if not foreground_only else self.foreground()
@@ -148,18 +148,18 @@ class SingleChannelAccessor(ImageAccessorBase, ABC):
         if overlay and has_objects:
             objmap = self._get_filtered_objmap(object_label)
             fig = self._plotly_overlay(
-                arr=arr, objmap=objmap, figsize=figsize, title=title,
-                overlay_settings=overlay_settings,
-                plotly_settings=plotly_settings,
+                    arr=arr, objmap=objmap, figsize=figsize, title=title,
+                    overlay_settings=overlay_settings,
+                    plotly_settings=plotly_settings,
             )
             self._decorate_plotly_overlay(
-                fig, has_objects=has_objects, object_label=object_label,
-                show_labels=show_labels, show_grid=show_grid,
-                label_settings=label_settings,
+                    fig, has_objects=has_objects, object_label=object_label,
+                    show_labels=show_labels, show_grid=show_grid,
+                    label_settings=label_settings,
             )
             return fig
 
-        fig = self.plotly_imshow(arr=arr, figsize=figsize, title=title, cmap=cmap)
+        fig = self._plotly_imshow(arr=arr, figsize=figsize, title=title, cmap=cmap)
         if plotly_settings is not None:
             fig.update_layout(**plotly_settings)
         return fig

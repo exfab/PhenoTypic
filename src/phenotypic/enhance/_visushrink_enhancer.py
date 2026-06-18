@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageDenoiser
-from ..tools_.mixin import _GATSupportMixin
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.typing_ import TuneSpec
 
 
 class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
@@ -36,7 +36,7 @@ class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
     Consider Also:
         - :class:`BayesShrinkEnhancer` for adaptive per-subband thresholding
           that preserves more colony texture detail at variable noise levels.
-        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal
+        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
           at higher computational cost.
         - :class:`LocalEdgeDenoise` for edge-preserving spatial smoothing
           without wavelet decomposition.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 

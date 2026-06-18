@@ -10,7 +10,7 @@ from scipy.optimize import minimize_scalar
 
 from phenotypic.abc_ import GridCorrector
 from phenotypic.schema import BBOX, GRID
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class GridAligner(GridCorrector):

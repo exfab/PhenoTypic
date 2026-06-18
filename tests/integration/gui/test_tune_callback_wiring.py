@@ -80,7 +80,7 @@ def _wiring_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """A loaded tune app over a 3-trial journal + a tuning_spec.json + sandbox."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path, tuning_spec_path
+    from phenotypic.sdk_ import trials_parquet_path, tuning_spec_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     (tmp_path / "calibration").mkdir()
@@ -262,7 +262,7 @@ def test_set_winner_callback_writes_best_pipeline_over_http(tmp_path: Path) -> N
     atomic write), exercising the multi-output ``allow_duplicate`` toast wiring.
     """
     from phenotypic import ImagePipeline
-    from phenotypic.tools_ import best_pipeline_path
+    from phenotypic.sdk_ import best_pipeline_path
 
     app = _wiring_app(tmp_path)
     client = app.server.test_client()

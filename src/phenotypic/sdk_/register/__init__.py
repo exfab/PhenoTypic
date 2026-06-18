@@ -6,7 +6,7 @@ components like plotters and dashboards.
 Examples:
     Register a new plotter::
 
-        from phenotypic.tools_.register import register_plotter
+        from phenotypic.sdk_.register import register_plotter
 
         @register_plotter
         class MyPlotter(BasePlotter):
@@ -17,7 +17,7 @@ Examples:
 
     Query available plotters::
 
-        from phenotypic.tools_.register import available_plotters, get_plotter
+        from phenotypic.sdk_.register import available_plotters, get_plotter
 
         print(available_plotters())
         # ('all', 'diagnostics', 'morph_progression', ...)

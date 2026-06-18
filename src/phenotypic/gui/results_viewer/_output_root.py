@@ -24,7 +24,7 @@ from phenotypic.gui._config import (
     VIEWER_CACHE_DIRNAME,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_parquet_path,
     resolve_pipeline_config_path,

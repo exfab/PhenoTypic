@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, Annotated, Callable, ClassVar
 
 from pydantic import BaseModel, Field
 
-from phenotypic.tools_._anscombe import (
+from phenotypic.sdk_._anscombe import (
     gat_forward,
     gat_inverse,
     resolve_scale_factor,
 )
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -101,14 +101,14 @@ class _GATSupportMixin(BaseModel):
         # ``image.<attr>[:]`` which returns the underlying _data unchanged.
         data = getattr(image._data, target_attr)
         setattr(
-            image._data,
-            target_attr,
-            gat_forward(
-                data * scale,
-                self.gat_mu,
-                self.gat_read_sigma,
-                self.gat_gain,
-            ),
+                image._data,
+                target_attr,
+                gat_forward(
+                        data * scale,
+                        self.gat_mu,
+                        self.gat_read_sigma,
+                        self.gat_gain,
+                ),
         )
 
         snapshot = {
@@ -129,13 +129,13 @@ class _GATSupportMixin(BaseModel):
         # through _data again -- the result is in [0, 1] after the clip,
         # so it would also pass the gray accessor's guard.
         recovered = gat_inverse(
-            getattr(image._data, target_attr),
-            self.gat_mu,
-            self.gat_read_sigma,
-            self.gat_gain,
+                getattr(image._data, target_attr),
+                self.gat_mu,
+                self.gat_read_sigma,
+                self.gat_gain,
         )
         setattr(
-            image._data,
-            target_attr,
-            (recovered / scale).clip(0.0, 1.0),
+                image._data,
+                target_attr,
+                (recovered / scale).clip(0.0, 1.0),
         )

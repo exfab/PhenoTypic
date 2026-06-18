@@ -383,20 +383,20 @@ class TestArrayJobScriptGeneration:
 class TestSLURMSubmissionErrors:
     """Tests for shared submit_script error handling."""
 
-    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_sbatch_not_found(self, mock_run):
         """Test handling when sbatch command is not found."""
-        from phenotypic.tools_.slurm._sbatch import submit_script
+        from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.side_effect = FileNotFoundError("sbatch not found")
 
         with pytest.raises(RuntimeError, match="sbatch"):
             submit_script(Path("script.sh"))
 
-    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_sbatch_failure(self, mock_run):
         """Test handling when sbatch returns non-zero exit code."""
-        from phenotypic.tools_.slurm._sbatch import submit_script
+        from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.side_effect = subprocess.CalledProcessError(
             1, "sbatch", stderr="Invalid partition specified"
@@ -405,10 +405,10 @@ class TestSLURMSubmissionErrors:
         with pytest.raises(RuntimeError, match="submission failed"):
             submit_script(Path("script.sh"))
 
-    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_parsable_output(self, mock_run):
         """Test successful submission with --parsable output."""
-        from phenotypic.tools_.slurm._sbatch import submit_script
+        from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -418,10 +418,10 @@ class TestSLURMSubmissionErrors:
         job_id = submit_script(Path("script.sh"))
         assert job_id == "12345"
 
-    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_parsable_with_cluster(self, mock_run):
         """Test --parsable output with cluster name (id;cluster)."""
-        from phenotypic.tools_.slurm._sbatch import submit_script
+        from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -431,10 +431,10 @@ class TestSLURMSubmissionErrors:
         job_id = submit_script(Path("script.sh"))
         assert job_id == "67890"
 
-    @patch("phenotypic.tools_.slurm._sbatch.subprocess.run")
+    @patch("phenotypic.sdk_.slurm._sbatch.subprocess.run")
     def test_submit_script_with_dependency(self, mock_run):
         """Test submission with dependency flag."""
-        from phenotypic.tools_.slurm._sbatch import submit_script
+        from phenotypic.sdk_.slurm._sbatch import submit_script
 
         mock_run.return_value = MagicMock(
             returncode=0,

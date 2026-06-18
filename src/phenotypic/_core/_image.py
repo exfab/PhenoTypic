@@ -4,7 +4,7 @@ from typing import Literal
 
 import numpy as np
 
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 from ._image_parts._image_io_handler import ImageIOHandler
 
 
@@ -106,7 +106,7 @@ class Image(ImageIOHandler):
             Create from RGB array:
 
             >>> rgb_arr = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
-            >>> from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+            >>> from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
             >>> img = Image(rgb_arr, name='color_photo', gamma=GAMMA_ENCODINGS.SRGB)
 
             Copy another image:

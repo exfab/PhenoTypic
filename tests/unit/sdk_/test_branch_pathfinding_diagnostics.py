@@ -15,7 +15,7 @@ pytest.importorskip("plotly")
 
 import plotly.graph_objects as go  # noqa: E402
 
-from phenotypic.tools_.branch_pathfinding import (  # noqa: E402
+from phenotypic.sdk_.branch_pathfinding import (  # noqa: E402
     DijkstraResult,
     FilterResult,
     FilterThresholds,

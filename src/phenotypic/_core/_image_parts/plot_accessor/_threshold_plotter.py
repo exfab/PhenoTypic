@@ -5,7 +5,7 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 from skimage.filters import try_all_threshold
 
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from phenotypic.tools_ import VERIFIED_PARQUET, deliverables_dir, verified_parquet_path
+from phenotypic.sdk_ import VERIFIED_PARQUET, deliverables_dir, verified_parquet_path
 
 
 def test_verified_parquet_filename():

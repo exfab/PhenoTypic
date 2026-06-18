@@ -16,7 +16,7 @@ from skimage.morphology import (
     closing,
 )
 
-from phenotypic.tools_.register import register_plotter
+from phenotypic.sdk_.register import register_plotter
 
 from ._base_plotter import BasePlotter
 

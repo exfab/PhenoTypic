@@ -8,7 +8,7 @@ import polars as pl
 import pytest
 
 from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.tools_ import deliverables_dir
+from phenotypic.sdk_ import deliverables_dir
 
 
 @pytest.fixture()

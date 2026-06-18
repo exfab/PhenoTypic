@@ -18,7 +18,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import QUALITY_SE
 
 

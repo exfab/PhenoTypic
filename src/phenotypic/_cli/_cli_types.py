@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime
 
-from phenotypic.tools_.typing_ import ExecutionMode, ImageTypeName, ProcessOnlyLayer
+from phenotypic.sdk_.typing_ import ExecutionMode, ImageTypeName, ProcessOnlyLayer
 
 
 @dataclass

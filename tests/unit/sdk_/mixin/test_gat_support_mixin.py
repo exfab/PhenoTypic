@@ -1,7 +1,7 @@
 """Tests for the optional GAT-wrapping mixin.
 
 Covers:
-- The load-bearing equivalence claim: ``BM3DDenoiser(use_gat=True)`` produces
+- The load-bearing equivalence claim: ``EnhanceBlockMatch(use_gat=True)`` produces
   the same ``detect_mat`` as the manual ``gat_forward -> bm3d.bm3d(sigma_psd=1)
   -> gat_inverse -> /scale -> clip`` triple.
 - Same equivalence for the wavelet enhancers (asserts the
@@ -25,10 +25,10 @@ from phenotypic import Image, ImagePipeline
 from phenotypic.correction import BayesShrinkCorrector, VisuShrinkCorrector
 from phenotypic.enhance import (
     BayesShrinkEnhancer,
-    BM3DDenoiser,
+    EnhanceBlockMatch,
     VisuShrinkEnhancer,
 )
-from phenotypic.tools_._anscombe import gat_forward, gat_inverse
+from phenotypic.sdk_._anscombe import gat_forward, gat_inverse
 
 
 # -- Fixtures --------------------------------------------------------------
@@ -59,41 +59,41 @@ class TestEquivalenceWithExplicitTriple:
         profile.bs_ht = 8
         profile.bs_wiener = 8
         denoised_stab = bm3d.bm3d(
-            stabilized,
-            profile=profile,
-            sigma_psd=1.0,
-            stage_arg=BM3DStages.ALL_STAGES,
+                stabilized,
+                profile=profile,
+                sigma_psd=1.0,
+                stage_arg=BM3DStages.ALL_STAGES,
         )
         recovered = gat_inverse(denoised_stab, mu, sigma, gain)
         expected = (recovered / scale).clip(0.0, 1.0)
 
         # Mixin pipeline
-        op = BM3DDenoiser(
-            sigma_psd=0.02,
-            block_size=8,
-            stage_arg="all_stages",
-            clip=True,
-            use_gat=True,
-            gat_gain=gain,
-            gat_mu=mu,
-            gat_read_sigma=sigma,
-            gat_scale_factor=scale,
+        op = EnhanceBlockMatch(
+                sigma_psd=0.02,
+                block_size=8,
+                stage_arg="all_stages",
+                clip=True,
+                use_gat=True,
+                gat_gain=gain,
+                gat_mu=mu,
+                gat_read_sigma=sigma,
+                gat_scale_factor=scale,
         )
         op.apply(synth_image, inplace=True)
 
         np.testing.assert_allclose(
-            synth_image.detect_mat[:], expected, atol=1e-6
+                synth_image.detect_mat[:], expected, atol=1e-6
         )
 
     @pytest.mark.parametrize(
-        "cls,method",
-        [
-            (BayesShrinkEnhancer, "BayesShrink"),
-            (VisuShrinkEnhancer, "VisuShrink"),
-        ],
+            "cls,method",
+            [
+                (BayesShrinkEnhancer, "BayesShrink"),
+                (VisuShrinkEnhancer, "VisuShrink"),
+            ],
     )
     def test_wavelet_use_gat_matches_manual_triple(
-        self, synth_image, cls, method
+            self, synth_image, cls, method
     ):
         """Wavelet enhancers: GAT mixin == manual triple with rescale_sigma=False."""
         scale = 255.0
@@ -103,35 +103,35 @@ class TestEquivalenceWithExplicitTriple:
         counts = synth_image.detect_mat[:] * scale
         stabilized = gat_forward(counts, mu, sigma, gain)
         denoised_stab = denoise_wavelet(
-            image=stabilized,
-            sigma=1.0,
-            wavelet="db2",
-            mode="soft",
-            wavelet_levels=None,
-            method=method,
-            channel_axis=None,
-            rescale_sigma=False,
+                image=stabilized,
+                sigma=1.0,
+                wavelet="db2",
+                mode="soft",
+                wavelet_levels=None,
+                method=method,
+                channel_axis=None,
+                rescale_sigma=False,
         )
         recovered = gat_inverse(denoised_stab, mu, sigma, gain)
         expected = (recovered / scale).clip(0.0, 1.0)
 
         # Mixin: user-supplied sigma + rescale_sigma must be ignored under GAT
         op = cls(
-            sigma=0.05,
-            wavelet="db2",
-            mode="soft",
-            clip=True,
-            rescale_sigma=True,
-            use_gat=True,
-            gat_gain=gain,
-            gat_mu=mu,
-            gat_read_sigma=sigma,
-            gat_scale_factor=scale,
+                sigma=0.05,
+                wavelet="db2",
+                mode="soft",
+                clip=True,
+                rescale_sigma=True,
+                use_gat=True,
+                gat_gain=gain,
+                gat_mu=mu,
+                gat_read_sigma=sigma,
+                gat_scale_factor=scale,
         )
         op.apply(synth_image, inplace=True)
 
         np.testing.assert_allclose(
-            synth_image.detect_mat[:], expected, atol=1e-6
+                synth_image.detect_mat[:], expected, atol=1e-6
         )
 
 
@@ -154,7 +154,7 @@ class TestWaveletCorrectorGAT:
         return Image(arr=arr)
 
     @pytest.mark.parametrize(
-        "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
+            "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
     )
     def test_gray_image_use_gat_runs(self, gray_image, cls):
         """``apply`` does not crash on the gray accessor [0, 1] range guard."""
@@ -166,7 +166,7 @@ class TestWaveletCorrectorGAT:
         assert out.detect_mat[:].max() <= 1.0
 
     @pytest.mark.parametrize(
-        "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
+            "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
     )
     def test_rgb_image_use_gat_runs(self, rgb_image, cls):
         """RGB pass stays out of GAT but coexists with GATd gray/detect_mat."""
@@ -178,7 +178,7 @@ class TestWaveletCorrectorGAT:
         assert 0.0 <= out.detect_mat[:].min() <= out.detect_mat[:].max() <= 1.0
 
     @pytest.mark.parametrize(
-        "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
+            "cls", [BayesShrinkCorrector, VisuShrinkCorrector]
     )
     def test_clip_attr_restored(self, gray_image, cls):
         """``clip`` (in ``_GAT_DEFER_ATTRS``) must roll back after the GAT region."""
@@ -195,23 +195,23 @@ class TestSnapshotIntegrity:
     """Inner attrs must be restored after the GAT region exits."""
 
     def test_sigma_psd_restored(self, synth_image):
-        op = BM3DDenoiser(
-            sigma_psd=0.02, use_gat=True, gat_scale_factor=255.0
+        op = EnhanceBlockMatch(
+                sigma_psd=0.02, use_gat=True, gat_scale_factor=255.0
         )
         op.apply(synth_image, inplace=True)
         assert op.sigma_psd == 0.02
 
     def test_clip_restored(self, synth_image):
-        op = BM3DDenoiser(
-            sigma_psd=0.02, clip=True, use_gat=True, gat_scale_factor=255.0
+        op = EnhanceBlockMatch(
+                sigma_psd=0.02, clip=True, use_gat=True, gat_scale_factor=255.0
         )
         op.apply(synth_image, inplace=True)
         assert op.clip is True
 
     def test_attrs_restored_even_on_inner_failure(self, synth_image):
         """``finally`` clause guarantees attrs roll back even if inner raises."""
-        op = BM3DDenoiser(
-            sigma_psd=0.02, use_gat=True, gat_scale_factor=255.0
+        op = EnhanceBlockMatch(
+                sigma_psd=0.02, use_gat=True, gat_scale_factor=255.0
         )
 
         def boom(_image):
@@ -231,7 +231,7 @@ class TestPassThrough:
 
     def test_use_gat_false_matches_default_bm3d(self, synth_image):
         # Run with use_gat=False
-        op_off = BM3DDenoiser(sigma_psd=0.02, use_gat=False)
+        op_off = EnhanceBlockMatch(sigma_psd=0.02, use_gat=False)
         img_off = Image(arr=synth_image.detect_mat[:].copy())
         op_off.apply(img_off, inplace=True)
 
@@ -240,10 +240,10 @@ class TestPassThrough:
         profile.bs_ht = 8
         profile.bs_wiener = 8
         expected = bm3d.bm3d(
-            synth_image.detect_mat[:],
-            profile=profile,
-            sigma_psd=0.02,
-            stage_arg=BM3DStages.ALL_STAGES,
+                synth_image.detect_mat[:],
+                profile=profile,
+                sigma_psd=0.02,
+                stage_arg=BM3DStages.ALL_STAGES,
         ).clip(0.0, 1.0)
 
         # BM3D has small non-determinism in float reductions across separate
@@ -251,7 +251,7 @@ class TestPassThrough:
         # behavioral difference). The point is that no GAT bookkeeping has
         # corrupted the output -- the result matches direct skimage usage.
         np.testing.assert_allclose(
-            img_off.detect_mat[:], expected, atol=1e-5
+                img_off.detect_mat[:], expected, atol=1e-5
         )
 
 
@@ -262,20 +262,20 @@ class TestSerialization:
     """All GAT params survive ``ImagePipeline.to_json`` -> ``from_json``."""
 
     def test_gat_params_round_trip(self):
-        op = BM3DDenoiser(
-            sigma_psd=0.05,
-            use_gat=True,
-            gat_gain=2.0,
-            gat_mu=1.0,
-            gat_read_sigma=0.5,
-            gat_scale_factor=65535.0,
+        op = EnhanceBlockMatch(
+                sigma_psd=0.05,
+                use_gat=True,
+                gat_gain=2.0,
+                gat_mu=1.0,
+                gat_read_sigma=0.5,
+                gat_scale_factor=65535.0,
         )
         pipeline = ImagePipeline(pipe_cfgs=[op])
         json_str = pipeline.to_json()
         loaded = ImagePipeline.from_json(json_str)
 
         loaded_op = list(loaded._ops.values())[0]
-        assert isinstance(loaded_op, BM3DDenoiser)
+        assert isinstance(loaded_op, EnhanceBlockMatch)
         assert loaded_op.sigma_psd == 0.05
         assert loaded_op.use_gat is True
         assert loaded_op.gat_gain == 2.0
@@ -284,7 +284,7 @@ class TestSerialization:
         assert loaded_op.gat_scale_factor == 65535.0
 
     def test_default_gat_params_round_trip(self):
-        op = BM3DDenoiser(sigma_psd=0.02)
+        op = EnhanceBlockMatch(sigma_psd=0.02)
         pipeline = ImagePipeline(pipe_cfgs=[op])
         loaded = ImagePipeline.from_json(pipeline.to_json())
         loaded_op = list(loaded._ops.values())[0]
@@ -303,46 +303,46 @@ class TestValidation:
 
     def test_gat_gain_zero_raises(self):
         with pytest.raises(
-            ValueError,
-            match=r"gat_gain\s+Input should be greater than 0",
+                ValueError,
+                match=r"gat_gain\s+Input should be greater than 0",
         ):
-            BM3DDenoiser(use_gat=True, gat_gain=0.0)
+            EnhanceBlockMatch(use_gat=True, gat_gain=0.0)
 
     def test_gat_gain_negative_raises(self):
         with pytest.raises(
-            ValueError,
-            match=r"gat_gain\s+Input should be greater than 0",
+                ValueError,
+                match=r"gat_gain\s+Input should be greater than 0",
         ):
-            BM3DDenoiser(use_gat=True, gat_gain=-1.0)
+            EnhanceBlockMatch(use_gat=True, gat_gain=-1.0)
 
     def test_gat_read_sigma_negative_raises(self):
         with pytest.raises(
-            ValueError,
-            match=r"gat_read_sigma\s+Input should be greater than or equal to 0",
+                ValueError,
+                match=r"gat_read_sigma\s+Input should be greater than or equal to 0",
         ):
-            BM3DDenoiser(use_gat=True, gat_read_sigma=-0.1)
+            EnhanceBlockMatch(use_gat=True, gat_read_sigma=-0.1)
 
     def test_gat_scale_factor_zero_raises(self):
         with pytest.raises(
-            ValueError,
-            match=r"gat_scale_factor\s+Input should be greater than 0",
+                ValueError,
+                match=r"gat_scale_factor\s+Input should be greater than 0",
         ):
-            BM3DDenoiser(use_gat=True, gat_scale_factor=0.0)
+            EnhanceBlockMatch(use_gat=True, gat_scale_factor=0.0)
 
     def test_gat_scale_factor_negative_raises(self):
         with pytest.raises(
-            ValueError,
-            match=r"gat_scale_factor\s+Input should be greater than 0",
+                ValueError,
+                match=r"gat_scale_factor\s+Input should be greater than 0",
         ):
-            BM3DDenoiser(use_gat=True, gat_scale_factor=-255.0)
+            EnhanceBlockMatch(use_gat=True, gat_scale_factor=-255.0)
 
     def test_valid_gat_params_accepted(self):
-        op = BM3DDenoiser(
-            use_gat=True,
-            gat_gain=2.0,
-            gat_mu=0.5,
-            gat_read_sigma=1.0,
-            gat_scale_factor=65535.0,
+        op = EnhanceBlockMatch(
+                use_gat=True,
+                gat_gain=2.0,
+                gat_mu=0.5,
+                gat_read_sigma=1.0,
+                gat_scale_factor=65535.0,
         )
         assert op.gat_gain == 2.0
         assert op.gat_mu == 0.5

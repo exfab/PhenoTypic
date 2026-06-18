@@ -14,7 +14,7 @@ to study microbial growth patterns.
 
 """
 
-__version__ = "0.17.0"
+__version__ = "0.17.1"
 __author__ = "Alexander Nguyen"
 __email__ = "anguy344@ucr.edu"
 
@@ -26,7 +26,7 @@ from ._startup_perf import IMPORT_STARTED_AT as _IMPORT_STARTED_AT  # noqa: F401
 
 # Import abc_ first: its __init__ imports the public ``schema`` package
 # (the stdlib-only MeasurementInfo base + leaf enums, cached instantly) then
-# triggers tools_ init.  When tools_.constants_ later does
+# triggers sdk_ init.  When sdk_.constants_ later does
 # ``from phenotypic.schema import MeasurementInfo`` the module is already in
 # sys.modules, breaking the circular import chain.
 from . import abc_  # noqa: F401
@@ -46,7 +46,7 @@ from . import (
     refine,
     schema,
     settings_,
-    tools_,
+    sdk_,
     tune,
     util,
     prefab,
@@ -67,7 +67,7 @@ __all__ = [
     "prefab",
     "correction",
     "enhance",
-    "tools_",
+    "sdk_",
     "util",
     "settings_",
     "tune",

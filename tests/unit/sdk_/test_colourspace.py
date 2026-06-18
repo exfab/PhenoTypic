@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from phenotypic.tools_.colourspace import decode_srgb, encode_srgb
+from phenotypic.sdk_.colourspace import decode_srgb, encode_srgb
 
 
 class TestSrgbTransferFunctions:

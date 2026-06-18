@@ -7,7 +7,7 @@ import importlib
 import plotly.graph_objects as go
 import plotly.io as pio
 
-from phenotypic.tools_.viz.figures._theme import (
+from phenotypic.sdk_.viz.figures._theme import (
     BG,
     FONT_FAMILY,
     OKABE_ITO,
@@ -30,7 +30,7 @@ def test_register_adds_template_to_plotly_registry() -> None:
 
 def test_import_auto_registers_template() -> None:
     """Importing the theme module is enough to register the template."""
-    module = importlib.import_module("phenotypic.tools_.viz.figures._theme")
+    module = importlib.import_module("phenotypic.sdk_.viz.figures._theme")
     importlib.reload(module)
     assert PHENOTYPIC_TEMPLATE_NAME in pio.templates
 
@@ -136,6 +136,6 @@ def test_mono_font_does_not_drift_from_gui_design() -> None:
     a chart's tick labels match the GUI's mono data text exactly.
     """
     from phenotypic.gui._design import FONT_FAMILY_MONO as GUI_FONT_FAMILY_MONO
-    from phenotypic.tools_.viz.figures._theme import FONT_FAMILY_MONO
+    from phenotypic.sdk_.viz.figures._theme import FONT_FAMILY_MONO
 
     assert FONT_FAMILY_MONO == GUI_FONT_FAMILY_MONO

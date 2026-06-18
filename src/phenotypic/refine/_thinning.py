@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from skimage.morphology import thin
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class Thinning(ObjectRefiner):

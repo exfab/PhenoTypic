@@ -17,8 +17,8 @@ import warnings
 from functools import partial, wraps
 
 from ._base_operation import BaseOperation
-from phenotypic.tools_.exceptions_ import OperationFailedError
-from phenotypic.tools_.funcs_ import validate_measure_integrity
+from phenotypic.sdk_.exceptions_ import OperationFailedError
+from phenotypic.sdk_.funcs_ import validate_measure_integrity
 from phenotypic.schema import OBJECT
 
 

@@ -9,7 +9,7 @@ import numpy as np
 from skimage.morphology import white_tophat
 
 from phenotypic.abc_ import MorphologicalFiltering
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class WhiteTophatEnhance(MorphologicalFiltering):

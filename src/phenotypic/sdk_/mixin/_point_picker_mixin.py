@@ -19,7 +19,7 @@ class PointPickerMixin:
     pick up two things at once:
 
     * **A blocking napari picker.** :meth:`napari` opens a desktop
-      :class:`~phenotypic.tools_.napari_.PointPickerWidget` and writes the
+      :class:`~phenotypic.sdk_.napari_.PointPickerWidget` and writes the
       confirmed picks back to the operation. Closing the viewer without
       confirming is a no-op (existing centres are preserved).
     * **A GUI introspection hook.** The ``_point_picker_param_name`` class
@@ -60,7 +60,7 @@ class PointPickerMixin:
         Raises:
             ImportError: If napari is not installed.
         """
-        from phenotypic.tools_.napari_ import PointPickerWidget
+        from phenotypic.sdk_.napari_ import PointPickerWidget
 
         points = PointPickerWidget(max_points=None).run(image)
         if len(points) > 0:

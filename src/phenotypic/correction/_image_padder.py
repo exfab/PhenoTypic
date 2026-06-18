@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.sparse import csr_matrix
 from phenotypic.abc_ import ImageCorrector
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.typing_ import TuneSpec
 
 #: The eleven fill strategies accepted by ``np.pad``. Declared as a
 #: ``Literal`` so the pre-migration ``__prescreen_params`` mode-membership

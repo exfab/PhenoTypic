@@ -16,7 +16,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     analysis_csv_path,
     analysis_parquet_path,
     pipeline_json_path,

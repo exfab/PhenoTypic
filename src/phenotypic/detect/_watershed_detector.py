@@ -15,7 +15,7 @@ from scipy.ndimage import distance_transform_edt
 from skimage import feature, filters, morphology, segmentation
 
 from phenotypic.abc_ import ThresholdDetector
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
 class WatershedDetector(ThresholdDetector):

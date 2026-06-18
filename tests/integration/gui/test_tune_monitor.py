@@ -19,7 +19,7 @@ from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 def _journal_run(path: Path) -> TuneRunRoot:
     """Write a trials.parquet under ``path`` and discover it as a legacy root."""
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
 
     store = JournalStudyStore(
         trials=[

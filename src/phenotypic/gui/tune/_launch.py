@@ -55,7 +55,7 @@ def _spec_input_output(root: "TuneRunRoot") -> tuple[str, str, str]:
     Returns:
         The ``(spec_path, input_dir, output_dir)`` string triple.
     """
-    from phenotypic.tools_ import resolve_tuning_spec_path
+    from phenotypic.sdk_ import resolve_tuning_spec_path
 
     output_dir = str(root.path)
     spec_path = str(resolve_tuning_spec_path(root.path))

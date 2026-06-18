@@ -6,7 +6,7 @@ the Okabe-Ito ``axes.prop_cycle``, navy-tinted grid / edge colors, hidden top /
 right spines, and the role fonts (IBM Plex Sans body, JetBrains Mono numerics).
 
 ``matplotlib`` is imported lazily inside the functions so importing this module
-(and the ``phenotypic.tools_.viz.figures`` package) stays cheap for callers that only
+(and the ``phenotypic.sdk_.viz.figures`` package) stays cheap for callers that only
 need the plotly theme.
 """
 from __future__ import annotations

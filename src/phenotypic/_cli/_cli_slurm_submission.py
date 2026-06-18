@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from phenotypic.tools_ import DIR_LOGS
-from phenotypic.tools_.slurm import (
+from phenotypic.sdk_ import DIR_LOGS
+from phenotypic.sdk_.slurm import (
     generate_dispatcher_chain,
     submit_drip_feed_start,
 )

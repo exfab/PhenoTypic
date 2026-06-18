@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from phenotypic.tools_._docstring_params import (
+from phenotypic.sdk_._docstring_params import (
     apply_docstring_descriptions,
     parse_param_descriptions,
 )

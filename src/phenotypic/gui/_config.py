@@ -24,7 +24,7 @@ The CLI ↔ GUI shared output filenames (``MASTER_MEASUREMENTS_PARQUET``,
 ``MEASUREMENTS_CSV``, ``MEASUREMENTS_PARQUET``, ``ANALYSIS_CSV``,
 ``ANALYSIS_PARQUET``, ``PIPELINE_JSON``, ``RESULTS_DIRNAME``,
 ``PROGRESS_DIRNAME``, ``DELIVERABLES_DIRNAME``, ``DASHBOARD_FILENAME``)
-are re-exports of canonical constants in :mod:`phenotypic.tools_._io_constants`.
+are re-exports of canonical constants in :mod:`phenotypic.sdk_._io_constants`.
 The single source of truth is one level up; this module re-exports for
 ergonomic GUI imports. New filenames written by the CLI should be added
 to ``_io_constants.py``, not here.
@@ -34,8 +34,8 @@ These are bare *filenames*, not paths. The user-facing run artifacts
 ``analysis.*``, ``dashboard.html``, ``analysis.html``,
 ``processing_report.html``, ``README.md``, ``pipeline.json``) now resolve
 under ``<output>/deliverables/`` — ``DELIVERABLES_DIRNAME`` (= ``"deliverables"``,
-backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.tools_`). Join them via the
-``phenotypic.tools_`` path helpers (``deliverables_dir(output)``,
+backed by ``DIR_DELIVERABLES`` in :mod:`phenotypic.sdk_`). Join them via the
+``phenotypic.sdk_`` path helpers (``deliverables_dir(output)``,
 ``master_measurements_parquet_path(output)``, …). ``RESULTS_DIRNAME`` and
 ``QC_DIRNAME`` are *not* deliverables and stay at the output-dir root; the
 machine-state sidecars ``PROGRESS_DIRNAME`` (``progress/``) and
@@ -50,7 +50,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
     DASHBOARD_HTML,
@@ -117,7 +117,7 @@ __all__ = [
     # Image file extensions
     "IMAGE_EXTS",
     "RAW_IMAGE_EXTS",
-    # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
+    # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
     "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
@@ -132,7 +132,7 @@ __all__ = [
     "QC_MEMBERS_PARQUET",
     "QC_CONFIG_JSON",
     "QC_REVIEW_STATE_JSON",
-    # Directory names — re-exported from phenotypic.tools_
+    # Directory names — re-exported from phenotypic.sdk_
     "RESULTS_DIRNAME",
     "PROGRESS_DIRNAME",
     "QC_DIRNAME",
@@ -140,7 +140,7 @@ __all__ = [
     "DIR_INSPECT",
     "DIR_MEASUREMENTS",
     "DIR_OVERLAYS",
-    # Dashboard filename — re-exported from phenotypic.tools_
+    # Dashboard filename — re-exported from phenotypic.sdk_
     "DASHBOARD_FILENAME",
     # URL constants
     "SANDBOX_API_VIEWER_OUTPUT_ROOT",
@@ -292,7 +292,7 @@ CFG_QC_AUGMENTED_FRAME: str = "pheno_qc_augmented_frame"
 #: :class:`~phenotypic._core._image_pipeline.ImagePipeline` deserialized
 #: from the active output root's ``pipeline.json`` at boot. The QC Review
 #: tab's per-group recompute hands this to
-#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` so the in-session recompute uses
+#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` so the in-session recompute uses
 #: exactly the same checks the CLI persisted. ``None`` when no
 #: ``pipeline.json`` exists (or it failed to load) — recompute degrades to
 #: a no-op in that case. Spec §D.5.
@@ -356,9 +356,9 @@ IMAGE_EXTS: frozenset[str] = frozenset(
 RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dng"})
 
 # ---------------------------------------------------------------------------
-# Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.tools_
+# Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
 # ---------------------------------------------------------------------------
-# These names are canonical in phenotypic.tools_._io_constants and re-exported
+# These names are canonical in phenotypic.sdk_._io_constants and re-exported
 # here so existing GUI imports (``from phenotypic.gui._config import MEASUREMENTS_CSV``)
 # keep working with zero downstream churn. Do NOT redefine these as inline literals.
 #
@@ -375,12 +375,12 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset({".cr2", ".cr3", ".nef", ".arw", ".dn
 # (master/measurements/analysis frames, the per-feature splits, the
 # generated HTML reports, README, and pipeline.json) now resolve under
 # ``<output>/deliverables/`` (DELIVERABLES_DIRNAME / DIR_DELIVERABLES) via the
-# phenotypic.tools_ path helpers (deliverables_dir, master_measurements_parquet_path,
+# phenotypic.sdk_ path helpers (deliverables_dir, master_measurements_parquet_path,
 # …). The per-image results dir and the qc dir stay at the output-dir root,
 # while machine-state (progress dir, processing_state.json, processing_events.log)
 # now lives under the hidden cache dir ``<output>/.phenotypic/``
 # (PHENOTYPIC_CACHE_DIRNAME / DIR_PHENOTYPIC); resolve it via the
-# phenotypic.tools_ helpers (progress_dir, resolve_manifest_json_path, …).
+# phenotypic.sdk_ helpers (progress_dir, resolve_manifest_json_path, …).
 #
 # ---------------------------------------------------------------------------
 # GUI-only convenience aliases for re-exported CLI artifact names
@@ -391,7 +391,7 @@ RESULTS_DIRNAME: str = DIR_RESULTS
 
 #: ``progress`` — the CLI output ``progress/`` directory name. Now nested
 #: under the hidden machine-state cache (see PHENOTYPIC_CACHE_DIRNAME); resolve
-#: full paths via the ``phenotypic.tools_`` helpers rather than joining this.
+#: full paths via the ``phenotypic.sdk_`` helpers rather than joining this.
 PROGRESS_DIRNAME: str = DIR_PROGRESS
 
 #: ``.phenotypic`` — the hidden machine-state cache dir holding the run's

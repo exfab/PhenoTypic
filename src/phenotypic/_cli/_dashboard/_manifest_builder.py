@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .._cli_failure_tracker import append_failure, categorize_failures, read_failures
 from .._cli_update_state import aggregate_state_from_events, append_event
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     MANIFEST_JSON,
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
@@ -30,7 +30,7 @@ from phenotypic.tools_ import (
     master_measurements_parquet_path,
     resolve_event_log_path,
 )
-from phenotypic.tools_.typing_ import ExecutionMode
+from phenotypic.sdk_.typing_ import ExecutionMode
 
 logger = logging.getLogger(__name__)
 

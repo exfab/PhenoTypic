@@ -14,7 +14,7 @@ from phenotypic.gui.tune._callbacks import (
 )
 from phenotypic.gui.tune._nav import destination_view_id
 from phenotypic.gui.tune._run_root import TuneRunRoot
-from phenotypic.tools_ import trials_parquet_path
+from phenotypic.sdk_ import trials_parquet_path
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 

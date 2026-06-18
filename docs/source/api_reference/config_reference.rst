@@ -34,11 +34,11 @@ configuration options include:
 Constants
 ---------
 
-Key constants are available in ``phenotypic.tools_.constants_``:
+Key constants are available in ``phenotypic.sdk_.constants_``:
 
 .. code-block:: python
 
-   from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, METADATA
+   from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, METADATA
 
    GAMMA_ENCODINGS.SRGB     # Standard sRGB gamma encoding
    GAMMA_ENCODINGS.LINEAR   # Linear RGB (no gamma)

@@ -224,7 +224,7 @@ def figure(
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> "go.Figure":
-            from phenotypic.tools_.viz.figures._theme import apply_theme
+            from phenotypic.sdk_.viz.figures._theme import apply_theme
 
             return apply_theme(fn(*args, **kwargs))
 
@@ -449,7 +449,7 @@ class FigureProvider:
                 f"{type(self).__name__} declares no @figure methods"
             )
         if any(s.controls for s in specs):
-            from phenotypic.tools_.viz.notebook._adapter import (
+            from phenotypic.sdk_.viz.notebook._adapter import (
                 build_notebook_dashboard,
             )
 
@@ -477,7 +477,7 @@ class FigureProvider:
         """
         from plotly.subplots import make_subplots
 
-        from phenotypic.tools_.viz.figures._theme import apply_theme
+        from phenotypic.sdk_.viz.figures._theme import apply_theme
 
         specs = self.iter_figures()
         if len(specs) == 1:

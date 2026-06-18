@@ -1,5 +1,5 @@
 import numpy as np
-from phenotypic.tools_.branch_pathfinding import (
+from phenotypic.sdk_.branch_pathfinding import (
     connectivity_correct_labels,
     euclidean_voronoi_assign,
 )

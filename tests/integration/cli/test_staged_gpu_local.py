@@ -21,7 +21,7 @@ from phenotypic._cli._cli_update_state import (
     aggregate_stage_state_from_events,
     parse_event_line,
 )
-from phenotypic.tools_ import dataset_hdf_dir, event_log_path
+from phenotypic.sdk_ import dataset_hdf_dir, event_log_path
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 

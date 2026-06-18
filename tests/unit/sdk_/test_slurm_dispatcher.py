@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
-from phenotypic.tools_.slurm._dispatcher import (
+from phenotypic.sdk_.slurm._dispatcher import (
     generate_dispatcher_chain,
     generate_dispatcher_script,
 )
@@ -278,25 +278,25 @@ class TestSbatchHelpers:
     """Tests for shared sbatch helper functions."""
 
     def test_parse_job_id_standard(self):
-        from phenotypic.tools_.slurm._sbatch import parse_job_id
+        from phenotypic.sdk_.slurm._sbatch import parse_job_id
 
         assert parse_job_id("Submitted batch job 12345\n") == "12345"
 
     def test_parse_job_id_multiline(self):
-        from phenotypic.tools_.slurm._sbatch import parse_job_id
+        from phenotypic.sdk_.slurm._sbatch import parse_job_id
 
         output = "scontrol: warning\nSubmitted batch job 99999\nextra\n"
         assert parse_job_id(output) == "99999"
 
     def test_parse_job_id_no_match_raises(self):
-        from phenotypic.tools_.slurm._sbatch import parse_job_id
+        from phenotypic.sdk_.slurm._sbatch import parse_job_id
 
         with pytest.raises(RuntimeError, match="Could not parse job ID"):
             parse_job_id("Error: something went wrong\n")
 
     def test_format_sbatch_directives_basic(self):
         from pathlib import Path
-        from phenotypic.tools_.slurm._sbatch import format_sbatch_directives
+        from phenotypic.sdk_.slurm._sbatch import format_sbatch_directives
 
         directives = format_sbatch_directives(
             job_name="test-job",
@@ -314,7 +314,7 @@ class TestSbatchHelpers:
 
     def test_format_sbatch_directives_reserved_keys_filtered(self):
         from pathlib import Path
-        from phenotypic.tools_.slurm._sbatch import format_sbatch_directives
+        from phenotypic.sdk_.slurm._sbatch import format_sbatch_directives
 
         directives = format_sbatch_directives(
             job_name="test-job",

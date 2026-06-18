@@ -14,7 +14,7 @@ This module provides three things:
   stores in its ``qc`` list (``pipeline.get_qc()`` returns these), and the
   unit the pipeline (de)serializer reads/writes. Instantiation into a
   concrete :class:`QualityCheck` is **lazy** (see :meth:`QcRecipe.instantiate`
-  and :func:`phenotypic.tools_._qc_recipe._runner.run_qc`) so a single un-resolvable or
+  and :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`) so a single un-resolvable or
   un-constructable entry never blocks pipeline load or a QC run.
 * :class:`QcRecipeLoadWarning` — why an entry was skipped at load or
   instantiate time, surfaced to the GUI as a banner.
@@ -28,8 +28,8 @@ This module provides three things:
 
 Import hygiene: at module load this module imports only
 :class:`~phenotypic.analysis.abc_.QualityCheck` from the analysis layer
-and the ``DIR_DELIVERABLES`` constant from :mod:`phenotypic.tools_` (plus
-stdlib). ``phenotypic.tools_`` does not import this submodule, so that edge
+and the ``DIR_DELIVERABLES`` constant from :mod:`phenotypic.sdk_` (plus
+stdlib). ``phenotypic.sdk_`` does not import this submodule, so that edge
 is safe. It must **not** import ``_core``/``_cli``/``gui`` at module load —
 ``_core`` imports :class:`QcRecipeEntry` from here, so a back-edge would
 create a cycle. The path helpers (``pipeline_json_path`` /
@@ -49,7 +49,7 @@ from pathlib import Path
 from typing import Any
 
 from phenotypic.analysis.abc_ import QualityCheck
-from phenotypic.tools_ import DIR_DELIVERABLES
+from phenotypic.sdk_ import DIR_DELIVERABLES
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class QcRecipeEntry:
                 a bad params dict (e.g. a missing metadata file, a
                 ``KeyError`` on an absent ``groupby`` column). Callers that
                 want tolerance wrap this in try/except — see
-                :func:`phenotypic.tools_._qc_recipe._runner.run_qc` and
+                :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` and
                 :meth:`QcRecipe.instantiate`.
         """
         return self.cls(**self.params)
@@ -321,7 +321,7 @@ class QcRecipe:
         Returns:
             A :class:`QcRecipe` ready for in-place mutation.
         """
-        from phenotypic.tools_ import pipeline_json_path, resolve_pipeline_config_path
+        from phenotypic.sdk_ import pipeline_json_path, resolve_pipeline_config_path
 
         pipeline_path = pipeline_json_path(Path(output_root_path))
         read_path = resolve_pipeline_config_path(Path(output_root_path))

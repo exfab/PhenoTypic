@@ -13,7 +13,7 @@ raw data intact.
 
 from ._local_edge_denoise import LocalEdgeDenoise
 from ._bayesshrink_enhancer import BayesShrinkEnhancer
-from ._bm3d_denoiser import BM3DDenoiser
+from ._enhance_block_match import EnhanceBlockMatch
 from ._enhance_local_contrast import EnhanceLocalContrast
 from ._structure_smoothing import StructureSmoothing
 from ._contrast_streching import ContrastStretching
@@ -44,7 +44,7 @@ from ._set_detect_mode import SetDetectMode
 __all__ = [
     "BayesShrinkEnhancer",
     "LocalEdgeDenoise",
-    "BM3DDenoiser",
+    "EnhanceBlockMatch",
     "EnhanceLocalContrast",
     "StructureSmoothing",
     "ContrastStretching",

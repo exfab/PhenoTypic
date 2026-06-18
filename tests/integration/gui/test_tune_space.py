@@ -54,7 +54,7 @@ def _space_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """A loaded tune app whose run dir carries a tuning_spec.json + a journal."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path, tuning_spec_path
+    from phenotypic.sdk_ import trials_parquet_path, tuning_spec_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     spec = _runnable_spec(tmp_path)
@@ -89,7 +89,7 @@ def test_space_view_empty_when_no_pipeline(tmp_path: Path) -> None:
     """A run dir with neither spec nor pipeline shows the pick-a-pipeline prompt."""
     from phenotypic.gui.tune import create_app
     from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     parquet = trials_parquet_path(tmp_path)
@@ -106,7 +106,7 @@ def test_space_view_empty_when_no_pipeline(tmp_path: Path) -> None:
 def test_export_writes_tuning_spec_preserving_scorer(tmp_path: Path) -> None:
     """The export helper writes a spec that preserves the run's scorer/strategy."""
     from phenotypic.gui.tune._callbacks import write_space_spec
-    from phenotypic.tools_ import tuning_spec_path
+    from phenotypic.sdk_ import tuning_spec_path
     from phenotypic.tune import TuningSpec
 
     _app, root = _space_app(tmp_path)

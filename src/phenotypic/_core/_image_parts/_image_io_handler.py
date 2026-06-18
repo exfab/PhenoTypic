@@ -35,10 +35,10 @@ else:
 import skimage as ski
 
 import phenotypic
-from phenotypic.tools_.exceptions_ import UnsupportedFileTypeError
+from phenotypic.sdk_.exceptions_ import UnsupportedFileTypeError
 from phenotypic.schema import METADATA
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS, IO
-from phenotypic.tools_.hdf_ import HDF
+from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS, IO
+from phenotypic.sdk_.hdf_ import HDF
 from ._image_color_handler import ImageColorSpace
 
 # -----------------------------------------------------------------------------

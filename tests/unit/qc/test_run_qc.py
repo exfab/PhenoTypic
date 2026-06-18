@@ -1,4 +1,4 @@
-"""Unit tests for :func:`phenotypic.tools_._qc_recipe._runner.run_qc` artifact schema/content.
+"""Unit tests for :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` artifact schema/content.
 
 Verifies the compact ``qc/`` artifact:
 
@@ -25,9 +25,9 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
-from phenotypic.tools_._qc_recipe import QcRecipeEntry
-from phenotypic.tools_._qc_recipe._runner import run_qc
-from phenotypic.tools_ import measurements_parquet_path
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.sdk_ import measurements_parquet_path
 
 
 def _measurements() -> pd.DataFrame:

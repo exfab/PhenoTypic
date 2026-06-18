@@ -11,7 +11,7 @@ import numpy as np
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
 from phenotypic._core._image_parts.accessor_abstracts._napari_labels_mixin import \
     NapariLabelsMixin
-from phenotypic.tools_.exceptions_ import (
+from phenotypic.sdk_.exceptions_ import (
     InvalidMaskValueError,
     InvalidMaskScalarValueError,
     ArrayKeyValueShapeMismatchError,

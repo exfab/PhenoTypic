@@ -50,7 +50,7 @@ from phenotypic.gui.tune._run_image_source import resolve_run_images
 from phenotypic.gui.tune._run_argv import tune_run_argv
 from phenotypic.gui.tune._setup_authoring import write_authored_setup_spec
 from phenotypic.gui.tune._validation import preflight_issues, spec_path_issue
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     CONFIG_SUFFIX_TUNING,
     PIPELINE_CONFIG_SUFFIXES,
     matches_any_suffix,
@@ -1460,7 +1460,7 @@ def write_space_spec(
             surface it in a note.
     """
     from phenotypic.gui.tune._space import _load_space_source, space_to_spec
-    from phenotypic.tools_ import atomic_write_text, tuning_spec_path
+    from phenotypic.sdk_ import atomic_write_text, tuning_spec_path
 
     source = _load_space_source(root)
     if source is None:

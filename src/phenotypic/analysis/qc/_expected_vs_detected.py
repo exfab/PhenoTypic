@@ -22,7 +22,7 @@ from pydantic import (
 )
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.tools_ import ColumnRef
+from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import OBJECT, QUALITY_COUNT
 
 # The metadata layout frame is an ``arbitrary_types_allowed`` field: a

@@ -6,7 +6,7 @@ the event log and displaying real-time statistics.
 
 Usage::
 
-    python -m phenotypic.tools_.monitor_slurm_jobs OUTPUT_DIR
+    python -m phenotypic.sdk_.monitor_slurm_jobs OUTPUT_DIR
 """
 
 import json
@@ -17,7 +17,7 @@ from pathlib import Path
 import click
 
 from phenotypic._cli._cli_update_state import aggregate_state_from_events
-from phenotypic.tools_ import resolve_event_log_path, resolve_processing_state_path
+from phenotypic.sdk_ import resolve_event_log_path, resolve_processing_state_path
 
 
 @click.command()
@@ -45,13 +45,13 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
 
     Examples:
         # Monitor with default 30s refresh
-        python -m phenotypic.tools_.monitor_slurm_jobs ./results
+        python -m phenotypic.sdk_.monitor_slurm_jobs ./results
 
         # Monitor with faster refresh
-        python -m phenotypic.tools_.monitor_slurm_jobs ./results --refresh-interval 10
+        python -m phenotypic.sdk_.monitor_slurm_jobs ./results --refresh-interval 10
 
         # Monitor without clearing screen (good for logging)
-        python -m phenotypic.tools_.monitor_slurm_jobs ./results --no-clear
+        python -m phenotypic.sdk_.monitor_slurm_jobs ./results --no-clear
     """
     event_log = resolve_event_log_path(output_dir)
     state_file = resolve_processing_state_path(output_dir)
@@ -181,7 +181,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
                 )
                 click.echo("\nGenerate report with:")
                 click.echo(
-                        f"  python -m phenotypic.tools_.generate_report "
+                        f"  python -m phenotypic.sdk_.generate_report "
                         f"{output_dir}"
                 )
                 break
@@ -207,7 +207,7 @@ def main(output_dir: Path, refresh_interval: int, no_clear: bool):
                 "\nResume monitoring with:"
         )
         click.echo(
-                f"  python -m phenotypic.tools_.monitor_slurm_jobs {output_dir}"
+                f"  python -m phenotypic.sdk_.monitor_slurm_jobs {output_dir}"
         )
         return 0
 

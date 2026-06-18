@@ -35,7 +35,7 @@ from phenotypic.gui.builder._directory_browser import (  # noqa: E402
     PIPELINE_EXTS,
     directory_tree,
 )
-from phenotypic.tools_ import matches_any_suffix  # noqa: E402
+from phenotypic.sdk_ import matches_any_suffix  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

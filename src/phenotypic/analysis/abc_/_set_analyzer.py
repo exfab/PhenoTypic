@@ -16,8 +16,8 @@ from pydantic import (
     PrivateAttr,
 )
 
-from phenotypic.tools_ import ColumnRef, ColumnRefList
-from phenotypic.tools_._docstring_params import apply_docstring_descriptions
+from phenotypic.sdk_ import ColumnRef, ColumnRefList
+from phenotypic.sdk_._docstring_params import apply_docstring_descriptions
 
 
 class SetAnalyzer(BaseModel, abc.ABC):

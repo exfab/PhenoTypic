@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 from skimage.restoration import rolling_ball
 
 from phenotypic.abc_ import BackgroundSubtraction
-from phenotypic.tools_.typing_ import NdArrayField, TuneSpec
+from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
 
 
 class SubtractRollingBall(BackgroundSubtraction):

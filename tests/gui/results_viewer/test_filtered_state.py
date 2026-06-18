@@ -19,7 +19,7 @@ import polars as pl
 import pytest
 
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
-from phenotypic.tools_ import measurements_parquet_path
+from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master
 

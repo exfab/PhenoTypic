@@ -6,7 +6,7 @@ from typing import Literal
 
 from phenotypic.gui.tune._domain_editor import grid_feasibility
 from phenotypic.tune._search_space import FloatRange, IntRange, SearchSpace
-from phenotypic.tools_ import CONFIG_SUFFIX_TUNING, matches_any_suffix
+from phenotypic.sdk_ import CONFIG_SUFFIX_TUNING, matches_any_suffix
 
 Blocks = Literal["continue", "deploy", "both"]
 

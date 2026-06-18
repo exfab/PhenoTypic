@@ -15,7 +15,7 @@ from ._cli_recompile_slurm_scripts import (
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
 )
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     DIR_RECOMPILE_SHARDS,
     DIR_RESULTS,

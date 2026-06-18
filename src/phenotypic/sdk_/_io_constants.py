@@ -58,11 +58,11 @@ Module layout
 
 See also
 --------
-:mod:`phenotypic.tools_.constants_`
+:mod:`phenotypic.sdk_.constants_`
     Image-data and framework-config enums (``IMAGE_MODE``, ``IMAGE_TYPES``,
     ``GAMMA_ENCODINGS``, ``PIPE_STATUS``). The ``METADATA`` enum and the
     experimental-tag vocabulary now live in :mod:`phenotypic.schema`.
-:mod:`phenotypic.tools_.typing_`
+:mod:`phenotypic.sdk_.typing_`
     Literal aliases for closed value sets used at public boundaries
     (``ExecutionMode``, ``ImageTypeName``, …).
 """
@@ -270,12 +270,12 @@ _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}
 # ---------------------------------------------------------------------------
 
 #: Per-group QC summary written by
-#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc`. One row per
+#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`. One row per
 #: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
 #: status, flag, member/flagged counts, and a worst-first ``rank``.
 QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
 
-#: Per-group member colonies written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
+#: Per-group member colonies written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
 #: One row per ``(instance_id, group member)`` carrying the curation key
 #: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
 #: contributing value, so the Review gallery can render each group's tiles.
@@ -283,12 +283,12 @@ QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
 
 #: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
 #: ``enabled``/``params``) that produced the current ``qc/`` artifact.
-#: Written by :func:`phenotypic.tools_._qc_recipe._runner.run_qc`.
+#: Written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
 QC_CONFIG_JSON: Final[str] = "qc_config.json"
 
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
 #: last position). Written **only** by the results-viewer QC Review tab;
-#: :func:`phenotypic.tools_._qc_recipe._runner.run_qc` never touches it. The CLI finalize
+#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` never touches it. The CLI finalize
 #: path clears it on every rerun (a fresh run resets review progress).
 QC_REVIEW_STATE_JSON: Final[str] = "review_state.json"
 
@@ -306,7 +306,7 @@ PROCESSING_EVENTS_LOG: Final[str] = "processing_events.log"
 JOB_METADATA_JSON: Final[str] = "job_metadata.json"
 
 #: Append-only JSONL of per-image failures. Each row carries a
-#: :data:`phenotypic.tools_.typing_.FailureSource` tag.
+#: :data:`phenotypic.sdk_.typing_.FailureSource` tag.
 FAILURES_JSONL: Final[str] = "failures.jsonl"
 
 #: SLURM checkpoint chunk manifest (mid-run partial-result feed).
@@ -578,7 +578,7 @@ def checkpoint_lock_filename(checkpoint_type: CheckpointType) -> str:
 
     Args:
         checkpoint_type: ``"manifest"`` or ``"finalize"``. Validated by
-            the :data:`phenotypic.tools_.typing_.CheckpointType` Literal
+            the :data:`phenotypic.sdk_.typing_.CheckpointType` Literal
             alias at type-check time.
 
     Returns:
@@ -1589,7 +1589,7 @@ def load_image_from_hdf(
     import h5py  # type: ignore[import-untyped]
 
     from phenotypic import GridImage, Image  # lazy: avoids circular import at module load
-    from phenotypic.tools_.constants_ import IMAGE_TYPES
+    from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
     with h5py.File(hdf_path, "r") as fh:
         cls_attr = fh.attrs.get(HdfAttr.PHENOTYPIC_CLASS, fallback)

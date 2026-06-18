@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Literal, Optional, Union
 
 from phenotypic import ImagePipeline
 from phenotypic.abc_ import PrefabPipeline, ObjectDetector
-from phenotypic.correction import StableDenoise
+from phenotypic.correction import DenoiseBlockMatch
 from phenotypic.detect import FilamentousFungiDetector
 from phenotypic.enhance import FlattenIllumination
 from phenotypic.detect._inoculum_detector import InoculumDetector
@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 
 class FilamentousFungiPipeline(PrefabPipeline):
-    """Ready-to-use pipeline for filamentous fungi detection with StableDenoise denoising and spatial measurements.
+    """Ready-to-use pipeline for filamentous fungi detection with DenoiseBlockMatch denoising and spatial measurements.
 
     Pipeline Steps:
-        1. ``StableDenoise`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
+        1. ``DenoiseBlockMatch`` -- Variance-stabilized BM3D denoising for Poisson-Gaussian
            noise removal on gray and detect_mat channels.
         2. ``FlattenIllumination`` -- Illumination normalization via
            frequency-domain filtering on detect_mat.
@@ -144,7 +144,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
             )
 
         ops = [
-            StableDenoise(
+            DenoiseBlockMatch(
                     block_size=bm3d_block_size,
                     stage_arg=bm3d_stage_arg,
             ),

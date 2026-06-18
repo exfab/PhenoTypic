@@ -21,7 +21,7 @@ from playwright.sync_api import Page, expect
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
-from phenotypic.tools_ import measurements_parquet_path, pipeline_json_path
+from phenotypic.sdk_ import measurements_parquet_path, pipeline_json_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server

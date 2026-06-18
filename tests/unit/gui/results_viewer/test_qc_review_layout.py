@@ -32,7 +32,7 @@ from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     build_review_view,
     clamp_sidebar_width,
 )
-from phenotypic.tools_._qc_recipe import QcRecipe
+from phenotypic.sdk_._qc_recipe import QcRecipe
 
 
 def _walk(component: object) -> Iterator[object]:

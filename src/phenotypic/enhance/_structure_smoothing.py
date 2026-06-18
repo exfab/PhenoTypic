@@ -13,7 +13,7 @@ from typing import Annotated
 from typing_extensions import Self
 
 from ..abc_ import Smoothing
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.typing_ import TuneSpec
 
 
 class StructureSmoothing(Smoothing):

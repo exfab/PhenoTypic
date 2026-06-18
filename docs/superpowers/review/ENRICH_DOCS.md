@@ -8,16 +8,16 @@ and tentative scene-based starting recommendations.
 
 ## Run summary
 
-| Metric | Value |
-|---|---|
-| Classes enriched | 86 / 86 (0 failures) |
-| Tiers | 20 full · 60 lean · 6 manual |
-| Citations (peer-reviewed, strict-consensus verified) | 59 |
-| Documented parameter ranges | 342 |
-| Ranges inconsistent with code | 0 |
-| Stray files (code touched) | 0 — docstring-only |
-| sphinx `-n` build | clean (no new broken refs) |
-| ruff on touched files | clean |
+| Metric                                               | Value                        |
+|------------------------------------------------------|------------------------------|
+| Classes enriched                                     | 86 / 86 (0 failures)         |
+| Tiers                                                | 20 full · 60 lean · 6 manual |
+| Citations (peer-reviewed, strict-consensus verified) | 59                           |
+| Documented parameter ranges                          | 342                          |
+| Ranges inconsistent with code                        | 0                            |
+| Stray files (code touched)                           | 0 — docstring-only           |
+| sphinx `-n` build                                    | clean (no new broken refs)   |
+| ruff on touched files                                | clean                        |
 
 Full citation + range manifest: `docs/design_outlines/docstring_citation_manifest.md`.
 
@@ -65,7 +65,7 @@ diff --git a/src/phenotypic/correction/_bayesshrink_corrector.py b/src/phenotypi
 index 3b7be862..1199d305 100644
 --- a/src/phenotypic/correction/_bayesshrink_corrector.py
 +++ b/src/phenotypic/correction/_bayesshrink_corrector.py
-@@ -13,69 +13,123 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -13,69 +13,123 @@ from ..sdk_.mixin import _GATSupportMixin
 
 
  class BayesShrinkCorrector(_GATSupportMixin, ImageCorrector):
@@ -98,7 +98,7 @@ index 3b7be862..1199d305 100644
 +    Consider Also:
 +        - :class:`VisuShrinkCorrector` when a simpler universal threshold
 +          across all subbands is acceptable and speed is a priority.
-+        - :class:`StableDenoise` when Poisson-Gaussian noise modelling with
++        - :class:`DenoiseBlockMatch` when Poisson-Gaussian noise modelling with
 +          full BM3D collaborative filtering is preferred over wavelet
 +          thresholding.
 +        - :class:`BayesShrinkEnhancer` when only the detection matrix should
@@ -206,7 +206,7 @@ index 3b7be862..1199d305 100644
 -    Consider Also:
 -        - :class:`VisuShrinkCorrector` when a faster, simpler universal
 -          threshold is acceptable.
--        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+-        - :class:`DenoiseBlockMatch` for variance-stabilized BM3D denoising
 -          of grayscale channels with Poisson-Gaussian noise.
 -        - :class:`BayesShrinkEnhancer` when only the detection matrix
 -          should be denoised (non-destructive to RGB and gray).
@@ -351,7 +351,7 @@ diff --git a/src/phenotypic/correction/_color_denoise.py b/src/phenotypic/correc
 index f99a0789..eb874921 100644
 --- a/src/phenotypic/correction/_color_denoise.py
 +++ b/src/phenotypic/correction/_color_denoise.py
-@@ -15,56 +15,83 @@ from ..tools_.colourspace import decode_srgb, encode_srgb
+@@ -15,56 +15,83 @@ from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
  class ColorDenoise(ImageCorrector):
@@ -360,8 +360,8 @@ index f99a0789..eb874921 100644
 
 -    Run the color extension of BM3D jointly across the three RGB channels,
 -    preserving inter-channel color fidelity while removing structured
--    sensor noise. Unlike the grayscale denoisers (:class:`BM3DDenoiser`,
--    :class:`StableDenoise`), CBM3D decorrelates color into a
+-    sensor noise. Unlike the grayscale denoisers (:class:`EnhanceBlockMatch`,
+-    :class:`DenoiseBlockMatch`), CBM3D decorrelates color into a
 -    luminance-chrominance opponent space, computes patch grouping **once**
 -    on the luminance channel, and reuses those groups for all three
 -    channels. The shared grouping prevents color fringing and is markedly
@@ -393,7 +393,7 @@ index f99a0789..eb874921 100644
 +    Consider Also:
 +        - :class:`BayesShrinkCorrector` for faster wavelet-based denoising of
 +          all components when CBM3D runtime is prohibitive.
-+        - :class:`StableDenoise` for GAT-stabilized BM3D on the grayscale
++        - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D on the grayscale
 +          channel when only intensity measurements are needed.
 +        - :class:`NonLocalMeansDenoiser` when a simpler, lower-cost denoiser
 +          for the detection matrix is sufficient.
@@ -492,9 +492,9 @@ index f99a0789..eb874921 100644
 -          ``use_gat=True``.
 -
 -    Consider Also:
--        - :class:`BM3DDenoiser` for BM3D on the detection matrix only
+-        - :class:`EnhanceBlockMatch` for BM3D on the detection matrix only
 -          (non-destructive to RGB and gray).
--        - :class:`StableDenoise` for variance-stabilized BM3D on the
+-        - :class:`DenoiseBlockMatch` for variance-stabilized BM3D on the
 -          grayscale channel.
 -        - :class:`BayesShrinkCorrector` for faster wavelet denoising of
 -          all components when CBM3D's runtime is prohibitive.
@@ -807,10 +807,10 @@ diff --git a/src/phenotypic/correction/_stable_denoise.py b/src/phenotypic/corre
 index 6345c4fc..95509c03 100644
 --- a/src/phenotypic/correction/_stable_denoise.py
 +++ b/src/phenotypic/correction/_stable_denoise.py
-@@ -16,74 +16,93 @@ from ..tools_.colourspace import decode_srgb, encode_srgb
+@@ -16,74 +16,93 @@ from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
- class StableDenoise(ImageCorrector):
+ class DenoiseBlockMatch(ImageCorrector):
 -    """Denoise grayscale channels using variance-stabilized BM3D collaborative filtering.
 +    """Denoise the grayscale channel using GAT-stabilized BM3D collaborative filtering.
 
@@ -841,7 +841,7 @@ index 6345c4fc..95509c03 100644
 +    Consider Also:
 +        - :class:`BayesShrinkCorrector` when all image components including
 +          RGB need simultaneous wavelet denoising.
-+        - :class:`BM3DDenoiser` for BM3D applied only to the detection matrix
++        - :class:`EnhanceBlockMatch` for BM3D applied only to the detection matrix
 +          without altering the grayscale channel.
 +        - :class:`VisuShrinkCorrector` for a faster wavelet alternative when
 +          Poisson noise modelling is not required.
@@ -923,7 +923,7 @@ index 6345c4fc..95509c03 100644
 -    Consider Also:
 -        - :class:`BayesShrinkCorrector` when all components (including
 -          RGB) need denoising simultaneously.
--        - :class:`BM3DDenoiser` for enhancer-only BM3D on the detection
+-        - :class:`EnhanceBlockMatch` for enhancer-only BM3D on the detection
 -          matrix without modifying grayscale.
 -        - :class:`VisuShrinkCorrector` for a faster wavelet-based
 -          alternative when Poisson noise modelling is not required.
@@ -958,7 +958,7 @@ diff --git a/src/phenotypic/correction/_visushrink_corrector.py b/src/phenotypic
 index 2ca5e16a..49d7f01d 100644
 --- a/src/phenotypic/correction/_visushrink_corrector.py
 +++ b/src/phenotypic/correction/_visushrink_corrector.py
-@@ -13,59 +13,117 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -13,59 +13,117 @@ from ..sdk_.mixin import _GATSupportMixin
 
 
  class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
@@ -989,7 +989,7 @@ index 2ca5e16a..49d7f01d 100644
 +        - :class:`BayesShrinkCorrector` for adaptive per-subband thresholds
 +          that preserve finer colony detail at the cost of slightly more
 +          computation.
-+        - :class:`StableDenoise` for GAT-stabilized BM3D collaborative
++        - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D collaborative
 +          filtering when Poisson-Gaussian noise modelling is important.
 +        - :class:`VisuShrinkEnhancer` when only the detection matrix should
 +          be denoised and RGB and gray must remain untouched.
@@ -1097,7 +1097,7 @@ index 2ca5e16a..49d7f01d 100644
 -    Consider Also:
 -        - :class:`BayesShrinkCorrector` for adaptive subband thresholds
 -          that preserve finer colony detail.
--        - :class:`StableDenoise` for variance-stabilized BM3D denoising
+-        - :class:`DenoiseBlockMatch` for variance-stabilized BM3D denoising
 -          when Poisson-Gaussian noise modelling is important.
 -        - :class:`VisuShrinkEnhancer` when only the detection matrix
 -          should be denoised (non-destructive to RGB and gray).
@@ -1548,7 +1548,7 @@ diff --git a/src/phenotypic/detect/_filamentous_fungi_detector.py b/src/phenotyp
 index 2c64e563..746c1f1e 100644
 --- a/src/phenotypic/detect/_filamentous_fungi_detector.py
 +++ b/src/phenotypic/detect/_filamentous_fungi_detector.py
-@@ -52,119 +52,190 @@ from phenotypic.tools_.branch_pathfinding import (
+@@ -52,119 +52,190 @@ from phenotypic.sdk_.branch_pathfinding import (
 
 
  class FilamentousFungiDetector(GridObjectDetector):
@@ -3370,7 +3370,7 @@ diff --git a/src/phenotypic/detect/_watershed_detector.py b/src/phenotypic/detec
 index f3ee5bcf..f86f1eeb 100644
 --- a/src/phenotypic/detect/_watershed_detector.py
 +++ b/src/phenotypic/detect/_watershed_detector.py
-@@ -21,84 +21,93 @@ from phenotypic.tools_.typing_ import NdArrayField
+@@ -21,84 +21,93 @@ from phenotypic.sdk_.typing_ import NdArrayField
  class WatershedDetector(ThresholdDetector):
      """Detect and separate touching colonies by watershed segmentation on a distance-transform surface.
 
@@ -3632,7 +3632,7 @@ diff --git a/src/phenotypic/enhance/_bayesshrink_enhancer.py b/src/phenotypic/en
 index 714dc5a1..24bc9877 100644
 --- a/src/phenotypic/enhance/_bayesshrink_enhancer.py
 +++ b/src/phenotypic/enhance/_bayesshrink_enhancer.py
-@@ -12,62 +12,122 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -12,62 +12,122 @@ from ..sdk_.mixin import _GATSupportMixin
 
 
  class BayesShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
@@ -3665,7 +3665,7 @@ index 714dc5a1..24bc9877 100644
 +    Consider Also:
 +        - :class:`VisuShrinkEnhancer` when a single universal threshold
 +          across all subbands is preferred for speed or simplicity.
-+        - :class:`BM3DDenoiser` for structured scanner banding or systematic
++        - :class:`EnhanceBlockMatch` for structured scanner banding or systematic
 +          CCD patterned noise that wavelet thresholding does not fully remove.
 +        - :class:`NonLocalMeansDenoiser` when patch-based self-similarity
 +          in the agar or colony texture can be exploited.
@@ -3692,7 +3692,7 @@ index 714dc5a1..24bc9877 100644
 -            domain is no longer in [0, 1].
 -        use_gat: Wrap denoising in the Generalized Anscombe Transform for
 -            Poisson-Gaussian noise. Default: ``False``. See
--            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+-            :class:`phenotypic.sdk_.mixin._GATSupportMixin`.
 -        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters
 -            (see ``_GATSupportMixin``).
 +        sigma: Noise standard deviation on the [0, 1] intensity scale used
@@ -3777,7 +3777,7 @@ index 714dc5a1..24bc9877 100644
 -    Consider Also:
 -        - :class:`VisuShrinkEnhancer` for faster denoising with a universal
 -          threshold when spatial noise uniformity is acceptable.
--        - :class:`BM3DDenoiser` for state-of-the-art denoising of structured
+-        - :class:`EnhanceBlockMatch` for state-of-the-art denoising of structured
 -          noise patterns.
 -        - :class:`LocalEdgeDenoise` for edge-preserving smoothing without
 -          wavelet decomposition.
@@ -3801,10 +3801,10 @@ diff --git a/src/phenotypic/enhance/_bm3d_denoiser.py b/src/phenotypic/enhance/_
 index 3e437ac0..ca44186e 100644
 --- a/src/phenotypic/enhance/_bm3d_denoiser.py
 +++ b/src/phenotypic/enhance/_bm3d_denoiser.py
-@@ -13,60 +13,94 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -13,60 +13,94 @@ from ..sdk_.mixin import _GATSupportMixin
 
 
- class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
+ class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
 -    """Denoise ``detect_mat`` with block-matching and 3D collaborative filtering.
 +    """Denoise ``detect_mat`` using block-matching and 3-D collaborative filtering.
 
@@ -3860,7 +3860,7 @@ index 3e437ac0..ca44186e 100644
 -            deferred when ``use_gat=True``.
 -        use_gat: Wrap denoising in the Generalized Anscombe Transform for
 -            Poisson-Gaussian noise. Default: ``False``. See
--            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+-            :class:`phenotypic.sdk_.mixin._GATSupportMixin`.
 -        gat_gain: Camera gain (e/ADU) used by the GAT. Default: 1.0.
 -        gat_mu: Read-noise mean used by the GAT. Default: 0.0.
 -        gat_read_sigma: Read-noise standard deviation used by the GAT.
@@ -3926,7 +3926,7 @@ index 3e437ac0..ca44186e 100644
 -        - Preserving fine morphological features (wrinkles, satellite
 -          colonies) during denoising.
 -        - Poisson-Gaussian noise via ``use_gat=True`` (replaces the legacy
--          ``AnscombeForward`` -> ``BM3DDenoiser`` -> ``AnscombeInverse``
+-          ``AnscombeForward`` -> ``EnhanceBlockMatch`` -> ``AnscombeInverse``
 -          three-step pipeline with one operation).
 -
 -    Consider Also:
@@ -3940,7 +3940,7 @@ index 3e437ac0..ca44186e 100644
      References:
          [1] K. Dabov, A. Foi, V. Katkovnik, and K. Egiazarian, "Image
          denoising by sparse 3-D transform-domain collaborative filtering,"
-@@ -82,6 +116,8 @@ class BM3DDenoiser(_GATSupportMixin, ImageDenoiser):
+@@ -82,6 +116,8 @@ class EnhanceBlockMatch(_GATSupportMixin, ImageDenoiser):
          visual walkthrough of denoising pipelines on plate images.
          :doc:`/how_to/notebooks/denoise_low_light` for BM3D and other
          denoising strategies on low-light plate images.
@@ -4559,7 +4559,7 @@ diff --git a/src/phenotypic/enhance/_focus_edge_laplace.py b/src/phenotypic/enha
 index a9e5fa62..5dffe352 100644
 --- a/src/phenotypic/enhance/_focus_edge_laplace.py
 +++ b/src/phenotypic/enhance/_focus_edge_laplace.py
-@@ -12,43 +12,50 @@ from phenotypic.tools_.typing_ import NdArrayField
+@@ -12,43 +12,50 @@ from phenotypic.sdk_.typing_ import NdArrayField
 
 
  class FocusEdgeLaplace(FocusEdge):
@@ -5128,7 +5128,7 @@ index 7d3535f4..55913d25 100644
 +          preserving sharp colony edges is important.
 +        - :class:`LocalEdgeDenoise` for bilateral smoothing within regions
 +          while keeping colony boundaries sharp.
-+        - :class:`StableDenoise` for highest-quality BM3D denoising on
++        - :class:`DenoiseBlockMatch` for highest-quality BM3D denoising on
 +          critical low-light experiments.
 +
      Args:
@@ -5164,7 +5164,7 @@ index 7d3535f4..55913d25 100644
 -          preservation is important.
 -        - :class:`LocalEdgeDenoise` for smoothing within regions while keeping
 -          colony boundaries sharp.
--        - :class:`StableDenoise` for highest-quality BM3D denoising on critical
+-        - :class:`DenoiseBlockMatch` for highest-quality BM3D denoising on critical
 -          experiments.
 -
      See Also:
@@ -5182,7 +5182,7 @@ diff --git a/src/phenotypic/enhance/_gray_opening.py b/src/phenotypic/enhance/_g
 index 75917d4a..afa8640c 100644
 --- a/src/phenotypic/enhance/_gray_opening.py
 +++ b/src/phenotypic/enhance/_gray_opening.py
-@@ -12,46 +12,52 @@ from phenotypic.tools_.mixin import FootprintMixin
+@@ -12,46 +12,52 @@ from phenotypic.sdk_.mixin import FootprintMixin
 
 
  class GrayOpening(MorphologicalFiltering, FootprintMixin):
@@ -5336,7 +5336,7 @@ diff --git a/src/phenotypic/enhance/_local_edge_denoise.py b/src/phenotypic/enha
 index ca0ff4f3..fa9d6768 100644
 --- a/src/phenotypic/enhance/_local_edge_denoise.py
 +++ b/src/phenotypic/enhance/_local_edge_denoise.py
-@@ -13,69 +13,97 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -13,69 +13,97 @@ from ..sdk_.mixin import _GATSupportMixin
 
 
  class LocalEdgeDenoise(_GATSupportMixin, ImageDenoiser):
@@ -5352,7 +5352,7 @@ index ca0ff4f3..fa9d6768 100644
 -    This is the lightweight, single-pass edge-preserving denoiser: it
 -    weighs only each pixel's local neighborhood. For stronger cleanup that
 -    searches the whole image for similar patches, step up to the non-local
--    :class:`NonLocalMeansDenoiser` or :class:`BM3DDenoiser`.
+-    :class:`NonLocalMeansDenoiser` or :class:`EnhanceBlockMatch`.
 +    Weights each pixel by both spatial proximity and intensity similarity
 +    within a local neighbourhood, smoothing uniform agar regions while
 +    keeping colony boundaries sharp. The optimal intensity range weight
@@ -5373,7 +5373,7 @@ index ca0ff4f3..fa9d6768 100644
 +    Consider Also:
 +        - :class:`NonLocalMeansDenoiser` when repetitive agar texture warrants
 +          whole-image patch search for stronger denoising.
-+        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal
++        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
 +          at higher computational cost.
 +        - :class:`SubtractGaussian` when the primary problem is a slow-varying
 +          illumination gradient rather than pixel-level noise.
@@ -5457,7 +5457,7 @@ index ca0ff4f3..fa9d6768 100644
 -    Consider Also:
 -        - :class:`NonLocalMeansDenoiser` for stronger denoising of repetitive
 -          textures at higher computational cost.
--        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal.
+-        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal.
 -        - :class:`SubtractGaussian` when the primary problem is illumination
 -          gradients rather than pixel-level noise.
 +    References:
@@ -5563,7 +5563,7 @@ diff --git a/src/phenotypic/enhance/_non_local_means.py b/src/phenotypic/enhance
 index 3c7712e4..2c59db41 100644
 --- a/src/phenotypic/enhance/_non_local_means.py
 +++ b/src/phenotypic/enhance/_non_local_means.py
-@@ -14,64 +14,101 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -14,64 +14,101 @@ from ..sdk_.mixin import _GATSupportMixin
  class NonLocalMeansDenoiser(_GATSupportMixin, ImageDenoiser):
      """Denoise ``detect_mat`` with non-local means patch-based filtering.
 
@@ -5598,7 +5598,7 @@ index 3c7712e4..2c59db41 100644
 -            Retargets to 1.0 when ``use_gat=True``. Default: 0.0.
 -        use_gat: Wrap denoising in the Generalized Anscombe Transform.
 -            Default: ``False``. See
--            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+-            :class:`phenotypic.sdk_.mixin._GATSupportMixin`.
 -        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.
 -
 -    Returns:
@@ -5622,9 +5622,9 @@ index 3c7712e4..2c59db41 100644
 +          amplifying gradients.
 
      Consider Also:
--        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+-        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise
 -          removal at higher computational cost.
-+        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal
++        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
 +          at higher computational cost.
          - :class:`LocalEdgeDenoise` for faster edge-preserving denoising
 -          without patch comparison.
@@ -6383,7 +6383,7 @@ diff --git a/src/phenotypic/enhance/_visushrink_enhancer.py b/src/phenotypic/enh
 index 85e4c275..8a1c0aef 100644
 --- a/src/phenotypic/enhance/_visushrink_enhancer.py
 +++ b/src/phenotypic/enhance/_visushrink_enhancer.py
-@@ -14,64 +14,110 @@ from ..tools_.mixin import _GATSupportMixin
+@@ -14,64 +14,110 @@ from ..sdk_.mixin import _GATSupportMixin
  class VisuShrinkEnhancer(_GATSupportMixin, ImageDenoiser):
      """Denoise ``detect_mat`` with universal VisuShrink wavelet thresholding.
 
@@ -6418,7 +6418,7 @@ index 85e4c275..8a1c0aef 100644
 -            Automatically forced to ``False`` when ``use_gat=True``.
 -        use_gat: Wrap denoising in the Generalized Anscombe Transform.
 -            Default: ``False``. See
--            :class:`phenotypic.tools_.mixin._GATSupportMixin`.
+-            :class:`phenotypic.sdk_.mixin._GATSupportMixin`.
 -        gat_gain, gat_mu, gat_read_sigma, gat_scale_factor: GAT parameters.
 -
 -    Returns:
@@ -6443,13 +6443,13 @@ index 85e4c275..8a1c0aef 100644
      Consider Also:
 -        - :class:`BayesShrinkEnhancer` for adaptive thresholding that
 -          preserves more detail in regions with varying noise levels.
--        - :class:`BM3DDenoiser` for state-of-the-art structured noise
+-        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise
 -          removal at higher computational cost.
 -        - :class:`LocalEdgeDenoise` for edge-preserving smoothing without
 -          wavelet decomposition.
 +        - :class:`BayesShrinkEnhancer` for adaptive per-subband thresholding
 +          that preserves more colony texture detail at variable noise levels.
-+        - :class:`BM3DDenoiser` for state-of-the-art structured noise removal
++        - :class:`EnhanceBlockMatch` for state-of-the-art structured noise removal
 +          at higher computational cost.
 +        - :class:`LocalEdgeDenoise` for edge-preserving spatial smoothing
 +          without wavelet decomposition.
@@ -6735,7 +6735,7 @@ diff --git a/src/phenotypic/refine/_grid_alignment_refiner.py b/src/phenotypic/r
 index 8c012fad..7f0e327f 100644
 --- a/src/phenotypic/refine/_grid_alignment_refiner.py
 +++ b/src/phenotypic/refine/_grid_alignment_refiner.py
-@@ -20,57 +20,67 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
+@@ -20,57 +20,67 @@ from phenotypic.sdk_.funcs_ import validate_operation_integrity
 
 
  class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):
@@ -7411,7 +7411,7 @@ diff --git a/src/phenotypic/refine/_mask_fill.py b/src/phenotypic/refine/_mask_f
 index 9d2d5223..54084c07 100644
 --- a/src/phenotypic/refine/_mask_fill.py
 +++ b/src/phenotypic/refine/_mask_fill.py
-@@ -15,35 +15,49 @@ from phenotypic.tools_.typing_ import NdArrayField
+@@ -15,35 +15,49 @@ from phenotypic.sdk_.typing_ import NdArrayField
 
 
  class MaskFill(ObjectRefiner):
@@ -7577,7 +7577,7 @@ diff --git a/src/phenotypic/refine/_mask_opening.py b/src/phenotypic/refine/_mas
 index 84ce7828..b80669bf 100644
 --- a/src/phenotypic/refine/_mask_opening.py
 +++ b/src/phenotypic/refine/_mask_opening.py
-@@ -14,43 +14,59 @@ from phenotypic.tools_.typing_ import NdArrayField
+@@ -14,43 +14,59 @@ from phenotypic.sdk_.typing_ import NdArrayField
 
 
  class MaskOpening(ObjectRefiner, FootprintMixin):
@@ -7668,7 +7668,7 @@ diff --git a/src/phenotypic/refine/_mask_white_tophat.py b/src/phenotypic/refine
 index 1badb713..2103172d 100644
 --- a/src/phenotypic/refine/_mask_white_tophat.py
 +++ b/src/phenotypic/refine/_mask_white_tophat.py
-@@ -14,45 +14,56 @@ from phenotypic.tools_.typing_ import NdArrayField
+@@ -14,45 +14,56 @@ from phenotypic.sdk_.typing_ import NdArrayField
 
 
  class MaskWhiteTophat(ObjectRefiner, FootprintMixin):
@@ -8078,7 +8078,7 @@ diff --git a/src/phenotypic/refine/_refine_by_sine_fit.py b/src/phenotypic/refin
 index 3e5f2eeb..44de8f1e 100644
 --- a/src/phenotypic/refine/_refine_by_sine_fit.py
 +++ b/src/phenotypic/refine/_refine_by_sine_fit.py
-@@ -26,65 +26,85 @@ from phenotypic.tools_.funcs_ import validate_operation_integrity
+@@ -26,65 +26,85 @@ from phenotypic.sdk_.funcs_ import validate_operation_integrity
 
 
  class RefineBySineFit(GridInferenceMixin, ObjectRefiner):

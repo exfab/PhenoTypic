@@ -76,7 +76,7 @@ from phenotypic.gui.shell._source_context import (
     resolve_source_image_root,
     source_payload_from_path,
 )
-from phenotypic.tools_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
 
 logger = logging.getLogger(__name__)
 

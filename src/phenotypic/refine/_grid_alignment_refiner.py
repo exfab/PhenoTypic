@@ -15,9 +15,9 @@ import gc
 import numpy as np
 
 from phenotypic.abc_ import ObjectRefiner
-from phenotypic.tools_.mixin import GridInferenceMixin
-from phenotypic.tools_.funcs_ import validate_operation_integrity
-from phenotypic.tools_.typing_ import TuneSpec
+from phenotypic.sdk_.mixin import GridInferenceMixin
+from phenotypic.sdk_.funcs_ import validate_operation_integrity
+from phenotypic.sdk_.typing_ import TuneSpec
 
 
 class GridAlignmentRefiner(GridInferenceMixin, ObjectRefiner):

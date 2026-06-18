@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Set, Tupl
 import click
 
 from ._cli_constants import DEFAULT_GRID_ROWS, DEFAULT_GRID_COLS
-from phenotypic.tools_ import EnvVar, JOB_METADATA_JSON
+from phenotypic.sdk_ import EnvVar, JOB_METADATA_JSON
 
 if TYPE_CHECKING:
     import polars as pl

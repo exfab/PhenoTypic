@@ -4,7 +4,7 @@ import tomllib
 from pathlib import Path
 from typing import get_args
 
-from phenotypic.tools_.typing_ import DinoSize, DinoVersion
+from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 REPO = Path(__file__).resolve().parents[2]
 

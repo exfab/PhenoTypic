@@ -26,7 +26,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from phenotypic.tools_ import JobMetadataKey, job_metadata_path
+from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
 
 from phenotypic.gui.run_console._state import RunConsoleState, to_argv
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from phenotypic._cli._cli_state_management import load_processing_state, save_processing_state
 from phenotypic._cli._cli_types import ProcessingState
-from phenotypic.tools_ import processing_state_path
+from phenotypic.sdk_ import processing_state_path
 
 
 def _make_state(out: Path) -> ProcessingState:

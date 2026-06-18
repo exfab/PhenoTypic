@@ -16,7 +16,7 @@ import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_utils import load_job_metadata
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     JobMetadataKey,
     checkpoint_lock_filename,
@@ -24,7 +24,7 @@ from phenotypic.tools_ import (
     resolve_execution_mode,
     progress_dir as progress_dir_helper,
 )
-from phenotypic.tools_.typing_ import CheckpointType
+from phenotypic.sdk_.typing_ import CheckpointType
 
 logger = logging.getLogger(__name__)
 

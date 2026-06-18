@@ -9,12 +9,12 @@ from typing import Dict, List, Union, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.analysis.abc_ import ModelFitter, SetAnalyzer
-    from phenotypic.tools_._qc_recipe import QcRecipeEntry
+    from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 
 import warnings
 
 from phenotypic.abc_ import ImageOperation, MeasureFeatures
-from phenotypic.tools_._io_constants import (
+from phenotypic.sdk_._io_constants import (
     CONFIG_SUFFIX_PIPELINE,
     ensure_typed_json_suffix,
 )
@@ -751,7 +751,7 @@ class SerializablePipeline(NapariPipelineViewer):
     # ``{class, params}`` analyzer shape because QC entries carry stable
     # ``instance_id`` + ``enabled`` metadata the GUI per-card IDs and
     # ``review_state.json`` key off. The on-disk shape is owned by
-    # :class:`phenotypic.tools_._qc_recipe._recipe.QcRecipeEntry` (``to_dict`` /
+    # :class:`phenotypic.sdk_._qc_recipe._recipe.QcRecipeEntry` (``to_dict`` /
     # ``from_dict``) so the (de)serializer and the GUI recipe adapter can
     # never drift.
 
@@ -780,7 +780,7 @@ class SerializablePipeline(NapariPipelineViewer):
         """Reconstruct the ``qc`` list from its serialized entry dicts.
 
         Each entry is rebuilt via
-        :meth:`phenotypic.tools_._qc_recipe._recipe.QcRecipeEntry.from_dict`, which resolves
+        :meth:`phenotypic.sdk_._qc_recipe._recipe.QcRecipeEntry.from_dict`, which resolves
         the check class within :mod:`phenotypic.analysis`. Unknown classes
         follow the **analyzer** contract (not the operations one): when
         ``skipped`` is provided (``skip_unknown_analyzers=True``) the entry
@@ -808,7 +808,7 @@ class SerializablePipeline(NapariPipelineViewer):
             AttributeError: If an entry's class cannot be resolved and
                 ``skipped`` is ``None``.
         """
-        from phenotypic.tools_._qc_recipe import QcRecipeEntry, QcRecipeLoadWarning
+        from phenotypic.sdk_._qc_recipe import QcRecipeEntry, QcRecipeLoadWarning
 
         if not isinstance(serialized, list):
             return []

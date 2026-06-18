@@ -22,7 +22,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureSize
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
@@ -363,7 +363,7 @@ class TestFinalizeReemitsErrorDeliverables:
     @staticmethod
     def _stage_labels(output_dir: Path, master: pl.DataFrame, err_labels: list[int],
                       category: str) -> None:
-        import phenotypic.tools_ as tools_
+        import phenotypic.sdk_ as tools_
 
         rows = master.filter(pl.col("Object_Label").is_in(err_labels))
         labels = pl.DataFrame(
@@ -387,7 +387,7 @@ class TestFinalizeReemitsErrorDeliverables:
         labels.write_parquet(path)
 
     def test_finalize_emits_errors_and_preserves_labels(self, tmp_path: Path) -> None:
-        import phenotypic.tools_ as tools_
+        import phenotypic.sdk_ as tools_
         from phenotypic import ImagePipeline
 
         output_dir = tmp_path / "out"
@@ -419,7 +419,7 @@ class TestFinalizeReemitsErrorDeliverables:
         assert not tools_.verified_parquet_path(output_dir).exists()
 
     def test_finalize_no_labels_store_is_a_clean_no_op(self, tmp_path: Path) -> None:
-        import phenotypic.tools_ as tools_
+        import phenotypic.sdk_ as tools_
         from phenotypic import ImagePipeline
 
         output_dir = tmp_path / "out"

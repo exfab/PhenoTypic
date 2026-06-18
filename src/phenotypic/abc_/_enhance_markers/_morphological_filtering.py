@@ -15,7 +15,7 @@ class MorphologicalFiltering(ImageEnhancer, ABC):
     element -- opening, white top-hat, or their differences -- to isolate
     or suppress *small* bright structures (dust, speckle, satellite
     colonies, glare). They typically mix in
-    :class:`phenotypic.tools_.mixin.FootprintMixin` for ``_make_footprint``.
+    :class:`phenotypic.sdk_.mixin.FootprintMixin` for ``_make_footprint``.
     The base class adds no new abstract methods -- it categorizes the
     family for documentation, GUI listing, and shared tooling.
 
@@ -35,6 +35,6 @@ class MorphologicalFiltering(ImageEnhancer, ABC):
 
     See Also:
         :class:`phenotypic.abc_.ImageEnhancer` for the broader enhancer
-        contract; :class:`phenotypic.tools_.mixin.FootprintMixin` for
+        contract; :class:`phenotypic.sdk_.mixin.FootprintMixin` for
         structuring-element construction.
     """

@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from phenotypic.tools_.typing_ import NdArrayField
+from phenotypic.sdk_.typing_ import NdArrayField
 
 
 class _KernelModel(BaseModel):

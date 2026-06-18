@@ -13,7 +13,7 @@ which group they last visited:
 
 Ownership rules (spec §D.6):
 
-* **Written only by the GUI** — :func:`phenotypic.tools_._qc_recipe._runner.run_qc`
+* **Written only by the GUI** — :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`
   never touches this file, so an in-session recompute preserves review
   progress.
 * **Reset by the CLI** — ``finalize_post_master_outputs`` clears it on
@@ -40,7 +40,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from phenotypic.tools_ import qc_review_state_path
+from phenotypic.sdk_ import qc_review_state_path
 
 logger = logging.getLogger(__name__)
 

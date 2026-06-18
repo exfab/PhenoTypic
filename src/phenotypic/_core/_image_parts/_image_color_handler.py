@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 import numpy as np
 
-from phenotypic.tools_.constants_ import GAMMA_ENCODINGS
+from phenotypic.sdk_.constants_ import GAMMA_ENCODINGS
 from .accessors._color_accessor import ColorAccessor
 from ._image_plot_handler import ImagePlotHandler
 

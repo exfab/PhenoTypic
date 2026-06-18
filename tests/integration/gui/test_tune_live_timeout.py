@@ -26,7 +26,7 @@ def _journal_with_live_url(path: Path, storage_url: str) -> TuneRunRoot:
     The poll attempts the live read first; on timeout it must degrade to this
     journal, so the test asserts the fallback store is the parquet one.
     """
-    from phenotypic.tools_ import trials_parquet_path
+    from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     store = JournalStudyStore(

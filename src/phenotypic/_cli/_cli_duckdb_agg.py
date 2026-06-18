@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from phenotypic.tools_ import EnvVar
+from phenotypic.sdk_ import EnvVar
 
 if TYPE_CHECKING:
     import polars as pl

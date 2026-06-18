@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from phenotypic.analysis.abc_ import QualityCheck
 
 from phenotypic.schema import OBJECT
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     qc_config_json_path,
     qc_members_parquet_path,
     qc_summary_parquet_path,
@@ -397,7 +397,7 @@ def _write_parquet(target: Path, df: pd.DataFrame) -> None:
     """Atomically write *df* to *target* as zstd Parquet.
 
     Reuses the CLI's :func:`_atomic_write` (lazy-imported to keep
-    ``phenotypic.tools_._qc_recipe`` free of an eager ``_cli`` import). Failure is logged at
+    ``phenotypic.sdk_._qc_recipe`` free of an eager ``_cli`` import). Failure is logged at
     WARNING and swallowed so one bad write never aborts the others — the
     caller (CLI finalize) already runs ``run_qc`` under its own try/except.
 

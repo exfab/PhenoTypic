@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 
 from phenotypic._core._image_parts.accessor_abstracts import MultiChannelAccessor
-from phenotypic.tools_.funcs_ import normalize_rgb_bitdepth
-from phenotypic.tools_.exceptions_ import (
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
+from phenotypic.sdk_.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     NoArrayError,
     EmptyImageError,

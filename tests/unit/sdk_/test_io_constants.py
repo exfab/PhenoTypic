@@ -8,7 +8,7 @@ from typing import get_args
 
 import pytest
 
-from phenotypic.tools_ import (
+from phenotypic.sdk_ import (
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
     DIR_HDF,
@@ -77,8 +77,8 @@ from phenotypic.tools_ import (
     task_status_filename,
     task_status_path,
 )
-from phenotypic.tools_.constants_ import IMAGE_TYPES
-from phenotypic.tools_.typing_ import (
+from phenotypic.sdk_.constants_ import IMAGE_TYPES
+from phenotypic.sdk_.typing_ import (
     CheckpointType,
     ExecutionMode,
     FailureSource,
@@ -163,7 +163,7 @@ class TestCompositeBlendLiteral:
     def test_members_are_the_two_supported_blends(self):
         from typing import get_args
 
-        from phenotypic.tools_.typing_ import CompositeBlend
+        from phenotypic.sdk_.typing_ import CompositeBlend
 
         assert set(get_args(CompositeBlend)) == {"tchebycheff", "weighted_mean"}
 
@@ -351,12 +351,12 @@ class TestPathHelpers:
         assert pipeline_json_path(output) == output / "deliverables" / PIPELINE_JSON
 
     def test_tuning_spec_path(self, output: Path) -> None:
-        from phenotypic.tools_ import tuning_spec_path
+        from phenotypic.sdk_ import tuning_spec_path
 
         assert tuning_spec_path(output) == output / "deliverables" / TUNING_SPEC_JSON
 
     def test_best_pipeline_path(self, output: Path) -> None:
-        from phenotypic.tools_ import best_pipeline_path
+        from phenotypic.sdk_ import best_pipeline_path
 
         assert best_pipeline_path(output) == output / "deliverables" / BEST_PIPELINE_JSON
 
@@ -431,7 +431,7 @@ class TestPathHelpers:
 
     def test_progress_rooted_helpers(self) -> None:
         """Helpers that take ``progress_dir_`` (not ``output_dir``)."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             analysis_full_parquet_path,
             analysis_scatter_json_path,
             checkpoint_lock_path,
@@ -457,7 +457,7 @@ class TestPathHelpers:
 
     def test_output_rooted_helpers(self, output: Path) -> None:
         """Helpers that take ``output_dir`` (the run root)."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             analysis_html_path,
             chunk_manifest_path,
             chunk_state_path,
@@ -524,7 +524,7 @@ class TestDeliverablesLayout:
             "readme_md_path": readme_md_path,
         }
         # analysis_html / processing_report_html are imported function-locally
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             analysis_html_path,
             processing_report_html_path,
         )
@@ -580,22 +580,22 @@ class TestParetoPaths:
         return Path("/tmp/pht_tune")
 
     def test_dir_pareto_constant(self) -> None:
-        from phenotypic.tools_._io_constants import DIR_PARETO
+        from phenotypic.sdk_._io_constants import DIR_PARETO
 
         assert DIR_PARETO == "pareto"
 
     def test_pareto_front_parquet_constant(self) -> None:
-        from phenotypic.tools_._io_constants import PARETO_FRONT_PARQUET
+        from phenotypic.sdk_._io_constants import PARETO_FRONT_PARQUET
 
         assert PARETO_FRONT_PARQUET == "pareto_front.parquet"
 
     def test_pareto_dir_under_deliverables(self, output: Path) -> None:
-        from phenotypic.tools_._io_constants import deliverables_dir, pareto_dir
+        from phenotypic.sdk_._io_constants import deliverables_dir, pareto_dir
 
         assert pareto_dir(output) == deliverables_dir(output) / "pareto"
 
     def test_pareto_front_parquet_path(self, output: Path) -> None:
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_._io_constants import (
             pareto_dir,
             pareto_front_parquet_path,
         )
@@ -605,7 +605,7 @@ class TestParetoPaths:
         )
 
     def test_pareto_best_pipeline_path_per_objective(self, output: Path) -> None:
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_._io_constants import (
             pareto_best_pipeline_path,
             pareto_dir,
         )
@@ -618,7 +618,7 @@ class TestParetoPaths:
         )
 
     def test_pareto_importance_path_per_objective(self, output: Path) -> None:
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_._io_constants import (
             pareto_dir,
             pareto_importance_path,
         )
@@ -631,7 +631,7 @@ class TestParetoPaths:
         )
 
     def test_pareto_paths_root_under_deliverables(self, output: Path) -> None:
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_._io_constants import (
             deliverables_dir,
             pareto_best_pipeline_path,
             pareto_dir,
@@ -683,7 +683,7 @@ class TestJsonContractKeys:
         assert DashboardManifestKey.SLURM_INFO == "slurm_info"
 
     def test_dashboard_manifest_slurm_info_keys(self) -> None:
-        from phenotypic.tools_ import DashboardManifestSlurmInfoKey
+        from phenotypic.sdk_ import DashboardManifestSlurmInfoKey
 
         assert DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS == "chunk_scripts"
         assert DashboardManifestSlurmInfoKey.TOTAL_CHUNKS == "total_chunks"
@@ -707,7 +707,7 @@ class TestJsonContractKeys:
         assert HdfAttr.PHENOTYPIC_CLASS == "phenotypic_class"
 
     def test_processing_state_keys(self) -> None:
-        from phenotypic.tools_ import ProcessingStateKey
+        from phenotypic.sdk_ import ProcessingStateKey
 
         assert ProcessingStateKey.VERSION == "version"
         assert ProcessingStateKey.PIPELINE_PATH == "pipeline_path"
@@ -732,7 +732,7 @@ class TestJsonContractKeys:
         values. If they ever diverge, the cross-file rehydration breaks
         silently — the test forces the divergence to be intentional.
         """
-        from phenotypic.tools_ import ProcessingStateKey
+        from phenotypic.sdk_ import ProcessingStateKey
 
         assert ProcessingStateKey.EXECUTION_MODE == JobMetadataKey.EXECUTION_MODE
         assert ProcessingStateKey.INPUT_PATH == JobMetadataKey.INPUT_PATH
@@ -772,7 +772,7 @@ class TestEnvVarConstants:
 
 class TestReadRunManifest:
     def test_missing_file_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import read_run_manifest
+        from phenotypic.sdk_ import read_run_manifest
 
         # progress/manifest.json doesn't exist
         assert read_run_manifest(tmp_path) is None
@@ -780,7 +780,7 @@ class TestReadRunManifest:
     def test_valid_manifest_returns_dict(self, tmp_path: Path) -> None:
         import json
 
-        from phenotypic.tools_ import manifest_json_path, read_run_manifest
+        from phenotypic.sdk_ import manifest_json_path, read_run_manifest
 
         manifest_path = manifest_json_path(tmp_path)
         manifest_path.parent.mkdir(parents=True)
@@ -791,7 +791,7 @@ class TestReadRunManifest:
         assert manifest == payload
 
     def test_malformed_manifest_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import manifest_json_path, read_run_manifest
+        from phenotypic.sdk_ import manifest_json_path, read_run_manifest
 
         manifest_path = manifest_json_path(tmp_path)
         manifest_path.parent.mkdir(parents=True)
@@ -803,7 +803,7 @@ class TestReadRunManifest:
 
 class TestLoadMasterMeasurements:
     def test_missing_file_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import load_master_measurements
+        from phenotypic.sdk_ import load_master_measurements
 
         # master_measurements.csv doesn't exist
         assert load_master_measurements(tmp_path) is None
@@ -819,7 +819,7 @@ class TestLoadImageFromHdf:
         """
         import h5py  # type: ignore[import-untyped]
 
-        from phenotypic.tools_._io_constants import HdfAttr
+        from phenotypic.sdk_._io_constants import HdfAttr
 
         hdf_path = tmp_path / "test.h5"
         with h5py.File(hdf_path, "w") as fh:
@@ -864,7 +864,7 @@ class TestResolveExecutionMode:
 
 class TestPhenotypicCacheLayout:
     def test_machine_state_roots_under_phenotypic(self) -> None:
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             DIR_PHENOTYPIC,
             event_log_path,
             manifest_json_path,
@@ -883,7 +883,7 @@ class TestPhenotypicCacheLayout:
         assert manifest_json_path(out) == out / ".phenotypic" / "progress" / "manifest.json"
 
     def test_user_facing_dirs_unchanged(self) -> None:
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             deliverables_dir,
             logs_dir,
             qc_dir,
@@ -901,7 +901,7 @@ class TestPhenotypicCacheLayout:
 
 class TestBackCompatResolvers:
     def test_resolver_prefers_new_then_legacy_then_new_default(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             processing_state_path,
             progress_dir,
             resolve_manifest_json_path,
@@ -930,7 +930,7 @@ class TestBackCompatResolvers:
 
 class TestMigrateLegacyMachineState:
     def test_moves_legacy_into_cache_dir(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import migrate_legacy_machine_state
+        from phenotypic.sdk_ import migrate_legacy_machine_state
 
         out = tmp_path
         (out / "progress").mkdir()
@@ -946,14 +946,14 @@ class TestMigrateLegacyMachineState:
         assert not (out / "processing_state.json").exists()
 
     def test_noop_when_already_migrated(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import migrate_legacy_machine_state, progress_dir
+        from phenotypic.sdk_ import migrate_legacy_machine_state, progress_dir
 
         out = tmp_path
         progress_dir(out).mkdir(parents=True)
         assert migrate_legacy_machine_state(out) is False
 
     def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import migrate_legacy_machine_state
+        from phenotypic.sdk_ import migrate_legacy_machine_state
 
         assert migrate_legacy_machine_state(tmp_path) is False
 
@@ -962,7 +962,7 @@ class TestMigrateLegacyMachineState:
         some artifacts inside, the rest still at the root) completes on the next
         call instead of being skipped — guards against split state after a
         SLURM preemption."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             migrate_legacy_machine_state,
             progress_dir,
             processing_state_path,
@@ -983,7 +983,7 @@ class TestMigrateLegacyMachineState:
     def test_partial_present_moves_only_what_exists(self, tmp_path: Path) -> None:
         """Only the legacy artifacts that exist are moved (e.g. an event log but
         no state file), and a re-run is then a no-op."""
-        from phenotypic.tools_ import migrate_legacy_machine_state, event_log_path
+        from phenotypic.sdk_ import migrate_legacy_machine_state, event_log_path
 
         out = tmp_path
         (out / "processing_events.log").write_text("x\n", encoding="utf-8")
@@ -1000,7 +1000,7 @@ class TestClearMachineState:
         """``--restart`` wipes ALL machine-state (state + event log + progress)
         but leaves user-facing output artifacts (``results/``, ``deliverables/``)
         intact — restart re-runs the orchestration without nuking outputs."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             clear_machine_state,
             deliverables_dir,
             event_log_path,
@@ -1029,7 +1029,7 @@ class TestClearMachineState:
     def test_removes_legacy_root_machine_state(self, tmp_path: Path) -> None:
         """A pre-migration (legacy-layout) run being restarted has its root-level
         machine-state cleared too."""
-        from phenotypic.tools_ import clear_machine_state
+        from phenotypic.sdk_ import clear_machine_state
 
         out = tmp_path
         (out / "progress").mkdir()
@@ -1042,7 +1042,7 @@ class TestClearMachineState:
         assert not (out / "processing_events.log").exists()
 
     def test_noop_when_nothing_present(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import clear_machine_state
+        from phenotypic.sdk_ import clear_machine_state
 
         assert clear_machine_state(tmp_path) is False
 
@@ -1086,14 +1086,14 @@ class TestNoHandJoinedStatePaths:
 
 class TestReporterReadsResolve:
     def test_generate_report_finds_state_in_phenotypic(self, tmp_path: Path) -> None:
-        from phenotypic.tools_ import event_log_path, processing_state_path
+        from phenotypic.sdk_ import event_log_path, processing_state_path
 
         processing_state_path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
         processing_state_path(tmp_path).write_text(
             '{"version":"2","datasets":{}}', encoding="utf-8"
         )
         event_log_path(tmp_path).write_text("", encoding="utf-8")
-        from phenotypic.tools_.generate_report import _load_state_for_report
+        from phenotypic.sdk_.generate_report import _load_state_for_report
 
         state = _load_state_for_report(tmp_path)
         assert state is not None
@@ -1105,7 +1105,7 @@ class TestReporterReadsResolve:
 
 
 def test_phenotypic_cache_pipeline_json_path(tmp_path: Path) -> None:
-    from phenotypic.tools_ import PIPELINE_JSON, phenotypic_cache_pipeline_json_path
+    from phenotypic.sdk_ import PIPELINE_JSON, phenotypic_cache_pipeline_json_path
 
     assert (
         phenotypic_cache_pipeline_json_path(tmp_path)
@@ -1133,46 +1133,46 @@ class TestTuneCachePaths:
         return Path("/tmp/pht_tune_run")
 
     def test_dir_pht_tune_cache_constant(self) -> None:
-        from phenotypic.tools_ import DIR_PHT_TUNE_CACHE
+        from phenotypic.sdk_ import DIR_PHT_TUNE_CACHE
 
         assert DIR_PHT_TUNE_CACHE == ".pht-tune-cache"
 
     def test_run_marker_filename_constant(self) -> None:
-        from phenotypic.tools_ import RUN_MARKER_JSON
+        from phenotypic.sdk_ import RUN_MARKER_JSON
 
         assert RUN_MARKER_JSON == "run.json"
 
     def test_tune_cache_dir(self, output: Path) -> None:
-        from phenotypic.tools_ import tune_cache_dir
+        from phenotypic.sdk_ import tune_cache_dir
 
         assert tune_cache_dir(output) == output / ".pht-tune-cache"
 
     def test_tune_cache_run_marker_path(self, output: Path) -> None:
-        from phenotypic.tools_ import tune_cache_run_marker_path
+        from phenotypic.sdk_ import tune_cache_run_marker_path
 
         assert tune_cache_run_marker_path(output) == (
             output / ".pht-tune-cache" / "run.json"
         )
 
     def test_tune_cache_study_db_path(self, output: Path) -> None:
-        from phenotypic.tools_ import tune_cache_study_db_path
-        from phenotypic.tools_._io_constants import STUDY_DB
+        from phenotypic.sdk_ import tune_cache_study_db_path
+        from phenotypic.sdk_._io_constants import STUDY_DB
 
         assert tune_cache_study_db_path(output) == (
             output / ".pht-tune-cache" / STUDY_DB
         )
 
     def test_tune_cache_splits_dir(self, output: Path) -> None:
-        from phenotypic.tools_ import tune_cache_splits_dir
-        from phenotypic.tools_._io_constants import DIR_SPLITS
+        from phenotypic.sdk_ import tune_cache_splits_dir
+        from phenotypic.sdk_._io_constants import DIR_SPLITS
 
         assert tune_cache_splits_dir(output) == (
             output / ".pht-tune-cache" / DIR_SPLITS
         )
 
     def test_tune_cache_split_assignment_path(self, output: Path) -> None:
-        from phenotypic.tools_ import tune_cache_split_assignment_path
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_ import tune_cache_split_assignment_path
+        from phenotypic.sdk_._io_constants import (
             DIR_SPLITS,
             SPLIT_ASSIGNMENT_JSON,
         )
@@ -1183,7 +1183,7 @@ class TestTuneCachePaths:
 
     def test_trials_parquet_stays_at_output_root(self, output: Path) -> None:
         """The journal is user-facing + the Optuna resume source — NOT relocated."""
-        from phenotypic.tools_._io_constants import (
+        from phenotypic.sdk_._io_constants import (
             TRIALS_PARQUET,
             trials_parquet_path,
         )
@@ -1192,11 +1192,11 @@ class TestTuneCachePaths:
 
     def test_resolve_study_db_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
         """Read-fallback: cache location wins; a legacy-root study.db is found."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             resolve_study_db_path,
             tune_cache_study_db_path,
         )
-        from phenotypic.tools_._io_constants import _legacy_study_db_path
+        from phenotypic.sdk_._io_constants import _legacy_study_db_path
 
         # Neither present → defaults to the new cache location.
         assert resolve_study_db_path(tmp_path) == tune_cache_study_db_path(tmp_path)
@@ -1212,11 +1212,11 @@ class TestTuneCachePaths:
 
     def test_resolve_split_prefers_cache_then_legacy(self, tmp_path: Path) -> None:
         """A missing split silently re-derives — so resume must find legacy-root."""
-        from phenotypic.tools_ import (
+        from phenotypic.sdk_ import (
             resolve_split_assignment_path,
             tune_cache_split_assignment_path,
         )
-        from phenotypic.tools_._io_constants import _legacy_split_assignment_path
+        from phenotypic.sdk_._io_constants import _legacy_split_assignment_path
 
         assert resolve_split_assignment_path(tmp_path) == (
             tune_cache_split_assignment_path(tmp_path)
@@ -1237,11 +1237,11 @@ class TestTuneCachePaths:
 
 
 class TestTuneReExports:
-    """``from phenotypic.tools_ import <tune helper>`` must NOT AttributeError.
+    """``from phenotypic.sdk_ import <tune helper>`` must NOT AttributeError.
 
     Several tune deliverable-path helpers + filename/dir constants live in
     ``_io_constants.py`` but were missing from the ``tools_/__init__`` re-export
-    surface, so a GUI reader using the conventional ``from phenotypic.tools_
+    surface, so a GUI reader using the conventional ``from phenotypic.sdk_
     import …`` would crash. This guards the package-level re-export contract
     (and that each re-export is the SAME object as its ``_io_constants`` source).
     """
@@ -1273,8 +1273,8 @@ class TestTuneReExports:
     )
 
     def test_path_helpers_reexported_and_identical(self) -> None:
-        import phenotypic.tools_ as tools
-        from phenotypic.tools_ import _io_constants as io
+        import phenotypic.sdk_ as tools
+        from phenotypic.sdk_ import _io_constants as io
 
         for name in self._PATH_HELPERS:
             assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
@@ -1282,8 +1282,8 @@ class TestTuneReExports:
             assert getattr(tools, name) is getattr(io, name)
 
     def test_constants_reexported_and_identical(self) -> None:
-        import phenotypic.tools_ as tools
-        from phenotypic.tools_ import _io_constants as io
+        import phenotypic.sdk_ as tools
+        from phenotypic.sdk_ import _io_constants as io
 
         for name in self._CONSTANTS:
             assert hasattr(tools, name), f"{name} missing from tools_ re-exports"

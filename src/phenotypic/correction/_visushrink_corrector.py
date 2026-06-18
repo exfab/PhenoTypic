@@ -8,8 +8,8 @@ if TYPE_CHECKING:
 from skimage.restoration import denoise_wavelet
 
 from ..abc_ import ImageCorrector
-from ..tools_.mixin import _GATSupportMixin
-from ..tools_.typing_ import TuneSpec
+from ..sdk_.mixin import _GATSupportMixin
+from ..sdk_.typing_ import TuneSpec
 from ._wavelet_rgb import restore_wavelet_rgb_dtype
 
 
@@ -37,7 +37,7 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
         - :class:`BayesShrinkCorrector` for adaptive per-subband thresholds
           that preserve finer colony detail at the cost of slightly more
           computation.
-        - :class:`StableDenoise` for GAT-stabilized BM3D collaborative
+        - :class:`DenoiseBlockMatch` for GAT-stabilized BM3D collaborative
           filtering when Poisson-Gaussian noise modelling is important.
         - :class:`VisuShrinkEnhancer` when only the detection matrix should
           be denoised and RGB and gray must remain untouched.
@@ -149,28 +149,28 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
     def _denoise_rgb(self, image: Image) -> None:
         original_rgb = image.rgb[:]
         denoised_rgb = denoise_wavelet(
-            image=original_rgb,
-            sigma=self.sigma,
-            wavelet=self.wavelet,
-            mode=self.mode,
-            wavelet_levels=self.wavelet_levels,
-            method="VisuShrink",
-            convert2ycbcr=self.convert2ycbcr,
-            channel_axis=-1,
-            rescale_sigma=self.rescale_sigma,
+                image=original_rgb,
+                sigma=self.sigma,
+                wavelet=self.wavelet,
+                mode=self.mode,
+                wavelet_levels=self.wavelet_levels,
+                method="VisuShrink",
+                convert2ycbcr=self.convert2ycbcr,
+                channel_axis=-1,
+                rescale_sigma=self.rescale_sigma,
         )
         image._data.rgb = restore_wavelet_rgb_dtype(denoised_rgb, original_rgb)
 
     def _denoise_gray(self, image: Image) -> None:
         denoised_gray = denoise_wavelet(
-            image=image.gray[:],
-            sigma=self.sigma,
-            wavelet=self.wavelet,
-            mode=self.mode,
-            wavelet_levels=self.wavelet_levels,
-            method="VisuShrink",
-            channel_axis=None,
-            rescale_sigma=self.rescale_sigma,
+                image=image.gray[:],
+                sigma=self.sigma,
+                wavelet=self.wavelet,
+                mode=self.mode,
+                wavelet_levels=self.wavelet_levels,
+                method="VisuShrink",
+                channel_axis=None,
+                rescale_sigma=self.rescale_sigma,
         )
         if self.clip:
             denoised_gray = denoised_gray.clip(0.0, 1.0)
@@ -178,14 +178,14 @@ class VisuShrinkCorrector(_GATSupportMixin, ImageCorrector):
 
     def _denoise_detect_mat(self, image: Image) -> None:
         denoised_enh = denoise_wavelet(
-            image=image.detect_mat[:],
-            sigma=self.sigma,
-            wavelet=self.wavelet,
-            mode=self.mode,
-            wavelet_levels=self.wavelet_levels,
-            method="VisuShrink",
-            channel_axis=None,
-            rescale_sigma=self.rescale_sigma,
+                image=image.detect_mat[:],
+                sigma=self.sigma,
+                wavelet=self.wavelet,
+                mode=self.mode,
+                wavelet_levels=self.wavelet_levels,
+                method="VisuShrink",
+                channel_axis=None,
+                rescale_sigma=self.rescale_sigma,
         )
         if self.clip:
             denoised_enh = denoised_enh.clip(0.0, 1.0)

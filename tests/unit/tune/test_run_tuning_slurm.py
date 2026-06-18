@@ -21,7 +21,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tools_ import _io_constants as io
+from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
     Evaluator,
