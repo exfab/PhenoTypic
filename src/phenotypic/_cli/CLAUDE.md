@@ -97,7 +97,11 @@ trio.
 - **Output layout** — per-image parquets/HDF stay at the output root
   (`results/`); user-facing deliverables live under `deliverables/`. Resolve
   paths via the `phenotypic.sdk_` helpers, never by hand-joining names.
-- **HPCC SLURM heterogeneity** — on a mixed partition, pre-AVX CPU nodes can
-  SIGILL ("Illegal instruction") the modern numpy/scipy wheels (this affects ALL
-  phenotypic SLURM runs, not just the staged engine). Pin to a modern partition
-  or constraint. Stage 2's GPU work runs on GPU nodes, which are consistent.
+- **HPCC SLURM heterogeneity (polars build)** — the cluster has pre-AVX2 nodes
+  (`abu_dhabi` c01–30, `ivy` h01–06). The stock `polars` wheel has an AVX2 baseline
+  with no runtime fallback and SIGILLs ("Illegal instruction") there, so the project
+  **ships `polars-lts-cpu` by default** (baseline-ISA build that runs everywhere).
+  numpy/scipy use runtime SIMD dispatch and are unaffected. On AVX2 nodes you can swap
+  in the faster stock `polars` (`docs/source/how_to/pages/polars_cpu_build.md`), or pin
+  jobs to AVX2 partitions/constraints. Stage 2's GPU work runs on GPU nodes, which are
+  consistent.

@@ -98,6 +98,14 @@ cd PhenoTypic
 uv sync --group dev --all-extras
 ```
 
+## CPU compatibility (polars build)
+
+PhenoTypic installs the **`polars-lts-cpu`** build by default so it runs on
+older CPUs (e.g. pre-AVX2 HPCC nodes) without crashing. On AVX2-capable machines
+you can swap in the faster stock `polars` build for quicker measurement
+compilation — see
+[Choosing the polars CPU build](https://exfab.github.io/PhenoTypic/experimental/how_to/pages/polars_cpu_build.html).
+
 ## GPU-Accelerated Detection (SAM2, micro-sam)
 
 PhenoTypic ships optional deep-learning detectors backed by Meta's

@@ -133,7 +133,7 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
     """Aggregate one measurement shard and write it under progress."""
     import polars as pl
 
-    from ._cli_duckdb_agg import duckdb_aggregate
+    from ._cli_parquet_agg import aggregate_parquet_files
     from ._cli_output_manager import _atomic_write
 
     files = [Path(path) for path in task.get("files", [])]
@@ -141,7 +141,7 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
         path: _dataset_name_from_measurement_path(output_dir, path)
         for path in files
     }
-    shard_df = duckdb_aggregate(
+    shard_df = aggregate_parquet_files(
         file_paths=files,
         path_to_dataset=path_to_dataset,
         include_dataset_column=bool(task.get("include_dataset_column", True)),

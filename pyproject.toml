@@ -52,7 +52,12 @@ dependencies = [
     "threadpoolctl>=3.6.0",
     "pympler>=1.0.1",
     "exifread>=3.5.1",
-    "polars>=1.0.0",
+    # polars-lts-cpu is the baseline-instruction-set build (no AVX2/AVX512
+    # required), so the default install runs on the cluster's pre-AVX2 nodes
+    # (e.g. abu_dhabi/ivy) without SIGILL. On AVX2-capable machines, swap in the
+    # faster stock `polars` build (same `import polars` API) -- see
+    # docs/source/how_to/pages/polars_cpu_build.md.
+    "polars-lts-cpu>=1.0.0",
     "click>=8.3.0",
     "bm3d>=4.0.3",
     "wand>=0.6.13",
@@ -63,7 +68,6 @@ dependencies = [
     "numba>=0.62.1",
     "plotly>=6.0.0",
     "pyarrow>=23.0.1",
-    "duckdb>=1.2.0",
     "kaleido>=1.2.0",
     "ruptures>=1.1.9",
     "typing_extensions>=4.0.0",

@@ -13,7 +13,7 @@ from typing import Dict, Optional
 import polars as pl
 
 from .._cli_output_manager import join_metadata
-from .._cli_duckdb_agg import duckdb_aggregate
+from .._cli_parquet_agg import aggregate_parquet_files
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
@@ -89,10 +89,10 @@ def _load_and_merge(
     output_dir: Path,
     metadata_csv: Optional[Path],
 ) -> Optional[pl.DataFrame]:
-    """Scan Parquet measurement files, aggregate via DuckDB, and optionally join metadata.
+    """Scan Parquet measurement files, aggregate with polars, and optionally join metadata.
 
     Walks ``results/*/measurements/`` for ``.parquet`` files.  Uses
-    :func:`duckdb_aggregate` for efficient in-memory concatenation,
+    :func:`aggregate_parquet_files` for efficient in-memory concatenation,
     adds ``Metadata_Dataset`` and ``Metadata_ImageFile`` columns, and
     performs an inner-join with *metadata_csv* when provided.
 
@@ -133,8 +133,8 @@ def _load_and_merge(
     if not path_to_dataset:
         return None
 
-    # -- DuckDB aggregation --------------------------------------------
-    master_df = duckdb_aggregate(
+    # -- Polars aggregation --------------------------------------------
+    master_df = aggregate_parquet_files(
         file_paths=list(path_to_dataset.keys()),
         path_to_dataset=path_to_dataset,
         include_dataset_column=True,
@@ -144,7 +144,7 @@ def _load_and_merge(
     if master_df is None:
         return None
 
-    # Derive Metadata_ImageFile from the DuckDB filename column, then drop it.
+    # Derive Metadata_ImageFile from the source-path filename column, then drop it.
     if "Metadata_ImageFile" not in master_df.columns and "filename" in master_df.columns:
         master_df = master_df.with_columns(
             pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias("Metadata_ImageFile")

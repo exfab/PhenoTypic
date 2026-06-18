@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
 
 from ._cli_types import Dataset
-from ._cli_duckdb_agg import duckdb_aggregate
+from ._cli_parquet_agg import aggregate_parquet_files
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -153,8 +153,12 @@ def _scratch_dest_name(pq: Path) -> str:
 def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
     """Copy parquet files to $SCRATCH for faster reading.
 
-    Creates a staging directory using SLURM job/task IDs to avoid
-    collisions when multiple aggregation tasks run on the same node.
+    Creates a per-process staging directory keyed on the SLURM job/task IDs
+    *and the process id*, so concurrent aggregation processes that share a
+    SLURM job id (e.g. pytest-xdist workers, or two aggregations launched on
+    one node) never stage into — and ``shutil.rmtree`` on cleanup — the same
+    directory. The PID alone guarantees uniqueness; the job/task ids are
+    retained in the name for debuggability.
 
     Args:
         parquet_files: Paths to copy.
@@ -172,12 +176,7 @@ def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
 
     job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
     task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
-    if job_id and task_id:
-        suffix = f"{job_id}_{task_id}"
-    elif job_id:
-        suffix = job_id
-    else:
-        suffix = str(os.getpid())
+    suffix = "_".join(part for part in (job_id, task_id, str(os.getpid())) if part)
 
     staging_dir = scratch_path / f".phenotypic_stage_{suffix}"
     try:
@@ -780,7 +779,7 @@ def aggregate_measurements(
     ``_dataset_aggregated.parquet`` files when available, falling back to
     individual per-image files.
 
-    Uses :func:`duckdb_aggregate` for efficient in-memory concatenation
+    Uses :func:`aggregate_parquet_files` for efficient in-memory concatenation
     and writes both ``master_measurements.csv`` and
     ``master_measurements.parquet`` to *output_dir* using atomic writes.
 
@@ -851,8 +850,8 @@ def aggregate_measurements(
     else:
         active_mapping = path_to_dataset
 
-    # -- DuckDB aggregation --------------------------------------------
-    master_df = duckdb_aggregate(
+    # -- Polars aggregation --------------------------------------------
+    master_df = aggregate_parquet_files(
         file_paths=list(active_mapping.keys()),
         path_to_dataset=active_mapping,
         include_dataset_column=include_dataset_column,
