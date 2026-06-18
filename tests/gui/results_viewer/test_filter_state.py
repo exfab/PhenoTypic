@@ -250,3 +250,117 @@ def test_to_store_round_trips_all_methods() -> None:
 
 def test_compare_ops_set_is_ordering_only() -> None:
     assert COMPARE_OPS == frozenset({">", ">=", "<", "<="})
+
+
+def _numeric_frame() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "Size_Area": [50.0, 150.0, 1000.0, 6000.0],
+            "name": ["plate_01", "Plate_02", "ctrl_02", "x"],
+            "rep": ["1", "2", "3", "4"],
+        }
+    )
+
+
+def test_is_none_of_excludes_listed_values() -> None:
+    df = _make_frame()
+    spec = FilterSpec.from_store(
+        [{"column": "a", "method": METHOD_IS_NONE_OF, "values": ["x"]}]
+    )
+    out = spec.apply_to(df)
+    assert "x" not in out.get_column("a").to_list()
+    assert out.height == 2  # y, z
+
+
+def test_range_between_inclusive_optional_bounds() -> None:
+    df = _numeric_frame()
+    both = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": 100,
+          "range_max": 1000}]
+    ).apply_to(df)
+    assert sorted(both.get_column("Size_Area").to_list()) == [150.0, 1000.0]
+
+    only_min = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": 1000,
+          "range_max": None}]
+    ).apply_to(df)
+    assert sorted(only_min.get_column("Size_Area").to_list()) == [1000.0, 6000.0]
+
+    only_max = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": None,
+          "range_max": 150}]
+    ).apply_to(df)
+    assert sorted(only_max.get_column("Size_Area").to_list()) == [50.0, 150.0]
+
+
+def test_range_both_bounds_blank_is_no_op() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE}]
+    ).apply_to(df)
+    assert out.height == df.height
+
+
+def test_compare_operators() -> None:
+    df = _numeric_frame()
+    gt = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_COMPARE, "compare_op": ">",
+          "compare_value": 150}]
+    ).apply_to(df)
+    assert sorted(gt.get_column("Size_Area").to_list()) == [1000.0, 6000.0]
+
+    le = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_COMPARE, "compare_op": "<=",
+          "compare_value": 150}]
+    ).apply_to(df)
+    assert sorted(le.get_column("Size_Area").to_list()) == [50.0, 150.0]
+
+
+def test_contains_literal_case_sensitive_and_insensitive() -> None:
+    df = _numeric_frame()
+    cs = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "plate",
+          "text_regex": False, "text_case_sensitive": True}]
+    ).apply_to(df)
+    assert cs.get_column("name").to_list() == ["plate_01"]
+
+    ci = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "plate",
+          "text_regex": False, "text_case_sensitive": False}]
+    ).apply_to(df)
+    assert sorted(ci.get_column("name").to_list()) == ["Plate_02", "plate_01"]
+
+
+def test_contains_regex() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": r"_0\d$",
+          "text_regex": True, "text_case_sensitive": True}]
+    ).apply_to(df)
+    assert sorted(out.get_column("name").to_list()) == ["Plate_02", "ctrl_02", "plate_01"]
+
+
+def test_contains_blank_pattern_is_no_op() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "  "}]
+    ).apply_to(df)
+    assert out.height == df.height
+
+
+def test_invalid_regex_skips_row_without_raising(caplog) -> None:
+    df = _numeric_frame()
+    spec = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "(",
+          "text_regex": True}]
+    )
+    out = spec.apply_to(df)  # must not raise
+    assert out.height == df.height
+
+
+def test_range_on_mixed_column_drops_non_numeric() -> None:
+    df = pl.DataFrame({"mix": ["10", "2", "x"]})
+    out = FilterSpec.from_store(
+        [{"column": "mix", "method": METHOD_RANGE, "range_min": 1, "range_max": 100}]
+    ).apply_to(df)
+    assert sorted(out.get_column("mix").to_list()) == ["10", "2"]

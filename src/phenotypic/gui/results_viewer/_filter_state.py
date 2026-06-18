@@ -9,7 +9,9 @@ Dash callbacks lets it be unit-tested without spinning up a browser.
 
 from __future__ import annotations
 
+import functools
 import logging
+import operator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -110,6 +112,63 @@ class FilterRow:
             "text_case_sensitive": self.text_case_sensitive,
         }
 
+    def to_expr(self) -> "pl.Expr | None":
+        """Return the polars predicate for this row, or None if unset.
+
+        None means "skip this row" (no column, or no usable payload for the
+        active method). Numeric methods cast the column with
+        ``strict=False`` so non-numeric cells become null and fall out of
+        the match without raising.
+        """
+        if not self.column:
+            return None
+        method = self.method or METHOD_IS_ANY_OF
+
+        if method in (METHOD_IS_ANY_OF, METHOD_IS_NONE_OF):
+            if not self.values:
+                return None
+            expr = pl.col(self.column).cast(pl.String).is_in(self.values)
+            return ~expr if method == METHOD_IS_NONE_OF else expr
+
+        if method == METHOD_RANGE:
+            if self.range_min is None and self.range_max is None:
+                return None
+            numeric = pl.col(self.column).cast(pl.Float64, strict=False)
+            bounds: list[pl.Expr] = []
+            if self.range_min is not None:
+                bounds.append(numeric >= self.range_min)
+            if self.range_max is not None:
+                bounds.append(numeric <= self.range_max)
+            return functools.reduce(operator.and_, bounds)
+
+        if method == METHOD_COMPARE:
+            if self.compare_op not in COMPARE_OPS or self.compare_value is None:
+                return None
+            numeric = pl.col(self.column).cast(pl.Float64, strict=False)
+            ops = {
+                ">": operator.gt,
+                ">=": operator.ge,
+                "<": operator.lt,
+                "<=": operator.le,
+            }
+            return ops[self.compare_op](numeric, self.compare_value)
+
+        if method == METHOD_CONTAINS:
+            pattern = self.text_pattern or ""
+            if not pattern.strip():
+                return None
+            as_str = pl.col(self.column).cast(pl.String)
+            if self.text_regex:
+                rx = pattern if self.text_case_sensitive else f"(?i){pattern}"
+                return as_str.str.contains(rx, literal=False)
+            if self.text_case_sensitive:
+                return as_str.str.contains(pattern, literal=True)
+            return as_str.str.to_lowercase().str.contains(
+                pattern.lower(), literal=True
+            )
+
+        return None
+
 
 @dataclass
 class FilterSpec:
@@ -162,26 +221,17 @@ class FilterSpec:
         return [row.to_dict() for row in self.rows]
 
     def apply_to(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Apply every active row to ``df`` as ``AND`` across rows.
+        """Apply every active row as ``AND`` across rows.
 
-        Each row is applied as ``pl.col(column).cast(pl.String).is_in(values)``.
-        Rows with an empty/falsy ``column`` or empty ``values`` are skipped
-        (an unset filter is a no-op, never a "match nothing"). Rows whose
-        ``column`` is not present in the frame log a warning and are
-        skipped — column drift between pipeline runs should not crash the
-        viewer.
-
-        Args:
-            df: The polars frame to filter (typically the master
-                measurements table).
-
-        Returns:
-            The filtered frame. Returned as-is if ``self.rows`` is empty or
-            every row is unset/skipped.
+        Each row contributes ``FilterRow.to_expr()``; ``None`` (unset) rows
+        are skipped. Rows naming a column absent from the frame log a
+        warning and skip. A row whose expression fails to evaluate (e.g. an
+        invalid user-supplied regex raising ``ComputeError``) is logged and
+        skipped rather than crashing the viewer.
         """
         result = df
         for row in self.rows:
-            if not row.column or not row.values:
+            if not row.column:
                 continue
             if row.column not in result.columns:
                 logger.warning(
@@ -189,5 +239,16 @@ class FilterSpec:
                     row.column,
                 )
                 continue
-            result = result.filter(pl.col(row.column).cast(pl.String).is_in(row.values))
+            expr = row.to_expr()
+            if expr is None:
+                continue
+            try:
+                result = result.filter(expr)
+            except Exception:
+                logger.exception(
+                    "Filter row failed to evaluate; skipping. column=%r method=%r",
+                    row.column,
+                    row.method,
+                )
+                continue
         return result
