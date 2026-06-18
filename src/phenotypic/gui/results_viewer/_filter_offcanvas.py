@@ -26,6 +26,15 @@ import dash
 from dash import Input, Output, State
 
 from phenotypic.gui.results_viewer import _ids as ids
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    _coerce_float,
+)
 
 
 def next_offcanvas_state(n_clicks: int | None, is_open: bool | None) -> bool:
@@ -39,22 +48,41 @@ def next_offcanvas_state(n_clicks: int | None, is_open: bool | None) -> bool:
     return not bool(is_open)
 
 
-def active_filter_count(spec: Any) -> int:
-    """Count configured filter rows (rows whose ``column`` is set).
+def row_is_active(row: Any) -> bool:
+    """Return True if a spec row contributes a real constraint.
 
-    Mirrors the spec-store row shape produced by ``_filter_panel`` —
-    ``{"id", "column", "values"}`` — and tolerates malformed payloads
-    (non-list, non-dict entries, missing/blank columns) by ignoring them.
+    Mirrors the "unset = skip" rule in
+    :meth:`phenotypic.gui.results_viewer._filter_state.FilterRow.to_expr`:
+    a row needs a column AND a usable payload for its method.
     """
+    if not isinstance(row, dict):
+        return False
+    if not str(row.get("column", "") or "").strip():
+        return False
+    method = row.get("method") or METHOD_IS_ANY_OF
+    if method in (METHOD_IS_ANY_OF, METHOD_IS_NONE_OF):
+        values = row.get("values") or []
+        return isinstance(values, list) and len(values) > 0
+    if method == METHOD_RANGE:
+        return (
+            _coerce_float(row.get("range_min")) is not None
+            or _coerce_float(row.get("range_max")) is not None
+        )
+    if method == METHOD_COMPARE:
+        return (
+            row.get("compare_op") in COMPARE_OPS
+            and _coerce_float(row.get("compare_value")) is not None
+        )
+    if method == METHOD_CONTAINS:
+        return bool(str(row.get("text_pattern", "") or "").strip())
+    return False
+
+
+def active_filter_count(spec: Any) -> int:
+    """Count rows that contribute a real constraint (see :func:`row_is_active`)."""
     if not isinstance(spec, list):
         return 0
-    count = 0
-    for row in spec:
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("column", "") or "").strip():
-            count += 1
-    return count
+    return sum(1 for row in spec if row_is_active(row))
 
 
 def badge_children(count: int) -> str:
@@ -94,6 +122,7 @@ def register_filter_offcanvas_callbacks(app: dash.Dash) -> None:
 __all__ = [
     "next_offcanvas_state",
     "active_filter_count",
+    "row_is_active",
     "badge_children",
     "badge_style",
     "register_filter_offcanvas_callbacks",
