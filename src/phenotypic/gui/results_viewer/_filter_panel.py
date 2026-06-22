@@ -608,6 +608,28 @@ def _render_filter_row(
     )
 
 
+def _value_options_for_mounted_values(
+    columns: list[Any],
+    column_component_ids: list[dict[str, str]],
+    value_component_ids: list[dict[str, str]],
+    column_value_sets: dict[str, list[str]],
+) -> list[list[dict[str, str]]]:
+    """Build value options only for mounted list-method value dropdowns."""
+    column_by_row = {
+        comp_id["index"]: str(column or "")
+        for comp_id, column in zip(column_component_ids, columns, strict=False)
+    }
+    out: list[list[dict[str, str]]] = []
+    for comp_id in value_component_ids:
+        column = column_by_row.get(comp_id["index"], "")
+        if not column:
+            out.append([])
+            continue
+        allowed = column_value_sets.get(column, [])
+        out.append([{"label": value, "value": value} for value in allowed])
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Callbacks
 # ---------------------------------------------------------------------------
@@ -877,17 +899,21 @@ def register_callbacks(
     @app.callback(
         Output({"type": "filter-row-values", "index": ALL}, "options"),
         Input({"type": "filter-row-column", "index": ALL}, "value"),
+        State({"type": "filter-row-column", "index": ALL}, "id"),
+        State({"type": "filter-row-values", "index": ALL}, "id"),
     )
-    def _populate_value_options(columns: list[Any]) -> list[list[dict[str, str]]]:
+    def _populate_value_options(
+        columns: list[Any],
+        column_component_ids: list[dict[str, str]],
+        value_component_ids: list[dict[str, str]],
+    ) -> list[list[dict[str, str]]]:
         """Map each row's selected column to its value-set options."""
-        out: list[list[dict[str, str]]] = []
-        for col in columns:
-            if not col:
-                out.append([])
-                continue
-            allowed = column_value_sets.get(str(col), [])
-            out.append([{"label": v, "value": v} for v in allowed])
-        return out
+        return _value_options_for_mounted_values(
+            columns,
+            column_component_ids,
+            value_component_ids,
+            column_value_sets,
+        )
 
     # --- 6. Remove filter row --------------------------------------------
 

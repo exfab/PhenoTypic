@@ -1,8 +1,10 @@
 """Preview tile blueprint: stage HDF layer -> DZI; reject bad components."""
 import numpy as np
+import pytest
 from phenotypic import Image
-from phenotypic.gui.builder._app import create_app
 from phenotypic.gui.builder import _preview_cache as pc
+from phenotypic.gui.builder import _preview_tiles as pt
+from phenotypic.gui.builder._app import create_app
 
 
 def _seed_scope_hdf(session_id, block_id):
@@ -74,3 +76,30 @@ def test_overlay_on_no_objmap_node_returns_404(tmp_path, monkeypatch):
     client = app.server.test_client()
     resp = client.get(f"/preview-tiles/{sid}/{shash}/{blk}/overlay.dzi")
     assert resp.status_code == 404
+
+
+def test_stage_channel_png_does_not_publish_partial_final_file(
+    tmp_path,
+    monkeypatch,
+):
+    hdf_path = tmp_path / "node.h5"
+    hdf_path.write_bytes(b"hdf")
+    final_path = tmp_path / "tiles_src" / "blk__gray.png"
+
+    monkeypatch.setattr(
+        pt,
+        "_channel_to_rgb_uint8",
+        lambda *_args: np.zeros((2, 2, 3), dtype=np.uint8),
+    )
+
+    class BrokenImage:
+        def save(self, path, format):  # noqa: A002
+            path.write_bytes(b"partial")
+            raise RuntimeError("simulated write failure")
+
+    monkeypatch.setattr(pt.PILImage, "fromarray", lambda *_args, **_kwargs: BrokenImage())
+
+    with pytest.raises(RuntimeError, match="simulated write failure"):
+        pt.stage_channel_png(tmp_path, "blk", "gray", hdf_path)
+
+    assert not final_path.exists()

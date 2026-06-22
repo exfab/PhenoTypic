@@ -99,11 +99,20 @@ def write_manifest(session_id: str, scope_path: list[str], manifest: dict) -> No
     tmp.replace(path)
 
 
-def _scope_signature(scope) -> str:
-    """Canonical compute-signature of a scope (ignores UI-only state)."""
+def _scope_signature_payload(scope) -> dict:
+    """Canonical compute-signature payload for a scope."""
     blocks = sorted(
         (
-            {"id": b.block_id, "cls": b.class_name, "params": b.params}
+            {
+                "id": b.block_id,
+                "cls": b.class_name,
+                "params": b.params,
+                "nested": (
+                    _scope_signature_payload(b.nested)
+                    if b.nested is not None
+                    else None
+                ),
+            }
             for b in scope.blocks
         ),
         key=lambda d: d["id"],
@@ -116,7 +125,12 @@ def _scope_signature(scope) -> str:
         ),
         key=lambda d: (d["s"], d["t"], d["p"]),
     )
-    return json.dumps({"blocks": blocks, "edges": edges}, sort_keys=True)
+    return {"blocks": blocks, "edges": edges}
+
+
+def _scope_signature(scope) -> str:
+    """Canonical compute-signature of a scope (ignores UI-only state)."""
+    return json.dumps(_scope_signature_payload(scope), sort_keys=True)
 
 
 def _source_identity(image_path, nrows, ncols) -> str:
@@ -241,7 +255,10 @@ def compute_scope(session_id, state, scope_path, image_path, nrows, ncols) -> di
         input_identity = parent_fp
 
     fingerprint_inputs = [sig, input_identity]
-    fingerprint = hashlib.sha1("\x00".join(fingerprint_inputs).encode()).hexdigest()
+    fingerprint = hashlib.sha1(
+        "\x00".join(fingerprint_inputs).encode(),
+        usedforsecurity=False,
+    ).hexdigest()
 
     cached = read_manifest(session_id, list(scope_path))
     if cached is not None and cached.get("fingerprint") == fingerprint \

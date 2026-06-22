@@ -6,6 +6,7 @@ from phenotypic.gui.results_viewer._filter_panel import (
     _blank_row,
     _normalise_spec,
     _render_filter_row,
+    _value_options_for_mounted_values,
     set_row_compare,
     set_row_method,
     set_row_range,
@@ -149,6 +150,28 @@ def test_method_dropdown_enables_range_compare_for_numeric_column() -> None:
     )
     disabled = {o["value"] for o in dropdown.options if o.get("disabled")}
     assert "range" not in disabled and "compare" not in disabled
+
+
+def test_value_options_only_target_mounted_list_value_controls() -> None:
+    options = _value_options_for_mounted_values(
+        ["Size_Area", "Metadata_Strain"],
+        [
+            {"type": "filter-row-column", "index": "range-row"},
+            {"type": "filter-row-column", "index": "list-row"},
+        ],
+        [{"type": "filter-row-values", "index": "list-row"}],
+        {
+            "Size_Area": ["1", "2"],
+            "Metadata_Strain": ["BY4741", "BY4742"],
+        },
+    )
+
+    assert options == [
+        [
+            {"label": "BY4741", "value": "BY4741"},
+            {"label": "BY4742", "value": "BY4742"},
+        ]
+    ]
 
 
 def test_register_callbacks_wires_method_controls(tmp_path) -> None:
