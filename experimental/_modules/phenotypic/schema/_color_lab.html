@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._color_lab</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object robust colorimetric statistics in the CIE L*a*b* color space.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span>
 
 
 <div class="viewcode-block" id="ColorLab">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorLab">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ColorLab</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorLab</span><span class="p">(</span><span class="n">DescriptiveTrait</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Robust CIE L*a*b* colorimetric summary for a colony.</span>
 
 <span class="sd">    Reports two robust center colors -- the ΔE76 (Euclidean) geometric median</span>

@@ -646,6 +646,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
@@ -1434,6 +1435,12 @@ Provides instance-level access to the measurement category.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.category" title="phenotypic.abc_.MeasurementInfo.category"><code class="xref py py-obj docutils literal notranslate"><span class="pre">category</span></code></a></p></td>
 <td><p>Return the category name for this measurement enumeration.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.kind" title="phenotypic.abc_.MeasurementInfo.kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kind</span></code></a></p></td>
+<td><p>Coarse classification kind, or None until assigned by a base class.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.tier" title="phenotypic.abc_.MeasurementInfo.tier"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier</span></code></a></p></td>
+<td><p>Trust tier (1/2/3) for primary measurements, or None.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.get_labels" title="phenotypic.abc_.MeasurementInfo.get_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_labels</span></code></a></p></td>
 <td><p>Get all measurement labels without category prefix.</p></td>
 </tr>
@@ -1458,19 +1465,37 @@ Provides instance-level access to the measurement category.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id12" title="phenotypic.abc_.MeasurementInfo.CATEGORY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CATEGORY</span></code></a></p></td>
 <td><p>Get the category name for this measurement instance.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id16" title="phenotypic.abc_.MeasurementInfo.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.resolved_kind" title="phenotypic.abc_.MeasurementInfo.resolved_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolved_kind</span></code></a></p></td>
+<td><p>The coarse kind for this member (identity/quality/primary/derived).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.resolved_tier" title="phenotypic.abc_.MeasurementInfo.resolved_tier"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolved_tier</span></code></a></p></td>
+<td><p>The trust tier (1/2/3) for this member, or None for non-primary.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.use_label" title="phenotypic.abc_.MeasurementInfo.use_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_label</span></code></a></p></td>
+<td><p>Short human-readable 'how to apply' label, empty for non-primary.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id16" title="phenotypic.abc_.MeasurementInfo.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id14" title="phenotypic.abc_.MeasurementInfo.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id14" title="phenotypic.abc_.MeasurementInfo.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id13" title="phenotypic.abc_.MeasurementInfo.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id13" title="phenotypic.abc_.MeasurementInfo.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id15" title="phenotypic.abc_.MeasurementInfo.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id15" title="phenotypic.abc_.MeasurementInfo.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id17" title="phenotypic.abc_.MeasurementInfo.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#id17" title="phenotypic.abc_.MeasurementInfo.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.tier_override" title="phenotypic.abc_.MeasurementInfo.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.derivation_type" title="phenotypic.abc_.MeasurementInfo.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.MeasurementInfo.derives_from" title="phenotypic.abc_.MeasurementInfo.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1501,6 +1526,21 @@ Provides instance-level access to the measurement category.</p>
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id8" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.tier_override">
+<span class="sig-name descname"><span class="pre">tier_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.tier_override" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.derivation_type">
+<span class="sig-name descname"><span class="pre">derivation_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.derivation_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.derives_from">
+<span class="sig-name descname"><span class="pre">derives_from</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.derives_from" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.category">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.category"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.category" title="Link to this definition">#</a></dt>
@@ -1522,6 +1562,28 @@ the full header name (e.g., ‘Shape_Area’).</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If not implemented by a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.kind">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kind</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.kind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.kind" title="Link to this definition">#</a></dt>
+<dd><p>Coarse classification kind, or None until assigned by a base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.tier">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.tier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.tier" title="Link to this definition">#</a></dt>
+<dd><p>Trust tier (1/2/3) for primary measurements, or None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1558,6 +1620,24 @@ or used in string formatting.</p>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.resolved_kind">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.resolved_kind" title="Link to this definition">#</a></dt>
+<dd><p>The coarse kind for this member (identity/quality/primary/derived).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.resolved_tier">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_tier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.resolved_tier" title="Link to this definition">#</a></dt>
+<dd><p>The trust tier (1/2/3) for this member, or None for non-primary.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.abc_.MeasurementInfo.use_label">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">use_label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.abc_.MeasurementInfo.use_label" title="Link to this definition">#</a></dt>
+<dd><p>Short human-readable ‘how to apply’ label, empty for non-primary.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2141,9 +2221,17 @@ class-creation time.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.bio_desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.image</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.pair</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.tier_override"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.tier_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.derivation_type"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.derivation_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.derives_from"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.category"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.category()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.kind"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.kind()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.tier"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.CATEGORY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.__str__"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.__str__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.resolved_kind"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.resolved_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.resolved_tier"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.resolved_tier</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.use_label"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.use_label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_labels"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_labels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.get_headers"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.MeasurementInfo.rst_table"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rst_table()</span></code></a></li>

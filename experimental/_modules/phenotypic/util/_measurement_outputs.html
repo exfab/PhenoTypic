@@ -845,6 +845,8 @@
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_info_class</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
             <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>  <span class="c1"># member-less classification bases contribute no columns</span>
+            <span class="k">continue</span>
         <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">:</span>
             <span class="n">descriptions</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">member</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">desc</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">descriptions</span>

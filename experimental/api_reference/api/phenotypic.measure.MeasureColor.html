@@ -646,6 +646,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
@@ -1192,41 +1193,53 @@ medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Use</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">L*GeoMedian</span></code></p></td>
 <td><p>L* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">a*GeoMedian</span></code></p></td>
 <td><p>a* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">b*GeoMedian</span></code></p></td>
 <td><p>b* of the ΔE76 (Euclidean) geometric-median center color of the object</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">L*Medoid</span></code></p></td>
 <td><p>L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">a*Medoid</span></code></p></td>
 <td><p>a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">b*Medoid</span></code></p></td>
 <td><p>b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MedianFromMedoid</span></code></p></td>
 <td><p>Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000MeanFromMedoid</span></code></p></td>
 <td><p>Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DeltaE2000P95FromMedoid</span></code></p></td>
 <td><p>95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LabTotalVariance</span></code></p></td>
 <td><p>Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MedoidColorHex</span></code></p></td>
 <td><p>sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 </tbody>
 </table>
@@ -1236,20 +1249,25 @@ medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Use</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HueRobustMean</span></code></p></td>
 <td><p>Hue of the cone-embedded geometric-median robust center (circular-correct)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SaturationRobustMean</span></code></p></td>
 <td><p>Saturation of the cone-embedded geometric-median robust center</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ValueRobustMean</span></code></p></td>
 <td><p>Value (brightness) of the cone-embedded geometric-median robust center</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HSVConeVariance</span></code></p></td>
 <td><p>Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 </tbody>
 </table>

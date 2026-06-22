@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._bbox</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Bounding-box and centroid coordinate measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityInfo</span>
 
 
 <div class="viewcode-block" id="BBOX">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.BBOX">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">BBOX</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BBOX</span><span class="p">(</span><span class="n">IdentityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract bounding box coordinates and centroids of detected colonies.</span>
 
 <span class="sd">    Compute the axis-aligned bounding box and centroid (geometric and</span>

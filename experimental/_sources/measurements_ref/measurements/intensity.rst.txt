@@ -16,27 +16,40 @@ accumulation, and internal heterogeneity.
 
    * - Column label
      - Description
+     - Use
    * - ``Intensity_IntegratedIntensity``
      - The sum of the object's pixels
+     - Direct phenotype (Tier 1)
    * - ``Intensity_Density``
      - The ratio of the object's intensity to the max possible intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_ConvexDensity``
      - The ratio of the objects intensity to the max possible intensity of the object's convex hull
+     - Direct phenotype (Tier 1)
    * - ``Intensity_MinimumIntensity``
      - The minimum intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_MaximumIntensity``
      - The maximum intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_MeanIntensity``
      - The mean intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_MedianIntensity``
      - The median intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_StandardDeviationIntensity``
      - The standard deviation of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_CoefficientVarianceIntensity``
      - The coefficient of variation of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_LowerQuartileIntensity``
      - The lower quartile intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_UpperQuartileIntensity``
      - The upper quartile intensity of the object
+     - Direct phenotype (Tier 1)
    * - ``Intensity_InterquartileRangeIntensity``
      - The interquartile range of the object
+     - Direct phenotype (Tier 1)

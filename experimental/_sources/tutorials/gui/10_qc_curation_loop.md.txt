@@ -10,7 +10,7 @@ no full page reload.
 The loop:
 
 1. Configure one or more checks (e.g. `ExpectedVsDetectedCount`,
-   `ReplicateAgreement`).
+   `GridOccupancy`, `ReplicateAgreement`).
 2. The card highlights every flagged group with its severity.
 3. Mark all flagged colonies for removal (per-card button) or curate
    individuals from the Plate / Colony tabs.
@@ -24,8 +24,12 @@ The loop:
   `<output>/deliverables/measurements.parquet`. See
   [Run Locally](04_run_local.md) to produce one.
 - A `metadata.csv` describing the expected plate layout if you plan to
-  configure `ExpectedVsDetectedCount` (its `groupby` columns must
-  resolve against the master measurements schema).
+  configure `ExpectedVsDetectedCount` or `GridOccupancy` (their `groupby`
+  columns must resolve against the master measurements schema). Both read
+  the layout's per-group row count as the expected colony/cell count;
+  `GridOccupancy` additionally counts distinct filled grid cells
+  (`Grid_RowMajorIdx`), so it reports occupancy without double-counting
+  doublets.
 
 ## Walkthrough
 
@@ -78,11 +82,12 @@ severity.
   load-warning instead of breaking the boot. The warning banner at
   the top of the QC tab lists the affected `instance_id` and the
   underlying error.
-- **Recipe sidecar:** every add / edit / delete writes
-  `<output>/.viewer_cache/qc_recipe.json`. The CLI does **not** touch
-  this file — concurrent viewer sessions on the same output dir is
-  an unsupported configuration. If you reopen the viewer on a
-  different machine, the recipe travels with the output directory.
+- **QC recipe:** every add / edit / delete writes the `qc` array in the
+  pipeline config under `<output>/deliverables/` (`pipeline.json.pht-pipe`
+  on current runs). A legacy `<output>/.viewer_cache/qc_recipe.json`
+  sidecar is migrated once at viewer startup. Concurrent viewer sessions
+  on the same output dir are still unsupported; if you reopen the viewer
+  on a different machine, the recipe travels with the output directory.
 - **Severity legend:** check-side `severity_warn` / `severity_fail`
   thresholds default to `0.05` / `0.10`. Tune them on the per-check
   edit modal to match your QC tolerance.

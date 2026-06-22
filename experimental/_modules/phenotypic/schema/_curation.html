@@ -600,12 +600,13 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
 <div class="viewcode-block" id="CURATION">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.CURATION">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">CURATION</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CURATION</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Curation-state columns attached to derived measurement frames.</span>
 
 <span class="sd">    ``Curation_Category`` carries the :class:`ErrorCategory` bare label (or a</span>

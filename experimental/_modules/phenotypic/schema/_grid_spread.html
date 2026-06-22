@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._grid_spread</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Grid section spatial spread measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
 <div class="viewcode-block" id="GRID_SPREAD">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.GRID_SPREAD">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GRID_SPREAD</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GRID_SPREAD</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantify within-well colony dispersion using pairwise centroid distances.</span>
 
 <span class="sd">    Compute the sum of squared pairwise Euclidean distances between all</span>

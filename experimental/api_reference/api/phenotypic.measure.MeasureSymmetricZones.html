@@ -646,6 +646,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
@@ -1278,38 +1279,49 @@ walkthrough of measuring and exporting colony data.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Use</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CoreRadius</span></code></p></td>
 <td><p>Radius of the dense inoculum core, determined by PELT changepoint detection on the radial mask-density profile centered on the inoculum. Growth measurements are reported relative to this boundary.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SymmetricRadius</span></code></p></td>
 <td><p>Radial distance from the inoculum centroid at which colony growth ceases to be angularly uniform. Computed as the first radius past the core where the smoothed per-annulus circular mean resultant length of mask-boundary pixels exceeds the symmetry threshold. Equals the colony outer envelope when growth remains symmetric throughout.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MeanExpansion</span></code></p></td>
 <td><p>Mean distance of mask-boundary pixels from the inoculum centroid, measured from the core boundary outward. Captures the typical radial extent of growth past the inoculum, averaged over all angular directions.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MaxExpansion</span></code></p></td>
 <td><p>Maximum distance of any mask pixel from the inoculum centroid, measured from the core boundary outward. Captures the farthest extent of growth past the inoculum.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CoreEndRadius</span></code></p></td>
 <td><p>Mean radius of the inoculum core boundary derived from the per-angle bright/background ratio walk. Each of 360 1° angular sectors finds the outer edge of the contiguous core run (bright fraction &gt;= tau_core); the reported value is the mean across sectors. Compare with CoreRadius (the global PELT changepoint) — close agreement indicates a well-formed core.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DenseEndRadius</span></code></p></td>
 <td><p>Mean outer radius of the dense branching zone, where mask-bright pixels dominate (bright fraction &gt;= tau_sparse). Per-angle radii are capped at the SymmetricRadius and angularly median-smoothed before averaging.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SparseEndRadius</span></code></p></td>
 <td><p>Mean outer radius of the sparse branching zone (= colony envelope inside the symmetric growth front). Equals min(objmask outer envelope, SymmetricRadius) per angle, averaged across 360 sectors.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CoreArea</span></code></p></td>
 <td><p>Pixel^2 area of the inoculum core zone, integrated across the 360-sector polar polygon defined by the per-angle core radii.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DenseArea</span></code></p></td>
 <td><p>Pixel^2 area of the dense branching zone, the annular region between the per-angle core boundary and dense-branching boundary.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SparseArea</span></code></p></td>
 <td><p>Pixel^2 area of the sparse branching zone, the annular region between the per-angle dense boundary and the symmetric-envelope outer boundary.</p></td>
+<td><p>Descriptive trait (Tier 2)</p></td>
 </tr>
 </tbody>
 </table>

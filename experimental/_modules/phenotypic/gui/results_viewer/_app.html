@@ -640,6 +640,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">CFG_FILTERED_STATE</span><span class="p">,</span>
     <span class="n">CFG_MEASUREMENT_SCHEMA</span><span class="p">,</span>
+    <span class="n">CFG_OPERATION_REGISTRY</span><span class="p">,</span>
     <span class="n">CFG_OUTPUT_ROOT</span><span class="p">,</span>
     <span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span>
     <span class="n">CFG_QC_INSTANCES_CACHE</span><span class="p">,</span>
@@ -653,6 +654,7 @@
     <span class="n">TITLE_VIEWER</span><span class="p">,</span>
     <span class="n">join_url_prefix</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._operation_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationRegistry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._schema_cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementSchema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">COLOR_BLUE</span><span class="p">,</span> <span class="n">COLOR_SURFACE</span><span class="p">,</span> <span class="n">inject_design_tokens</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
@@ -810,6 +812,18 @@
     <span class="c1"># fills it on its first card refresh. The heatmap render callback</span>
     <span class="c1"># gracefully falls back to the plain filtered frame until then.</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">CFG_QC_AUGMENTED_FRAME</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># The QC tab&#39;s Add/Edit modal reads its class picker, param form, and</span>
+    <span class="c1"># submit-time class resolution from an ``OperationRegistry`` on *this*</span>
+    <span class="c1"># server&#39;s config. Under the hub&#39;s ``DispatcherMiddleware`` each sub-app</span>
+    <span class="c1"># has its own Flask server, so the builder&#39;s registry is not visible</span>
+    <span class="c1"># here — without this the picker renders empty and no QC check can be</span>
+    <span class="c1"># added. Build one per viewer app, idempotently (a hub composer may</span>
+    <span class="c1"># inject a shared registry ahead of ``create_app``).</span>
+    <span class="k">if</span> <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">CFG_OPERATION_REGISTRY</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">operation_registry</span> <span class="o">=</span> <span class="n">OperationRegistry</span><span class="p">()</span>
+        <span class="n">operation_registry</span><span class="o">.</span><span class="n">discover</span><span class="p">()</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_OPERATION_REGISTRY</span><span class="p">]</span> <span class="o">=</span> <span class="n">operation_registry</span>
 
     <span class="c1"># QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-</span>
     <span class="c1"># backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``</span>

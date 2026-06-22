@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._log_growth_model</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Fitted parameters and bounds for the logistic growth model.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DerivedMeasure</span>
 
 
 <div class="viewcode-block" id="LOG_GROWTH_MODEL">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.LOG_GROWTH_MODEL">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">LOG_GROWTH_MODEL</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LOG_GROWTH_MODEL</span><span class="p">(</span><span class="n">DerivedMeasure</span><span class="p">):</span>
 <div class="viewcode-block" id="LOG_GROWTH_MODEL.category">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.LOG_GROWTH_MODEL.category">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -611,13 +612,17 @@
         <span class="k">return</span> <span class="s2">&quot;LogGrowthModel&quot;</span></div>
 
 
-    <span class="n">R_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;The intrinsic growth rate&quot;</span><span class="p">)</span>
-    <span class="n">K_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity&quot;</span><span class="p">)</span>
-    <span class="n">N0_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;N0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial number of the colony size metric being fitted&quot;</span><span class="p">)</span>
+    <span class="n">R_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="s2">&quot;The intrinsic growth rate&quot;</span><span class="p">,</span>
+                  <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">K_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;The carrying capacity&quot;</span><span class="p">,</span>
+                  <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">N0_FIT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;N0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial number of the colony size metric being fitted&quot;</span><span class="p">,</span>
+                   <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
     <span class="n">LAM</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;lambda&quot;</span><span class="p">,</span>
         <span class="s2">&quot;The regularization factor applied to the max specific growth rate &quot;</span>
         <span class="s2">&quot;and initial population size&quot;</span><span class="p">,</span>
+        <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;diagnostic&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">BETA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;beta&quot;</span><span class="p">,</span>
@@ -625,9 +630,12 @@
             <span class="s2">&quot;The penalty factor applied to relative difference of &quot;</span>
             <span class="s2">&quot;the carrying capacity from the largest measurement&quot;</span>
         <span class="p">),</span>
+        <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;diagnostic&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">GROWTH_RATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;µmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The growth rate of the colony calculated as (K*r)/4&quot;</span><span class="p">)</span>
-    <span class="n">K_MAX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Kmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper bound of the carrying capacity for model fitting&quot;</span><span class="p">)</span></div>
+    <span class="n">GROWTH_RATE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;µmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The growth rate of the colony calculated as (K*r)/4&quot;</span><span class="p">,</span>
+                        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">K_MAX</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;Kmax&quot;</span><span class="p">,</span> <span class="s2">&quot;The upper bound of the carrying capacity for model fitting&quot;</span><span class="p">,</span>
+                  <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;diagnostic&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 

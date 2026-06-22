@@ -15,11 +15,16 @@ the trace of the cone-Cartesian covariance.
 
    * - Column label
      - Description
+     - Use
    * - ``ColorHSV_HueRobustMean``
      - Hue of the cone-embedded geometric-median robust center (circular-correct)
+     - Descriptive trait (Tier 2)
    * - ``ColorHSV_SaturationRobustMean``
      - Saturation of the cone-embedded geometric-median robust center
+     - Descriptive trait (Tier 2)
    * - ``ColorHSV_ValueRobustMean``
      - Value (brightness) of the cone-embedded geometric-median robust center
+     - Descriptive trait (Tier 2)
    * - ``ColorHSV_HSVConeVariance``
      - Trace of the HSV cone-Cartesian covariance (single 3D HSV spread scalar); spread about the arithmetic mean of the cone coordinates (NOT about the reported RobustMean center)
+     - Descriptive trait (Tier 2)

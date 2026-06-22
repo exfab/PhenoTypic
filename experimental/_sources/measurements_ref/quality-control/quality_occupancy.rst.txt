@@ -1,0 +1,25 @@
+QUALITY_OCCUPANCY
+=================
+
+Python object: ``phenotypic.schema._quality_occupancy.QUALITY_OCCUPANCY``
+
+Measurement info for the grid-occupancy QC check.
+
+Carries the per-group cell-occupancy counts compared by the occupancy
+quality check: how many of a plate's expected grid cells are filled by
+at least one colony (doublets collapse to one), how many cells the
+metadata frame declared, and how many remain empty. A high ``Vacant``
+count flags plates with many missing pin positions (failed spots,
+dropouts) independent of any over-detection elsewhere on the plate.
+
+.. list-table:: Category: **QC_Occupancy**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+   * - ``QC_Occupancy_Filled``
+     - Distinct grid cells holding at least one colony (doublets count once).
+   * - ``QC_Occupancy_Expected``
+     - Expected grid-cell count from the metadata frame (rows per group).
+   * - ``QC_Occupancy_Vacant``
+     - Expected - Filled; empty/missing grid cells in the group.

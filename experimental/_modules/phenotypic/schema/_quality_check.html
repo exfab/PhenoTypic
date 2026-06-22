@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._quality_check</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for the generic QualityCheck output columns.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">_render_info_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">_render_info_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
 <div class="viewcode-block" id="QUALITY_CHECK">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.QUALITY_CHECK">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">QUALITY_CHECK</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">QUALITY_CHECK</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generic QC output columns emitted by every QualityCheck subclass.</span>
 
 <span class="sd">    The category convention used elsewhere in the codebase would produce</span>
@@ -661,7 +662,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">slug</span> <span class="o">=</span> <span class="n">check_name</span> <span class="k">if</span> <span class="n">check_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&lt;name&gt;&quot;</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">bio_desc</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span>
+            <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">bio_desc</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">image</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">use_label</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span>
         <span class="p">]</span>
         <span class="n">table</span> <span class="o">=</span> <span class="n">_render_info_table</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;QC_</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name_header</span><span class="o">=</span><span class="s2">&quot;Name&quot;</span><span class="p">)</span>
         <span class="n">base</span> <span class="o">=</span> <span class="n">doc</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">doc</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>

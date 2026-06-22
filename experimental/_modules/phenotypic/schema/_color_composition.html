@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._color_composition</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info for perceptual color composition using 11-color model.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscriminativeFeature</span>
 
 
 <div class="viewcode-block" id="ColorComposition">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.ColorComposition">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ColorComposition</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ColorComposition</span><span class="p">(</span><span class="n">DiscriminativeFeature</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Classify colony pixels into 11 perceptual color categories and measure composition.</span>
 
 <span class="sd">    Applies a priority-based color model (neutrals → special colors → hues)</span>

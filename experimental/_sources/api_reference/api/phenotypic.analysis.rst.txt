@@ -36,6 +36,7 @@
       EdgeCorrector
       ErrorCutoffFinder
       ExpectedVsDetectedCount
+      GridOccupancy
       ICC
       LinearSoftplus
       LogGrowthModel

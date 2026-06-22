@@ -661,7 +661,7 @@ no full page reload.</p>
 <p>The loop:</p>
 <ol class="arabic simple">
 <li><p>Configure one or more checks (e.g. <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code>,
-<code class="docutils literal notranslate"><span class="pre">ReplicateAgreement</span></code>).</p></li>
+<code class="docutils literal notranslate"><span class="pre">GridOccupancy</span></code>, <code class="docutils literal notranslate"><span class="pre">ReplicateAgreement</span></code>).</p></li>
 <li><p>The card highlights every flagged group with its severity.</p></li>
 <li><p>Mark all flagged colonies for removal (per-card button) or curate
 individuals from the Plate / Colony tabs.</p></li>
@@ -676,8 +676,12 @@ the post-applied <code class="docutils literal notranslate"><span class="pre">de
 <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/measurements.parquet</span></code>. See
 <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> to produce one.</p></li>
 <li><p>A <code class="docutils literal notranslate"><span class="pre">metadata.csv</span></code> describing the expected plate layout if you plan to
-configure <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> (its <code class="docutils literal notranslate"><span class="pre">groupby</span></code> columns must
-resolve against the master measurements schema).</p></li>
+configure <code class="docutils literal notranslate"><span class="pre">ExpectedVsDetectedCount</span></code> or <code class="docutils literal notranslate"><span class="pre">GridOccupancy</span></code> (their <code class="docutils literal notranslate"><span class="pre">groupby</span></code>
+columns must resolve against the master measurements schema). Both read
+the layout’s per-group row count as the expected colony/cell count;
+<code class="docutils literal notranslate"><span class="pre">GridOccupancy</span></code> additionally counts distinct filled grid cells
+(<code class="docutils literal notranslate"><span class="pre">Grid_RowMajorIdx</span></code>), so it reports occupancy without double-counting
+doublets.</p></li>
 </ul>
 </section>
 <section id="walkthrough">
@@ -727,11 +731,12 @@ check raises at instantiation time and the recipe records a
 load-warning instead of breaking the boot. The warning banner at
 the top of the QC tab lists the affected <code class="docutils literal notranslate"><span class="pre">instance_id</span></code> and the
 underlying error.</p></li>
-<li><p><strong>Recipe sidecar:</strong> every add / edit / delete writes
-<code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.viewer_cache/qc_recipe.json</span></code>. The CLI does <strong>not</strong> touch
-this file — concurrent viewer sessions on the same output dir is
-an unsupported configuration. If you reopen the viewer on a
-different machine, the recipe travels with the output directory.</p></li>
+<li><p><strong>QC recipe:</strong> every add / edit / delete writes the <code class="docutils literal notranslate"><span class="pre">qc</span></code> array in the
+pipeline config under <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/</span></code> (<code class="docutils literal notranslate"><span class="pre">pipeline.json.pht-pipe</span></code>
+on current runs). A legacy <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.viewer_cache/qc_recipe.json</span></code>
+sidecar is migrated once at viewer startup. Concurrent viewer sessions
+on the same output dir are still unsupported; if you reopen the viewer
+on a different machine, the recipe travels with the output directory.</p></li>
 <li><p><strong>Severity legend:</strong> check-side <code class="docutils literal notranslate"><span class="pre">severity_warn</span></code> / <code class="docutils literal notranslate"><span class="pre">severity_fail</span></code>
 thresholds default to <code class="docutils literal notranslate"><span class="pre">0.05</span></code> / <code class="docutils literal notranslate"><span class="pre">0.10</span></code>. Tune them on the per-check
 edit modal to match your QC tolerance.</p></li>

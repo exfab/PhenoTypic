@@ -734,6 +734,17 @@ prefixed names, use get_headers().</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.kind">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kind</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.kind" title="Link to this definition">#</a></dt>
+<dd><p>Coarse classification kind, or None until assigned by a base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.rst_table">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
@@ -750,6 +761,17 @@ instead of the bare label (<code class="docutils literal notranslate"><span clas
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.tier">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.tier" title="Link to this definition">#</a></dt>
+<dd><p>Trust tier (1/2/3) for primary measurements, or None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1239,6 +1261,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.derivation_type">
+<span class="sig-name descname"><span class="pre">derivation_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.derivation_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.derives_from">
+<span class="sig-name descname"><span class="pre">derives_from</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.derives_from" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.desc">
 <span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.desc" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1257,6 +1289,29 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.pair">
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.pair" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.resolved_kind">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.resolved_kind" title="Link to this definition">#</a></dt>
+<dd><p>The coarse kind for this member (identity/quality/primary/derived).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.resolved_tier">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_tier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.resolved_tier" title="Link to this definition">#</a></dt>
+<dd><p>The trust tier (1/2/3) for this member, or None for non-primary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.tier_override">
+<span class="sig-name descname"><span class="pre">tier_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.tier_override" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.ConstantLabels.use_label">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">use_label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.ConstantLabels.use_label" title="Link to this definition">#</a></dt>
+<dd><p>Short human-readable ‘how to apply’ label, empty for non-primary.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -1367,6 +1422,17 @@ prefixed names, use get_headers().</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.kind">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kind</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.kind" title="Link to this definition">#</a></dt>
+<dd><p>Coarse classification kind, or None until assigned by a base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.rst_table">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
@@ -1383,6 +1449,17 @@ instead of the bare label (<code class="docutils literal notranslate"><span clas
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier" title="Link to this definition">#</a></dt>
+<dd><p>Trust tier (1/2/3) for primary measurements, or None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1882,6 +1959,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derivation_type">
+<span class="sig-name descname"><span class="pre">derivation_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derivation_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derives_from">
+<span class="sig-name descname"><span class="pre">derives_from</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derives_from" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.desc">
 <span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.desc" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1900,6 +1987,29 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.pair">
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.pair" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_kind">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_kind" title="Link to this definition">#</a></dt>
+<dd><p>The coarse kind for this member (identity/quality/primary/derived).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_tier">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_tier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_tier" title="Link to this definition">#</a></dt>
+<dd><p>The trust tier (1/2/3) for this member, or None for non-primary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier_override">
+<span class="sig-name descname"><span class="pre">tier_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier_override" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.GAMMA_ENCODINGS.use_label">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">use_label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.use_label" title="Link to this definition">#</a></dt>
+<dd><p>Short human-readable ‘how to apply’ label, empty for non-primary.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -2303,6 +2413,17 @@ prefixed names, use get_headers().</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.kind">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kind</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.kind" title="Link to this definition">#</a></dt>
+<dd><p>Coarse classification kind, or None until assigned by a base class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.rst_table">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">rst_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">('Name',</span> <span class="pre">'Description')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_headers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.rst_table" title="Link to this definition">#</a></dt>
 <dd><p>Render an RST list-table of this enum’s members.</p>
@@ -2319,6 +2440,17 @@ instead of the bare label (<code class="docutils literal notranslate"><span clas
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.tier">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tier</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.tier" title="Link to this definition">#</a></dt>
+<dd><p>Trust tier (1/2/3) for primary measurements, or None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2818,6 +2950,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.derivation_type">
+<span class="sig-name descname"><span class="pre">derivation_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.derivation_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.derives_from">
+<span class="sig-name descname"><span class="pre">derives_from</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.derives_from" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.desc">
 <span class="sig-name descname"><span class="pre">desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.desc" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -2836,6 +2978,29 @@ which category it belongs to without explicitly referencing the class.</p>
 <dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.pair">
 <span class="sig-name descname"><span class="pre">pair</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.pair" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.resolved_kind">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.resolved_kind" title="Link to this definition">#</a></dt>
+<dd><p>The coarse kind for this member (identity/quality/primary/derived).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.resolved_tier">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">resolved_tier</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.resolved_tier" title="Link to this definition">#</a></dt>
+<dd><p>The trust tier (1/2/3) for this member, or None for non-primary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.tier_override">
+<span class="sig-name descname"><span class="pre">tier_override</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.tier_override" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.sdk_.constants_.PIPE_STATUS.use_label">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">use_label</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#phenotypic.sdk_.constants_.PIPE_STATUS.use_label" title="Link to this definition">#</a></dt>
+<dd><p>Short human-readable ‘how to apply’ label, empty for non-primary.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -2870,7 +3035,9 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.category"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.get_headers"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.get_labels"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.kind"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.rst_table"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.tier"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.maketrans"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.__dir__"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.__new_member__"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.__new_member__()</span></code></a></li>
@@ -2923,10 +3090,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.zfill"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.zfill()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.CATEGORY"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.CATEGORY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.bio_desc"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.bio_desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.derivation_type"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.derivation_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.derives_from"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.desc"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.image"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.image</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.label"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.pair"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.pair</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.resolved_kind"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.resolved_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.resolved_tier"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.resolved_tier</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.tier_override"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.tier_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.ConstantLabels.use_label"><code class="docutils literal notranslate"><span class="pre">ConstantLabels.use_label</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS</span></code></a><ul class="visible nav section-nav flex-column">
@@ -2934,7 +3107,9 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.category"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.get_headers"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.get_labels"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.kind"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.rst_table"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.maketrans"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.__dir__"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.__new_member__"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.__new_member__()</span></code></a></li>
@@ -2989,10 +3164,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.LINEAR"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.LINEAR</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.SRGB"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.SRGB</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.bio_desc"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.bio_desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derivation_type"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.derivation_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.derives_from"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.desc"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.image"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.image</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.label"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.pair"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.pair</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_kind"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.resolved_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.resolved_tier"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.resolved_tier</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.tier_override"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.tier_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.use_label"><code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.use_label</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.GRID_LINREG_STATS_EXTRACTOR"><code class="docutils literal notranslate"><span class="pre">GRID_LINREG_STATS_EXTRACTOR</span></code></a><ul class="visible nav section-nav flex-column">
@@ -3062,7 +3243,9 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.category"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.category()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.get_headers"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.get_headers()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.get_labels"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.get_labels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.kind"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.rst_table"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.rst_table()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.tier"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.maketrans"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.maketrans()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.__dir__"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.__dir__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.__new_member__"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.__new_member__()</span></code></a></li>
@@ -3117,10 +3300,16 @@ which category it belongs to without explicitly referencing the class.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.MEASURED"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.MEASURED</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.PROCESSED"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.PROCESSED</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.bio_desc"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.bio_desc</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.derivation_type"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.derivation_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.derives_from"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.derives_from</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.desc"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.desc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.image"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.image</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.label"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.label</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.pair"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.pair</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.resolved_kind"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.resolved_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.resolved_tier"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.resolved_tier</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.tier_override"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.tier_override</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.constants_.PIPE_STATUS.use_label"><code class="docutils literal notranslate"><span class="pre">PIPE_STATUS.use_label</span></code></a></li>
 </ul>
 </li>
 </ul>

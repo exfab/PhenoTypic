@@ -17,6 +17,8 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       :nosignatures:
    
       ~GAMMA_ENCODINGS.category
+      ~GAMMA_ENCODINGS.kind
+      ~GAMMA_ENCODINGS.tier
       ~GAMMA_ENCODINGS.get_labels
       ~GAMMA_ENCODINGS.get_headers
       ~GAMMA_ENCODINGS.rst_table
@@ -79,6 +81,9 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
    .. autosummary::
    
       ~GAMMA_ENCODINGS.CATEGORY
+      ~GAMMA_ENCODINGS.resolved_kind
+      ~GAMMA_ENCODINGS.resolved_tier
+      ~GAMMA_ENCODINGS.use_label
       ~GAMMA_ENCODINGS.SRGB
       ~GAMMA_ENCODINGS.LINEAR
       ~GAMMA_ENCODINGS.label
@@ -86,5 +91,8 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.bio_desc
       ~GAMMA_ENCODINGS.image
       ~GAMMA_ENCODINGS.pair
+      ~GAMMA_ENCODINGS.tier_override
+      ~GAMMA_ENCODINGS.derivation_type
+      ~GAMMA_ENCODINGS.derives_from
    
    

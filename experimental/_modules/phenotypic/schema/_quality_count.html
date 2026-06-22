@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._quality_count</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Measurement info container for expected-vs-detected colony count QC.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityInfo</span>
 
 
 <div class="viewcode-block" id="QUALITY_COUNT">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.QUALITY_COUNT">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">QUALITY_COUNT</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">QUALITY_COUNT</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measurement info for the expected-vs-detected colony count QC check.</span>
 
 <span class="sd">    Carries the per-group colony counts compared by the count quality check:</span>

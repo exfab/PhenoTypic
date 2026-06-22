@@ -646,6 +646,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
@@ -1210,6 +1211,7 @@ interpreting texture metrics in a biological context.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Use</p></th>
 </tr>
 </thead>
 <tbody>
@@ -1221,6 +1223,7 @@ sporulation zones). Reflects colony surface regularity rather than brightness.</
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Contrast</span></code></p></td>
 <td><dl class="simple">
@@ -1230,6 +1233,7 @@ and zonation amplitude.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Correlation</span></code></p></td>
 <td><dl class="simple">
@@ -1239,6 +1243,7 @@ illumination gradients and directional GLCM computation.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HaralickVariance</span></code></p></td>
 <td><dl class="simple">
@@ -1248,6 +1253,7 @@ surfaces.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InverseDifferenceMoment</span></code></p></td>
 <td><dl class="simple">
@@ -1256,6 +1262,7 @@ surfaces.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumAverage</span></code></p></td>
 <td><dl class="simple">
@@ -1265,6 +1272,7 @@ intensity metric.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SumVariance</span></code></p></td>
 <td><dl class="simple">
@@ -1273,6 +1281,7 @@ tone across the colony. Often correlated with Contrast; use comparatively within
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SumEntropy</span></code></p></td>
 <td><dl class="simple">
@@ -1281,6 +1290,7 @@ spaced rings). Indicates spatial unpredictability of summed intensities.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Entropy</span></code></p></td>
 <td><dl class="simple">
@@ -1290,6 +1300,7 @@ gray-level quantization and image dynamic range.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DiffVariance</span></code></p></td>
 <td><dl class="simple">
@@ -1298,6 +1309,7 @@ Highlights heterogeneity in edge magnitude across the colony.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DiffEntropy</span></code></p></td>
 <td><dl class="simple">
@@ -1307,6 +1319,7 @@ rather than its magnitude.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation1</span></code></p></td>
 <td><dl class="simple">
@@ -1316,6 +1329,7 @@ Direction of sign varies with implementation.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InfoCorrelation2</span></code></p></td>
 <td><dl class="simple">
@@ -1325,6 +1339,7 @@ organization missed by linear correlation.</p>
 </dd>
 </dl>
 </td>
+<td><p>Discriminative feature (Tier 3)</p></td>
 </tr>
 </tbody>
 </table>

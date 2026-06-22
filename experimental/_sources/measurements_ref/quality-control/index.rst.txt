@@ -10,6 +10,7 @@ DataFrame column labels and descriptions.
 
    QC <quality_check>
    QC_Count <quality_count>
+   QC_Occupancy <quality_occupancy>
    QC_ICC <quality_icc>
    QC_MAD <quality_mad>
    QC_SE <quality_se>

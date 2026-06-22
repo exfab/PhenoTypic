@@ -774,7 +774,9 @@
     <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Count&quot;</span>
     <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">_measurement_infoclass</span> <span class="o">=</span> <span class="n">QUALITY_COUNT</span>
+    <span class="c1"># Annotate with the base ClassVar type (not a bare assignment) so</span>
+    <span class="c1"># subclasses may override it with their own MeasurementInfo enum.</span>
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">QUALITY_COUNT</span>
 
     <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
     <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.10</span>

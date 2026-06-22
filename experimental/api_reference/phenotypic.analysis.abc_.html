@@ -656,7 +656,7 @@ variable (typically time).</p>
 <dt class="sig sig-object py" id="phenotypic.analysis.abc_.ModelFitter.loss">
 <span class="sig-name descname"><span class="pre">loss</span></span><a class="headerlink" href="#phenotypic.analysis.abc_.ModelFitter.loss" title="Link to this definition">#</a></dt>
 <dd><p>Loss calculation method passed through to
-<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares" title="(in SciPy v1.17.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.optimize.least_squares()</span></code></a>. Defaults to
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares" title="(in SciPy v1.18.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.optimize.least_squares()</span></code></a>. Defaults to
 <code class="docutils literal notranslate"><span class="pre">&quot;huber&quot;</span></code> — quadratic near zero and linear past
 <code class="docutils literal notranslate"><span class="pre">f_scale</span></code>, so the fit behaves like standard
 least-squares on inliers but downweights rare large
@@ -676,7 +676,7 @@ progressively more aggressive outlier suppression.</p>
 <dt class="sig sig-object py" id="phenotypic.analysis.abc_.ModelFitter.f_scale">
 <span class="sig-name descname"><span class="pre">f_scale</span></span><a class="headerlink" href="#phenotypic.analysis.abc_.ModelFitter.f_scale" title="Link to this definition">#</a></dt>
 <dd><p>Soft margin between inlier and outlier
-residuals handed to <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares" title="(in SciPy v1.17.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.optimize.least_squares()</span></code></a>.
+residuals handed to <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html#scipy.optimize.least_squares" title="(in SciPy v1.18.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">scipy.optimize.least_squares()</span></code></a>.
 Only affects robust <code class="docutils literal notranslate"><span class="pre">loss</span></code> choices; ignored when
 <code class="docutils literal notranslate"><span class="pre">loss=&quot;linear&quot;</span></code>. Must be positive and finite.</p>
 <dl class="field-list simple">

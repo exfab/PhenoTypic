@@ -17,6 +17,8 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       :nosignatures:
    
       ~ConstantLabels.category
+      ~ConstantLabels.kind
+      ~ConstantLabels.tier
       ~ConstantLabels.get_labels
       ~ConstantLabels.get_headers
       ~ConstantLabels.rst_table
@@ -79,10 +81,16 @@ phenotypic.sdk\_.constants\_.ConstantLabels
    .. autosummary::
    
       ~ConstantLabels.CATEGORY
+      ~ConstantLabels.resolved_kind
+      ~ConstantLabels.resolved_tier
+      ~ConstantLabels.use_label
       ~ConstantLabels.label
       ~ConstantLabels.desc
       ~ConstantLabels.bio_desc
       ~ConstantLabels.image
       ~ConstantLabels.pair
+      ~ConstantLabels.tier_override
+      ~ConstantLabels.derivation_type
+      ~ConstantLabels.derives_from
    
    

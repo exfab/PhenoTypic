@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._double_softplus_model</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Fitted parameters for the double-softplus growth model (with saturation ceiling).&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DerivedMeasure</span>
 
 
 <div class="viewcode-block" id="DOUBLE_SOFTPLUS_MODEL">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.DOUBLE_SOFTPLUS_MODEL">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">DOUBLE_SOFTPLUS_MODEL</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DOUBLE_SOFTPLUS_MODEL</span><span class="p">(</span><span class="n">DerivedMeasure</span><span class="p">):</span>
 <div class="viewcode-block" id="DOUBLE_SOFTPLUS_MODEL.category">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.DOUBLE_SOFTPLUS_MODEL.category">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -611,14 +612,19 @@
         <span class="k">return</span> <span class="s2">&quot;DoubleSoftplus&quot;</span></div>
 
 
-    <span class="n">v</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;The post-lag phase growth rate.&quot;</span><span class="p">)</span>
-    <span class="n">s0</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial size&quot;</span><span class="p">)</span>
-    <span class="n">lam</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="s2">&quot;The duration of the lag phase&quot;</span><span class="p">)</span>
-    <span class="n">alpha</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;lag phase transition sharpness&quot;</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="s2">&quot;The post-lag phase growth rate.&quot;</span><span class="p">,</span>
+              <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">s0</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;The initial size&quot;</span><span class="p">,</span>
+               <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">lam</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">,</span> <span class="s2">&quot;The duration of the lag phase&quot;</span><span class="p">,</span>
+                <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="s2">&quot;lag phase transition sharpness&quot;</span><span class="p">,</span>
+                  <span class="n">tier</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">)</span>
     <span class="n">smax</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;smax&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Carrying capacity used by the model. Either the user-provided &quot;</span>
         <span class="s2">&quot;scalar or the per-group observed maximum.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">beta</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;beta&quot;</span><span class="p">,</span>
@@ -626,6 +632,7 @@
         <span class="s2">&quot;saturation shoulder is detected and ``beta`` is ``None`` at &quot;</span>
         <span class="s2">&quot;construction; held at the user-provided scalar (or the &quot;</span>
         <span class="s2">&quot;module default) when no shoulder is present.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;parameterization&quot;</span><span class="p">,</span> <span class="n">derives_from</span><span class="o">=</span><span class="s2">&quot;SIZE&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">mode</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;mode&quot;</span><span class="p">,</span>
@@ -633,6 +640,7 @@
         <span class="s2">&quot;the user-provided or module-default value) or &#39;fitted_beta&#39; &quot;</span>
         <span class="s2">&quot;(beta fitted as a 5th free parameter when a saturation &quot;</span>
         <span class="s2">&quot;shoulder is detected).&quot;</span><span class="p">,</span>
+        <span class="n">derivation_type</span><span class="o">=</span><span class="s2">&quot;diagnostic&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

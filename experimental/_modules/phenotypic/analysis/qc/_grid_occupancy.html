@@ -1,0 +1,909 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.analysis.qc._grid_occupancy &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/analysis/qc/_grid_occupancy';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/analysis/qc/_grid_occupancy.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.analysis.qc._grid_occupancy</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.analysis.qc._grid_occupancy</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Grid-occupancy quality check.</span>
+
+<span class="sd">A metadata-driven variant of :class:`ExpectedVsDetectedCount`. Instead of</span>
+<span class="sd">comparing the raw detected row count against the expected count, it compares</span>
+<span class="sd">the number of **distinct filled grid cells** (doublets collapse to one)</span>
+<span class="sd">against the expected cell count from the user-provided layout frame, and</span>
+<span class="sd">flags plates whose occupancy falls below threshold.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.qc._expected_vs_detected</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">QUALITY_OCCUPANCY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
+
+
+<div class="viewcode-block" id="GridOccupancy">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridOccupancy</span><span class="p">(</span><span class="n">ExpectedVsDetectedCount</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag groups whose grid occupancy (filled cells / expected) is low.</span>
+
+<span class="sd">    Inherits the entire metadata-form surface of</span>
+<span class="sd">    :class:`ExpectedVsDetectedCount` — the ``metadata`` (DataFrame or</span>
+<span class="sd">    ``.csv``/``.parquet`` path) and ``metadata_source`` fields, their</span>
+<span class="sd">    path-or-frame coercion, the ``pipeline.json`` serialization round-trip</span>
+<span class="sd">    (the *source path* persists and the frame re-reads on load), and the</span>
+<span class="sd">    per-key expected-count precompute. The expected cell count for a group</span>
+<span class="sd">    is the number of metadata rows for that ``groupby`` key (one row per</span>
+<span class="sd">    expected pin position).</span>
+
+<span class="sd">    Where the parent counts ``len(group)`` (raw detections, doublets</span>
+<span class="sd">    included), this check counts ``group[cell_label].nunique()`` distinct</span>
+<span class="sd">    occupied cells, so a doublet (two colonies sharing one grid cell) still</span>
+<span class="sd">    counts once. The two columns play distinct roles:</span>
+
+<span class="sd">    * ``on`` (inherited default ``&quot;Object_Label&quot;``) is the base-class</span>
+<span class="sd">      required/guard column and the curation member value — it is unique</span>
+<span class="sd">      per colony, so it is **not** what occupancy counts over.</span>
+<span class="sd">    * ``cell_label`` (default ``&quot;Grid_RowMajorIdx&quot;``) is the grid-cell id</span>
+<span class="sd">      the occupancy ``nunique`` collapses doublets over. Counting distinct</span>
+<span class="sd">      *labels* would count colonies, not cells; counting distinct *cells*</span>
+<span class="sd">      is what makes the metric doublet-insensitive.</span>
+
+<span class="sd">    The metric is ``filled / expected``. ``_HIGHER_IS_BAD`` is ``False``: a</span>
+<span class="sd">    *lower* occupancy is worse, so a row fails when</span>
+<span class="sd">    ``metric &lt;= fail_threshold`` and warns at ``metric &lt;= warn_threshold``</span>
+<span class="sd">    (hence ``warn_threshold &gt;= fail_threshold``).</span>
+
+<span class="sd">    A group present in the measurements but absent from the metadata frame</span>
+<span class="sd">    (``expected == 0``) is recorded in :attr:`unmatched_groups` and given</span>
+<span class="sd">    ``metric = 0.0`` so it fails — mirroring the parent&#39;s &quot;force a flag on a</span>
+<span class="sd">    metadata mismatch&quot; behavior, adapted to the lower-is-bad direction. The</span>
+<span class="sd">    ``QC_Occupancy_Expected = 0`` column distinguishes such a mismatch from</span>
+<span class="sd">    a genuinely empty plate.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        metadata: Layout frame (or path) whose row count per ``groupby``</span>
+<span class="sd">            key is the expected cell count. Same semantics, coercion, and</span>
+<span class="sd">            serialization as :class:`ExpectedVsDetectedCount`.</span>
+<span class="sd">        metadata_source: JSON-serializable path handle to the layout,</span>
+<span class="sd">            captured automatically when ``metadata`` is given as a path.</span>
+<span class="sd">        groupby: Columns that define one plate. Usually</span>
+<span class="sd">            ``[&quot;Metadata_ImageFile&quot;]``. Must be present in both the</span>
+<span class="sd">            metadata frame and the measurement frame.</span>
+<span class="sd">        on: Base-class required column and curation member value. Defaults</span>
+<span class="sd">            to ``&quot;Object_Label&quot;``; occupancy does not count over it.</span>
+<span class="sd">        cell_label: Grid-cell id column whose distinct count is the filled</span>
+<span class="sd">            cell count. Defaults to ``&quot;Grid_RowMajorIdx&quot;``. Must be present</span>
+<span class="sd">            in the measurement frame passed to :meth:`analyze`.</span>
+<span class="sd">        warn_threshold: Occupancy at/below which ``Status`` becomes</span>
+<span class="sd">            ``&quot;warn&quot;``. Defaults to ``0.95``.</span>
+<span class="sd">        fail_threshold: Occupancy at/below which ``Status`` becomes</span>
+<span class="sd">            ``&quot;fail&quot;`` and ``Flag=True``. Defaults to ``0.90``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyError: If ``cell_label`` is absent from the measurement frame, or</span>
+<span class="sd">            (inherited) if any ``groupby`` column is absent from the</span>
+<span class="sd">            metadata frame.</span>
+<span class="sd">        FileNotFoundError: (inherited) If ``metadata``/``metadata_source``</span>
+<span class="sd">            is a path that does not exist.</span>
+<span class="sd">        ValueError: (inherited) If ``metadata`` is a path with an</span>
+<span class="sd">            unsupported suffix, or if neither ``metadata`` nor</span>
+<span class="sd">            ``metadata_source`` is supplied.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Basic — 96-cell metadata vs. a measurement frame with 92 colonies</span>
+<span class="sd">        but only 90 distinct filled cells (two doublets). Occupancy reads</span>
+<span class="sd">        the filled-cell count, not the colony count:</span>
+
+<span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.analysis.qc import GridOccupancy</span>
+<span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;p1.png&quot;] * 96,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
+<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;p1.png&quot;] * 92,</span>
+<span class="sd">        ...     &quot;Object_Label&quot;: list(range(92)),</span>
+<span class="sd">        ...     &quot;Grid_RowMajorIdx&quot;: list(range(90)) + [5, 17],</span>
+<span class="sd">        ... })</span>
+<span class="sd">        &gt;&gt;&gt; chk = GridOccupancy(</span>
+<span class="sd">        ...     metadata=metadata, groupby=[&quot;Metadata_ImageFile&quot;]</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; out = chk.analyze(measurements)</span>
+<span class="sd">        &gt;&gt;&gt; int(out[&quot;QC_Occupancy_Filled&quot;].iloc[0])</span>
+<span class="sd">        90</span>
+<span class="sd">        &gt;&gt;&gt; round(float(out[&quot;QC_Occupancy_Metric&quot;].iloc[0]), 4)</span>
+<span class="sd">        0.9375</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Occupancy&quot;</span>
+    <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">QUALITY_OCCUPANCY</span>
+
+    <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
+    <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span>
+    <span class="n">cell_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GridOccupancy.analyze">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy.analyze">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Guard the cell-id column, then run the inherited ``analyze``.</span>
+
+<span class="sd">        The base ``QualityCheck.analyze`` only guards ``self.on`` and</span>
+<span class="sd">        ``self.groupby``; occupancy additionally needs ``cell_label`` so it</span>
+<span class="sd">        can collapse doublets, so its absence is surfaced here before the</span>
+<span class="sd">        per-group loop runs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Measurement frame to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The augmented frame from the inherited ``analyze`` (which also</span>
+<span class="sd">            resets :attr:`unmatched_groups`).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            KeyError: If ``cell_label`` is missing from ``data``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_label</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="s2">&quot;GridOccupancy requires the cell-id column &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cell_label</span><span class="si">!r}</span><span class="s2"> in the measurement frame&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute occupancy for one group and broadcast across its rows.</span>
+
+<span class="sd">        Counts distinct ``cell_label`` values (doublet-insensitive), looks</span>
+<span class="sd">        up the group&#39;s expected cell count, and records the key tuple in</span>
+<span class="sd">        :attr:`unmatched_groups` when no metadata counterpart was found.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: One group as produced by</span>
+<span class="sd">                ``data.groupby(self.groupby, dropna=False)``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group frame (a copy) with four new columns appended:</span>
+<span class="sd">            ``QC_Occupancy_Filled``, ``QC_Occupancy_Expected``,</span>
+<span class="sd">            ``QC_Occupancy_Vacant``, ``QC_Occupancy_Metric``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filled</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cell_label</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_group_key</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_expected</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">expected</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">unmatched_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># lower-is-bad → forces a fail on metadata mismatch</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metric</span> <span class="o">=</span> <span class="n">filled</span> <span class="o">/</span> <span class="n">expected</span>
+
+        <span class="n">out</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">FILLED</span><span class="p">)]</span> <span class="o">=</span> <span class="n">filled</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">EXPECTED</span><span class="p">)]</span> <span class="o">=</span> <span class="n">expected</span>
+        <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">VACANT</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">expected</span> <span class="o">-</span> <span class="n">filled</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="GridOccupancy.dash">
+<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy.dash">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Render a horizontal bar of per-group occupancy, colored by status.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            **kwargs: Passed through to ``Figure.update_layout`` — accepted</span>
+<span class="sd">                keys are ``title`` and ``height``.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`plotly.graph_objects.Figure` with one bar trace and a</span>
+<span class="sd">            dashed reference line at ``fail_threshold``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If :meth:`analyze` has not been called yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;call analyze() first&quot;</span><span class="p">)</span>
+
+        <span class="n">metric_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()</span>
+        <span class="n">status_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()</span>
+        <span class="n">per</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="n">metric_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="n">status_col</span><span class="p">:</span> <span class="s2">&quot;first&quot;</span><span class="p">})</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">per</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">status_colors</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pass&quot;</span><span class="p">:</span> <span class="s2">&quot;#2E86AB&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;warn&quot;</span><span class="p">:</span> <span class="s2">&quot;#F4A261&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fail&quot;</span><span class="p">:</span> <span class="s2">&quot;#E63946&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">per</span><span class="p">[</span><span class="n">status_col</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">status_colors</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">&quot;#888888&quot;</span><span class="p">)</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Bar</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">per</span><span class="p">[</span><span class="n">metric_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+                <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;h&quot;</span><span class="p">,</span>
+                <span class="n">marker</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="n">colors</span><span class="o">.</span><span class="n">tolist</span><span class="p">()},</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_vline</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_threshold</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#E63946&quot;</span><span class="p">,</span> <span class="s2">&quot;dash&quot;</span><span class="p">:</span> <span class="s2">&quot;dash&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;Grid Occupancy (filled / expected cells)&quot;</span>
+            <span class="p">),</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Occupancy&quot;</span><span class="p">,</span>
+            <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;range&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]},</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">),</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">240</span><span class="p">,</span> <span class="mi">24</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">+</span> <span class="mi">80</span><span class="p">)),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

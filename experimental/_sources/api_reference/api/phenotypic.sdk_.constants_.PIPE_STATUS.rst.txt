@@ -17,6 +17,8 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       :nosignatures:
    
       ~PIPE_STATUS.category
+      ~PIPE_STATUS.kind
+      ~PIPE_STATUS.tier
       ~PIPE_STATUS.get_labels
       ~PIPE_STATUS.get_headers
       ~PIPE_STATUS.rst_table
@@ -79,6 +81,9 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
    .. autosummary::
    
       ~PIPE_STATUS.CATEGORY
+      ~PIPE_STATUS.resolved_kind
+      ~PIPE_STATUS.resolved_tier
+      ~PIPE_STATUS.use_label
       ~PIPE_STATUS.PROCESSED
       ~PIPE_STATUS.MEASURED
       ~PIPE_STATUS.label
@@ -86,5 +91,8 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.bio_desc
       ~PIPE_STATUS.image
       ~PIPE_STATUS.pair
+      ~PIPE_STATUS.tier_override
+      ~PIPE_STATUS.derivation_type
+      ~PIPE_STATUS.derives_from
    
    

@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._shape</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;The labels and descriptions of the shape measurements.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrimaryMeasure</span>
 
 
 <div class="viewcode-block" id="SHAPE">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.SHAPE">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SHAPE</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SHAPE</span><span class="p">(</span><span class="n">PrimaryMeasure</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure comprehensive morphological characteristics of detected colonies.</span>
 
 <span class="sd">    Extract geometric metrics from each colony shape: area, perimeter,</span>
@@ -620,6 +621,13 @@
         <span class="k">return</span> <span class="s2">&quot;Shape&quot;</span></div>
 
 
+<div class="viewcode-block" id="SHAPE.tier">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.SHAPE.tier">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tier</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">2</span>  <span class="c1"># default for form descriptors; size-magnitude members override via Entry(tier=1)</span></div>
+
+
     <span class="n">AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Area&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.&quot;</span><span class="p">,</span>
@@ -631,10 +639,12 @@
             <span class="s2">&quot;footprint, not colony height or cell density.&quot;</span>
         <span class="p">),</span>
         <span class="n">image</span><span class="o">=</span><span class="s2">&quot;shape/area.png&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">PERIMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Perimeter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Total length of the colony&#39;s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">CIRCULARITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Circularity&quot;</span><span class="p">,</span>
@@ -643,26 +653,32 @@
     <span class="n">CONVEX_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;ConvexArea&quot;</span><span class="p">,</span>
         <span class="s1">&#39;Area of the smallest convex polygon that completely contains the colony. Represents the colony</span><span class="se">\&#39;</span><span class="s1">s &quot;filled-in&quot; appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.&#39;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEDIAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MedianRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MEAN_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MeanRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAX_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MIN_FERET_DIAMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MinFeretDiameter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAX_FERET_DIAMETER</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MaxFeretDiameter&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">ECCENTRICITY</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Eccentricity&quot;</span><span class="p">,</span>
@@ -679,14 +695,17 @@
     <span class="n">BBOX_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;BboxArea&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MAJOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MajorAxisLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">MINOR_AXIS_LENGTH</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;MinorAxisLength&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.&quot;</span><span class="p">,</span>
+        <span class="n">tier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">COMPACTNESS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Compactness&quot;</span><span class="p">,</span>

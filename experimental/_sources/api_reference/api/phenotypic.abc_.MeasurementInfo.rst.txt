@@ -64,6 +64,8 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.format_map
       ~MeasurementInfo.maketrans
       ~MeasurementInfo.category
+      ~MeasurementInfo.kind
+      ~MeasurementInfo.tier
       ~MeasurementInfo.get_labels
       ~MeasurementInfo.get_headers
       ~MeasurementInfo.rst_table
@@ -79,10 +81,16 @@ phenotypic.abc\_.MeasurementInfo
    .. autosummary::
    
       ~MeasurementInfo.CATEGORY
+      ~MeasurementInfo.resolved_kind
+      ~MeasurementInfo.resolved_tier
+      ~MeasurementInfo.use_label
       ~MeasurementInfo.label
       ~MeasurementInfo.desc
       ~MeasurementInfo.bio_desc
       ~MeasurementInfo.image
       ~MeasurementInfo.pair
+      ~MeasurementInfo.tier_override
+      ~MeasurementInfo.derivation_type
+      ~MeasurementInfo.derives_from
    
    

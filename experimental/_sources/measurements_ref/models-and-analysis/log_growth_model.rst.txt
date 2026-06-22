@@ -8,17 +8,25 @@ Python object: ``phenotypic.schema._log_growth_model.LOG_GROWTH_MODEL``
 
    * - Column label
      - Description
+     - Use
    * - ``LogGrowthModel_r``
      - The intrinsic growth rate
+     - Direct phenotype (Tier 1)
    * - ``LogGrowthModel_K``
      - The carrying capacity
+     - Direct phenotype (Tier 1)
    * - ``LogGrowthModel_N0``
      - The initial number of the colony size metric being fitted
+     - Direct phenotype (Tier 1)
    * - ``LogGrowthModel_lambda``
      - The regularization factor applied to the max specific growth rate and initial population size
+     - 
    * - ``LogGrowthModel_beta``
      - The penalty factor applied to relative difference of the carrying capacity from the largest measurement
+     - 
    * - ``LogGrowthModel_µmax``
      - The growth rate of the colony calculated as (K*r)/4
+     - Direct phenotype (Tier 1)
    * - ``LogGrowthModel_Kmax``
      - The upper bound of the carrying capacity for model fitting
+     - 

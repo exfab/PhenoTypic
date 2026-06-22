@@ -598,12 +598,13 @@
   <h1>Source code for phenotypic.schema._intensity</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Per-object grayscale intensity summary statistics.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span><span class="p">,</span> <span class="n">MeasurementInfo</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DirectPhenotype</span>
 
 
 <div class="viewcode-block" id="INTENSITY">
 <a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.schema.INTENSITY">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">INTENSITY</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">INTENSITY</span><span class="p">(</span><span class="n">DirectPhenotype</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure grayscale intensity statistics of detected colonies.</span>
 
 <span class="sd">    Compute per-colony intensity metrics from the grayscale channel:</span>
