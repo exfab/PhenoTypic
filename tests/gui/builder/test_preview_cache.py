@@ -1,5 +1,6 @@
 """Disk cache primitives: scope dirs, manifest round-trip, lifecycle."""
 from phenotypic.gui.builder import _preview_cache as pc
+from phenotypic.gui.builder._state import BlockNode, _DagBuilderScope, _new_block_id
 
 
 def test_scope_hash_root_vs_nested():
@@ -45,3 +46,25 @@ def test_init_cache_idempotent(tmp_path, monkeypatch):
     pc.init_cache()
     assert pc._atexit_registered is True
     assert pc.preview_cache_root().is_dir()
+
+
+def test_scope_signature_changes_when_nested_scope_changes():
+    nested = _DagBuilderScope()
+    container = BlockNode(
+        block_id=_new_block_id(),
+        class_name="ImagePipeline",
+        params={},
+        nested=nested,
+    )
+    scope = _DagBuilderScope(blocks=[container], edges=[])
+    before = pc._scope_signature(scope)
+
+    nested.blocks.append(
+        BlockNode(
+            block_id=_new_block_id(),
+            class_name="GaussianBlur",
+            params={"sigma": 1.0},
+        )
+    )
+
+    assert pc._scope_signature(scope) != before

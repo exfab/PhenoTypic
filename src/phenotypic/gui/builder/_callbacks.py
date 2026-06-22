@@ -6613,7 +6613,7 @@ def register_callbacks(app: dash.Dash) -> None:
         prevent_initial_call=True,
     )
     def close_node_preview(_clicks):
-        return (False,)
+        return False
 
     app.clientside_callback(
         """

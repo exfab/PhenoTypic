@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -76,7 +77,13 @@ def stage_channel_png(scope_dir: Path, block_id: str, channel: str,
         return png_path
     rgb = _channel_to_rgb_uint8(hdf_path, channel)
     png_path.parent.mkdir(parents=True, exist_ok=True)
-    PILImage.fromarray(rgb, mode="RGB").save(png_path, format="PNG")
+    tmp_path = png_path.with_name(f".{png_path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        PILImage.fromarray(rgb, mode="RGB").save(tmp_path, format="PNG")
+        tmp_path.replace(png_path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
     return png_path
 
 

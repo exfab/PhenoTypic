@@ -25,6 +25,13 @@ import phenotypic
 
 __version__ = phenotypic.__version__
 
+_LEGACY_CLASS_ALIASES = {
+    # Pre-0.17 serialized pipelines used the original BM3D operation name.
+    # Resolve it here instead of exporting a module alias that would appear in
+    # the GUI operation registry as a duplicate palette entry.
+    "BM3DDenoiser": ("phenotypic.enhance", "EnhanceBlockMatch"),
+}
+
 
 @dataclass(frozen=True)
 class PipelineLoadWarning:
@@ -588,6 +595,11 @@ class SerializablePipeline(NapariPipelineViewer):
             The class object if found, None otherwise.
         """
         import phenotypic
+
+        if class_name in _LEGACY_CLASS_ALIASES:
+            module_name, live_name = _LEGACY_CLASS_ALIASES[class_name]
+            module = importlib.import_module(module_name)
+            return getattr(module, live_name)
 
         # First try the main phenotypic namespace
         if hasattr(phenotypic, class_name):

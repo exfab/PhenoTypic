@@ -82,11 +82,12 @@ severity.
   load-warning instead of breaking the boot. The warning banner at
   the top of the QC tab lists the affected `instance_id` and the
   underlying error.
-- **Recipe sidecar:** every add / edit / delete writes
-  `<output>/.viewer_cache/qc_recipe.json`. The CLI does **not** touch
-  this file — concurrent viewer sessions on the same output dir is
-  an unsupported configuration. If you reopen the viewer on a
-  different machine, the recipe travels with the output directory.
+- **QC recipe:** every add / edit / delete writes the `qc` array in the
+  pipeline config under `<output>/deliverables/` (`pipeline.json.pht-pipe`
+  on current runs). A legacy `<output>/.viewer_cache/qc_recipe.json`
+  sidecar is migrated once at viewer startup. Concurrent viewer sessions
+  on the same output dir are still unsupported; if you reopen the viewer
+  on a different machine, the recipe travels with the output directory.
 - **Severity legend:** check-side `severity_warn` / `severity_fail`
   thresholds default to `0.05` / `0.10`. Tune them on the per-check
   edit modal to match your QC tolerance.

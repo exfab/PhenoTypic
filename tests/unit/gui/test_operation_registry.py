@@ -90,6 +90,11 @@ class TestOperationRegistry:
         assert "GaussianBlur" in enhancer_names
         assert "EnhanceLocalContrast" in enhancer_names
 
+    def test_legacy_bm3d_alias_not_registered(self, registry):
+        """Deserializer aliases must not appear as duplicate palette entries."""
+        assert registry.get("EnhanceBlockMatch") is not None
+        assert registry.get("BM3DDenoiser") is None
+
     def test_get_operation(self, registry):
         """Test getting specific operation by name."""
         info = registry.get("GaussianBlur")

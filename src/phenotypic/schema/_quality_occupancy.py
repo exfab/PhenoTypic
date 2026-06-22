@@ -1,9 +1,10 @@
 """Measurement info container for the grid-occupancy QC check."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_OCCUPANCY(MeasurementInfo):
+class QUALITY_OCCUPANCY(QualityInfo):
     """Measurement info for the grid-occupancy QC check.
 
     Carries the per-group cell-occupancy counts compared by the occupancy
