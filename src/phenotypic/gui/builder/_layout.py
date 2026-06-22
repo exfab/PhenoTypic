@@ -33,6 +33,7 @@ from phenotypic.gui._design import (
     COLOR_BLUE,
     COLOR_BORDER,
     COLOR_GOLD,
+    COLOR_IMAGE_STAGE_DARK,
     COLOR_MUTED,
     COLOR_NAVY,
     COLOR_SURFACE,
@@ -2040,6 +2041,52 @@ def build_confirm_delete_modal() -> dbc.Modal:
                         n_clicks=0,
                     ),
                 ]
+            ),
+        ],
+    )
+
+
+def build_node_preview_modal() -> dbc.Modal:
+    """Blocking modal hosting a zoomable OSD viewer with a layer toggle."""
+    return dbc.Modal(
+        id=ids.MODAL_NODE_PREVIEW,
+        is_open=False,
+        size="xl",
+        backdrop="static",
+        keyboard=False,
+        scrollable=False,
+        children=[
+            dbc.ModalHeader(dbc.ModalTitle("Preview", id=ids.MODAL_NODE_PREVIEW_TITLE)),
+            dbc.ModalBody(
+                [
+                    dbc.RadioItems(
+                        id=ids.PREVIEW_LAYER_RADIO,
+                        options=[],
+                        value=None,
+                        inline=True,
+                        className="mb-2",
+                    ),
+                    dcc.Loading(
+                        html.Div(
+                            id=ids.PREVIEW_OSD_DIV,
+                            className="node-preview-osd",
+                            style={
+                                "height": "70vh",
+                                "width": "100%",
+                                "background": COLOR_IMAGE_STAGE_DARK,
+                            },
+                            **{"data-testid": "node-preview-osd-canvas"},  # type: ignore[arg-type]
+                        ),
+                    ),
+                    html.Small(id=ids.PREVIEW_CAPTION, className="text-muted d-block mt-2"),
+                    dcc.Store(id=ids.PREVIEW_DZI_URL_STORE, data=None),
+                    dcc.Store(id=ids.STORE_PREVIEW_TARGET, data=None),
+                    dcc.Store(id=ids.PREVIEW_OSD_MOUNT_TRIGGER, data=None),
+                ]
+            ),
+            dbc.ModalFooter(
+                dbc.Button("Close", id="btn-preview-close", color="secondary",
+                           outline=True, n_clicks=0)
             ),
         ],
     )
@@ -4514,6 +4561,7 @@ def build_app_layout(
             load_picker_modal(image_root),
             load_image_modal(image_root),
             build_point_picker_modal(),
+            build_node_preview_modal(),
             # Confirm-delete modal mounted once at app boot; visibility
             # driven by ``STORE_BUILDER_STATE.pending_delete_block_id``.
             # The block-delete dispatcher wires the open / close

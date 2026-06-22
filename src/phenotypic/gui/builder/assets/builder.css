@@ -1415,6 +1415,7 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-port-button,
 .linear-help-button,
+.linear-preview-button,
 .linear-side-action,
 .linear-port-menu-action {
     border-radius: var(--radius-sm);
@@ -1509,7 +1510,8 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-port-menu-action,
 .linear-side-action,
-.linear-help-button {
+.linear-help-button,
+.linear-preview-button {
     border: 1px solid var(--color-border);
     background: var(--color-white);
     color: var(--color-navy);
@@ -1520,7 +1522,8 @@ code, pre, .text-monospace, .font-monospace {
 
 .linear-port-menu-action:hover,
 .linear-side-action:hover,
-.linear-help-button:hover {
+.linear-help-button:hover,
+.linear-preview-button:hover {
     border-color: var(--color-blue);
     color: var(--color-blue);
     background: rgba(27, 117, 188, 0.04);
@@ -1532,7 +1535,8 @@ code, pre, .text-monospace, .font-monospace {
     background: rgba(218, 60, 43, 0.06);
 }
 
-.linear-help-button {
+.linear-help-button,
+.linear-preview-button {
     flex: 0 0 24px;
     width: 24px;
     min-width: 24px;
@@ -1712,6 +1716,7 @@ code, pre, .text-monospace, .font-monospace {
     .linear-port-button,
     .linear-unsupported-export-action,
     .linear-help-button,
+    .linear-preview-button,
     .linear-map-zoom-control,
     .linear-port-menu-close,
     .linear-side-drill-action,

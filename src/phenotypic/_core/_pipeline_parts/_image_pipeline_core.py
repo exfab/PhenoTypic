@@ -887,6 +887,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         inplace: bool = False,
         reset: Optional[bool] = None,
         output_dir: Optional[Union[str, Path]] = None,
+        *,
+        full_layers: bool = False,
     ) -> IntermediateResult:
         """Apply the pipeline and capture a snapshot of the image after each operation.
 
@@ -905,6 +907,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 directory (created automatically) and the corresponding dict
                 value is set to ``None`` to conserve memory.  When ``None``,
                 intermediates are kept in memory as ``Image`` copies.
+            full_layers: When ``True`` and *output_dir* is set, each
+                non-read-only operation's full image state is written as a
+                complete schema-v2 snapshot via ``save2hdf5`` (all layers +
+                class/grid metadata) instead of the delta layout. Used by the
+                builder's node-preview cache so any node's HDF reconstructs a
+                faithful ``Image``/``GridImage``. Defaults to ``False``.
 
         Returns:
             IntermediateResult: A named tuple containing the final image and a
@@ -923,11 +931,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         intermediates: Dict[str, Optional[Image]] = {}
 
         if output_dir is not None:
-            # Save initial base with all layers (pre-pipeline state)
-            _all_layers = ("rgb", "gray", "detect_mat", "objmap")
-            img.copy().save_intermediate_layers(
-                output_dir / "base_00.h5", layers=_all_layers,
-            )
+            # Save initial base (pre-pipeline state)
+            if full_layers:
+                img.copy().save2hdf5(output_dir / "base_00.h5")
+            else:
+                _all_layers = ("rgb", "gray", "detect_mat", "objmap")
+                img.copy().save_intermediate_layers(
+                    output_dir / "base_00.h5", layers=_all_layers,
+                )
 
         def _capture(
             i: int,
@@ -939,7 +950,11 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 layers = _layers_modified_by(operation)
 
                 if layers is None:
-                    # Read-only op (MeasureFeatures, GridFinder): no file
+                    # Read-only op (MeasureFeatures): no file
+                    intermediates[key] = None
+                elif full_layers:
+                    # Faithful full v2 snapshot (all layers + class/grid attrs)
+                    current.copy().save2hdf5(output_dir / f"{i:02d}_{key}.h5")
                     intermediates[key] = None
                 elif len(layers) == 4:
                     # Corrector: emit a new base with all layers
