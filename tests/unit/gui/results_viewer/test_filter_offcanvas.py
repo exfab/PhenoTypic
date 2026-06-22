@@ -33,16 +33,69 @@ class TestActiveFilterCount:
         assert active_filter_count([]) == 0
         assert active_filter_count(None) == 0
 
-    def test_counts_only_rows_with_a_column(self) -> None:
+    def test_counts_only_rows_with_a_usable_constraint(self) -> None:
         spec = [
             {"id": "a", "column": "Metadata_Dataset", "values": ["WT"]},
             {"id": "b", "column": "", "values": []},  # unconfigured row
             {"id": "c", "column": "Grid_RowNum", "values": []},  # column, no values
         ]
-        assert active_filter_count(spec) == 2
+        assert active_filter_count(spec) == 1
 
     def test_ignores_malformed_entries(self) -> None:
         assert active_filter_count(["junk", {"values": []}, {"column": "  "}]) == 0
+
+    def test_counts_configured_range_and_contains_rows(self) -> None:
+        spec = [
+            {"id": "a", "column": "Size_Area", "method": "range",
+             "range_min": 100, "range_max": None},
+            {"id": "b", "column": "Metadata_ImageFile", "method": "contains",
+             "text_pattern": "plate"},
+            {"id": "c", "column": "Size_Area", "method": "range"},  # unset → 0
+            {"id": "d", "column": "", "method": "is_any_of", "values": ["x"]},
+        ]
+        assert active_filter_count(spec) == 2
+
+
+class TestRowIsActive:
+    def test_list_methods_need_values(self) -> None:
+        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+
+        assert row_is_active({"column": "a", "method": "is_any_of", "values": ["x"]})
+        assert not row_is_active({"column": "a", "method": "is_any_of", "values": []})
+        assert row_is_active({"column": "a", "method": "is_none_of", "values": ["x"]})
+
+    def test_range_needs_a_bound(self) -> None:
+        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+
+        assert row_is_active({"column": "a", "method": "range", "range_min": 1})
+        assert row_is_active({"column": "a", "method": "range", "range_max": 9})
+        assert not row_is_active({"column": "a", "method": "range"})
+
+    def test_compare_needs_op_and_value(self) -> None:
+        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+
+        assert row_is_active(
+            {"column": "a", "method": "compare", "compare_op": ">", "compare_value": 1}
+        )
+        assert not row_is_active(
+            {"column": "a", "method": "compare", "compare_op": "~", "compare_value": 1}
+        )
+        assert not row_is_active(
+            {"column": "a", "method": "compare", "compare_op": ">"}
+        )
+
+    def test_contains_needs_nonblank_pattern(self) -> None:
+        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+
+        assert row_is_active({"column": "a", "method": "contains", "text_pattern": "x"})
+        assert not row_is_active(
+            {"column": "a", "method": "contains", "text_pattern": "  "}
+        )
+
+    def test_no_column_is_inactive(self) -> None:
+        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+
+        assert not row_is_active({"column": "", "method": "is_any_of", "values": ["x"]})
 
 
 class TestBadge:
@@ -81,11 +134,16 @@ def _iter_components(component):
 def test_bulk_paste_popover_opens_left() -> None:
     """The per-row bulk-paste popover opens leftward so it stays on-screen
     inside the right-docked offcanvas."""
-    from phenotypic.gui.results_viewer._filter_panel import _render_filter_row
+    from phenotypic.gui.results_viewer._filter_panel import (
+        _normalise_spec,
+        _render_filter_row,
+    )
 
-    row = _render_filter_row("idx1", "Metadata_Dataset", ["WT"], [])
+    row = _normalise_spec([{"id": "idx1", "column": "Metadata_Dataset",
+                            "values": ["WT"]}])[0]
+    node = _render_filter_row("idx1", row, [], is_numeric=False)
     popovers = [
-        n for n in _iter_components(row) if getattr(n, "_type", None) == "Popover"
+        n for n in _iter_components(node) if getattr(n, "_type", None) == "Popover"
     ]
     assert popovers, "expected a bulk-paste popover in the rendered row"
     assert all(getattr(p, "placement", None) == "left" for p in popovers)

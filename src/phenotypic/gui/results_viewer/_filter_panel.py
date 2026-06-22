@@ -42,7 +42,18 @@ from phenotypic.gui._design import (
     OI_VERMILION_TEXT,
 )
 from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._filter_state import FilterSpec
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    FilterRow,
+    FilterSpec,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    VALID_METHODS,
+    _coerce_float,
+)
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -63,6 +74,96 @@ _MAX_PASTE_PREVIEW_CHIPS = 200
 # the textarea before clicking Apply again. This is simpler than a
 # Preview→Apply two-stage and matches the standard "submit-with-feedback"
 # pattern used elsewhere in the project's Dash UIs.
+
+
+# Canonical empty payload for every method field, used by _blank_row and
+# the per-method setters to reset a row when its method or column changes.
+_EMPTY_PAYLOAD: dict[str, Any] = {
+    "values": [],
+    "range_min": None,
+    "range_max": None,
+    "compare_op": None,
+    "compare_value": None,
+    "text_pattern": "",
+    "text_regex": False,
+    "text_case_sensitive": False,
+}
+
+
+def _blank_row(column: str = "") -> dict[str, Any]:
+    """Return a fresh, fully-defaulted row dict with a new uuid id."""
+    return {
+        "id": uuid.uuid4().hex,
+        "column": column,
+        "method": METHOD_IS_ANY_OF,
+        **{k: (list(v) if isinstance(v, list) else v) for k, v in _EMPTY_PAYLOAD.items()},
+    }
+
+
+def _reset_payload(row: dict[str, Any]) -> None:
+    """Clear every method-specific field on ``row`` in place."""
+    for key, empty in _EMPTY_PAYLOAD.items():
+        row[key] = list(empty) if isinstance(empty, list) else empty
+
+
+def _find(rows: list[dict[str, Any]], idx: str) -> dict[str, Any] | None:
+    return next((r for r in rows if r.get("id") == idx), None)
+
+
+def set_row_method(
+    rows: list[dict[str, Any]], idx: str, method: str
+) -> list[dict[str, Any]]:
+    """Set a row's method and reset its payload (cached values are stale)."""
+    if method not in VALID_METHODS:
+        method = METHOD_IS_ANY_OF
+    row = _find(rows, idx)
+    if row is not None:
+        row["method"] = method
+        _reset_payload(row)
+    return rows
+
+
+def set_row_range(
+    rows: list[dict[str, Any]], idx: str, lo: Any, hi: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["range_min"] = _coerce_float(lo)
+        row["range_max"] = _coerce_float(hi)
+    return rows
+
+
+def set_row_compare(
+    rows: list[dict[str, Any]], idx: str, op: Any, value: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["compare_op"] = op if op in COMPARE_OPS else None
+        row["compare_value"] = _coerce_float(value)
+    return rows
+
+
+def set_row_text(
+    rows: list[dict[str, Any]], idx: str, pattern: Any, *, regex: Any, case: Any
+) -> list[dict[str, Any]]:
+    row = _find(rows, idx)
+    if row is not None:
+        row["text_pattern"] = str(pattern or "")
+        row["text_regex"] = bool(regex)
+        row["text_case_sensitive"] = bool(case)
+    return rows
+
+
+# Human-readable labels for each filter method, in dropdown display order.
+_METHOD_LABELS: list[tuple[str, str]] = [
+    (METHOD_IS_ANY_OF, "Is any of"),
+    (METHOD_IS_NONE_OF, "Is none of"),
+    (METHOD_RANGE, "Range (between)"),
+    (METHOD_COMPARE, "Compare"),
+    (METHOD_CONTAINS, "Contains"),
+]
+# Methods that only make sense on a numeric column; disabled otherwise.
+_NUMERIC_ONLY_METHODS = {METHOD_RANGE, METHOD_COMPARE}
 
 
 # ---------------------------------------------------------------------------
@@ -145,12 +246,15 @@ def layout(output_root: OutputRoot) -> Component:
 
 
 def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
-    """Coerce the store payload into a list of full row dicts.
+    """Coerce the store payload into a list of full, defaulted row dicts.
 
-    Each row is guaranteed to have ``id`` (uuid hex), ``column`` (str),
-    and ``values`` (list[str]) keys. Malformed entries are dropped; rows
-    missing an ``id`` get a fresh one (covers the cold-start case where
-    ``STORE_FILTER_SPEC`` is initialised to ``[]``).
+    Each row gains ``id``, ``column``, ``method`` (default is_any_of), and
+    every method payload field. Malformed (non-dict) entries are dropped;
+    legacy rows (``{column, values}`` with no ``method``) are backfilled.
+
+    Field coercion is delegated to :meth:`FilterRow.from_dict` (the single
+    source of truth for the flat row shape); this helper only layers on the
+    sidebar-only ``id`` key, which the pure data layer doesn't carry.
     """
     if not isinstance(stored, list):
         return []
@@ -158,13 +262,9 @@ def _normalise_spec(stored: Any) -> list[dict[str, Any]]:
     for entry in stored:
         if not isinstance(entry, dict):
             continue
-        row_id = entry.get("id") or uuid.uuid4().hex
-        column = str(entry.get("column", "") or "")
-        raw_values = entry.get("values") or []
-        if not isinstance(raw_values, list):
-            raw_values = []
-        values = [str(v) for v in raw_values]
-        rows.append({"id": row_id, "column": column, "values": values})
+        row = FilterRow.from_dict(entry).to_dict()
+        row["id"] = entry.get("id") or uuid.uuid4().hex
+        rows.append(row)
     return rows
 
 
@@ -270,35 +370,44 @@ def _render_paste_chips(matched: list[str], unmatched: list[str]) -> list[Compon
 
 
 def _render_filter_rows(
-    rows: list[dict[str, Any]], df: pl.DataFrame
+    rows: list[dict[str, Any]], df: pl.DataFrame, output_root: OutputRoot
 ) -> list[Component]:
     """Render the dynamic filter rows for the rows-container."""
     column_options = _column_options(df)
     children: list[Component] = []
     for row in rows:
-        idx = row["id"]
         column = row["column"]
-        values = row["values"]
-        children.append(_render_filter_row(idx, column, values, column_options))
+        is_numeric = bool(column) and output_root.is_numeric_column(column)
+        children.append(
+            _render_filter_row(row["id"], row, column_options, is_numeric=is_numeric)
+        )
     return children
 
 
-def _render_filter_row(
-    idx: str,
-    column: str,
-    values: list[str],
-    column_options: list[dict[str, str]],
+def _build_method_dropdown(
+    idx: str, method: str, *, is_numeric: bool
 ) -> Component:
-    """Build a single filter-row component tree."""
-    column_dropdown = dcc.Dropdown(
-        id=ids.filter_row_column_id(idx),
-        options=column_options,
-        value=column or None,
-        searchable=True,
+    """Method selector; range/compare options disabled for non-numeric cols."""
+    options = [
+        {
+            "label": label,
+            "value": value,
+            "disabled": (value in _NUMERIC_ONLY_METHODS and not is_numeric),
+        }
+        for value, label in _METHOD_LABELS
+    ]
+    return dcc.Dropdown(
+        id=ids.filter_row_method_id(idx),
+        options=options,
+        value=method or METHOD_IS_ANY_OF,
         clearable=False,
-        placeholder="column",
+        searchable=False,
+        className="mb-2",
     )
 
+
+def _build_list_controls(idx: str, values: list[str]) -> list[Component]:
+    """The shared multi-select + bulk-paste controls (is_any_of / is_none_of)."""
     values_dropdown = dcc.Dropdown(
         id=ids.filter_row_values_id(idx),
         options=[{"label": v, "value": v} for v in values],
@@ -306,7 +415,6 @@ def _render_filter_row(
         multi=True,
         placeholder="values",
     )
-
     paste_button = dbc.Button(
         "Paste",
         id=ids.filter_row_paste_btn_id(idx),
@@ -315,7 +423,6 @@ def _render_filter_row(
         size="sm",
         n_clicks=0,
     )
-
     paste_popover = dbc.Popover(
         dbc.PopoverBody(
             [
@@ -352,6 +459,126 @@ def _render_filter_row(
         trigger=None,
         style={"minWidth": "20rem", "maxWidth": "28rem"},
     )
+    return [
+        html.Div(values_dropdown, className="mb-2"),
+        html.Div(paste_button, className="d-flex gap-1"),
+        paste_popover,
+    ]
+
+
+def _build_range_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        html.Div(
+            [
+                dcc.Input(
+                    id=ids.filter_row_range_min_id(idx),
+                    type="number",
+                    value=row["range_min"],
+                    placeholder="min",
+                    className="form-control form-control-sm",
+                    style={"width": "45%"},
+                ),
+                html.Span("–", className="mx-1"),
+                dcc.Input(
+                    id=ids.filter_row_range_max_id(idx),
+                    type="number",
+                    value=row["range_max"],
+                    placeholder="max",
+                    className="form-control form-control-sm",
+                    style={"width": "45%"},
+                ),
+            ],
+            className="d-flex align-items-center mb-2",
+        )
+    ]
+
+
+def _build_compare_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        html.Div(
+            [
+                dcc.Dropdown(
+                    id=ids.filter_row_compare_op_id(idx),
+                    options=[{"label": op, "value": op} for op in (">", ">=", "<", "<=")],
+                    value=row["compare_op"],
+                    clearable=False,
+                    searchable=False,
+                    placeholder="op",
+                    style={"width": "40%"},
+                ),
+                dcc.Input(
+                    id=ids.filter_row_compare_value_id(idx),
+                    type="number",
+                    value=row["compare_value"],
+                    placeholder="value",
+                    className="form-control form-control-sm ms-1",
+                    style={"width": "55%"},
+                ),
+            ],
+            className="d-flex align-items-center mb-2",
+        )
+    ]
+
+
+def _build_contains_controls(idx: str, row: dict[str, Any]) -> list[Component]:
+    return [
+        dbc.Input(
+            id=ids.filter_row_text_pattern_id(idx),
+            type="text",
+            value=row["text_pattern"],
+            placeholder="contains…",
+            size="sm",
+            className="mb-2",
+        ),
+        html.Div(
+            [
+                dbc.Checkbox(
+                    id=ids.filter_row_text_regex_id(idx),
+                    label="regex",
+                    value=row["text_regex"],
+                    className="me-3",
+                ),
+                dbc.Checkbox(
+                    id=ids.filter_row_text_case_id(idx),
+                    label="case-sensitive",
+                    value=row["text_case_sensitive"],
+                ),
+            ],
+            className="d-flex small mb-2",
+        ),
+    ]
+
+
+def _render_filter_row(
+    idx: str,
+    row: dict[str, Any],
+    column_options: list[dict[str, str]],
+    *,
+    is_numeric: bool,
+) -> Component:
+    """Build a single filter-row component tree for the row's active method."""
+    column = row["column"]
+    method = row["method"]
+
+    column_dropdown = dcc.Dropdown(
+        id=ids.filter_row_column_id(idx),
+        options=column_options,
+        value=column or None,
+        searchable=True,
+        clearable=False,
+        placeholder="column",
+        className="mb-2",
+    )
+    method_dropdown = _build_method_dropdown(idx, method, is_numeric=is_numeric)
+
+    if method == METHOD_RANGE:
+        method_controls = _build_range_controls(idx, row)
+    elif method == METHOD_COMPARE:
+        method_controls = _build_compare_controls(idx, row)
+    elif method == METHOD_CONTAINS:
+        method_controls = _build_contains_controls(idx, row)
+    else:  # is_any_of / is_none_of
+        method_controls = _build_list_controls(idx, row["values"])
 
     remove_button = dbc.Button(
         "✕",
@@ -365,13 +592,10 @@ def _render_filter_row(
 
     return html.Div(
         [
-            html.Div(column_dropdown, className="mb-2"),
-            html.Div(values_dropdown, className="mb-2"),
-            html.Div(
-                [paste_button, remove_button],
-                className="d-flex gap-1 justify-content-start",
-            ),
-            paste_popover,
+            html.Div(column_dropdown),
+            method_dropdown,
+            *method_controls,
+            html.Div(remove_button, className="d-flex justify-content-end"),
         ],
         id=ids.filter_row_id(idx),
         className="filter-row mb-2",
@@ -439,7 +663,7 @@ def register_callbacks(
         """
         del n_clicks
         rows = _normalise_spec(stored)
-        rows.append({"id": uuid.uuid4().hex, "column": "", "values": []})
+        rows.append(_blank_row())
         return rows
 
     # --- 2. Render filter rows -------------------------------------------
@@ -451,7 +675,7 @@ def register_callbacks(
     def _render_rows(stored: Any) -> list[Component]:
         """Render one component tree per row in the spec store."""
         rows = _normalise_spec(stored)
-        return _render_filter_rows(rows, df)
+        return _render_filter_rows(rows, df, output_root)
 
     # --- 3. Column dropdown → spec ---------------------------------------
 
@@ -483,7 +707,11 @@ def register_callbacks(
             new_column = new_by_id.get(row["id"], row["column"])
             if new_column != row["column"]:
                 row["column"] = new_column
-                row["values"] = []
+                _reset_payload(row)
+                if row["method"] in _NUMERIC_ONLY_METHODS and not (
+                    new_column and output_root.is_numeric_column(new_column)
+                ):
+                    row["method"] = METHOD_IS_ANY_OF
                 changed = True
         if not changed:
             return no_update
@@ -522,6 +750,127 @@ def register_callbacks(
         if not changed:
             return no_update
         return rows
+
+    # --- Method dropdown → spec (resets payload) -------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-method", "index": ALL}, "value"),
+        State({"type": "filter-row-method", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_methods(
+        methods: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, method in zip(component_ids, methods, strict=False):
+            idx = comp_id["index"]
+            current = _find(rows, idx)
+            new_method = method or METHOD_IS_ANY_OF
+            if current is not None and current["method"] != new_method:
+                set_row_method(rows, idx, new_method)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Range inputs → spec ---------------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-range-min", "index": ALL}, "value"),
+        Input({"type": "filter-row-range-max", "index": ALL}, "value"),
+        State({"type": "filter-row-range-min", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_ranges(
+        mins: list[Any],
+        maxes: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, lo, hi in zip(component_ids, mins, maxes, strict=False):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_lo, new_hi = _coerce_float(lo), _coerce_float(hi)
+            if row["range_min"] != new_lo or row["range_max"] != new_hi:
+                set_row_range(rows, idx, lo, hi)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Compare op/value → spec -----------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-compare-op", "index": ALL}, "value"),
+        Input({"type": "filter-row-compare-value", "index": ALL}, "value"),
+        State({"type": "filter-row-compare-op", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_compares(
+        ops: list[Any],
+        vals: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, op, value in zip(component_ids, ops, vals, strict=False):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_op = op if op in COMPARE_OPS else None
+            new_val = _coerce_float(value)
+            if row["compare_op"] != new_op or row["compare_value"] != new_val:
+                set_row_compare(rows, idx, op, value)
+                changed = True
+        return rows if changed else no_update
+
+    # --- Contains text/flags → spec --------------------------------------
+
+    @app.callback(
+        Output(ids.STORE_FILTER_SPEC, "data", allow_duplicate=True),
+        Input({"type": "filter-row-text-pattern", "index": ALL}, "value"),
+        Input({"type": "filter-row-text-regex", "index": ALL}, "value"),
+        Input({"type": "filter-row-text-case", "index": ALL}, "value"),
+        State({"type": "filter-row-text-pattern", "index": ALL}, "id"),
+        State(ids.STORE_FILTER_SPEC, "data"),
+        prevent_initial_call=True,
+    )
+    def _update_texts(
+        patterns: list[Any],
+        regexes: list[Any],
+        cases: list[Any],
+        component_ids: list[dict[str, str]],
+        stored: Any,
+    ) -> Any:
+        rows = _normalise_spec(stored)
+        changed = False
+        for comp_id, pattern, regex, case in zip(
+            component_ids, patterns, regexes, cases, strict=False
+        ):
+            idx = comp_id["index"]
+            row = _find(rows, idx)
+            if row is None:
+                continue
+            new_pat = str(pattern or "")
+            if (
+                row["text_pattern"] != new_pat
+                or row["text_regex"] != bool(regex)
+                or row["text_case_sensitive"] != bool(case)
+            ):
+                set_row_text(rows, idx, pattern, regex=regex, case=case)
+                changed = True
+        return rows if changed else no_update
 
     # --- 5. Populate values options reactively ---------------------------
 

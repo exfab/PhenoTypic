@@ -177,3 +177,190 @@ def test_string_coercion_uses_polars_default_cast() -> None:
     ).apply_to(df)
     assert matches.height == 2
     assert sorted(matches.get_column("Size_Area").to_list()) == [100.0, 200.0]
+
+
+from phenotypic.gui.results_viewer._filter_state import (
+    COMPARE_OPS,
+    METHOD_COMPARE,
+    METHOD_CONTAINS,
+    METHOD_IS_ANY_OF,
+    METHOD_IS_NONE_OF,
+    METHOD_RANGE,
+    _coerce_float,
+)
+
+
+def test_legacy_row_defaults_to_is_any_of() -> None:
+    """A pre-method store row keeps working as an is_any_of list filter."""
+    spec = FilterSpec.from_store([{"column": "a", "values": ["x"]}])
+    assert spec.rows[0].method == METHOD_IS_ANY_OF
+    assert spec.rows[0].values == ["x"]
+
+
+def test_coerce_float_handles_blanks_and_numbers() -> None:
+    assert _coerce_float("") is None
+    assert _coerce_float(None) is None
+    assert _coerce_float("3.5") == 3.5
+    assert _coerce_float(7) == 7.0
+    assert _coerce_float("not-a-number") is None
+
+
+def test_from_store_reads_range_and_compare_and_contains() -> None:
+    payload = [
+        {"column": "Size_Area", "method": METHOD_RANGE,
+         "range_min": "100", "range_max": "5000"},
+        {"column": "Shape_Circularity", "method": METHOD_COMPARE,
+         "compare_op": ">=", "compare_value": "0.85"},
+        {"column": "Metadata_ImageFile", "method": METHOD_CONTAINS,
+         "text_pattern": "plate_02", "text_regex": False,
+         "text_case_sensitive": True},
+    ]
+    spec = FilterSpec.from_store(payload)
+    assert spec.rows[0].method == METHOD_RANGE
+    assert spec.rows[0].range_min == 100.0 and spec.rows[0].range_max == 5000.0
+    assert spec.rows[1].method == METHOD_COMPARE
+    assert spec.rows[1].compare_op == ">=" and spec.rows[1].compare_value == 0.85
+    assert spec.rows[2].method == METHOD_CONTAINS
+    assert spec.rows[2].text_pattern == "plate_02"
+    assert spec.rows[2].text_case_sensitive is True
+
+
+def test_invalid_compare_op_coerced_to_none() -> None:
+    spec = FilterSpec.from_store(
+        [{"column": "a", "method": METHOD_COMPARE, "compare_op": "~=",
+          "compare_value": "1"}]
+    )
+    assert spec.rows[0].compare_op is None
+
+
+def test_to_store_round_trips_all_methods() -> None:
+    original = FilterSpec.from_store(
+        [
+            {"column": "Size_Area", "method": METHOD_RANGE, "range_min": 1.0,
+             "range_max": None},
+            {"column": "n", "method": METHOD_IS_NONE_OF, "values": ["1"]},
+        ]
+    )
+    rebuilt = FilterSpec.from_store(original.to_store())
+    assert rebuilt.rows[0].method == METHOD_RANGE
+    assert rebuilt.rows[0].range_min == 1.0 and rebuilt.rows[0].range_max is None
+    assert rebuilt.rows[1].method == METHOD_IS_NONE_OF
+    assert rebuilt.rows[1].values == ["1"]
+
+
+def test_compare_ops_set_is_ordering_only() -> None:
+    assert COMPARE_OPS == frozenset({">", ">=", "<", "<="})
+
+
+def _numeric_frame() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "Size_Area": [50.0, 150.0, 1000.0, 6000.0],
+            "name": ["plate_01", "Plate_02", "ctrl_02", "x"],
+            "rep": ["1", "2", "3", "4"],
+        }
+    )
+
+
+def test_is_none_of_excludes_listed_values() -> None:
+    df = _make_frame()
+    spec = FilterSpec.from_store(
+        [{"column": "a", "method": METHOD_IS_NONE_OF, "values": ["x"]}]
+    )
+    out = spec.apply_to(df)
+    assert "x" not in out.get_column("a").to_list()
+    assert out.height == 2  # y, z
+
+
+def test_range_between_inclusive_optional_bounds() -> None:
+    df = _numeric_frame()
+    both = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": 100,
+          "range_max": 1000}]
+    ).apply_to(df)
+    assert sorted(both.get_column("Size_Area").to_list()) == [150.0, 1000.0]
+
+    only_min = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": 1000,
+          "range_max": None}]
+    ).apply_to(df)
+    assert sorted(only_min.get_column("Size_Area").to_list()) == [1000.0, 6000.0]
+
+    only_max = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE, "range_min": None,
+          "range_max": 150}]
+    ).apply_to(df)
+    assert sorted(only_max.get_column("Size_Area").to_list()) == [50.0, 150.0]
+
+
+def test_range_both_bounds_blank_is_no_op() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_RANGE}]
+    ).apply_to(df)
+    assert out.height == df.height
+
+
+def test_compare_operators() -> None:
+    df = _numeric_frame()
+    gt = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_COMPARE, "compare_op": ">",
+          "compare_value": 150}]
+    ).apply_to(df)
+    assert sorted(gt.get_column("Size_Area").to_list()) == [1000.0, 6000.0]
+
+    le = FilterSpec.from_store(
+        [{"column": "Size_Area", "method": METHOD_COMPARE, "compare_op": "<=",
+          "compare_value": 150}]
+    ).apply_to(df)
+    assert sorted(le.get_column("Size_Area").to_list()) == [50.0, 150.0]
+
+
+def test_contains_literal_case_sensitive_and_insensitive() -> None:
+    df = _numeric_frame()
+    cs = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "plate",
+          "text_regex": False, "text_case_sensitive": True}]
+    ).apply_to(df)
+    assert cs.get_column("name").to_list() == ["plate_01"]
+
+    ci = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "plate",
+          "text_regex": False, "text_case_sensitive": False}]
+    ).apply_to(df)
+    assert sorted(ci.get_column("name").to_list()) == ["Plate_02", "plate_01"]
+
+
+def test_contains_regex() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": r"_0\d$",
+          "text_regex": True, "text_case_sensitive": True}]
+    ).apply_to(df)
+    assert sorted(out.get_column("name").to_list()) == ["Plate_02", "ctrl_02", "plate_01"]
+
+
+def test_contains_blank_pattern_is_no_op() -> None:
+    df = _numeric_frame()
+    out = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "  "}]
+    ).apply_to(df)
+    assert out.height == df.height
+
+
+def test_invalid_regex_skips_row_without_raising(caplog) -> None:
+    df = _numeric_frame()
+    spec = FilterSpec.from_store(
+        [{"column": "name", "method": METHOD_CONTAINS, "text_pattern": "(",
+          "text_regex": True}]
+    )
+    out = spec.apply_to(df)  # must not raise
+    assert out.height == df.height
+
+
+def test_range_on_mixed_column_drops_non_numeric() -> None:
+    df = pl.DataFrame({"mix": ["10", "2", "x"]})
+    out = FilterSpec.from_store(
+        [{"column": "mix", "method": METHOD_RANGE, "range_min": 1, "range_max": 100}]
+    ).apply_to(df)
+    assert sorted(out.get_column("mix").to_list()) == ["10", "2"]
