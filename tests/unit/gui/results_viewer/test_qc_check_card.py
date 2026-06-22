@@ -1,7 +1,7 @@
 """Unit tests for the per-card builder in the QC tab.
 
 The card builder is a side-effect-free pure function: it accepts one
-:class:`~phenotypic.gui._qc_recipe.QcRecipeEntry` and returns a fully
+:class:`~phenotypic.sdk_._qc_recipe.QcRecipeEntry` and returns a fully
 mounted :class:`dash_bootstrap_components.Card`. The tests walk the
 returned component tree to confirm every pattern-matching id Wave E's
 callbacks rely on is present.
@@ -13,7 +13,7 @@ from typing import Any
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.analysis import ReplicateAgreement
-from phenotypic.gui._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.gui.results_viewer._qc_tab import _ids as ids
 from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
 

@@ -84,6 +84,32 @@ _BG = COLOR_BG
 # ---------------------------------------------------------------------------
 
 
+def _build_filters_toggle() -> Component:
+    """The Filters offcanvas toggle (with active-filter count badge).
+
+    Rendered into the sticky tab-bar actions strip by
+    :func:`build_app_layout` (not the header), so it rides on the tab row
+    and stays pinned while tab content scrolls.
+    """
+    return dbc.Button(
+        [
+            "Filters",
+            dbc.Badge(
+                "",
+                id=ids.FILTER_TOGGLE_BADGE_ID,
+                color="primary",
+                className="ms-2",
+                style={"display": "none"},
+            ),
+        ],
+        id=ids.BTN_FILTERS_TOGGLE,
+        color="secondary",
+        outline=True,
+        size="sm",
+        n_clicks=0,
+    )
+
+
 def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> Component:
     """Build the top header bar.
 
@@ -147,32 +173,12 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
         style={"marginTop": "0.1rem"},
     )
 
-    filters_toggle = dbc.Button(
-        [
-            "Filters",
-            dbc.Badge(
-                "",
-                id=ids.FILTER_TOGGLE_BADGE_ID,
-                color="primary",
-                className="ms-2",
-                style={"display": "none"},
-            ),
-        ],
-        id=ids.BTN_FILTERS_TOGGLE,
-        color="secondary",
-        outline=True,
-        size="sm",
-        n_clicks=0,
-        className="ms-2",
-    )
-
     top_row = html.Div(
         [
             logo,
             title,
             pipeline_chip,
             html.Div(style={"flex": "1 1 auto"}),  # spacer
-            filters_toggle,
             lock_switch,
         ],
         className="d-flex align-items-center",
@@ -493,8 +499,19 @@ def build_app_layout(
         active_tab=ids.TAB_PLATE_ID,
     )
 
+    tabbar = html.Div(
+        [
+            html.Div(
+                _build_filters_toggle(),
+                className="results-viewer-tabbar__actions",
+            ),
+            tabs,
+        ],
+        className="results-viewer-tabbar",
+    )
+
     body = html.Div(
-        tabs,
+        tabbar,
         className="results-viewer-body",
         style={
             "background": _BG,

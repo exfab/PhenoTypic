@@ -220,6 +220,49 @@ def filter_row_remove_id(idx: str) -> Dict[str, str]:
     return {"type": "filter-row-remove", "index": idx}
 
 
+def filter_row_method_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's method dropdown.
+
+    Returns ``{"type": "filter-row-method", "index": idx}``.
+    """
+    return {"type": "filter-row-method", "index": idx}
+
+
+def filter_row_range_min_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's range-min numeric input."""
+    return {"type": "filter-row-range-min", "index": idx}
+
+
+def filter_row_range_max_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's range-max numeric input."""
+    return {"type": "filter-row-range-max", "index": idx}
+
+
+def filter_row_compare_op_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's compare-operator dropdown."""
+    return {"type": "filter-row-compare-op", "index": idx}
+
+
+def filter_row_compare_value_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's compare-threshold numeric input."""
+    return {"type": "filter-row-compare-value", "index": idx}
+
+
+def filter_row_text_pattern_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's contains text input."""
+    return {"type": "filter-row-text-pattern", "index": idx}
+
+
+def filter_row_text_regex_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's contains regex checkbox."""
+    return {"type": "filter-row-text-regex", "index": idx}
+
+
+def filter_row_text_case_id(idx: str) -> Dict[str, str]:
+    """Pattern id for a filter-row's contains case-sensitive checkbox."""
+    return {"type": "filter-row-text-case", "index": idx}
+
+
 # ---------------------------------------------------------------------------
 # Pattern-matching id-builders — viewer cards
 # ---------------------------------------------------------------------------
@@ -729,6 +772,14 @@ __all__ = [
     "filter_row_paste_apply_id",
     "filter_row_paste_chips_id",
     "filter_row_remove_id",
+    "filter_row_method_id",
+    "filter_row_range_min_id",
+    "filter_row_range_max_id",
+    "filter_row_compare_op_id",
+    "filter_row_compare_value_id",
+    "filter_row_text_pattern_id",
+    "filter_row_text_regex_id",
+    "filter_row_text_case_id",
     "card_id",
     "card_picker_id",
     "card_picker_prev_id",

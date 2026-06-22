@@ -395,18 +395,21 @@ class TestGroupMembers:
 
 
 class TestDiscoverability:
-    """The 6 shipped QualityCheck subclasses are import- and registry-visible.
+    """The shipped QualityCheck subclasses are import- and registry-visible.
 
     Guards the design's "no registry edits" claim: a check added to
     ``analysis/__init__.py`` auto-appears in
     ``OperationRegistry.get_by_category("quality_check")``. ICC is part of the
-    v1 roster (final decision: roster = 6), so it must be present on both the
-    public import surface and in the registry category.
+    v1 roster, and ``GridOccupancy`` (a metadata-driven subclass of
+    ``ExpectedVsDetectedCount``) extends it, so each must be present on both
+    the public import surface and in the registry category. The assertions
+    use subset checks, so the roster can grow without churn here.
     """
 
     EXPECTED = {
         "ReplicateAgreement",
         "ExpectedVsDetectedCount",
+        "GridOccupancy",
         "RelativeMAD",
         "MaxModifiedZScore",
         "ICC",

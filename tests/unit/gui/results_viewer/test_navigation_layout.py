@@ -131,3 +131,60 @@ def test_shell_sidebar_folder_row_uses_folder_icon_not_chevron(tmp_path: Path) -
     assert "‹" not in row_text
     assert "›" not in row_text
     assert _props(row)["aria-label"] == "Expand folder: plate1"
+
+
+# ---------------------------------------------------------------------------
+# Sticky tab-row Filters button placement (Feature A, Task 9)
+# ---------------------------------------------------------------------------
+
+import polars as pl
+
+from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+from phenotypic.gui.results_viewer._layout import _build_header, build_app_layout
+from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.sdk_ import master_measurements_parquet_path
+
+
+def _iter(component):
+    yield component
+    children = getattr(component, "children", None)
+    if children is None:
+        return
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        if hasattr(child, "children") or hasattr(child, "id"):
+            yield from _iter(child)
+
+
+def _ids_in(component) -> set:
+    return {getattr(c, "id", None) for c in _iter(component)}
+
+
+def _make_output(tmp_path: Path) -> OutputRoot:
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"], "Size_Area": [1.0]}
+    )
+    target = master_measurements_parquet_path(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    df.write_parquet(target)
+    (tmp_path / "results" / "d1" / "overlays" / "a.png").touch()
+    return OutputRoot.discover(tmp_path)
+
+
+def test_header_no_longer_contains_filters_toggle(tmp_path) -> None:
+    out = _make_output(tmp_path)
+    header = _build_header(out)
+    assert ids.BTN_FILTERS_TOGGLE not in _ids_in(header)
+
+
+def test_app_layout_keeps_filters_toggle_near_tabs(tmp_path) -> None:
+    out = _make_output(tmp_path)
+    state = CurationLabels.load(out.root, out.clean_master_df)
+    layout = build_app_layout(out, state)
+    all_ids = _ids_in(layout)
+    assert ids.BTN_FILTERS_TOGGLE in all_ids
+    assert ids.FILTER_TOGGLE_BADGE_ID in all_ids
+    assert ids.TABS_ID in all_ids

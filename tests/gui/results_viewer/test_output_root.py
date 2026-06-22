@@ -330,3 +330,72 @@ def test_cache_dir_is_created_on_discover(tmp_path: Path) -> None:
     _make_minimal_output(tmp_path)
     out = OutputRoot.discover(tmp_path)
     assert out.cache_dir.is_dir()
+
+
+from phenotypic.gui.results_viewer._output_root import _all_parse_as_float
+
+
+def test_all_parse_as_float_true_for_numeric_strings() -> None:
+    assert _all_parse_as_float(["2", "10", "1.5"]) is True
+
+
+def test_all_parse_as_float_false_for_mixed_or_empty() -> None:
+    assert _all_parse_as_float(["2", "x", "10"]) is False
+    assert _all_parse_as_float([]) is False
+
+
+def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
+    """An all-numeric metadata column sorts 2 < 10, not lexically '10' < '2'."""
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1"] * 3,
+            "Metadata_ImageFile": ["a", "b", "c"],
+            "Metadata_Time": ["10", "2", "1"],
+        }
+    )
+    _write_master_parquet(tmp_path, df)
+    for stem in ("a", "b", "c"):
+        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+
+    out = OutputRoot.discover(tmp_path)
+    assert out.column_value_sets["Metadata_Time"] == ["1", "2", "10"]
+
+
+def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
+    df = _make_minimal_output(tmp_path)  # has Metadata_Strain = s1, s2
+    out = OutputRoot.discover(tmp_path)
+    assert out.column_value_sets["Metadata_Strain"] == sorted(
+        df.get_column("Metadata_Strain").to_list()
+    )
+
+
+def test_is_numeric_column_true_for_float_measurement(tmp_path) -> None:
+    _make_minimal_output(tmp_path)  # Size_Area is Float64
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Size_Area") is True
+
+
+def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
+    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    df = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["d1", "d1"],
+            "Metadata_ImageFile": ["a", "b"],
+            "Metadata_Time": ["6", "24"],
+        }
+    )
+    _write_master_parquet(tmp_path, df)
+    for stem in ("a", "b"):
+        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Metadata_Time") is True
+
+
+def test_is_numeric_column_false_for_text_and_missing(tmp_path) -> None:
+    _make_minimal_output(tmp_path)  # Metadata_Strain = s1, s2
+    out = OutputRoot.discover(tmp_path)
+    assert out.is_numeric_column("Metadata_Strain") is False
+    assert out.is_numeric_column("NoSuchColumn") is False

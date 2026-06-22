@@ -472,20 +472,22 @@ def _build_picker_options(
 
 
 def _filter_active_columns(filter_spec_payload: list[dict] | None) -> list[str]:
-    """Return the column names that have at least one accepted value.
+    """Return the column names whose filter rows currently constrain the frame.
 
     Args:
         filter_spec_payload: Raw payload from
-            :data:`STORE_FILTER_SPEC` (a list of
-            ``{"column": str, "values": list[str]}`` dicts) or
-            ``None``.
+            :data:`STORE_FILTER_SPEC` (a list of per-row dicts carrying a
+            ``column``, a ``method``, and the method's payload) or ``None``.
 
     Returns:
-        Sorted list of column names whose filter rows currently
-        constrain the master frame.
+        Sorted list of column names whose filter rows are *active* under any
+        method (list, range, compare, or contains) — i.e. rows for which
+        :meth:`FilterRow.to_expr` yields a predicate rather than ``None``.
     """
     spec = FilterSpec.from_store(filter_spec_payload)
-    columns = sorted({row.column for row in spec.rows if row.column and row.values})
+    columns = sorted(
+        {row.column for row in spec.rows if row.column and row.to_expr() is not None}
+    )
     return columns
 
 

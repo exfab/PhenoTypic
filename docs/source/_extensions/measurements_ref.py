@@ -37,8 +37,8 @@ _GROUPS: dict[str, tuple[str, ...]] = {
         "EDGE_CORRECTION", "MODEL_METRICS",
     ),
     "Quality Control": (
-        "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_ICC", "QUALITY_MAD",
-        "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
+        "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_OCCUPANCY", "QUALITY_ICC",
+        "QUALITY_MAD", "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
     ),
     "Curation & Errors": ("CURATION", "ErrorCategory"),
     "Metadata": (

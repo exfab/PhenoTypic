@@ -277,6 +277,22 @@ class OutputRoot:
             )
         ]
 
+    def is_numeric_column(self, column: str) -> bool:
+        """Return ``True`` if ``column`` can be filtered numerically.
+
+        True when the column's polars dtype is numeric (covers every
+        ``Size_*`` / ``Shape_*`` / ``Intensity_*`` measurement column for
+        free), or when its filter value-set parses entirely as floats
+        (covers numeric-valued string metadata like ``Metadata_Time``).
+        Unknown columns return ``False``. Drives the Range/Compare gate in
+        the filter sidebar.
+        """
+        if column not in self.master_df.columns:
+            return False
+        if self.master_df.schema[column].is_numeric():
+            return True
+        return _all_parse_as_float(self.column_value_sets.get(column, []))
+
 
 def _ensure_required_columns(
     df: pl.DataFrame,
@@ -406,6 +422,24 @@ def _scan_overlay_index(
 _METADATA_PREFIX = "Metadata_"
 
 
+def _all_parse_as_float(values: list[str]) -> bool:
+    """Return True iff ``values`` is non-empty and every entry parses as float.
+
+    Used to decide whether a column's filter options should be sorted
+    numerically (``"2"`` before ``"10"``) and whether a column is
+    range/compare-eligible. Empty input returns ``False`` (nothing to
+    sort numerically).
+    """
+    if not values:
+        return False
+    for value in values:
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
 class _LazyColumnValueSets(Mapping[str, list[str]]):
     """Sorted unique string values per column, computed on first access.
 
@@ -424,14 +458,16 @@ class _LazyColumnValueSets(Mapping[str, list[str]]):
                 self._cache[column] = self._compute(column)
 
     def _compute(self, column: str) -> list[str]:
-        return (
+        values = (
             self._df.get_column(column)
             .cast(pl.String)
             .drop_nulls()
             .unique()
-            .sort()
             .to_list()
         )
+        if _all_parse_as_float(values):
+            return sorted(values, key=float)
+        return sorted(values)
 
     def __getitem__(self, column: str) -> list[str]:
         if column not in self._df.columns:
