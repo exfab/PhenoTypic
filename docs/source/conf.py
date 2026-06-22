@@ -564,5 +564,46 @@ def generate_downloadables_rst(app):
     print(f"Generated {output_file}")
 
 
+def _prune_generated_api_stubs(api_dir: str) -> int:
+    """Delete autosummary-generated ``.rst`` stubs from *api_dir*.
+
+    ``docs/source/api_reference/api/`` is fully autosummary-generated and
+    gitignored. autosummary regenerates stubs for currently-referenced
+    members but never deletes stubs for modules that were renamed or
+    removed (e.g. the ``tools_`` -> ``sdk_`` rename). Those orphans then
+    abort the next build with ``ModuleNotFoundError: No module named
+    'phenotypic.tools_'`` before any page renders. Wiping the stubs before
+    generation makes the build robust to renames; the cost is a full
+    regeneration each build.
+
+    Returns the number of stubs removed.
+    """
+    import glob
+    import os
+
+    removed = 0
+    for path in glob.glob(os.path.join(api_dir, "*.rst")):
+        os.remove(path)
+        removed += 1
+    return removed
+
+
+def prune_stale_api_stubs(app, config):
+    """``config-inited`` hook: clear stale autosummary stubs before generation.
+
+    Runs at ``config-inited`` so it precedes autosummary's own stub
+    generation (connected at ``builder-inited``).
+    """
+    import os
+
+    api_dir = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), "api_reference", "api"
+    )
+    removed = _prune_generated_api_stubs(api_dir)
+    if removed:
+        print(f"[conf] pruned {removed} stale autosummary stub(s) in {api_dir}")
+
+
 def setup(app):
+    app.connect("config-inited", prune_stale_api_stubs)
     app.connect("builder-inited", generate_downloadables_rst)
