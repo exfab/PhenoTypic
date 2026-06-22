@@ -1,9 +1,10 @@
 """Measurement info container for replicate-agreement standard-error QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_SE(MeasurementInfo):
+class QUALITY_SE(QualityInfo):
     """Measurement info for the replicate-agreement standard-error QC check.
 
     Carries the per-(group, time) summary statistics used to gauge how tightly

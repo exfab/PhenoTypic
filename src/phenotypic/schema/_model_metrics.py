@@ -1,9 +1,10 @@
 """Generic fit-quality metrics shared by all ModelFitter subclasses."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class MODEL_METRICS(MeasurementInfo):
+class MODEL_METRICS(QualityInfo):
     """Generic fit-quality metrics and diagnostics shared by all ModelFitter subclasses.
 
     These columns are produced by any model fitter that wraps

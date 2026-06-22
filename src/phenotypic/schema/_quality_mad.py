@@ -1,9 +1,10 @@
 """Measurement info container for replicate-agreement MAD QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_MAD(MeasurementInfo):
+class QUALITY_MAD(QualityInfo):
     """Measurement info for the replicate-agreement MAD QC check.
 
     Documents the per-check extra columns produced by the median absolute

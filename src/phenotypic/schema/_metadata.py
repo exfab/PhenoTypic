@@ -1,9 +1,10 @@
 """Framework metadata bookkeeping labels for the PhenoTypic module."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import IdentityInfo
 
 
-class METADATA(MeasurementInfo):
+class METADATA(IdentityInfo):
     """Framework-populated image metadata keys.
 
     These labels are set automatically by the image pipeline (not by the user) and

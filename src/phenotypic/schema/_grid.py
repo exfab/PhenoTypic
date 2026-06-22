@@ -1,9 +1,10 @@
 """Constants for grid structure in the PhenoTypic module."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import IdentityInfo
 
 
-class GRID(MeasurementInfo):
+class GRID(IdentityInfo):
     """Constants for grid structure in the PhenoTypic module."""
 
     @classmethod

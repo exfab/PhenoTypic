@@ -1,9 +1,10 @@
 """Media and growth-condition metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class CONDITION_METADATA(MeasurementInfo):
+class CONDITION_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags describing media and experimental conditions.
 
     These name the chemical environment and perturbations applied to the colonies

@@ -1,9 +1,10 @@
 """Incubation and time-course metadata tags for the PhenoTypic module."""
 
-from .._measurement_info import Entry, MeasurementInfo
+from .._measurement_info import Entry
+from .._tiers import IdentityInfo
 
 
-class INCUBATION_METADATA(MeasurementInfo):
+class INCUBATION_METADATA(IdentityInfo):
     """Recommended ``Metadata_*`` tags describing incubation and time course.
 
     These capture the temporal and environmental incubation parameters of an

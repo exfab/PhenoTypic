@@ -1,9 +1,10 @@
 """Measurement info container for replicate-agreement modified Z-score QC."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class QUALITY_ZMAX(MeasurementInfo):
+class QUALITY_ZMAX(QualityInfo):
     """Measurement info for the replicate-agreement modified Z-score QC check.
 
     Documents the per-check extra columns behind the modified Z-score (ZMax)

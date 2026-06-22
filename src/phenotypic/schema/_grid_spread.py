@@ -1,9 +1,10 @@
 """Grid section spatial spread measurements."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class GRID_SPREAD(MeasurementInfo):
+class GRID_SPREAD(QualityInfo):
     """Quantify within-well colony dispersion using pairwise centroid distances.
 
     Compute the sum of squared pairwise Euclidean distances between all

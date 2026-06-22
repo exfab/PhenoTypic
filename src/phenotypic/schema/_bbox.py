@@ -1,9 +1,10 @@
 """Bounding-box and centroid coordinate measurements."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import IdentityInfo
 
 
-class BBOX(MeasurementInfo):
+class BBOX(IdentityInfo):
     """Extract bounding box coordinates and centroids of detected colonies.
 
     Compute the axis-aligned bounding box and centroid (geometric and

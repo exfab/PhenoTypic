@@ -1,9 +1,10 @@
 """Mask-based radial expansion measurements for colonies on solid media."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DescriptiveTrait
 
 
-class SYMMETRIC_ZONES(MeasurementInfo):
+class SYMMETRIC_ZONES(DescriptiveTrait):
     """Mask-based radial expansion measurements for colonies on solid media.
 
     Summarises each colony's radial growth through four scalars derived

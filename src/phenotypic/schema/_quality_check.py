@@ -1,9 +1,10 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
-from ._measurement_info import Entry, MeasurementInfo, _render_info_table
+from ._measurement_info import Entry, _render_info_table
+from ._tiers import QualityInfo
 
 
-class QUALITY_CHECK(MeasurementInfo):
+class QUALITY_CHECK(QualityInfo):
     """Generic QC output columns emitted by every QualityCheck subclass.
 
     The category convention used elsewhere in the codebase would produce
@@ -56,7 +57,7 @@ class QUALITY_CHECK(MeasurementInfo):
         """
         slug = check_name if check_name is not None else "<name>"
         rows = [
-            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image) for m in cls
+            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image, m.use_label) for m in cls
         ]
         table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
         base = doc if isinstance(doc, str) else (doc.__doc__ or "")

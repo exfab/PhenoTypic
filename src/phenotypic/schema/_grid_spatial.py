@@ -1,9 +1,10 @@
 """Measurement info for spatial information for grid pinned colonies."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class GRID_SPATIAL(MeasurementInfo):
+class GRID_SPATIAL(QualityInfo):
     """Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
 
     For each detected colony, identify the nearest object in the left,

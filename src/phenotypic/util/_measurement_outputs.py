@@ -241,6 +241,8 @@ def _measurement_descriptions() -> dict[str, str]:
         obj = getattr(schema, name, None)
         if not _is_info_class(obj):
             continue
+        if not list(obj):  # member-less classification bases contribute no columns
+            continue
         for member in obj:
             descriptions.setdefault(member.value, member.desc)
     return descriptions

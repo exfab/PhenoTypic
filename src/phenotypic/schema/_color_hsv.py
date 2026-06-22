@@ -1,9 +1,10 @@
 """Per-object robust summary in the HSV color space (cone-embedded)."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DescriptiveTrait
 
 
-class ColorHSV(MeasurementInfo):
+class ColorHSV(DescriptiveTrait):
     """Robust HSV summary for a colony.
 
     HSV hue is circular and HSV is not perceptually uniform, so the robust

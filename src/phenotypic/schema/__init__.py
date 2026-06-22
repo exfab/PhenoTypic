@@ -16,6 +16,15 @@ standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops
 """
 
 from ._measurement_info import Entry, MeasurementInfo
+from ._tiers import (
+    DerivedMeasure,
+    DescriptiveTrait,
+    DirectPhenotype,
+    DiscriminativeFeature,
+    IdentityInfo,
+    PrimaryMeasure,
+    QualityInfo,
+)
 from ._metadata import METADATA
 from ._experimental_tags import (
     ACQUISITION_METADATA,
@@ -62,6 +71,13 @@ from ._texture import TEXTURE
 __all__ = [
     "Entry",
     "MeasurementInfo",
+    "DerivedMeasure",
+    "DescriptiveTrait",
+    "DirectPhenotype",
+    "DiscriminativeFeature",
+    "IdentityInfo",
+    "PrimaryMeasure",
+    "QualityInfo",
     "METADATA",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",

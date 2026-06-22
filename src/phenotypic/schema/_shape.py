@@ -1,9 +1,10 @@
 """The labels and descriptions of the shape measurements."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import PrimaryMeasure
 
 
-class SHAPE(MeasurementInfo):
+class SHAPE(PrimaryMeasure):
     """Measure comprehensive morphological characteristics of detected colonies.
 
     Extract geometric metrics from each colony shape: area, perimeter,
@@ -17,6 +18,10 @@ class SHAPE(MeasurementInfo):
     def category(cls):
         return "Shape"
 
+    @classmethod
+    def tier(cls) -> int:
+        return 2  # default for form descriptors; size-magnitude members override via Entry(tier=1)
+
     AREA = Entry(
         "Area",
         "Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.",
@@ -28,10 +33,12 @@ class SHAPE(MeasurementInfo):
             "footprint, not colony height or cell density."
         ),
         image="shape/area.png",
+        tier=1,
     )
     PERIMETER = Entry(
         "Perimeter",
         "Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.",
+        tier=1,
     )
     CIRCULARITY = Entry(
         "Circularity",
@@ -40,26 +47,32 @@ class SHAPE(MeasurementInfo):
     CONVEX_AREA = Entry(
         "ConvexArea",
         'Area of the smallest convex polygon that completely contains the colony. Represents the colony\'s "filled-in" appearance if all indentations and holes were removed. Useful for detecting colony spreading patterns or invasive growth characteristics.',
+        tier=1,
     )
     MEDIAN_RADIUS = Entry(
         "MedianRadius",
         "Median distance from colony center to edge across all directions. Provides a robust measure of typical colony size that is less sensitive to outliers than mean width. Particularly useful for colonies with uneven growth or sectoring.",
+        tier=1,
     )
     MEAN_RADIUS = Entry(
         "MeanRadius",
         "Average distance from colony center to edge across all directions. Represents overall colony expansion rate. In arrayed growth assays, this correlates with microbial fitness and growth kinetics under controlled conditions.",
+        tier=1,
     )
     MAX_RADIUS = Entry(
         "MaxRadius",
         "Maximum distance from colony center to edge across all directions. Represents the furthest extent of colony growth from its center. In arrayed microbial assays, this measurement helps identify asymmetric growth patterns or colonies extending toward neighboring positions.",
+        tier=1,
     )
     MIN_FERET_DIAMETER = Entry(
         "MinFeretDiameter",
         "Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.",
+        tier=1,
     )
     MAX_FERET_DIAMETER = Entry(
         "MaxFeretDiameter",
         "Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.",
+        tier=1,
     )
     ECCENTRICITY = Entry(
         "Eccentricity",
@@ -76,14 +89,17 @@ class SHAPE(MeasurementInfo):
     BBOX_AREA = Entry(
         "BboxArea",
         "Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.",
+        tier=1,
     )
     MAJOR_AXIS_LENGTH = Entry(
         "MajorAxisLength",
         "Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.",
+        tier=1,
     )
     MINOR_AXIS_LENGTH = Entry(
         "MinorAxisLength",
         "Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.",
+        tier=1,
     )
     COMPACTNESS = Entry(
         "Compactness",

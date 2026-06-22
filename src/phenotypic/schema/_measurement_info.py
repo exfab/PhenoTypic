@@ -9,6 +9,21 @@ from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from typing import Final
 
+_DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diagnostic"})
+# Not used by _classify; consumed by the Task 10 coverage-gate test.
+_VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
+
+_USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
+    (1, "primary"): "Direct phenotype (Tier 1)",
+    (2, "primary"): "Descriptive trait (Tier 2)",
+    (3, "primary"): "Discriminative feature (Tier 3)",
+    # Derived Tier-1/Tier-2 columns (parameterization members) carry the same
+    # trust contract as their primary counterparts, so they reuse the exact
+    # same badge strings — no "(derived)" suffix.
+    (1, "derived"): "Direct phenotype (Tier 1)",
+    (2, "derived"): "Descriptive trait (Tier 2)",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class Entry:
@@ -31,6 +46,9 @@ class Entry:
     _: KW_ONLY
     bio_desc: str = ""
     image: str | None = None
+    tier: int | None = None
+    derivation_type: str | None = None
+    derives_from: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -40,6 +58,14 @@ class Entry:
                 raise TypeError(f"Entry.{name} must be a string")
         if self.image is not None and not isinstance(self.image, str):
             raise TypeError("Entry.image must be a string path or None")
+        if self.tier is not None and self.tier not in (1, 2, 3):
+            raise ValueError("Entry.tier must be 1, 2, 3, or None")
+        if self.derivation_type is not None and self.derivation_type not in _DERIVATION_TYPES:
+            raise ValueError(
+                f"Entry.derivation_type must be one of {sorted(_DERIVATION_TYPES)} or None"
+            )
+        if self.derives_from is not None and not isinstance(self.derives_from, str):
+            raise TypeError("Entry.derives_from must be a string token or None")
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -73,22 +99,24 @@ def _rst_cell_text(text: str) -> str:
 
 
 def _render_info_table(
-    rows: list[tuple[str, str, str, str | None]],
+    rows: list[tuple[str, str, str, str | None, str]],
     *,
     title: str,
     name_header: str = "Name",
     desc_header: str = "Description",
 ) -> str:
-    """Render a list-table; Biology/Image columns appear only when populated.
+    """Render a list-table; Use/Biology/Image columns appear only when populated.
 
     Args:
-        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None)`` per member.
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, use_label)``
+            per member.
         title: Bold table caption (rendered ``Category: **{title}**``).
         name_header: Header for the first (name) column.
         desc_header: Header for the description column.
     """
     has_bio = any(row[2] for row in rows)
     has_img = any(row[3] for row in rows)
+    has_use = any(row[4] for row in rows)
 
     lines = [
         f".. list-table:: Category: **{title}**",
@@ -97,14 +125,18 @@ def _render_info_table(
         f"   * - {name_header}",
         f"     - {desc_header}",
     ]
+    if has_use:
+        lines.append("     - Use")
     if has_bio:
         lines.append("     - Biology")
     if has_img:
         lines.append("     - Image")
 
-    for name, desc, bio, img in rows:
+    for name, desc, bio, img, use in rows:
         lines.append(f"   * - ``{name}``")
         lines.append(f"     - {_rst_cell_text(desc)}")
+        if has_use:
+            lines.append(f"     - {use}")
         if has_bio:
             lines.append(f"     - {_rst_cell_text(bio)}")
         if has_img:
@@ -114,6 +146,49 @@ def _render_info_table(
             else:
                 lines.append("     -")
     return "\n".join(lines)
+
+
+def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
+    """Resolve (kind, tier) for a member; raise if unclassified.
+
+    Precedence (highest to lowest):
+    1. ``derivation_type == "diagnostic"`` → ``("quality", None)``
+    2. ``derivation_type == "normalization"`` → ``("derived", None)``
+    3. ``derivation_type == "parameterization"`` → ``("derived", tier_override)``
+       (raises if ``tier_override`` is ``None``)
+    4. Explicit ``Entry(tier=...)`` override combined with the class ``kind()``
+    5. Class-level ``kind()`` / ``tier()`` (from a classification base class)
+    """
+    if member.derivation_type == "diagnostic":
+        return ("quality", None)
+    if member.derivation_type == "normalization":
+        return ("derived", None)  # tier inherited from the runtime target
+    cls = type(member)
+    if member.derivation_type == "parameterization":
+        # Explicit tier annotation overrides the default (None) for parameterization members
+        # so that kinetics/magnitude params can be flagged Tier 1 while shape params are Tier 2.
+        # Unlike normalization (whose tier legitimately defers to the runtime target),
+        # parameterization members must always declare a tier.
+        if member.tier_override is None:
+            raise ValueError(
+                f"{member!r}: parameterization member needs an explicit Entry(tier=...)"
+            )
+        return ("derived", member.tier_override)
+    if member.tier_override is not None:
+        return (cls.kind() or "primary", member.tier_override)
+    kind, tier = cls.kind(), cls.tier()
+    if kind is None:
+        raise ValueError(f"{member!r}: no kind assigned (re-parent to a classification base)")
+    if kind == "primary" and tier is None:
+        raise ValueError(
+            f"{member!r}: primary member needs a tier (a tier base class or Entry(tier=...))"
+        )
+    if kind == "derived" and tier is None:
+        raise ValueError(
+            f"{member!r}: derived member needs a derivation_type "
+            "(diagnostic/normalization/parameterization)"
+        )
+    return (kind, tier)
 
 
 class MeasurementInfo(str, Enum):
@@ -218,6 +293,9 @@ class MeasurementInfo(str, Enum):
     bio_desc: str
     image: str | None
     pair: tuple[str, str]
+    tier_override: int | None
+    derivation_type: str | None
+    derives_from: str | None
 
     @classmethod
     def category(cls) -> str:
@@ -236,6 +314,16 @@ class MeasurementInfo(str, Enum):
             NotImplementedError: If not implemented by a subclass.
         """
         raise NotImplementedError
+
+    @classmethod
+    def kind(cls) -> str | None:
+        """Coarse classification kind, or None until assigned by a base class."""
+        return None
+
+    @classmethod
+    def tier(cls) -> int | None:
+        """Trust tier (1/2/3) for primary measurements, or None."""
+        return None
 
     @property
     def CATEGORY(self) -> str:
@@ -271,6 +359,9 @@ class MeasurementInfo(str, Enum):
         obj.bio_desc = entry.bio_desc
         obj.image = entry.image
         obj.pair = (entry.label, entry.desc)
+        obj.tier_override = entry.tier
+        obj.derivation_type = entry.derivation_type
+        obj.derives_from = entry.derives_from
         return obj
 
     def __str__(self) -> str:
@@ -284,6 +375,25 @@ class MeasurementInfo(str, Enum):
             str: The full prefixed name of the measurement (e.g., '{category}_{label}').
         """
         return self._value_
+
+    @property
+    def resolved_kind(self) -> str:
+        """The coarse kind for this member (identity/quality/primary/derived)."""
+        return _classify(self)[0]
+
+    @property
+    def resolved_tier(self) -> int | None:
+        """The trust tier (1/2/3) for this member, or None for non-primary."""
+        return _classify(self)[1]
+
+    @property
+    def use_label(self) -> str:
+        """Short human-readable 'how to apply' label, empty for non-primary."""
+        try:
+            kind, tier = _classify(self)
+        except ValueError:
+            return ""
+        return _USE_LABELS.get((tier, kind), "")
 
     @classmethod
     def get_labels(cls) -> list[str]:
@@ -344,6 +454,7 @@ class MeasurementInfo(str, Enum):
                 m.desc,
                 m.bio_desc,
                 m.image,
+                m.use_label,
             )
             for m in cls
         ]

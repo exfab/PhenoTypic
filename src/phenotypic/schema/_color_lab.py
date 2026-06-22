@@ -1,9 +1,10 @@
 """Per-object robust colorimetric statistics in the CIE L*a*b* color space."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DescriptiveTrait
 
 
-class ColorLab(MeasurementInfo):
+class ColorLab(DescriptiveTrait):
     """Robust CIE L*a*b* colorimetric summary for a colony.
 
     Reports two robust center colors -- the ΔE76 (Euclidean) geometric median

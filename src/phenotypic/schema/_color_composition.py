@@ -1,9 +1,10 @@
 """Measurement info for perceptual color composition using 11-color model."""
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import DiscriminativeFeature
 
 
-class ColorComposition(MeasurementInfo):
+class ColorComposition(DiscriminativeFeature):
     """Classify colony pixels into 11 perceptual color categories and measure composition.
 
     Applies a priority-based color model (neutrals → special colors → hues)

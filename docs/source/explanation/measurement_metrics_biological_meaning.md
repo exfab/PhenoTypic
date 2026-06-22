@@ -4,6 +4,10 @@ PhenoTypic's measurement operations extract quantitative features from
 detected colonies. This page explains what each metric means biologically
 and when to use it.
 
+> For *how to apply* each metric — which to report directly vs. use as a
+> classifier feature — see
+> [Measurement Classification: Phenotypes vs. Features](measurement_classification_system.md).
+
 ## Size Metrics (MeasureSize)
 
 | Metric | Unit | Biological meaning |

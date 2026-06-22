@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import Entry
+from ._tiers import QualityInfo
 
 
-class CURATION(MeasurementInfo):
+class CURATION(QualityInfo):
     """Curation-state columns attached to derived measurement frames.
 
     ``Curation_Category`` carries the :class:`ErrorCategory` bare label (or a
