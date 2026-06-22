@@ -49,6 +49,7 @@ from ._quality_check import QUALITY_CHECK
 from ._quality_count import QUALITY_COUNT
 from ._quality_icc import QUALITY_ICC
 from ._quality_mad import QUALITY_MAD
+from ._quality_occupancy import QUALITY_OCCUPANCY
 from ._quality_se import QUALITY_SE
 from ._quality_tukey import QUALITY_TUKEY
 from ._quality_zmax import QUALITY_ZMAX
@@ -92,6 +93,7 @@ __all__ = [
     "QUALITY_COUNT",
     "QUALITY_ICC",
     "QUALITY_MAD",
+    "QUALITY_OCCUPANCY",
     "QUALITY_SE",
     "QUALITY_TUKEY",
     "QUALITY_ZMAX",

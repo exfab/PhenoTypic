@@ -1140,7 +1140,7 @@
       "s0",
       "LinearSoftplus_s0",
       "s0",
-      "The initial size"
+      "The initial value of the target metric"
     ],
     [
       "lam",
@@ -1379,6 +1379,26 @@
       "QC_MAD_NumMembers",
       "NumMembers",
       "Members contributing to the statistic."
+    ]
+  ],
+  "phenotypic.schema._quality_occupancy.QUALITY_OCCUPANCY": [
+    [
+      "FILLED",
+      "QC_Occupancy_Filled",
+      "Filled",
+      "Distinct grid cells holding at least one colony (doublets count once)."
+    ],
+    [
+      "EXPECTED",
+      "QC_Occupancy_Expected",
+      "Expected",
+      "Expected grid-cell count from the metadata frame (rows per group)."
+    ],
+    [
+      "VACANT",
+      "QC_Occupancy_Vacant",
+      "Vacant",
+      "Expected - Filled; empty/missing grid cells in the group."
     ]
   ],
   "phenotypic.schema._quality_se.QUALITY_SE": [

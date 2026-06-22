@@ -39,6 +39,7 @@ from dash import Input, Output, State
 from phenotypic.gui._config import (
     CFG_FILTERED_STATE,
     CFG_MEASUREMENT_SCHEMA,
+    CFG_OPERATION_REGISTRY,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
     CFG_QC_INSTANCES_CACHE,
@@ -52,6 +53,7 @@ from phenotypic.gui._config import (
     TITLE_VIEWER,
     join_url_prefix,
 )
+from phenotypic.gui._operation_registry import OperationRegistry
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
@@ -207,6 +209,18 @@ def create_app(
     # fills it on its first card refresh. The heatmap render callback
     # gracefully falls back to the plain filtered frame until then.
     app.server.config.setdefault(CFG_QC_AUGMENTED_FRAME, None)
+
+    # The QC tab's Add/Edit modal reads its class picker, param form, and
+    # submit-time class resolution from an ``OperationRegistry`` on *this*
+    # server's config. Under the hub's ``DispatcherMiddleware`` each sub-app
+    # has its own Flask server, so the builder's registry is not visible
+    # here — without this the picker renders empty and no QC check can be
+    # added. Build one per viewer app, idempotently (a hub composer may
+    # inject a shared registry ahead of ``create_app``).
+    if app.server.config.get(CFG_OPERATION_REGISTRY) is None:
+        operation_registry = OperationRegistry()
+        operation_registry.discover()
+        app.server.config[CFG_OPERATION_REGISTRY] = operation_registry
 
     # QC recipe is now the ``qc`` section of ``pipeline.json`` (pipeline-
     # backed adapter), not the legacy ``.viewer_cache/qc_recipe.json``

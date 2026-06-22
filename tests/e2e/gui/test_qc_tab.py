@@ -13,10 +13,11 @@ The tests share a function-scoped sandbox helper that:
    a real polars frame carrying the columns the QC machinery needs
    (``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``,
    ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, ``Metadata_Time``).
-3. Pre-seeds ``<output>/.viewer_cache/qc_recipe.json`` directly so the
-   tests do not depend on the OperationRegistry being stashed on the
-   viewer Flask app (the viewer factory does not register one; only
-   the builder does).
+3. Pre-seeds the ``qc`` array of ``<output>/deliverables/pipeline.json``
+   directly (the pipeline-backed recipe source the viewer reads via
+   ``phenotypic.sdk_._qc_recipe.QcRecipe``), so tests exercise the same
+   source of truth the CLI writes — not the retired
+   ``.viewer_cache/qc_recipe.json`` sidecar.
 4. POSTs to ``/sandbox/api/viewer/output-root`` so the next GET to
    ``/results/`` rebuilds the viewer with the loaded output root.
 
@@ -110,24 +111,34 @@ def _seed_real_output(sandbox: Path) -> Path:
 
 
 def _seed_qc_recipe(output_dir: Path, payload: dict | str) -> Path:
-    """Write a ``qc_recipe.json`` to the output dir's viewer cache.
+    """Seed the QC recipe into ``deliverables/pipeline.json``'s ``qc`` array.
+
+    The results-viewer QC tab is pipeline-backed: cards come from the
+    ``qc`` array of ``pipeline.json`` (read via
+    ``phenotypic.sdk_._qc_recipe.QcRecipe``), not the retired
+    ``.viewer_cache/qc_recipe.json`` sidecar. This mirrors a minimal
+    CLI-written pipeline config — exactly the ``{"qc": [...]}`` document
+    the production scoped writer creates when no pipeline.json yet exists.
 
     Args:
         output_dir: The CLI output directory (the parent that owns
-            ``master_measurements.parquet``).
-        payload: Either a dict (rendered as JSON) or a raw string
-            (written verbatim — useful for the corrupt-JSON edge case).
+            ``deliverables/``).
+        payload: Either a dict in the legacy ``{"version", "checks": [...]}``
+            shape (its ``checks`` list becomes the ``qc`` array) or a raw
+            string written verbatim (the corrupt-JSON edge case).
 
     Returns:
-        The absolute path of the recipe file.
+        The absolute path of ``deliverables/pipeline.json``.
     """
-    cache = output_dir / ".viewer_cache"
-    cache.mkdir(parents=True, exist_ok=True)
-    target = cache / "qc_recipe.json"
+    from phenotypic.sdk_ import pipeline_json_path
+
+    target = pipeline_json_path(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(payload, str):
         target.write_text(payload, encoding="utf-8")
     else:
-        target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        checks = payload.get("checks", []) if isinstance(payload, dict) else []
+        target.write_text(json.dumps({"qc": checks}, indent=2), encoding="utf-8")
     return target
 
 
@@ -313,9 +324,16 @@ def _write_count_metadata(output_dir: Path) -> Path:
 
 
 def _read_recipe(output_dir: Path) -> dict:
-    """Read the on-disk ``qc_recipe.json`` as a dict."""
-    target = output_dir / ".viewer_cache" / "qc_recipe.json"
-    return json.loads(target.read_text(encoding="utf-8"))
+    """Read the ``qc`` array from ``pipeline.json`` in the legacy shape.
+
+    Returns ``{"checks": [...]}`` so assertions that index ``["checks"]``
+    keep working against the pipeline-backed source of truth.
+    """
+    from phenotypic.sdk_ import resolve_pipeline_config_path
+
+    target = resolve_pipeline_config_path(output_dir)
+    doc = json.loads(target.read_text(encoding="utf-8"))
+    return {"checks": doc.get("qc", [])}
 
 
 # ---------------------------------------------------------------------------
@@ -328,19 +346,16 @@ def test_add_check_modal(
     hub_url: str,
     output_rel: str,
 ) -> None:
-    """``+ Add check`` opens the QC modal with the expected class list.
+    """``+ Add check`` opens the QC modal and a full add appends a card.
 
-    Spec line 1211. The modal's class dropdown must list both shipping
-    quality-check classes. Submitting the modal (after a class pick)
-    appends a single ``qc-card-root`` div to the cards container.
-
-    The viewer factory does **not** stash an ``OperationRegistry`` on
-    ``app.server.config`` so the class picker depends on the registry
-    being injected via a different code path. We assert the modal
-    opens regardless — the class picker may render with empty options
-    when the registry is missing, which is the documented graceful
-    degradation. The "modal opens" half is the load-bearing assertion
-    here.
+    Spec line 1211. The viewer factory now stashes an
+    ``OperationRegistry`` on its own ``app.server.config`` (each sub-app
+    has its own Flask server under the hub's ``DispatcherMiddleware``, so
+    the builder's registry is not visible to the QC tab). The modal's
+    class dropdown must therefore list the shipping quality-check classes,
+    and submitting after a class pick appends a single ``qc-card-root``
+    div to the cards container. Regression guard: when the registry was
+    missing the picker rendered empty and no check could be added.
     """
     _hand_off_viewer(page, hub_url, output_rel)
     _navigate_to_qc_tab(page, hub_url)
@@ -359,8 +374,27 @@ def test_add_check_modal(
         "}",
         timeout=10_000,
     )
-    # Class picker is mounted regardless of options availability.
+    # Open the class picker and confirm the registry-backed options
+    # actually render (a shipping check is listed, not an empty dropdown).
+    # The Dash 4 dropdown is a Radix button: focus + Enter is the reliable
+    # opener (see test_heatmap_tab._open_dash_dropdown).
     expect(page.locator("#qc-add-check-class-picker")).to_be_visible()
+    picker = page.locator("#qc-add-check-class-picker")
+    picker.scroll_into_view_if_needed()
+    picker.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_selector(
+        '[role="listbox"] [role="option"]', state="attached", timeout=10_000
+    )
+    option = page.locator(
+        '[role="listbox"] [role="option"]', has_text="ReplicateAgreement"
+    ).first
+    expect(option).to_be_visible(timeout=10_000)
+    option.click()
+
+    # Submit the modal; the cards container gains exactly one card.
+    page.click("#qc-add-check-submit")
+    expect(page.locator('[id*="qc-card-root"]')).to_have_count(1, timeout=10_000)
 
 
 def test_edit_check_modal(
@@ -400,7 +434,7 @@ def test_edit_check_modal(
     # Mutate the on-disk recipe to simulate a modal submit on
     # ``warn_threshold``. ``QcRecipe.update`` is what the modal callback
     # ultimately invokes.
-    from phenotypic.gui._qc_recipe import QcRecipe
+    from phenotypic.sdk_._qc_recipe import QcRecipe
 
     recipe = QcRecipe.load(output_dir)
     new_params = dict(recipe.entries[0].params)
@@ -473,7 +507,7 @@ def test_toggle_check_enabled(
     # rendered). So after toggling off the card should disappear; we
     # re-enable by mutating the recipe directly so the next assertion
     # is independent of the UI.
-    from phenotypic.gui._qc_recipe import QcRecipe
+    from phenotypic.sdk_._qc_recipe import QcRecipe
 
     QcRecipe.load(output_dir).update(instance_id, enabled=True)
     assert _disk_enabled() is True
@@ -994,7 +1028,7 @@ def test_export_button_disabled_when_no_checks(
     # callback picks up the new state. (The viewer's QcRecipe is
     # loaded at create_app() and lives on app.server.config; the
     # easiest path is to hand off again, which rebuilds the viewer.)
-    from phenotypic.gui._qc_recipe import QcRecipe
+    from phenotypic.sdk_._qc_recipe import QcRecipe
     from phenotypic.analysis import ReplicateAgreement
 
     recipe = QcRecipe.load(output_dir)

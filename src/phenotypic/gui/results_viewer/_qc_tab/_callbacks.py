@@ -296,12 +296,13 @@ def _get_recipe() -> QcRecipe:
 def _get_registry() -> OperationRegistry | None:
     """Return the operation registry, or ``None`` when unavailable.
 
-    The viewer's standalone ``create_app`` does NOT stash a registry on
-    ``app.server.config`` (only the builder does). When the viewer is
-    mounted on the hub, the shared registry may be available through
-    the hub composer. The QC tab degrades gracefully when the registry
-    is missing — the class picker renders an empty dropdown and the
-    modal effectively becomes read-only.
+    The viewer's ``create_app`` builds an :class:`OperationRegistry` and
+    stashes it on *this* server's ``app.server.config`` (each sub-app has
+    its own Flask server under the hub's ``DispatcherMiddleware``, so the
+    builder's registry is not visible here). The ``None`` fallback is kept
+    as a defensive guard for partially-initialized apps (e.g. the
+    empty-state pathway): when it triggers the class picker renders an
+    empty dropdown and the modal effectively becomes read-only.
     """
     registry = current_app.config.get(CFG_OPERATION_REGISTRY)
     if isinstance(registry, OperationRegistry):

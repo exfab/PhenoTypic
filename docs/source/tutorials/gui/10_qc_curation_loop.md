@@ -10,7 +10,7 @@ no full page reload.
 The loop:
 
 1. Configure one or more checks (e.g. `ExpectedVsDetectedCount`,
-   `ReplicateAgreement`).
+   `GridOccupancy`, `ReplicateAgreement`).
 2. The card highlights every flagged group with its severity.
 3. Mark all flagged colonies for removal (per-card button) or curate
    individuals from the Plate / Colony tabs.
@@ -24,8 +24,12 @@ The loop:
   `<output>/deliverables/measurements.parquet`. See
   [Run Locally](04_run_local.md) to produce one.
 - A `metadata.csv` describing the expected plate layout if you plan to
-  configure `ExpectedVsDetectedCount` (its `groupby` columns must
-  resolve against the master measurements schema).
+  configure `ExpectedVsDetectedCount` or `GridOccupancy` (their `groupby`
+  columns must resolve against the master measurements schema). Both read
+  the layout's per-group row count as the expected colony/cell count;
+  `GridOccupancy` additionally counts distinct filled grid cells
+  (`Grid_RowMajorIdx`), so it reports occupancy without double-counting
+  doublets.
 
 ## Walkthrough
 
