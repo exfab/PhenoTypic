@@ -600,8 +600,8 @@
 
 <span class="sd">The ``run`` subcommand&#39;s body (``__main__`` parses the flags and forwards them</span>
 <span class="sd">here). Beyond the Phase-1 local engine run, this resolves the ``--strategy`` flag</span>
-<span class="sd">into the right :class:`~phenotypic.tune.StrategyConfig` (grid/random → the Phase-1</span>
-<span class="sd">configs; an Optuna sampler → :class:`~phenotypic.tune.OptunaConfig`), selects the</span>
+<span class="sd">into the right :class:`~phenotypic.tune.strategy.StrategyConfig` (grid/random → the Phase-1</span>
+<span class="sd">configs; an Optuna sampler → :class:`~phenotypic.tune.strategy.OptunaConfig`), selects the</span>
 <span class="sd">matching study backend (a resumable :class:`OptunaStudyStore` for an Optuna</span>
 <span class="sd">strategy, else the :class:`JournalStudyStore`), optionally screens (the two-round</span>
 <span class="sd">freeze, ``--screen``), and — on the Optuna path — **also exports</span>
@@ -641,7 +641,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._screening</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_param_importance</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._screening_freeze</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScreeningConfig</span><span class="p">,</span> <span class="n">ScreeningController</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.._spec</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuningSpec</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._strategies._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..strategy._config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">OPTUNA_SAMPLERS</span><span class="p">,</span>
     <span class="n">PHENOTYPIC_TUNE_STORAGE_URL_ENV</span><span class="p">,</span>
     <span class="n">GridConfig</span><span class="p">,</span>
@@ -914,7 +914,7 @@
     <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">OPTUNA_SAMPLERS</span><span class="p">:</span>
         <span class="c1"># Fail fast + actionable when the extra is missing, before constructing a</span>
         <span class="c1"># config the engine could not build.</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">.._strategies</span><span class="w"> </span><span class="kn">import</span> <span class="n">_optuna_support</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">_optuna_support</span>
 
         <span class="n">_optuna_support</span><span class="o">.</span><span class="n">_require_optuna</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">OptunaConfig</span><span class="p">(</span>

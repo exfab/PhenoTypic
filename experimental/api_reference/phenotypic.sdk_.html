@@ -2820,6 +2820,20 @@ string is that the dispatch falls through to <code class="xref py py-class docut
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.sdk_.metadata_csv_deliverable_path">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">metadata_csv_deliverable_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/sdk_/_io_constants.html#metadata_csv_deliverable_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.metadata_csv_deliverable_path" title="Link to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/metadata.csv</span></code> (co-located <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> copy).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.migrate_legacy_machine_state">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">migrate_legacy_machine_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/phenotypic/sdk_/_io_constants.html#migrate_legacy_machine_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.migrate_legacy_machine_state" title="Link to this definition">#</a></dt>
 <dd><p>Move a pre-migration run’s machine-state into <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p>
@@ -4699,6 +4713,7 @@ into the hidden tune cache. A legacy run wrote it at the output root; use
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.measurements_by_feature_dir"><code class="docutils literal notranslate"><span class="pre">measurements_by_feature_dir()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.measurements_csv_path"><code class="docutils literal notranslate"><span class="pre">measurements_csv_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.measurements_parquet_path"><code class="docutils literal notranslate"><span class="pre">measurements_parquet_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.metadata_csv_deliverable_path"><code class="docutils literal notranslate"><span class="pre">metadata_csv_deliverable_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.migrate_legacy_machine_state"><code class="docutils literal notranslate"><span class="pre">migrate_legacy_machine_state()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.overlay_manifest_path"><code class="docutils literal notranslate"><span class="pre">overlay_manifest_path()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.param_importance_path"><code class="docutils literal notranslate"><span class="pre">param_importance_path()</span></code></a></li>

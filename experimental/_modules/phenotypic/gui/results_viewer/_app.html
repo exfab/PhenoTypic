@@ -661,6 +661,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared.tiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_crop_route</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">ids</span><span class="p">,</span> <span class="n">_tile_routes</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer.timeline_view</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_thumb_routes</span> <span class="k">as</span> <span class="n">timeline_thumb_routes</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._curation_labels</span><span class="w"> </span><span class="kn">import</span> <span class="n">CurationLabels</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.results_viewer._layout</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">build_app_layout</span><span class="p">,</span>
@@ -792,6 +795,7 @@
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_OUTPUT_ROOT</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_root</span>
 
     <span class="n">_tile_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
+    <span class="n">timeline_thumb_routes</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">output_root</span><span class="p">)</span>
 
     <span class="n">filtered_state</span> <span class="o">=</span> <span class="n">CurationLabels</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">output_root</span><span class="o">.</span><span class="n">master_df</span><span class="p">)</span>
     <span class="n">app</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">CFG_FILTERED_STATE</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_state</span>

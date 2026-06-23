@@ -18,13 +18,11 @@ phenotypic.abc\_.GpuDetector
    
       ~GpuDetector.__init__
       ~GpuDetector.apply
-      ~GpuDetector.collate
       ~GpuDetector.construct
       ~GpuDetector.copy
       ~GpuDetector.dict
       ~GpuDetector.from_json
       ~GpuDetector.from_orm
-      ~GpuDetector.infer_batch
       ~GpuDetector.json
       ~GpuDetector.model_construct
       ~GpuDetector.model_copy
@@ -40,7 +38,6 @@ phenotypic.abc\_.GpuDetector
       ~GpuDetector.parse_file
       ~GpuDetector.parse_obj
       ~GpuDetector.parse_raw
-      ~GpuDetector.preprocess
       ~GpuDetector.schema
       ~GpuDetector.schema_json
       ~GpuDetector.to_json

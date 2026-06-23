@@ -1,0 +1,27 @@
+phenotypic.tune.strategy.NoOpChannel
+====================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: NoOpChannel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NoOpChannel.__init__
+      ~NoOpChannel.report
+      ~NoOpChannel.should_prune
+   
+   
+
+   
+   
+   

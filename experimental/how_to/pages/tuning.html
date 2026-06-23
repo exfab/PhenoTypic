@@ -737,8 +737,9 @@ Gaussian-blur <code class="docutils literal notranslate"><span class="pre">sigma
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 <span class="gp">... </span>    <span class="n">TuningSpec</span><span class="p">,</span> <span class="n">Budget</span><span class="p">,</span> <span class="n">Evaluator</span><span class="p">,</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">Knob</span><span class="p">,</span> <span class="n">FloatRange</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">QCScorer</span><span class="p">,</span> <span class="n">GridConfig</span><span class="p">,</span>
 <span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">QCScorer</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridConfig</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">pipe</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span> <span class="n">OtsuDetector</span><span class="p">()])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">space</span> <span class="o">=</span> <span class="n">SearchSpace</span><span class="p">(</span><span class="n">knobs</span><span class="o">=</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">Knob</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;0.sigma&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">FloatRange</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">8.0</span><span class="p">)),</span>
@@ -806,7 +807,7 @@ higher-is-better term.</p>
 <p>It requires a configured count check on its <code class="docutils literal notranslate"><span class="pre">check</span></code> field. Configure that check
 from a metadata <strong>path</strong> so the scorer round-trips through <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">QCScorer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">QCScorer</span>
 
 <span class="n">scorer</span> <span class="o">=</span> <span class="n">QCScorer</span><span class="p">(</span>
     <span class="n">check</span><span class="o">=</span><span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
@@ -830,7 +831,7 @@ Supply an optional <code class="docutils literal notranslate"><span class="pre">
 enable threshold (Spearman ρ ≥ 0.7; ρ ≥ 0.8 for fully unattended tuning). Point
 <code class="docutils literal notranslate"><span class="pre">gt_masks_source</span></code> at a ground-truth source to let the gate validate; without it
 the gate abstains and the scorer stays unavailable.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceFreeScorer</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceFreeScorer</span>
 
 <span class="n">scorer</span> <span class="o">=</span> <span class="n">ReferenceFreeScorer</span><span class="p">(</span><span class="n">replicate_groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">])</span>
 </pre></div>
@@ -848,7 +849,7 @@ makes it abstain.</p>
 region metric (<code class="docutils literal notranslate"><span class="pre">region_metric=&quot;dice&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;iou&quot;</span></code> — they rank identically); the
 count tier additionally needs a configured <code class="docutils literal notranslate"><span class="pre">count_check</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedVsDetectedCount</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroundTruthMasks</span><span class="p">,</span> <span class="n">SupervisedScorer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">GroundTruthMasks</span><span class="p">,</span> <span class="n">SupervisedScorer</span>
 
 <span class="c1"># Mask tier: a directory of per-image masks.</span>
 <span class="n">masks</span> <span class="o">=</span> <span class="n">SupervisedScorer</span><span class="p">(</span>
@@ -880,7 +881,7 @@ separate, driving a true Pareto study (requires an Optuna <code class="docutils 
 pairing a multi-objective scorer with grid/random is rejected at spec
 construction). The non-dominated front lands in <code class="docutils literal notranslate"><span class="pre">deliverables/pareto/</span></code>.</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeScorer</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.tune.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeScorer</span>
 
 <span class="n">scorer</span> <span class="o">=</span> <span class="n">CompositeScorer</span><span class="p">(</span>
     <span class="n">scorers</span><span class="o">=</span><span class="p">[</span><span class="n">qc_scorer</span><span class="p">,</span> <span class="n">reference_free_scorer</span><span class="p">],</span>

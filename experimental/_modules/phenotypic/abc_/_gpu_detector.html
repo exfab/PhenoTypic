@@ -621,13 +621,15 @@
 <span class="sd">    (e.g., deep-learning foundation models like SAM2 or micro-sam).</span>
 
 <span class="sd">    GpuDetector provides a concrete ``_operate`` built from a small set of</span>
-<span class="sd">    overridable hooks — ``preprocess`` (raw ``input_layer`` array → model-ready</span>
-<span class="sd">    sample), ``collate`` (samples → batch), ``infer_batch`` (batch → per-sample</span>
-<span class="sd">    results), and ``_write_object_output`` (result → ``objmap``/``objmask``).</span>
-<span class="sd">    The single-image notebook path and the batched CLI engine drive the *same*</span>
-<span class="sd">    hooks, so a detector implemented once runs in both. Capability is declared</span>
-<span class="sd">    via three fields — ``input_layer`` (``rgb``/``gray``/``detect_mat``),</span>
-<span class="sd">    ``supports_batching``, and ``output_kind`` (``instance``/``semantic``).</span>
+<span class="sd">    protected, overridable hooks — ``_preprocess`` (raw ``input_layer`` array →</span>
+<span class="sd">    model-ready sample), ``_collate`` (samples → batch), ``_infer_batch``</span>
+<span class="sd">    (batch → per-sample results), and ``_write_object_output`` (result →</span>
+<span class="sd">    ``objmap``/``objmask``). The single-image notebook path and the batched CLI</span>
+<span class="sd">    engine drive the *same* hooks, so a detector implemented once runs in both.</span>
+<span class="sd">    Capability is declared via three fields — ``input_layer``</span>
+<span class="sd">    (``rgb``/``gray``/``detect_mat``; defaults to the layer the model was</span>
+<span class="sd">    trained on), ``supports_batching``, and ``output_kind``</span>
+<span class="sd">    (``instance``/``semantic``).</span>
 
 <span class="sd">    When a pipeline contains a GpuDetector, the CLI enforces:</span>
 
@@ -682,9 +684,9 @@
 <span class="sd">                # ... build model ...</span>
 
 <span class="sd">            def _infer_one(self, sample):</span>
-<span class="sd">                # ``sample`` is a preprocessed (H, W, 3) array. Return a uint16</span>
-<span class="sd">                # labeled objmap (output_kind=&quot;instance&quot;) or a bool mask</span>
-<span class="sd">                # (output_kind=&quot;semantic&quot;). The base _operate/infer_batch wire</span>
+<span class="sd">                # ``sample`` is a preprocessed (H, W, 3) uint8 array. Return a</span>
+<span class="sd">                # uint16 labeled objmap (output_kind=&quot;instance&quot;) or a bool mask</span>
+<span class="sd">                # (output_kind=&quot;semantic&quot;). The base _operate/_infer_batch wire</span>
 <span class="sd">                # this into the image; do NOT override _operate.</span>
 <span class="sd">                # ... run inference ...</span>
 <span class="sd">                return objmap</span>
@@ -692,9 +694,9 @@
 <span class="sd">    Notes:</span>
 <span class="sd">        ``_operate`` is concrete here and should not be overridden. Non-batchable</span>
 <span class="sd">        subclasses (SAM2, micro-sam) implement just ``_ensure_model_loaded`` +</span>
-<span class="sd">        ``_infer_one``; the default ``infer_batch`` loops ``_infer_one`` and is</span>
+<span class="sd">        ``_infer_one``; the default ``_infer_batch`` loops ``_infer_one`` and is</span>
 <span class="sd">        the sole caller of ``_ensure_model_loaded``. Batchable subclasses</span>
-<span class="sd">        (Spec 2 foundation models) instead override ``infer_batch`` with a true</span>
+<span class="sd">        (Spec 2 foundation models) instead override ``_infer_batch`` with a true</span>
 <span class="sd">        ``(N, C, H, W)`` forward — no engine changes needed. The class also lets</span>
 <span class="sd">        the CLI make informed GPU resource-allocation decisions.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -710,35 +712,37 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_model_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build/load the GPU model on first use (idempotent).&quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="GpuDetector.preprocess">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.preprocess">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a raw ``input_layer`` array into a model-ready sample (CPU).</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a raw ``input_layer`` array into a model-ready ``uint8`` sample.</span>
 
-<span class="sd">        Default: a single-channel 2D layer (``gray``/``detect_mat``) is stacked</span>
-<span class="sd">        into an ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume</span>
-<span class="sd">        it unchanged; ``rgb`` passes through untouched. Subclasses may override</span>
-<span class="sd">        for model-specific normalization (e.g. uint8 coercion).</span>
+<span class="sd">        Single-channel 2D layers (``gray``/``detect_mat``) are stacked into an</span>
+<span class="sd">        ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume them</span>
+<span class="sd">        unchanged; ``rgb`` keeps its three channels. The result is then coerced</span>
+<span class="sd">        to ``uint8`` — float ``[0, 1]`` (``gray``/``detect_mat``) and ``uint16``</span>
+<span class="sd">        (16-bit ``rgb``) layers are max-normalized to ``0..255``, while an</span>
+<span class="sd">        already-``uint8`` ``rgb`` array passes through byte-identical — so every</span>
+<span class="sd">        layer reaches the model through this one shared conversion. Subclasses</span>
+<span class="sd">        rarely need to override this.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">array</span></div>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">array</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+            <span class="n">max_val</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">max_val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="p">(</span><span class="n">array</span> <span class="o">/</span> <span class="n">max_val</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">array</span>
 
-
-<div class="viewcode-block" id="GpuDetector.collate">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.collate">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">collate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-sample ``preprocess`` outputs into a batch.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge per-sample ``_preprocess`` outputs into a batch.</span>
 
 <span class="sd">        Default returns the list unchanged (consumed by the looped</span>
-<span class="sd">        ``infer_batch``). Batchable subclasses override to stack into a tensor.</span>
+<span class="sd">        ``_infer_batch``). Batchable subclasses override to stack into a tensor.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">samples</span></div>
+        <span class="k">return</span> <span class="n">samples</span>
 
-
-<div class="viewcode-block" id="GpuDetector.infer_batch">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.GpuDetector.infer_batch">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">infer_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run inference over a collated batch; return one result per sample.</span>
 
 <span class="sd">        Each result is a uint16 labeled map (``output_kind=&quot;instance&quot;``) or a</span>
@@ -747,8 +751,7 @@
 <span class="sd">        subclasses override with a true ``(N, C, H, W)`` forward.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_model_loaded</span><span class="p">()</span>
-        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_infer_one</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span></div>
-
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_infer_one</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span> <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_infer_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the model on ONE preprocessed sample. Subclasses must implement.</span>
@@ -775,14 +778,14 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run GPU detection on one image (notebook / single-image path).</span>
 
 <span class="sd">        Reads the declared ``input_layer``, preprocesses, runs a one-element</span>
-<span class="sd">        batch through ``collate`` + ``infer_batch``, and writes the result via</span>
+<span class="sd">        batch through ``_collate`` + ``_infer_batch``, and writes the result via</span>
 <span class="sd">        ``output_kind``. The batched CLI engine drives the same</span>
-<span class="sd">        ``preprocess``/``collate``/``infer_batch`` methods over many images.</span>
+<span class="sd">        ``_preprocess``/``_collate``/``_infer_batch`` methods over many images.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">array</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">)[:]</span>
-        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
-        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate</span><span class="p">([</span><span class="n">sample</span><span class="p">])</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">infer_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preprocess</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collate</span><span class="p">([</span><span class="n">sample</span><span class="p">])</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_infer_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_write_object_output</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">image</span></div>
 

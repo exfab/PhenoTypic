@@ -1,0 +1,28 @@
+phenotypic.tune.strategy.RandomStrategy
+=======================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: RandomStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RandomStrategy.__init__
+      ~RandomStrategy.is_exhausted
+      ~RandomStrategy.register_result
+      ~RandomStrategy.suggest
+   
+   
+
+   
+   
+   

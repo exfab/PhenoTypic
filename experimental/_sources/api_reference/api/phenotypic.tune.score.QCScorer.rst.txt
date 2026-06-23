@@ -1,0 +1,63 @@
+phenotypic.tune.score.QCScorer
+==============================
+
+.. currentmodule:: phenotypic.tune.score
+
+.. autoclass:: QCScorer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QCScorer.__init__
+      ~QCScorer.availability
+      ~QCScorer.construct
+      ~QCScorer.copy
+      ~QCScorer.dict
+      ~QCScorer.finalize
+      ~QCScorer.from_orm
+      ~QCScorer.json
+      ~QCScorer.model_construct
+      ~QCScorer.model_copy
+      ~QCScorer.model_dump
+      ~QCScorer.model_dump_json
+      ~QCScorer.model_json_schema
+      ~QCScorer.model_parametrized_name
+      ~QCScorer.model_post_init
+      ~QCScorer.model_rebuild
+      ~QCScorer.model_validate
+      ~QCScorer.model_validate_json
+      ~QCScorer.model_validate_strings
+      ~QCScorer.parse_file
+      ~QCScorer.parse_obj
+      ~QCScorer.parse_raw
+      ~QCScorer.schema
+      ~QCScorer.schema_json
+      ~QCScorer.score_image
+      ~QCScorer.update_forward_refs
+      ~QCScorer.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QCScorer.model_computed_fields
+      ~QCScorer.model_config
+      ~QCScorer.model_extra
+      ~QCScorer.model_fields
+      ~QCScorer.model_fields_set
+      ~QCScorer.term_name
+      ~QCScorer.check
+   
+   

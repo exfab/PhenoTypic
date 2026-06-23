@@ -776,6 +776,16 @@
 <span class="c1">#: mirror); both are written atomically together.</span>
 <span class="n">MEASUREMENTS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements.parquet&quot;</span>
 
+<span class="c1">#: Best-effort co-located copy of the run&#39;s ``--metadata`` source CSV,</span>
+<span class="c1">#: written into :data:`DIR_DELIVERABLES` by</span>
+<span class="c1">#: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.</span>
+<span class="c1">#: The post-applied mirror (:data:`MEASUREMENTS_CSV`) carries the metadata</span>
+<span class="c1">#: columns but the join is *inner* — rows with no matching key are dropped —</span>
+<span class="c1">#: so this preserves the full, portable original mapping next to the other</span>
+<span class="c1">#: deliverables (spec §8 / D6). The copy is best-effort and never blocks the</span>
+<span class="c1">#: run; a missing/unreadable source is logged and skipped.</span>
+<span class="n">DELIVERABLES_METADATA_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata.csv&quot;</span>
+
 <span class="c1">#: Output filename of the model-fit summary written by the CLI when the</span>
 <span class="c1">#: pipeline has a ``model`` configured (and re-emitted by the analysis</span>
 <span class="c1">#: GUI&#39;s &quot;Run analysis&quot; button). Human-readable mirror of</span>
@@ -1463,6 +1473,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">measurements_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements.parquet`` (post-applied mirror).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MEASUREMENTS_PARQUET</span></div>
+
+
+
+<div class="viewcode-block" id="metadata_csv_deliverable_path">
+<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.metadata_csv_deliverable_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">metadata_csv_deliverable_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/metadata.csv`` (co-located ``--metadata`` copy).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DELIVERABLES_METADATA_CSV</span></div>
 
 
 

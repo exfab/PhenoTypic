@@ -12,4 +12,6 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   phenotypic.tune.score
+   phenotypic.tune.strategy
    phenotypic.tune.targets

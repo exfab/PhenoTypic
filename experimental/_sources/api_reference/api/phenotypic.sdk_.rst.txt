@@ -64,6 +64,7 @@
       measurements_by_feature_dir
       measurements_csv_path
       measurements_parquet_path
+      metadata_csv_deliverable_path
       matches_any_suffix
       migrate_legacy_machine_state
       clear_machine_state

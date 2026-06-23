@@ -610,9 +610,9 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._scoring._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">clamp01</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._scoring._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span><span class="p">,</span> <span class="n">project_objectives_to_scalar</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.._strategies._pruning</span><span class="w"> </span><span class="kn">import</span> <span class="n">NoOpChannel</span><span class="p">,</span> <span class="n">PruningChannel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..score._orient</span><span class="w"> </span><span class="kn">import</span> <span class="n">clamp01</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..score._scorer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scorer</span><span class="p">,</span> <span class="n">project_objectives_to_scalar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..strategy._pruning</span><span class="w"> </span><span class="kn">import</span> <span class="n">NoOpChannel</span><span class="p">,</span> <span class="n">PruningChannel</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._aggregate_math</span><span class="w"> </span><span class="kn">import</span> <span class="n">_median_iqr</span><span class="p">,</span> <span class="n">_relative</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_pipeline</span>
 

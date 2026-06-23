@@ -48,16 +48,6 @@
       Fixed
       Knob
       SearchSpace
-      StrategyConfig
-      GridConfig
-      RandomConfig
-      OptunaConfig
-      Scorer
-      QCScorer
-      ReferenceFreeScorer
-      GroundTruthMasks
-      SupervisedScorer
-      CompositeScorer
       Evaluator
       EvaluationResult
       HeldOutConfig
@@ -83,4 +73,14 @@
    
 
 
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: module.rst
+   :recursive:
+
+   score
+   strategy
 

@@ -1,0 +1,27 @@
+phenotypic.tune.strategy.PruningChannel
+=======================================
+
+.. currentmodule:: phenotypic.tune.strategy
+
+.. autoclass:: PruningChannel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PruningChannel.__init__
+      ~PruningChannel.report
+      ~PruningChannel.should_prune
+   
+   
+
+   
+   
+   

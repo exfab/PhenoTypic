@@ -13,3 +13,4 @@ Subpackages
    :maxdepth: 4
 
    phenotypic.gui.results_viewer.colony_view
+   phenotypic.gui.results_viewer.timeline_view

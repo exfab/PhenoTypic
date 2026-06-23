@@ -18,6 +18,7 @@ the images aligned with the implementation.
 |------|------|
 | [Setup](01_setup.md) | Generate the synthetic dataset and launch the hub. |
 | [Browse source images](18_browse.md) | Deep-zoom the raw input images under a source root with cascading dropdowns and a metadata panel. |
+| [Browse — find the ideal starting time](19_browse_timeline.md) | Flip Browse to Timeline mode and navigate a folder/EXIF matrix with arrow keys to find a starting time and deep-zoom any frame. |
 | [File Explorer](02_file_explorer.md) | Navigate the sandbox sidebar and read capability badges. |
 | [Build a Pipeline](03_build_pipeline.md) | Compose a pipeline.json with the fixed linear port map, side loader, and zoom controls. |
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
@@ -34,6 +35,7 @@ the images aligned with the implementation.
 | [QC review walkthrough](15_qc_review.md) | Switch the QC tab to Review; walk worst-first groups for a module, curate in the tile gallery, mark reviewed, and watch the metric recompute in place. |
 | [Tune co-pilot](16_tune_copilot.md) | Open the `/tune/` read-only co-pilot over a tune output: monitor trials, curate A/B overlays, review the search space, and launch the next run. |
 | [Error analysis](17_error_analysis.md) | Rank the measurements that separate an error category from the good baseline, read off a cutoff, and copy a filter spec. |
+| [Results — trait emergence over time](20_results_timeline.md) | Open the results-viewer Timeline tab, pick a Y grouping + a monotonic X time column, scan one plate's overlay time-course, and deep-zoom any plate. |
 
 ## Prerequisites
 
@@ -51,6 +53,7 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 
 01_setup
 18_browse
+19_browse_timeline
 02_file_explorer
 03_build_pipeline
 04_run_local
@@ -67,4 +70,5 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 15_qc_review
 16_tune_copilot
 17_error_analysis
+20_results_timeline
 ```

@@ -624,10 +624,10 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Evaluator</span><span class="p">,</span> <span class="n">HeldOutConfig</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._multi_objective</span><span class="w"> </span><span class="kn">import</span> <span class="n">reject_grid_random_multi_objective</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._scoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScorerField</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.score</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScorerField</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._search_space</span><span class="w"> </span><span class="kn">import</span> <span class="n">SearchSpace</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._search_space._targets</span><span class="w"> </span><span class="kn">import</span> <span class="n">KnobTarget</span><span class="p">,</span> <span class="n">Nested</span><span class="p">,</span> <span class="n">Param</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._strategies._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyConfig</span><span class="p">,</span> <span class="n">StrategyConfigUnion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.strategy._config</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyConfig</span><span class="p">,</span> <span class="n">StrategyConfigUnion</span>
 
 <span class="c1">#: A ``StrategyConfig``-valued field that round-trips **any** subclass via the</span>
 <span class="c1">#: class registry — Phase-1&#39;s built-in ``GridConfig``/``RandomConfig`` *and* the</span>
