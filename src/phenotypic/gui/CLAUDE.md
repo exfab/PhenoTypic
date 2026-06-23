@@ -73,6 +73,13 @@ route the request. Open OnDemand `/rnode` usually strips before the backend, so
 the middleware is effectively a no-op while generated browser URLs remain
 prefixed.
 
+Every GUI app factory that accepts `url_prefix` must finalize the Dash app with
+`configure_url_prefix_routing(app, url_prefix)` from
+`phenotypic.gui._url_prefix` immediately before returning it. Do not install
+prefix-stripping middleware directly in app factories; keep direct
+`install_url_prefix_strip_middleware(...)` calls inside `_url_prefix.py` and
+its unit tests so future proxy-routing changes have one implementation point.
+
 ### Mount prefixes
 
 ```python
@@ -329,6 +336,12 @@ travels with the field annotation.
   `/runs/...` iframe URLs through `join_url_prefix(base_prefix, path)`, and let
   the URL-prefix WSGI middleware strip configured `/node/...` prefixes before
   routing when the proxy forwards them to the backend.
+- **Finalize URL-prefix routing through the shared helper** — factories should
+  return `configure_url_prefix_routing(app, url_prefix)` after registering their
+  routes, callbacks, static blueprints, and layouts. For the composed hub, call
+  the helper only after `DispatcherMiddleware` has replaced
+  `shell_app.server.wsgi_app`; wrapping earlier would leave `/node/...`
+  requests visible to the dispatcher.
 - **Don't import dash from `_config.py` or `_design.py`** — they stay
   cheap to import everywhere, including from blueprint and test code.
 - **Registry keys are split by type** — the builder's
