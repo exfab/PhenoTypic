@@ -21,13 +21,15 @@ class GpuDetector(ObjectDetector, ABC):
     (e.g., deep-learning foundation models like SAM2 or micro-sam).
 
     GpuDetector provides a concrete ``_operate`` built from a small set of
-    overridable hooks — ``preprocess`` (raw ``input_layer`` array → model-ready
-    sample), ``collate`` (samples → batch), ``infer_batch`` (batch → per-sample
-    results), and ``_write_object_output`` (result → ``objmap``/``objmask``).
-    The single-image notebook path and the batched CLI engine drive the *same*
-    hooks, so a detector implemented once runs in both. Capability is declared
-    via three fields — ``input_layer`` (``rgb``/``gray``/``detect_mat``),
-    ``supports_batching``, and ``output_kind`` (``instance``/``semantic``).
+    protected, overridable hooks — ``_preprocess`` (raw ``input_layer`` array →
+    model-ready sample), ``_collate`` (samples → batch), ``_infer_batch``
+    (batch → per-sample results), and ``_write_object_output`` (result →
+    ``objmap``/``objmask``). The single-image notebook path and the batched CLI
+    engine drive the *same* hooks, so a detector implemented once runs in both.
+    Capability is declared via three fields — ``input_layer``
+    (``rgb``/``gray``/``detect_mat``; defaults to the layer the model was
+    trained on), ``supports_batching``, and ``output_kind``
+    (``instance``/``semantic``).
 
     When a pipeline contains a GpuDetector, the CLI enforces:
 
@@ -82,9 +84,9 @@ class GpuDetector(ObjectDetector, ABC):
                 # ... build model ...
 
             def _infer_one(self, sample):
-                # ``sample`` is a preprocessed (H, W, 3) array. Return a uint16
-                # labeled objmap (output_kind="instance") or a bool mask
-                # (output_kind="semantic"). The base _operate/infer_batch wire
+                # ``sample`` is a preprocessed (H, W, 3) uint8 array. Return a
+                # uint16 labeled objmap (output_kind="instance") or a bool mask
+                # (output_kind="semantic"). The base _operate/_infer_batch wire
                 # this into the image; do NOT override _operate.
                 # ... run inference ...
                 return objmap
@@ -92,9 +94,9 @@ class GpuDetector(ObjectDetector, ABC):
     Notes:
         ``_operate`` is concrete here and should not be overridden. Non-batchable
         subclasses (SAM2, micro-sam) implement just ``_ensure_model_loaded`` +
-        ``_infer_one``; the default ``infer_batch`` loops ``_infer_one`` and is
+        ``_infer_one``; the default ``_infer_batch`` loops ``_infer_one`` and is
         the sole caller of ``_ensure_model_loaded``. Batchable subclasses
-        (Spec 2 foundation models) instead override ``infer_batch`` with a true
+        (Spec 2 foundation models) instead override ``_infer_batch`` with a true
         ``(N, C, H, W)`` forward — no engine changes needed. The class also lets
         the CLI make informed GPU resource-allocation decisions.
     """
@@ -110,27 +112,37 @@ class GpuDetector(ObjectDetector, ABC):
     def _ensure_model_loaded(self) -> None:
         """Build/load the GPU model on first use (idempotent)."""
 
-    def preprocess(self, array: np.ndarray) -> Any:
-        """Turn a raw ``input_layer`` array into a model-ready sample (CPU).
+    def _preprocess(self, array: np.ndarray) -> Any:
+        """Turn a raw ``input_layer`` array into a model-ready ``uint8`` sample.
 
-        Default: a single-channel 2D layer (``gray``/``detect_mat``) is stacked
-        into an ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume
-        it unchanged; ``rgb`` passes through untouched. Subclasses may override
-        for model-specific normalization (e.g. uint8 coercion).
+        Single-channel 2D layers (``gray``/``detect_mat``) are stacked into an
+        ``(H, W, 3)`` block so 3-channel models (SAM/DINO ViT) consume them
+        unchanged; ``rgb`` keeps its three channels. The result is then coerced
+        to ``uint8`` — float ``[0, 1]`` (``gray``/``detect_mat``) and ``uint16``
+        (16-bit ``rgb``) layers are max-normalized to ``0..255``, while an
+        already-``uint8`` ``rgb`` array passes through byte-identical — so every
+        layer reaches the model through this one shared conversion. Subclasses
+        rarely need to override this.
         """
         if array.ndim == 2:
-            return np.stack([array, array, array], axis=-1)
+            array = np.stack([array, array, array], axis=-1)
+        if array.dtype != np.uint8:
+            max_val = array.max()
+            if max_val > 0:
+                array = (array / max_val * 255).astype(np.uint8)
+            else:
+                array = np.zeros(array.shape, dtype=np.uint8)
         return array
 
-    def collate(self, samples: List[Any]) -> Any:
-        """Merge per-sample ``preprocess`` outputs into a batch.
+    def _collate(self, samples: List[Any]) -> Any:
+        """Merge per-sample ``_preprocess`` outputs into a batch.
 
         Default returns the list unchanged (consumed by the looped
-        ``infer_batch``). Batchable subclasses override to stack into a tensor.
+        ``_infer_batch``). Batchable subclasses override to stack into a tensor.
         """
         return samples
 
-    def infer_batch(self, batch: Any) -> List[np.ndarray]:
+    def _infer_batch(self, batch: Any) -> List[np.ndarray]:
         """Run inference over a collated batch; return one result per sample.
 
         Each result is a uint16 labeled map (``output_kind="instance"``) or a
@@ -166,13 +178,13 @@ class GpuDetector(ObjectDetector, ABC):
         """Run GPU detection on one image (notebook / single-image path).
 
         Reads the declared ``input_layer``, preprocesses, runs a one-element
-        batch through ``collate`` + ``infer_batch``, and writes the result via
+        batch through ``_collate`` + ``_infer_batch``, and writes the result via
         ``output_kind``. The batched CLI engine drives the same
-        ``preprocess``/``collate``/``infer_batch`` methods over many images.
+        ``_preprocess``/``_collate``/``_infer_batch`` methods over many images.
         """
         array = getattr(image, self.input_layer)[:]
-        sample = self.preprocess(array)
-        batch = self.collate([sample])
-        results = self.infer_batch(batch)
+        sample = self._preprocess(array)
+        batch = self._collate([sample])
+        results = self._infer_batch(batch)
         self._write_object_output(image, results[0])
         return image

@@ -191,6 +191,10 @@ class Insid3Detector(GpuDetector):
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
             raises ``RuntimeError`` if none is found.
+        input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
+            layer the DINOv3 backbone was trained on), ``"gray"``, or
+            ``"detect_mat"``. Single-channel layers are stacked to 3 channels
+            and coerced to uint8 by ``_preprocess``.
 
     Returns:
         Image: Input image with ``objmask`` set to the semantic foreground mask
@@ -381,7 +385,7 @@ class Insid3Detector(GpuDetector):
         """
 
         self._ensure_model_loaded()
-        rgb = self._to_uint8(sample)
+        rgb = sample
 
         from phenotypic.detect.nn._tiling import (
             _plan_tiles,
@@ -419,21 +423,6 @@ class Insid3Detector(GpuDetector):
             thresh=self.similarity_thresh,
             out_shape=(rgb.shape[0], rgb.shape[1]),
         )
-
-    @staticmethod
-    def _to_uint8(sample: "np.ndarray") -> "np.ndarray":
-        """Coerce an ``(H, W, 3)`` sample to uint8 for the DINO processor."""
-        import numpy as np
-
-        rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-        return rgb
-
 
 # Expose the class docstring on .apply() for Sphinx autodoc
 Insid3Detector.apply.__doc__ = Insid3Detector.__doc__

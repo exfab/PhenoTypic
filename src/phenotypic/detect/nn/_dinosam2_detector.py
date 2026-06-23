@@ -188,6 +188,10 @@ class DinoSam2Detector(GpuDetector):
             mask generator).  Default 100.
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
             and raises ``RuntimeError`` if none is found.
+        input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
+            layer the SAM2/DINO backbones were trained on), ``"gray"``, or
+            ``"detect_mat"``.  Single-channel layers are stacked to 3 channels
+            and coerced to uint8 by ``_preprocess``.
 
     Returns:
         Image: Input image with ``objmap`` set to a labelled instance map and
@@ -318,7 +322,7 @@ class DinoSam2Detector(GpuDetector):
     # ------------------------------------------------------------------
 
     def _infer_one(self, sample: Any) -> "np.ndarray":
-        """Run the SAM2-proposals + DINO-scoring recipe on one RGB sample.
+        """Run the SAM2-proposals + DINO-scoring recipe on one preprocessed sample.
 
         Returns a uint16 labelled objmap. SAM2 proposals are scored by cosine
         similarity of their pooled DINO feature to the foreground prototype
@@ -329,7 +333,7 @@ class DinoSam2Detector(GpuDetector):
 
         self._ensure_model_loaded()
 
-        rgb = self._to_uint8(sample)
+        rgb = sample
         raw = self._generator.generate(rgb)  # type: ignore[attr-defined]
         if not raw:
             return np.zeros(rgb.shape[:2], dtype=np.uint16)
@@ -356,20 +360,6 @@ class DinoSam2Detector(GpuDetector):
             similarity_thresh=self.similarity_thresh,
             merge_iou_thresh=self.merge_iou_thresh,
         )
-
-    @staticmethod
-    def _to_uint8(sample: "np.ndarray") -> "np.ndarray":
-        """Coerce an ``(H, W, 3)`` sample to uint8 for SAM2 / the DINO processor."""
-        import numpy as np
-
-        rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-        return rgb
 
     @staticmethod
     def _foreground_prototype(
