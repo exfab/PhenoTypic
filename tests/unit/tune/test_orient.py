@@ -2,7 +2,7 @@
 
 import pytest
 
-from phenotypic.tune._scoring._orient import Sense, clamp01, to_cost
+from phenotypic.tune.score._orient import Sense, clamp01, to_cost
 
 
 class TestSense:

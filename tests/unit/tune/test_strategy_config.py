@@ -1,7 +1,15 @@
 from __future__ import annotations
 
-from phenotypic.tune import Categorical, GridConfig, Knob, RandomConfig, SearchSpace
-from phenotypic.tune._strategies import GridStrategy, RandomStrategy
+from phenotypic.tune import (
+    Categorical,
+    Knob,
+    SearchSpace,
+)
+from phenotypic.tune.strategy import (
+    GridConfig,
+    RandomConfig,
+)
+from phenotypic.tune.strategy import GridStrategy, RandomStrategy
 
 
 def _space() -> SearchSpace:
@@ -25,7 +33,7 @@ def test_random_config_builds_random_strategy():
 def test_config_roundtrips_via_discriminator():
     from pydantic import TypeAdapter
 
-    from phenotypic.tune._strategies._config import StrategyConfigUnion
+    from phenotypic.tune.strategy._config import StrategyConfigUnion
 
     adapter = TypeAdapter(StrategyConfigUnion)
     cfg = RandomConfig(n_trials=5, seed=1)

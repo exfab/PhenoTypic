@@ -14,7 +14,7 @@ pure pieces back it (all unit-tested headless, all optuna-free):
   :class:`~phenotypic.tune.TuningSpec` it replaces **only** ``search_space`` and
   keeps the run's scorer / strategy / budget / evaluator / held-out policy. From
   a bare ``ImagePipeline`` it defaults the scorer (an unconfigured
-  :class:`~phenotypic.tune.QCScorer` — the "review in Launch" signal), strategy,
+  :class:`~phenotypic.tune.score.QCScorer` — the "review in Launch" signal), strategy,
   and budget.
 * :func:`build_space_view` — the Dash view body: one :func:`_knob_form` row per
   inferred flat / presence knob, the disabled nested rows, and the Export button.
@@ -172,7 +172,7 @@ def _default_qc_scorer() -> Any:
     import pandas as pd
 
     from phenotypic.analysis import ExpectedVsDetectedCount
-    from phenotypic.tune import QCScorer
+    from phenotypic.tune.score import QCScorer
 
     empty = pd.DataFrame({"Metadata_ImageName": [], "Object_Label": []})
     return QCScorer(
@@ -195,8 +195,8 @@ def space_to_spec(
     ``held_out`` verbatim — the user is re-shaping the search, not the objective.
     When it is a bare :class:`~phenotypic.ImagePipeline` (a fresh start from a
     ``pipeline.json``), the result defaults the scorer (an unconfigured
-    :class:`~phenotypic.tune.QCScorer` — :func:`_default_qc_scorer`), a
-    :class:`~phenotypic.tune.GridConfig` strategy, a default
+    :class:`~phenotypic.tune.score.QCScorer` — :func:`_default_qc_scorer`), a
+    :class:`~phenotypic.tune.strategy.GridConfig` strategy, a default
     :class:`~phenotypic.tune.Budget`, and a default
     :class:`~phenotypic.tune.Evaluator`; the unconfigured scorer is the
     "review these in Launch" signal.
@@ -213,11 +213,11 @@ def space_to_spec(
         The exported :class:`~phenotypic.tune.TuningSpec`.
     """
     from phenotypic.tune import (
-        Budget,
-        Evaluator,
-        GridConfig,
-        TuningSpec,
-    )
+    Budget,
+    Evaluator,
+    TuningSpec,
+)
+    from phenotypic.tune.strategy import GridConfig
 
     if _is_tuning_spec(pipeline_or_spec):
         spec: "TuningSpec" = pipeline_or_spec  # type: ignore[assignment]

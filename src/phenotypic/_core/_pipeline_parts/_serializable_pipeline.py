@@ -618,6 +618,8 @@ class SerializablePipeline(NapariPipelineViewer):
             "phenotypic.post",
             "phenotypic.detect.nn",
             "phenotypic.tune",
+            "phenotypic.tune.score",
+            "phenotypic.tune.strategy",
         ]
 
         for module_name in submodules:

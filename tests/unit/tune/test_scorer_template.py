@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.tune._scoring._orient import Sense
-from phenotypic.tune._scoring._scorer import Scorer
+from phenotypic.tune.score._orient import Sense
+from phenotypic.tune.score._scorer import Scorer
 
 
 class _HigherBetterLeaf(Scorer):
@@ -52,7 +52,7 @@ def test_score_terms_is_abstract():
 
 
 def test_composite_score_terms_stub_raises():
-    from phenotypic.tune import CompositeScorer
+    from phenotypic.tune.score import CompositeScorer
 
     with pytest.raises(NotImplementedError):
         CompositeScorer(scorers=[])._score_terms(None, None)

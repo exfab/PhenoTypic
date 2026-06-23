@@ -17,18 +17,20 @@ from phenotypic.enhance import GaussianBlur
 from phenotypic.tune import (
     Budget,
     Categorical,
-    Evaluator,
     EvaluationResult,
+    Evaluator,
     Fixed,
     FloatRange,
-    GridConfig,
     ImportanceReport,
     IntRange,
     Knob,
-    RandomConfig,
-    Scorer,
     SearchSpace,
     TuningSpec,
+)
+from phenotypic.tune.score import Scorer
+from phenotypic.tune.strategy import (
+    GridConfig,
+    RandomConfig,
 )
 from phenotypic.tune._screening_freeze import (
     ScreeningConfig,

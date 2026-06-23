@@ -8,7 +8,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import GaussianBlur
 from phenotypic.tune import Categorical, Knob, SearchSpace
 from phenotypic.tune._evaluation import build_pipeline
-from phenotypic.tune._strategies._enumerate import enumerate_grid
+from phenotypic.tune.strategy._enumerate import enumerate_grid
 
 GOLDEN = (
     Path(__file__).resolve().parents[3]

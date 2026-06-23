@@ -159,11 +159,11 @@ digraph tune_dataflow {
 | Node | Source | Math / role |
 |---|---|---|
 | `infer_search_space` | `_search_space/_infer.py:685` | fields → Knobs; `[d/4, d·4]`, log auto-trip |
-| `Strategy.suggest()` | `_strategies/_optuna.py:268` | TPE EI ∝ `l(x)/g(x)`; sampler at `:248` |
+| `Strategy.suggest()` | `strategy/_optuna.py:268` | TPE EI ∝ `l(x)/g(x)`; sampler at `:248` |
 | `build_pipeline` | `_evaluation/_builder.py` | clone base + overlay params |
 | rung ladder | `_evaluation/_evaluator.py:222` | `max(6, ⌈n/3⌉)`, ×3, …, n |
-| `Scorer.score_image` | `_scoring/*` | four strategies, **cost** terms ∈ [0,1] (oriented by `to_cost`) |
-| `Scorer.to_cost` | `_scoring/_orient.py` | natural value → cost ∈ [0,1] (Sense + anchor) |
+| `Scorer.score_image` | `score/*` | four strategies, **cost** terms ∈ [0,1] (oriented by `to_cost`) |
+| `Scorer.to_cost` | `score/_orient.py` | natural value → cost ∈ [0,1] (Sense + anchor) |
 | robust-aggregate | `_evaluator.py:55` + `_aggregate_math.py:28` | `median + λ·IQR` (clamped), λ=0.5 |
 | `should_prune()` | `_optuna.py:218` (ASHA) | top `1/reduction_factor` survive |
 | `StudyStore` | `_study_store.py` / `_study/_optuna_store.py` | journal or Optuna RDB |

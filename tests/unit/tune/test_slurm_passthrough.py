@@ -117,9 +117,13 @@ def _patched_fleet_call(tmp_path, monkeypatch, **fleet_kwargs):
 def _minimal_spec():
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
-    from phenotypic.tune import Evaluator, Scorer, SearchSpace
+    from phenotypic.tune import (
+    Evaluator,
+    SearchSpace,
+)
+    from phenotypic.tune.score import Scorer
     from phenotypic.tune._spec import Budget, TuningSpec
-    from phenotypic.tune._strategies._config import OptunaConfig
+    from phenotypic.tune.strategy._config import OptunaConfig
 
     class _ConstScorer(Scorer):
         def _score_terms(self, image, measurements) -> dict[str, float]:

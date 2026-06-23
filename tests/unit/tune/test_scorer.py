@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phenotypic.tune._scoring._scorer import Scorer
+from phenotypic.tune.score._scorer import Scorer
 
 
 class _FixedScorer(Scorer):

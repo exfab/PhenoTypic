@@ -564,7 +564,7 @@ def _monitor_degrade_note(root: "TuneRunRoot", error: BaseException) -> str:
     """
     # Lazy import: the helper lives behind the tune extra; importing it
     # function-local keeps _callbacks importable without optuna.
-    from phenotypic.tune._strategies._optuna_support import is_legacy_study_name
+    from phenotypic.tune.strategy._optuna_support import is_legacy_study_name
 
     if is_legacy_study_name(root.study_name):
         return _NOTE_LEGACY_STUDY

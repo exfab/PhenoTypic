@@ -9,7 +9,7 @@ from phenotypic.tune import (
     Knob,
     SearchSpace,
 )
-from phenotypic.tune._strategies._enumerate import enumerate_grid, grid_values
+from phenotypic.tune.strategy._enumerate import enumerate_grid, grid_values
 
 
 def test_grid_values_per_domain():

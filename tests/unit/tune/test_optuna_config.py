@@ -11,13 +11,13 @@ from typing import get_args
 
 import pytest
 
-from phenotypic.tune import OptunaConfig
+from phenotypic.tune.strategy import OptunaConfig
 
 
 def test_optuna_samplers_roster_matches_sampler_kind_literal():
     # The runtime ``OPTUNA_SAMPLERS`` frozenset and the ``STRATEGY_CHOICES`` CLI
     # tuple are derived from ``SamplerKind`` — assert they cannot drift apart.
-    from phenotypic.tune._strategies._config import (
+    from phenotypic.tune.strategy._config import (
         OPTUNA_SAMPLERS,
         STRATEGY_CHOICES,
         SamplerKind,

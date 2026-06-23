@@ -10,9 +10,9 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tune import QCScorer
+from phenotypic.tune.score import QCScorer
 from phenotypic.tune._evaluation import build_pipeline
-from phenotypic.tune._strategies._enumerate import enumerate_grid
+from phenotypic.tune.strategy._enumerate import enumerate_grid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from migrate_sweep_manifest import migrate_manifest_to_spec  # noqa: E402

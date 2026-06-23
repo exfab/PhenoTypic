@@ -18,14 +18,14 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    Scorer,
     SearchSpace,
 )
+from phenotypic.tune.score import Scorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._engine import TuningEngine
 from phenotypic.tune._evaluation._generalization import compute_generalization_gap
-from phenotypic.tune._scoring._orient import Sense
+from phenotypic.tune.score._orient import Sense
 from phenotypic.tune._spec import Budget, TuningSpec
 
 # The deterministic objective surface: one knob, three settings, a fixed

@@ -12,7 +12,7 @@ from phenotypic import ImagePipeline
 
 from ._evaluation import build_pipeline
 from ._multi_objective import objective_directions
-from ._scoring import CompositeScorer
+from .score import CompositeScorer
 from ._spec import TuningSpec
 from ._study._protocol import StudyStore
 from ._study_store import JournalStudyStore, Trial

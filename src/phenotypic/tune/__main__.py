@@ -22,7 +22,7 @@ from typing import Optional, Sequence
 from phenotypic import ImagePipeline
 
 from ._spec import TuningSpec
-from ._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV, STRATEGY_CHOICES
+from .strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV, STRATEGY_CHOICES
 from ._tune_cli._auto_space import _render_review_table, run_auto_space
 from ._tune_cli._run import _load_images, run_tuning
 

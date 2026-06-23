@@ -18,11 +18,11 @@ from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 
 

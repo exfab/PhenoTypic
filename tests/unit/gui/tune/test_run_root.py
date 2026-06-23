@@ -24,10 +24,10 @@ from phenotypic.tune import (
     Categorical,
     Evaluator,
     Knob,
-    OptunaConfig,
-    QCScorer,
     SearchSpace,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import OptunaConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 
 from phenotypic.gui.tune import TuneRunRoot, TuneRunRootError

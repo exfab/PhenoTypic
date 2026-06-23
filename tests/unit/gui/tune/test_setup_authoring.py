@@ -10,12 +10,12 @@ from phenotypic.gui.tune._setup_authoring import write_authored_setup_spec
 from phenotypic.tune import (
     Evaluator,
     Fixed,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
     TuningSpec,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget
 from phenotypic.tune.targets import Param
 

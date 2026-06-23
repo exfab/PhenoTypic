@@ -11,12 +11,12 @@ from phenotypic.measure import MeasureShape, MeasureSize
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    ReferenceFreeScorer,
     SearchSpace,
 )
-from phenotypic.tune._scoring._reference_free_scorer import (
+from phenotypic.tune.score import ReferenceFreeScorer
+from phenotypic.tune.strategy import GridConfig
+from phenotypic.tune.score._reference_free_scorer import (
     ReferenceFreeScorer as _RFS,
     _bounded_inverse,
     _clamp01,

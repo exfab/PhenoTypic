@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.tune._scoring._metrics import dice, iou
+from phenotypic.tune.score._metrics import dice, iou
 
 
 def test_identical_masks_score_one():

@@ -22,15 +22,19 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.tune import (
     Budget,
     Categorical,
-    CompositeScorer,
     Evaluator,
-    GridConfig,
     Knob,
-    OptunaConfig,
-    QCScorer,
-    RandomConfig,
     SearchSpace,
     TuningSpec,
+)
+from phenotypic.tune.score import (
+    CompositeScorer,
+    QCScorer,
+)
+from phenotypic.tune.strategy import (
+    GridConfig,
+    OptunaConfig,
+    RandomConfig,
 )
 from phenotypic.tune._multi_objective import (
     is_multi_objective,

@@ -20,15 +20,15 @@ from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._evaluation import build_pipeline
-from phenotypic.tune._scoring import Scorer
+from phenotypic.tune.score import Scorer
 from phenotypic.tune._spec import Budget, TuningSpec
-from phenotypic.tune._strategies._enumerate import enumerate_grid
+from phenotypic.tune.strategy._enumerate import enumerate_grid
 
 
 def _pipelines(manifest: dict) -> list[ImagePipeline]:

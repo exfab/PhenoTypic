@@ -32,7 +32,7 @@ from dash.development.base_component import Component
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune import _nav
 from phenotypic.gui.tune._run_picker import build_run_picker_modal, build_run_picker_row
-from phenotypic.tune._strategies._config import STRATEGY_CHOICES
+from phenotypic.tune.strategy._config import STRATEGY_CHOICES
 
 if TYPE_CHECKING:
     from phenotypic.gui.shell._sandbox import SandboxRoot

@@ -19,14 +19,14 @@ from phenotypic.tune import (
     Knob,
     SearchSpace,
 )
-from phenotypic.tune._strategies._pruning import NoOpChannel
+from phenotypic.tune.strategy._pruning import NoOpChannel
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 pytestmark = pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 
 
 def _strategy(space: SearchSpace, **kw):
-    from phenotypic.tune._strategies._optuna import OptunaStrategy
+    from phenotypic.tune.strategy._optuna import OptunaStrategy
 
     kw.setdefault("sampler", "tpe")
     kw.setdefault("n_trials", 50)

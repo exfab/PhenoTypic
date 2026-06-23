@@ -40,7 +40,7 @@ def _space():
 
 
 def test_strategy_reuses_store_study_object(tmp_path):
-    from phenotypic.tune._strategies._config import OptunaConfig
+    from phenotypic.tune.strategy._config import OptunaConfig
 
     url = f"sqlite:///{tmp_path / 'study.db'}"
     store = _store(url)
@@ -52,7 +52,7 @@ def test_strategy_reuses_store_study_object(tmp_path):
 def test_strategy_reattaches_its_chosen_sampler_to_shared_study(tmp_path):
     import optuna
 
-    from phenotypic.tune._strategies._config import OptunaConfig
+    from phenotypic.tune.strategy._config import OptunaConfig
 
     url = f"sqlite:///{tmp_path / 'study.db'}"
     store = _store(url)
@@ -74,7 +74,7 @@ def test_strategy_reattaches_its_chosen_sampler_to_shared_study(tmp_path):
 def test_strategy_without_store_study_opens_its_own(tmp_path):
     # A non-Optuna store (no ``.study``) → the strategy falls back to its own
     # create_study from the URL + name (the screening-rounds journal path).
-    from phenotypic.tune._strategies._optuna import OptunaStrategy
+    from phenotypic.tune.strategy._optuna import OptunaStrategy
 
     url = f"sqlite:///{tmp_path / 'study.db'}"
 
@@ -101,7 +101,7 @@ def test_strategy_without_store_study_opens_its_own(tmp_path):
 def test_retry_succeeds_after_transient_operational_errors():
     from sqlalchemy.exc import OperationalError
 
-    from phenotypic.tune._strategies._optuna_support import (
+    from phenotypic.tune.strategy._optuna_support import (
         retry_on_transient_db_error,
     )
 
@@ -122,8 +122,8 @@ def test_retry_succeeds_after_transient_operational_errors():
 def test_retry_exhausts_and_reraises_transient_error(monkeypatch):
     from sqlalchemy.exc import OperationalError
 
-    import phenotypic.tune._strategies._optuna_support as support
-    from phenotypic.tune._strategies._optuna_support import (
+    import phenotypic.tune.strategy._optuna_support as support
+    from phenotypic.tune.strategy._optuna_support import (
         retry_on_transient_db_error,
     )
 
@@ -138,7 +138,7 @@ def test_retry_exhausts_and_reraises_transient_error(monkeypatch):
 
 
 def test_retry_does_not_retry_non_transient_error():
-    from phenotypic.tune._strategies._optuna_support import (
+    from phenotypic.tune.strategy._optuna_support import (
         retry_on_transient_db_error,
     )
 

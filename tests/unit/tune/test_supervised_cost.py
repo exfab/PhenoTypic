@@ -4,8 +4,11 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import GroundTruthMasks, SupervisedScorer
-from phenotypic.tune._scoring._orient import Sense
+from phenotypic.tune.score import (
+    GroundTruthMasks,
+    SupervisedScorer,
+)
+from phenotypic.tune.score._orient import Sense
 
 
 def _counts_csv(tmp_path):

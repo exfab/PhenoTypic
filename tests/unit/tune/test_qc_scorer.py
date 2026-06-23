@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune._scoring._qc_scorer import QCScorer, _threshold_anchored
+from phenotypic.tune.score._qc_scorer import QCScorer, _threshold_anchored
 
 
 def test_threshold_anchored_anchors():

@@ -35,11 +35,11 @@ from phenotypic.tune import (  # noqa: E402
     Categorical,
     Evaluator,
     Knob,
-    OptunaConfig,
-    QCScorer,
     SearchSpace,
     TuningSpec,
 )
+from phenotypic.tune.score import QCScorer  # noqa: E402
+from phenotypic.tune.strategy import OptunaConfig  # noqa: E402
 from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning  # noqa: E402
 
 _NROWS, _NCOLS = 8, 12

@@ -16,7 +16,14 @@ from phenotypic.sdk_ import (
     pareto_best_pipeline_path,
     tuning_spec_path,
 )
-from phenotypic.tune import Categorical, Evaluator, GridConfig, Knob, QCScorer, SearchSpace
+from phenotypic.tune import (
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+)
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 
 

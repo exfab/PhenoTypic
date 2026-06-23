@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._strategies._optuna_support import _MINIMIZE
+from .strategy._optuna_support import _MINIMIZE
 
 
 def is_multi_objective(scorer: Any) -> bool:

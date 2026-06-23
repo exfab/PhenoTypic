@@ -2,8 +2,8 @@
 
 The ``run`` subcommand's body (``__main__`` parses the flags and forwards them
 here). Beyond the Phase-1 local engine run, this resolves the ``--strategy`` flag
-into the right :class:`~phenotypic.tune.StrategyConfig` (grid/random → the Phase-1
-configs; an Optuna sampler → :class:`~phenotypic.tune.OptunaConfig`), selects the
+into the right :class:`~phenotypic.tune.strategy.StrategyConfig` (grid/random → the Phase-1
+configs; an Optuna sampler → :class:`~phenotypic.tune.strategy.OptunaConfig`), selects the
 matching study backend (a resumable :class:`OptunaStudyStore` for an Optuna
 strategy, else the :class:`JournalStudyStore`), optionally screens (the two-round
 freeze, ``--screen``), and — on the Optuna path — **also exports
@@ -43,7 +43,7 @@ from .._multi_objective import (
 from .._screening import compute_param_importance
 from .._screening_freeze import ScreeningConfig, ScreeningController
 from .._spec import TuningSpec
-from .._strategies._config import (
+from ..strategy._config import (
     OPTUNA_SAMPLERS,
     PHENOTYPIC_TUNE_STORAGE_URL_ENV,
     GridConfig,
@@ -316,7 +316,7 @@ def resolve_strategy(
     if name in OPTUNA_SAMPLERS:
         # Fail fast + actionable when the extra is missing, before constructing a
         # config the engine could not build.
-        from .._strategies import _optuna_support
+        from ..strategy import _optuna_support
 
         _optuna_support._require_optuna()
         return OptunaConfig(

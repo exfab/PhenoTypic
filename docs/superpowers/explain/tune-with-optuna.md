@@ -7,9 +7,9 @@ candidate parameters are *decided*, how they are *scored*, which ones are
 > All file:line references point at `src/phenotypic/tune/…`. Everything in the
 > module follows one sign convention: **bounded cost in `[0,1]` (`0` = perfect,
 > `1` = worst), everything is minimized** (`_MINIMIZE = "minimize"`,
-> `_strategies/_optuna_support.py`). Each scorer emits its *natural* per-term
+> `strategy/_optuna_support.py`). Each scorer emits its *natural* per-term
 > value and declares a `Sense`; the base `Scorer.score_image` orients it into
-> cost via `to_cost` (`_scoring/_orient.py`).
+> cost via `to_cost` (`score/_orient.py`).
 
 ---
 
@@ -70,7 +70,7 @@ Non-positive defaults (`d ≤ 0`) are excluded because `[d/4, d·4]` is
 meaningless; unbounded knobs are stamped `needs_review=True`. Inference recurses
 exactly **one level** into operation-valued fields.
 
-### Domains → Optuna suggest calls (`_strategies/_optuna.py:316`)
+### Domains → Optuna suggest calls (`strategy/_optuna.py:316`)
 
 ```python
 Categorical → trial.suggest_categorical(key, choices)
@@ -133,11 +133,11 @@ natively — which is why it is the default.
   are ≥ 2 objectives.
 
 ### Random and Grid (no learning)
-- **`RandomStrategy`** (`_strategies/_random.py`) — seeded i.i.d. sampling.
+- **`RandomStrategy`** (`strategy/_random.py`) — seeded i.i.d. sampling.
   Continuous log floats sample as `exp(uniform(log low, log high))`;
   `register_result` is a no-op.
-- **`GridStrategy`** (`_strategies/_grid.py`) — exhaustive conditional Cartesian
-  product via `enumerate_grid` (`_strategies/_enumerate.py:31`). Conditional
+- **`GridStrategy`** (`strategy/_grid.py`) — exhaustive conditional Cartesian
+  product via `enumerate_grid` (`strategy/_enumerate.py:31`). Conditional
   knobs only enter the product when active. **Raises on a continuous
   `FloatRange`** (not enumerable).
 
@@ -182,7 +182,7 @@ Tchebycheff composite asserts).
 ### Step C — finalize to the objective
 `scorer.finalize(terms)` collapses the term dict to the scalar Optuna minimizes
 (or a dict for multi-objective; see §6). The shared projection is
-`mean(objectives.values())` (`_scoring/_scorer.py: project_objectives_to_scalar`).
+`mean(objectives.values())` (`score/_scorer.py: project_objectives_to_scalar`).
 
 ### Step D — pruning decision (between rungs only)
 
@@ -235,7 +235,7 @@ and oriented to **cost ∈ [0,1]** by the base `score_image` (a
 `Sense.HIGHER_BETTER` term like Dice is complemented `1 − value`; a
 `Sense.LOWER_BETTER` divergence passes through). There are four.
 
-### A. SupervisedScorer — ground truth available (`_scoring/_supervised.py`)
+### A. SupervisedScorer — ground truth available (`score/_supervised.py`)
 Modality-tiered.
 
 **Mask tier** — region overlap. For each matched predicted/GT object pair,
@@ -252,7 +252,7 @@ then **macro-average** over pairs into the term `"Region"`. Two empty masks →
 natural Dice values; the base orients them to cost (`1 − Dice`), so two empty
 masks → cost `0.0` (perfect) and a missed object → cost `1.0`.
 
-Matching (`_scoring/_matching.py`) is **greedy by descending IoU**:
+Matching (`score/_matching.py`) is **greedy by descending IoU**:
 - *grid* path: each object is assigned to the grid cell it most overlaps, then
   paired within cell (gutter objects stay unmatched);
 - *iou_greedy* path: global greedy with threshold τ. At **τ = 0.5 the assignment
@@ -266,7 +266,7 @@ honestly, not hidden behind the prediction's own labels.
 **Count tier** — when only counts exist, reuses `ExpectedVsDetectedCount` and
 the threshold-anchored fold (below); term `"CountMAE"`.
 
-### B. ReferenceFreeScorer — no GT, proxy signals (`_scoring/_reference_free_scorer.py`)
+### B. ReferenceFreeScorer — no GT, proxy signals (`score/_reference_free_scorer.py`)
 Four **fixed-normalized** [0,1] terms (fixed normalization avoids the "Böck
 trap", where the optimum migrates as grid endpoints change):
 
@@ -282,7 +282,7 @@ Spearman rank correlation with GT clears `ρ ≥ 0.7` (`_ENABLE_RHO`), and
 `ρ ≥ 0.8` for unattended auto-tuning. Otherwise it abstains and the engine
 degrades to QC.
 
-### C. QCScorer — count-only (`_scoring/_qc_scorer.py`)
+### C. QCScorer — count-only (`score/_qc_scorer.py`)
 The count divergence `metric = |detected − expected| / expected` is the
 scorer's **natural** value (a loss, `Sense.LOWER_BETTER`). Because it is
 unbounded, the scorer supplies an **anchor** (`_term_anchor` → the check's
@@ -299,7 +299,7 @@ metric → ∞ → cost 1.0 (worst). Averaged across `groupby` units → term
 — OQ1=A — so `_term_anchor` returns `None` and `to_cost` is identity/complement;
 the anchor branch is the contract for future raw-loss scorers.)
 
-### D. CompositeScorer — blend multiple scorers (`_scoring/_composite.py`)
+### D. CompositeScorer — blend multiple scorers (`score/_composite.py`)
 Each child owns a namespaced prefix `s0.`, `s1.`, … Children are finalized to
 per-child **cost** scalars `bᵢ ∈ [0,1]`, then combined over the **study-global
 active set** (children available study-wide; a study-wide abstainer is dropped
@@ -521,13 +521,13 @@ the winner never changes.
 |---|---|
 | `_engine.py` | ask-and-tell orchestrator (`optimize`) |
 | `_search_space/_infer.py` | pipeline → knobs (the two-tier inference) |
-| `_strategies/_optuna.py` | sampler selection, suggest, pruning channel, tell |
+| `strategy/_optuna.py` | sampler selection, suggest, pruning channel, tell |
 | `_evaluation/_evaluator.py` | rung ladder + robust aggregate + finalize |
 | `_evaluation/_aggregate_math.py` | `median/IQR`, eps-floored relative ratio |
-| `_scoring/_orient.py` | `Sense`, `to_cost`, `clamp01` (the orientation boundary) |
-| `_scoring/_supervised.py`, `_reference_free_scorer.py`, `_qc_scorer.py` | the per-modality scorers (natural terms, base-oriented to cost) |
-| `_scoring/_composite.py` | the composite blend (augmented Tchebycheff / weighted mean) |
-| `_scoring/_matching.py` | greedy-IoU / grid object matching |
+| `score/_orient.py` | `Sense`, `to_cost`, `clamp01` (the orientation boundary) |
+| `score/_supervised.py`, `_reference_free_scorer.py`, `_qc_scorer.py` | the per-modality scorers (natural terms, base-oriented to cost) |
+| `score/_composite.py` | the composite blend (augmented Tchebycheff / weighted mean) |
+| `score/_matching.py` | greedy-IoU / grid object matching |
 | `_screening.py` | parameter importance (fANOVA vs RF-permutation) |
 | `_multi_objective.py`, `_study/_pareto.py` | Pareto dominance + knee point |
 | `_evaluation/_split.py`, `_generalization.py` | held-out split + overfit gate |

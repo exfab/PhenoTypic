@@ -57,16 +57,14 @@ from ._evaluation import (
     run_held_out,
 )
 
-# --- Phase 1a: search space (domains + Knob/SearchSpace) ----------------------
-# --- Phase 4 chunk B: supervised + composite scorers + GT loader --------------
-from ._scoring import (
-    CompositeScorer,
-    GroundTruthMasks,
-    QCScorer,
-    ReferenceFreeScorer,
-    Scorer,
-    SupervisedScorer,
-)
+# --- Scorers & strategies live in dedicated public sub-namespaces -------------
+# The objectives (``Scorer``/``QCScorer``/``SupervisedScorer``/
+# ``ReferenceFreeScorer``/``CompositeScorer``/``GroundTruthMasks``/
+# ``CompositeBlend``) now live under ``phenotypic.tune.score``, and the optimizer
+# configs (``StrategyConfig``/``GridConfig``/``RandomConfig``/``OptunaConfig``/
+# ``SamplerKind``) under ``phenotypic.tune.strategy``. Import them from there —
+# this is a hard cutover, they are no longer re-exported at the top level.
+from . import score, strategy
 from ._screening import (
     ImportanceMethod,
     ImportanceReport,
@@ -98,19 +96,6 @@ from ._search_space import (
 )
 from ._spec import Budget, TuningSpec
 
-# --- Phase 3: composite blend selector (serialized CompositeScorer.blend value) -
-from phenotypic.sdk_.typing_ import CompositeBlend
-
-# --- Phase 1b: strategy configs (serializable; build live SearchStrategy) ------
-# --- Phase 2 (chunk 2): OptunaConfig (registry round-trip; builds OptunaStrategy)
-from ._strategies import (
-    GridConfig,
-    OptunaConfig,
-    RandomConfig,
-    SamplerKind,
-    StrategyConfig,
-)
-
 # --- Phase 2 (chunk 1): StudyStore Protocol + concrete journal -----------------
 # ``StudyStore`` remains the public name (back-compat alias for the concrete
 # ``JournalStudyStore``); the Protocol of the same name lives in
@@ -119,6 +104,9 @@ from ._study_store import JournalStudyStore, StudyStore, Trial
 from ._tune_cli import run_auto_space, run_tuning
 
 __all__ = [
+    # Scorers & strategies — dedicated public sub-namespaces (hard cutover)
+    "score",
+    "strategy",
     # Phase 1a: search space
     "Categorical",
     "IntRange",
@@ -127,23 +115,6 @@ __all__ = [
     "Domain",
     "Knob",
     "SearchSpace",
-    # Phase 1b: strategy configs
-    "StrategyConfig",
-    "GridConfig",
-    "RandomConfig",
-    # Phase 2 (chunk 2): Optuna backend config
-    "OptunaConfig",
-    "SamplerKind",
-    # Phase 1c: scoring
-    "Scorer",
-    "QCScorer",
-    # Phase 3 (chunk 3): reference-free objective + meta-validation gate
-    "ReferenceFreeScorer",
-    # Phase 4 chunk B: supervised + composite scorers + GT loader
-    "GroundTruthMasks",
-    "SupervisedScorer",
-    "CompositeBlend",
-    "CompositeScorer",
     # Phase 1c: evaluation
     "Evaluator",
     "EvaluationResult",

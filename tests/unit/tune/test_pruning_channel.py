@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from phenotypic.tune._strategies import NoOpChannel, PruningChannel
+from phenotypic.tune.strategy import NoOpChannel, PruningChannel
 
 
 def test_noop_channel_never_prunes():

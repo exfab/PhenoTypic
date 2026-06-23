@@ -94,7 +94,7 @@ class QCScorer(Scorer):
     Examples:
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
-        >>> from phenotypic.tune import QCScorer
+        >>> from phenotypic.tune.score import QCScorer
         >>> layout = pd.DataFrame(
         ...     {"Metadata_ImageName": ["p1"] * 96, "Object_Label": list(range(96))}
         ... )

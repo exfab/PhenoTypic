@@ -9,11 +9,15 @@ on a calibration set, and the result is told back to the strategy.
 - `_engine.py` — `TuningEngine.optimize()`, the orchestrator loop.
 - `_search_space/` — infer tunable knobs from pipeline fields (`_infer.py`),
   domain types (`_domains.py`).
-- `_strategies/` — Optuna (TPE/CMA-ES/GP/NSGA-II), random, grid; ASHA pruning.
+- `strategy/` — **public** namespace (`phenotypic.tune.strategy`): Optuna
+  (TPE/CMA-ES/GP/NSGA-II), random, grid; ASHA pruning. Configs:
+  `StrategyConfig`/`GridConfig`/`RandomConfig`/`OptunaConfig`/`SamplerKind`.
 - `_evaluation/` — rung ladder + robust aggregate (`clamp01(median + λ·IQR)`),
   held-out split + generalization gap.
-- `_scoring/` — the four objectives: supervised (Dice/IoU), reference-free
-  (shape/contrast/SizeCV), QC (count), composite.
+- `score/` — **public** namespace (`phenotypic.tune.score`): the four objectives
+  — supervised (Dice/IoU), reference-free (shape/contrast/SizeCV), QC (count),
+  composite. Classes: `Scorer`/`QCScorer`/`SupervisedScorer`/
+  `ReferenceFreeScorer`/`CompositeScorer`/`GroundTruthMasks`/`CompositeBlend`.
 - `_study/` — study stores + Pareto front / knee point.
 - `_screening.py` — parameter importance (fANOVA vs RF-permutation).
 - `_tune_cli/` — `python -m phenotypic.tune` entry.
@@ -24,7 +28,7 @@ on a calibration set, and the result is told back to the strategy.
   per-child value the optimizer sees is a bounded **cost** `∈ [0,1]` (`0` =
   perfect, `1` = worst); every objective (and every axis of a multi-objective
   study) **minimizes**. The single `_MINIMIZE` literal lives in
-  `_strategies/_optuna_support.py`. The word in code/docs/fields is **"cost"**
+  `strategy/_optuna_support.py`. The word in code/docs/fields is **"cost"**
   (never "score" for the new quantity, never "badness"). The QC flag
   `_HIGHER_IS_BAD` is unchanged: `True` ⟺ the metric is a loss ⟺
   `Sense.LOWER_BETTER`.
@@ -41,12 +45,18 @@ on a calibration set, and the result is told back to the strategy.
   silently keeps a mismatched direction — verified 4.9.0 — so correctness rests
   on the name bump, not a runtime guard.)
 - **Closed value sets** (sampler kinds, etc.) are `Literal` aliases — see
-  `_strategies/_config.py` (`SamplerKind`), never bare `str`.
+  `strategy/_config.py` (`SamplerKind`), never bare `str`.
 - **Optuna is lazy-imported** — the boundary stays importable without it.
+- **Scorers & strategies are public sub-namespaces (hard cutover)**: import
+  objectives from `phenotypic.tune.score` and optimizer configs from
+  `phenotypic.tune.strategy` — they are **no longer** re-exported at the
+  `phenotypic.tune` top level. Everything else (`TuningSpec`, `Evaluator`,
+  `SearchSpace`/`Knob`, `TuningEngine`, study/screening/CLI symbols) stays at
+  the top level. The inner `_*` modules of both packages remain private.
 
 ## Adding a Scorer (the authoring contract)
 
-Canonical in the `Scorer` base-class docstring (`_scoring/_scorer.py`) and the
+Canonical in the `Scorer` base-class docstring (`score/_scorer.py`) and the
 contributor guide (`docs/source/contrib_guide/contributing.rst`) — keep the
 three copies in sync.
 
@@ -60,11 +70,16 @@ three copies in sync.
    `[0,1]` terms need nothing.
 4. Do **not** add scalarization parameters — `ε`, `ρ`, normalization, and
    default weights are framework-derived; a scorer never sets them.
-5. Register: re-export from `tune/__init__.py` and the class registry, or the
-   GUI and `from_json` cannot see it.
+5. Register: re-export from `tune/score/__init__.py` (the public
+   `phenotypic.tune.score` namespace) and the class registry, or the GUI and
+   `from_json` cannot see it. `_find_class_in_phenotypic`
+   (`_core/_pipeline_parts/_serializable_pipeline.py`) resolves serialized
+   classes **by bare class name** and searches `phenotypic.tune.score` /
+   `phenotypic.tune.strategy`, so a new scorer only needs to be importable from
+   that package.
 
 The base `score_image` template method orients every term via `to_cost`
-(`_scoring/_orient.py`); the framework then robust-aggregates, reduces per child,
+(`score/_orient.py`); the framework then robust-aggregates, reduces per child,
 and combines (augmented Tchebycheff). `CompositeScorer` overrides `score_image`
 (it merges already-cost children) — never `_score_terms`.
 

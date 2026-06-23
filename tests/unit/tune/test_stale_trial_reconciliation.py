@@ -28,7 +28,7 @@ def _make_study(url: str, name: str = "tune"):
 def test_fail_stale_running_trials_marks_running_as_fail(tmp_path):
     import optuna
 
-    from phenotypic.tune._strategies._optuna_support import (
+    from phenotypic.tune.strategy._optuna_support import (
         fail_stale_running_trials,
     )
 
@@ -58,7 +58,7 @@ def test_fail_stale_running_trials_marks_running_as_fail(tmp_path):
 
 
 def test_reconciliation_is_a_noop_without_running_trials(tmp_path):
-    from phenotypic.tune._strategies._optuna_support import (
+    from phenotypic.tune.strategy._optuna_support import (
         fail_stale_running_trials,
     )
 
@@ -84,16 +84,16 @@ def test_budget_no_longer_overshoots_after_reconciliation(tmp_path):
     from phenotypic.detect import OtsuDetector
     from phenotypic.enhance import GaussianBlur
     from phenotypic.tune import (
-        Categorical,
-        Evaluator,
-        Knob,
-        OptunaConfig,
-        Scorer,
-        SearchSpace,
-    )
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+)
+    from phenotypic.tune.score import Scorer
+    from phenotypic.tune.strategy import OptunaConfig
     from phenotypic.tune._engine import TuningEngine
     from phenotypic.tune._spec import Budget, TuningSpec
-    from phenotypic.tune._strategies._optuna_support import (
+    from phenotypic.tune.strategy._optuna_support import (
         fail_stale_running_trials,
     )
     from phenotypic.tune._study._optuna_store import OptunaStudyStore
@@ -157,7 +157,7 @@ def test_worker_startup_does_not_fail_live_running_trials(tmp_path, monkeypatch)
     live = study.ask()
     live.suggest_float("x", 0.0, 1.0)
 
-    from phenotypic.tune import OptunaConfig
+    from phenotypic.tune.strategy import OptunaConfig
 
     from tests.unit.tune.test_run_tuning_slurm import (
         _registry_resolvable_grid_input_spec,

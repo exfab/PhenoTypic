@@ -12,8 +12,8 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune._scoring._qc_scorer import QCScorer
-from phenotypic.tune._scoring._scorer import Scorer
+from phenotypic.tune.score._qc_scorer import QCScorer
+from phenotypic.tune.score._scorer import Scorer
 
 
 class _ScalarScorer(Scorer):

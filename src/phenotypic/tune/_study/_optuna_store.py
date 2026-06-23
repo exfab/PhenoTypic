@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from .._strategies._optuna_support import (
+from ..strategy._optuna_support import (
     PHENO_GAP as _ATTR_GAP,
     PHENO_N_IMAGES as _ATTR_N_IMAGES,
     PHENO_NUMBER as _ATTR_NUMBER,
@@ -45,7 +45,7 @@ _logger = logging.getLogger(__name__)
 _CONVENTION_ATTR: str = "tune_convention"
 _CONVENTION_VALUE: str = "minimize-cost-v1"
 # `_LEGACY_STUDY_NAME` ("tune") and the two legacy-study helpers live in the
-# shared `_strategies/_optuna_support.py` so the CLI store guard and the GUI
+# shared `strategy/_optuna_support.py` so the CLI store guard and the GUI
 # monitor (Phase 4) agree — import them, do not re-spell "tune" here.
 
 
@@ -154,7 +154,7 @@ class OptunaStudyStore:
         be resumed under the cost convention; this points the user at a fresh run.
         Delegates the probe to the shared :func:`is_legacy_study_present`.
         """
-        from phenotypic.tune._strategies._optuna_support import (
+        from phenotypic.tune.strategy._optuna_support import (
             _LEGACY_STUDY_NAME,
             is_legacy_study_present,
         )

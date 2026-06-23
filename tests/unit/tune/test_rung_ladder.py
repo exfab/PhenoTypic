@@ -15,7 +15,7 @@ from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.tune._evaluation._evaluator import EvaluationResult, Evaluator
-from phenotypic.tune._scoring._scorer import Scorer
+from phenotypic.tune.score._scorer import Scorer
 
 
 class _PerImageScorer(Scorer):
