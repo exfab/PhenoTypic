@@ -105,9 +105,9 @@ def stage2_detect_core(
     hdf = dataset_hdf_dir(output_dir, dataset_name) / f"{image_stem}.h5"
     image = image_cls.load_hdf5(hdf)  # read-only use; never re-saved here
     array = getattr(image, detector.input_layer)[:]
-    sample = detector.preprocess(array)
-    batch = detector.collate([sample])
-    result = detector.infer_batch(batch)[0]
+    sample = detector._preprocess(array)
+    batch = detector._collate([sample])
+    result = detector._infer_batch(batch)[0]
     write_sidecar(output_dir, dataset_name, image_stem, result)
 
 

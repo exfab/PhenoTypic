@@ -304,6 +304,10 @@ class FssDinoDetector(GpuDetector):
             0.15.
         device: PyTorch device for inference. ``"auto"`` probes accelerators and
             raises ``RuntimeError`` if none is found.
+        input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
+            layer the DINOv2 backbone was trained on), ``"gray"``, or
+            ``"detect_mat"``. Single-channel layers are stacked to 3 channels
+            and coerced to uint8 by ``_preprocess``.
 
     Returns:
         Image: Input image with ``objmask`` set to the semantic foreground mask
@@ -517,7 +521,7 @@ class FssDinoDetector(GpuDetector):
         """Score a query against the fg/bg classes → boolean objmask (tiled)."""
 
         self._ensure_model_loaded()
-        rgb = self._to_uint8(sample)
+        rgb = sample
 
         from phenotypic.detect.nn._tiling import (
             _plan_tiles,
@@ -581,20 +585,6 @@ class FssDinoDetector(GpuDetector):
         ]
         maps.append(gram_score_map(dense, gram))
         return combine_score_maps(maps)
-
-    @staticmethod
-    def _to_uint8(sample: "np.ndarray") -> "np.ndarray":
-        """Coerce an ``(H, W, 3)`` sample to uint8 for the DINO processor."""
-        import numpy as np
-
-        rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-        return rgb
 
 
 # Expose the class docstring on .apply() for Sphinx autodoc

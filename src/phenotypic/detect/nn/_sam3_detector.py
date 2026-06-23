@@ -145,6 +145,10 @@ class Sam3Detector(GpuDetector):
             structural, not tuned.
         device: PyTorch device for inference.  ``"auto"`` probes accelerators
             and raises ``RuntimeError`` if none is found.
+        input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
+            layer SAM3 was trained on), ``"gray"``, or ``"detect_mat"``.
+            Single-channel layers are stacked to 3 channels and coerced to
+            uint8 by ``_preprocess``.
 
     Returns:
         Image: Input image with ``objmap`` set to a labelled instance map
@@ -253,24 +257,6 @@ class Sam3Detector(GpuDetector):
         self._processor = Sam3Processor.from_pretrained(repo_id)
 
     # ------------------------------------------------------------------
-    # uint8 coercion (mirror Sam2Detector._infer_one normalisation)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _to_uint8(sample: "np.ndarray") -> "np.ndarray":
-        """Coerce an ``(H, W, 3)`` sample to uint8 for the SAM3 processor."""
-        import numpy as np
-
-        rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-        return rgb
-
-    # ------------------------------------------------------------------
     # Per-tile forward + objmap painting
     # ------------------------------------------------------------------
 
@@ -348,7 +334,7 @@ class Sam3Detector(GpuDetector):
     # True-batch inference with fixed geometric tiling (C4)
     # ------------------------------------------------------------------
 
-    def infer_batch(self, batch: Any) -> List["np.ndarray"]:
+    def _infer_batch(self, batch: Any) -> List["np.ndarray"]:
         """Run SAM3 over a collated batch; one uint16 objmap per sample.
 
         Each sample is tiled into fixed ~:attr:`tile_px` crops; all crops from
@@ -360,14 +346,14 @@ class Sam3Detector(GpuDetector):
 
         self._ensure_model_loaded()
 
-        # Plan tiles per sample; collect every crop into one flat batch. The
-        # uint8 coercion happens once per sample here (the later loops only need
-        # the full-image shape) to avoid re-allocating large plate images.
+        # Plan tiles per sample; collect every crop into one flat batch
+        # (samples arrive already uint8 from _preprocess; the later loops only
+        # need the full-image shape, so no re-allocation of large plate images).
         plans: list[list[_Tile]] = []
         full_shapes: list[tuple[int, int]] = []
         flat_crops: list[np.ndarray] = []
         for sample in batch:
-            arr = self._to_uint8(sample)
+            arr = sample
             full_shapes.append((arr.shape[0], arr.shape[1]))
             tiles = _plan_tiles(
                 (arr.shape[0], arr.shape[1]), self.tile_px, self.tile_overlap

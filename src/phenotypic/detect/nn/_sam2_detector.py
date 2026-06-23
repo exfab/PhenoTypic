@@ -11,6 +11,7 @@ from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     Sam2ModelSize,
 )
+from phenotypic.sdk_.typing_ import GpuInputLayer
 
 
 def build_sam2_generator(
@@ -94,10 +95,10 @@ class Sam2Detector(GpuDetector):
     applies non-maximum suppression to produce a final set of
     non-overlapping instance masks.
 
-    Because SAM2 operates on **RGB input** (not ``detect_mat``), classical
-    enhancement operations placed before this detector in a pipeline are
-    ignored.  The model sees the original colour image regardless of any
-    preceding enhancers.
+    SAM2 was trained on **RGB input**, so ``input_layer`` defaults to
+    ``"rgb"`` and preceding classical enhancers (which target ``detect_mat``)
+    are ignored by default.  Set ``input_layer="detect_mat"`` (or ``"gray"``)
+    to instead feed that layer, which ``_preprocess`` stacks to three channels.
 
     The model is loaded lazily on the first call to
     :meth:`~phenotypic.abc_.ImageOperation.apply` (not during construction),
@@ -142,6 +143,10 @@ class Sam2Detector(GpuDetector):
             Required when *checkpoint* points to a non-standard model.
             When *None* and *checkpoint* is set, the config for
             *model_size* is used as a fallback.
+        input_layer: Image layer fed to the model -- ``"rgb"`` (default; the
+            layer SAM2 was trained on), ``"gray"``, or ``"detect_mat"``.
+            Single-channel layers are stacked to 3 channels and coerced to
+            uint8 by ``_preprocess`` before inference.
 
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
@@ -220,6 +225,7 @@ class Sam2Detector(GpuDetector):
     device: Device = "auto"
     checkpoint: str | Path | None = None
     config: str | None = None
+    input_layer: GpuInputLayer = "rgb"
 
     # Lazy SAM2 mask generator — PrivateAttr -> skipped by serialization.
     _generator: object = PrivateAttr(default=None)
@@ -248,7 +254,7 @@ class Sam2Detector(GpuDetector):
         )
 
     def _infer_one(self, sample):
-        """Segment colonies in one preprocessed RGB sample via SAM2 AMG.
+        """Segment colonies in one preprocessed sample via SAM2 AMG.
 
         Returns a uint16 labeled objmap (largest-first painting preserves
         small-colony identity at overlaps).
@@ -256,13 +262,6 @@ class Sam2Detector(GpuDetector):
         import numpy as np
 
         rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-
         masks = self._generator.generate(rgb)  # type: ignore[attr-defined]
 
         h, w = rgb.shape[:2]

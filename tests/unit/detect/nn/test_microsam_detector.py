@@ -48,7 +48,7 @@ class TestMicroSamDetectorConstruction:
 
     def test_capability_fields(self):
         det = MicroSamDetector()
-        assert det.input_layer == "rgb"
+        assert det.input_layer == "gray"  # grayscale-native microscopy default
         assert det.output_kind == "instance"
         assert det.supports_batching is False
 

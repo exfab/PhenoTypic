@@ -9,6 +9,7 @@ from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     MicroSamModelType,
 )
+from phenotypic.sdk_.typing_ import GpuInputLayer
 
 
 class MicroSamDetector(GpuDetector):
@@ -49,6 +50,11 @@ class MicroSamDetector(GpuDetector):
             Habana HPU, then raises if none found. Pass ``"cpu"`` to force
             CPU inference (very slow). Any valid PyTorch device string is
             accepted.
+        input_layer: Image layer fed to the model -- one of ``"rgb"``,
+            ``"gray"``, or ``"detect_mat"``. Defaults to ``"gray"`` because
+            micro-sam's light-microscopy weights are grayscale-native.
+            Single-channel layers are stacked to 3 channels and coerced to
+            uint8 by ``_preprocess`` before inference.
 
     Returns:
         Image: Input image with ``objmask`` set to a binary colony mask
@@ -101,11 +107,11 @@ class MicroSamDetector(GpuDetector):
         deserialization the internal ``_predictor`` is rebuilt
         transparently on the next :meth:`apply` call.
 
-        **RGB input.** MicroSamDetector reads ``image.rgb[:]`` directly
-        (not ``detect_mat``). SAM models were trained on colour images;
-        the classical enhancement pipeline targets thresholding, not
-        foundation models. If the image has higher-than-8-bit dynamic
-        range it is rescaled to uint8 before inference.
+        **Input layer.** ``input_layer`` selects which image layer micro-sam
+        consumes and defaults to ``"gray"`` because the light-microscopy
+        models are grayscale-native (set ``"rgb"`` or ``"detect_mat"`` to
+        override). The chosen layer is stacked to 3 channels and rescaled to
+        uint8 by ``_preprocess`` before inference.
 
         **Checkpoint caching.** micro-sam manages its own cache via
         ``platformdirs`` (respects the ``MICROSAM_CACHEDIR`` environment
@@ -155,6 +161,7 @@ class MicroSamDetector(GpuDetector):
 
     model_type: MicroSamModelType = "vit_b_lm"
     device: Device = "auto"
+    input_layer: GpuInputLayer = "gray"
 
     # Lazy micro-sam predictor/segmenter — PrivateAttr, skipped by serialization.
     _predictor: object = PrivateAttr(default=None)
@@ -189,7 +196,7 @@ class MicroSamDetector(GpuDetector):
         )
 
     def _infer_one(self, sample):
-        """Segment colonies in one preprocessed RGB sample via micro-sam AIS.
+        """Segment colonies in one preprocessed sample via micro-sam AIS.
 
         Returns a uint16 labeled objmap.
         """
@@ -199,13 +206,6 @@ class MicroSamDetector(GpuDetector):
         )
 
         rgb = sample
-        if rgb.dtype != np.uint8:
-            max_val = rgb.max()
-            if max_val > 0:
-                rgb = (rgb / max_val * 255).astype(np.uint8)
-            else:
-                rgb = np.zeros(rgb.shape, dtype=np.uint8)
-
         labeled = automatic_instance_segmentation(
             predictor=self._predictor,
             segmenter=self._segmenter,

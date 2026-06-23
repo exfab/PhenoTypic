@@ -172,7 +172,7 @@ class TestSam3TilingBatchInteraction:
         n_large = len(_plan_tiles((3000, 3000), 1008, 0.15))
         assert n_small == 1 and n_large > 1  # different tile counts
 
-        results = det.infer_batch([small, large])
+        results = det._infer_batch([small, large])
 
         # One result per input image, each in that image's full shape.
         assert len(results) == 2
