@@ -211,6 +211,30 @@ def _read_rows(path: Path) -> list[dict[str, str]]:
         ]
 
 
+def read_metadata_csv_table(path: Path) -> tuple[list[str], list[dict[str, str]]]:
+    """Return ``(column_names, rows)`` for a metadata CSV.
+
+    Decoded with ``utf-8-sig`` so an Excel-authored BOM is stripped and never
+    prefixes a ``﻿`` onto the first column name (which would silently
+    break the ``csv_image_col`` join). Matches :func:`_read_rows`.
+
+    Args:
+        path: Path to the metadata CSV (already sandbox-resolved by the caller).
+
+    Returns:
+        ``(columns, rows)`` where ``columns`` is the header order and each row
+        is a ``{column: value}`` mapping (values stringified, ``None`` → ``""``).
+    """
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        columns = list(reader.fieldnames or [])
+        rows = [
+            {str(key): "" if value is None else str(value) for key, value in row.items()}
+            for row in reader
+        ]
+    return columns, rows
+
+
 __all__ = [
     "METADATA_CSV_PAYLOAD_VERSION",
     "MetadataCsvPayload",
@@ -219,6 +243,7 @@ __all__ = [
     "metadata_csv_label",
     "metadata_csv_title",
     "metadata_payload_from_path",
+    "read_metadata_csv_table",
     "read_metadata_row_for_image_stem",
     "resolve_metadata_csv",
 ]

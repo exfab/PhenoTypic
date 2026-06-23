@@ -115,13 +115,14 @@ _CORE_CATEGORY_TOKENS: frozenset[str] = frozenset(ErrorCategory.labels())
 def selectable_axis_columns(
     df: pl.DataFrame,
     column_value_sets: Mapping[str, list[str]],
-    max_cardinality: int = 50,
+    max_cardinality: int | None = 50,
 ) -> list[str]:
     """Return columns suitable as a colony-grid axis.
 
     A column is suitable iff:
 
-    - cardinality (unique non-null values) is in ``[2, max_cardinality]``;
+    - cardinality (unique non-null values) is in ``[2, max_cardinality]``
+      (or ``>= 2`` when ``max_cardinality`` is ``None``);
     - name does not start with one of the measurement prefixes
       (``Bbox_``, ``Shape_``, ``Intensity_``, ``TextureGray_``,
       ``SymZones_``, ``GridSpatial_``);
@@ -138,9 +139,12 @@ def selectable_axis_columns(
         column_value_sets: Mapping from column name to its sorted unique
             string values, as exposed by :attr:`OutputRoot.column_value_sets`.
             Used to read cardinality without re-scanning ``df``.
-        max_cardinality: Upper bound on accepted cardinalities. Defaults to
-            50 — large enough for time-courses or replicate counts, small
-            enough to keep the grid tractable.
+        max_cardinality: Upper bound on accepted cardinalities, or ``None``
+            for no upper cap (the timeline Y axis passes ``None`` so
+            high-cardinality groupings like ``Metadata_PlateNum`` stay
+            selectable — spec §16.5). Defaults to 50 — large enough for
+            time-courses or replicate counts, small enough to keep the
+            grid tractable.
 
     Returns:
         Column names in the bucketed sort order described above.
@@ -161,7 +165,9 @@ def selectable_axis_columns(
                 if col in df.columns
                 else 0
             )
-        if cardinality < 2 or cardinality > max_cardinality:
+        if cardinality < 2 or (
+            max_cardinality is not None and cardinality > max_cardinality
+        ):
             continue
         suitable.append(col)
 

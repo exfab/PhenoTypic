@@ -64,3 +64,101 @@ def test_prev_next_buttons_use_wider_stable_hit_target():
     ).read_text(encoding="utf-8")
     assert ".browse-step-button" in css
     assert "min-width: 3rem;" in css
+
+
+def _walk_ids(component) -> set[str]:
+    found: set[str] = set()
+    stack = [component]
+    while stack:
+        node = stack.pop()
+        cid = getattr(node, "id", None)
+        if isinstance(cid, str):
+            found.add(cid)
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            stack.extend(children)
+        elif children is not None:
+            stack.append(children)
+    return found
+
+
+def _walk_classes(component) -> set[str]:
+    found: set[str] = set()
+    stack = [component]
+    while stack:
+        node = stack.pop()
+        class_name = getattr(node, "className", None)
+        if isinstance(class_name, str):
+            found.update(class_name.split())
+        children = getattr(node, "children", None)
+        if isinstance(children, (list, tuple)):
+            stack.extend(children)
+        elif children is not None:
+            stack.append(children)
+    return found
+
+
+def test_layout_has_view_mode_toggle_and_both_bodies() -> None:
+    from phenotypic.gui.browse._layout import build_browse_layout
+    from phenotypic.gui.browse import _ids
+
+    ids_found = _walk_ids(build_browse_layout())
+    assert _ids.BROWSE_VIEW_MODE_TOGGLE in ids_found
+    assert _ids.BROWSE_SINGLE_BODY in ids_found
+    assert _ids.BROWSE_TIMELINE_BODY in ids_found
+    assert _ids.BROWSE_TL_GRID in ids_found
+    assert _ids.BROWSE_TL_PATTERN_INPUT in ids_found
+    assert _ids.BROWSE_TL_TILE_SIZE_READOUT in ids_found
+    # Focus-and-navigate chrome (spec §16): four edge buttons + position readout.
+    assert _ids.BROWSE_TL_NAV_UP in ids_found
+    assert _ids.BROWSE_TL_NAV_DOWN in ids_found
+    assert _ids.BROWSE_TL_NAV_LEFT in ids_found
+    assert _ids.BROWSE_TL_NAV_RIGHT in ids_found
+    assert _ids.BROWSE_TL_POSITION in ids_found
+    # Stores + pop-out bridge.
+    assert _ids.BROWSE_TL_STORE_TILE_SIZE in ids_found
+    assert _ids.BROWSE_TL_STORE_WARNINGS in ids_found
+    # The warnings store now has a UI sink (M3 — was a dead store).
+    assert _ids.BROWSE_TL_WARNINGS_ALERT in ids_found
+    assert _ids.BROWSE_TL_POPOUT_MODAL in ids_found
+    assert _ids.BROWSE_TL_POPOUT_INPUT in ids_found
+
+
+def test_timeline_body_carries_surface_agnostic_controller_classes() -> None:
+    # timeline.js (P2-C) locates DOM by these stable classes, NOT by Dash id,
+    # so the vendored controller is portable across Browse + Results.
+    from phenotypic.gui.browse._layout import build_browse_layout
+
+    classes = _walk_classes(build_browse_layout())
+    for required in (
+        "timeline-body",
+        "timeline-viewport",
+        "timeline-grid-container",
+        "timeline-nav-up",
+        "timeline-nav-down",
+        "timeline-nav-left",
+        "timeline-nav-right",
+        "timeline-position",
+        "timeline-popout-bridge",
+    ):
+        assert required in classes, f"missing controller class: {required}"
+
+
+def test_timeline_grid_carries_static_focus_navigate_data_attrs() -> None:
+    # The focus-navigate constants ride as STATIC data-* on the grid container
+    # (the render callback replaces only its children). data-focus-margin
+    # REPLACES the scroll-era data-margin-screens (spec §16.7).
+    from phenotypic.gui.browse._layout import build_browse_layout
+    from phenotypic.gui.browse import _ids
+    from phenotypic.gui._config import (
+        TIMELINE_FOCUS_MARGIN,
+        TIMELINE_MOUNT_CAP,
+        TIMELINE_WARM_CONCURRENCY,
+    )
+
+    grid = _component_with_id(build_browse_layout(), _ids.BROWSE_TL_GRID)
+    assert grid is not None
+    assert getattr(grid, "data-focus-margin") == str(TIMELINE_FOCUS_MARGIN)
+    assert getattr(grid, "data-mount-cap") == str(TIMELINE_MOUNT_CAP)
+    assert getattr(grid, "data-warm-concurrency") == str(TIMELINE_WARM_CONCURRENCY)
+    assert not hasattr(grid, "data-margin-screens")

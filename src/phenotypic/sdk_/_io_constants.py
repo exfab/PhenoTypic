@@ -169,6 +169,16 @@ MEASUREMENTS_CSV: Final[str] = "measurements.csv"
 #: mirror); both are written atomically together.
 MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
 
+#: Best-effort co-located copy of the run's ``--metadata`` source CSV,
+#: written into :data:`DIR_DELIVERABLES` by
+#: :func:`phenotypic._cli._cli_output_manager.finalize_post_master_outputs`.
+#: The post-applied mirror (:data:`MEASUREMENTS_CSV`) carries the metadata
+#: columns but the join is *inner* — rows with no matching key are dropped —
+#: so this preserves the full, portable original mapping next to the other
+#: deliverables (spec §8 / D6). The copy is best-effort and never blocks the
+#: run; a missing/unreadable source is logged and skipped.
+DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
+
 #: Output filename of the model-fit summary written by the CLI when the
 #: pipeline has a ``model`` configured (and re-emitted by the analysis
 #: GUI's "Run analysis" button). Human-readable mirror of
@@ -794,6 +804,11 @@ def measurements_csv_path(output_dir: Path) -> Path:
 def measurements_parquet_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements.parquet`` (post-applied mirror)."""
     return deliverables_dir(output_dir) / MEASUREMENTS_PARQUET
+
+
+def metadata_csv_deliverable_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy)."""
+    return deliverables_dir(output_dir) / DELIVERABLES_METADATA_CSV
 
 
 def pipeline_json_path(output_dir: Path) -> Path:

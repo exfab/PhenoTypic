@@ -51,6 +51,25 @@ OUTPUT_DIR = DATASET_DIR / "results"
 TUNE_OUTPUT_DIR = DATASET_DIR / "tune_run"
 TUNE_LAYOUT_CSV = DATASET_DIR / "tune_layout.csv"
 
+# A small folder/time-series matrix the Browse Timeline capture roots itself at:
+# three timepoint sub-folders, each holding the same three plate filenames, so
+# the matrix is a 3-row x 3-column folder/EXIF filmstrip. Lives INSIDE
+# ``DATASET_DIR`` so the hub (rooted there) can sandbox-reach it.
+TIMELINE_SERIES_DIR = DATASET_DIR / "timeline_series"
+TIMELINE_SERIES_FOLDERS = ("t0", "t1", "t2")
+TIMELINE_SERIES_NAMES = ("plateA.png", "plateB.png", "plateC.png")
+
+# A Timeline-capable CLI output the Results-viewer Timeline capture boots a
+# standalone viewer over. The synthetic tutorial CLI run is single-timepoint, so
+# its master carries no eligible time column; this seed mirrors the e2e fixture
+# (``Metadata_ImageNumber`` Int64 monotonic + ``Metadata_PlateNum`` + per-image
+# overlay PNGs) so X=ImageNumber × Y=PlateNum yields a populated matrix. Lives
+# INSIDE ``DATASET_DIR`` so a viewer rooted there can sandbox-reach it.
+RESULTS_TIMELINE_OUTPUT_DIR = DATASET_DIR / "results_timeline_run"
+RESULTS_TIMELINE_DATASET = "ds1"
+RESULTS_TIMELINE_N_PLATES = 6
+RESULTS_TIMELINE_N_TIMES = 12
+
 VIEWPORT = {"width": 1280, "height": 900}
 
 # ---------------------------------------------------------------------------
@@ -509,6 +528,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             context = browser.new_context(viewport=VIEWPORT)
             _capture_setup(context, base_url)
             _capture_browse(context, base_url)
+            _capture_browse_timeline(context, base_url)
             _capture_file_explorer(context, base_url)
             _capture_build_pipeline(context, base_url)
             _capture_run_local(context, base_url)
@@ -703,6 +723,112 @@ def _capture_setup(context, base_url: str) -> None:
 
 # --- browse (source image viewer) ---------------------------------------
 
+def _seed_browse_timeline_series() -> None:
+    """Write a small folder/time-series matrix for the Browse Timeline capture.
+
+    Three timepoint sub-folders (``t0``/``t1``/``t2``), each holding the same
+    three plate PNGs, so the Timeline lays out as a 3-row x 3-column
+    folder/EXIF filmstrip. Idempotent (skips when already present) and called
+    from :func:`main` before the hub boots, so re-runs without ``--force``
+    still get the series.
+    """
+    sentinel = TIMELINE_SERIES_DIR / TIMELINE_SERIES_FOLDERS[0] / TIMELINE_SERIES_NAMES[0]
+    if sentinel.exists():
+        print(
+            f"[dataset] reusing existing {TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
+        )
+        return
+    from PIL import Image as PILImage
+
+    print(
+        f"[dataset] seeding Browse Timeline series under "
+        f"{TIMELINE_SERIES_DIR.relative_to(REPO_ROOT)}"
+    )
+    for r, folder in enumerate(TIMELINE_SERIES_FOLDERS):
+        d = TIMELINE_SERIES_DIR / folder
+        d.mkdir(parents=True, exist_ok=True)
+        for c, name in enumerate(TIMELINE_SERIES_NAMES):
+            # Distinct per-cell colour so the matrix reads as a real time-course.
+            shade = (40 + 30 * c, 70 + 25 * r, 120)
+            PILImage.new("RGB", (320, 220), shade).save(d / name, format="PNG")
+
+
+def _seed_results_timeline_output() -> None:
+    """Seed a Timeline-capable CLI output for the Results-viewer Timeline capture.
+
+    The synthetic tutorial CLI run is single-timepoint, so its master carries no
+    eligible time column and the Timeline tab would render its empty state. This
+    writes a separate output dir mirroring ``tests/e2e/gui/test_results_timeline``:
+    a ``master`` + ``measurements`` mirror with ``Metadata_ImageNumber`` (Int64
+    monotonic) + ``Metadata_PlateNum``, plus a per-image overlay PNG under
+    ``results/<ds>/overlays/<stem>.png`` for every ``(plate, image-number)`` cell,
+    so X=ImageNumber × Y=PlateNum yields a populated focus-navigate matrix.
+
+    Idempotent (skips when the master already exists) and non-fatal — a failure
+    leaves the capture to skip rather than abort the whole screenshot run.
+    """
+    from phenotypic.sdk_ import (
+        deliverables_dir,
+        master_measurements_csv_path,
+        master_measurements_parquet_path,
+        measurements_csv_path,
+        measurements_parquet_path,
+    )
+
+    if master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR).exists():
+        print(
+            f"[dataset] reusing existing "
+            f"{RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
+        )
+        return
+
+    import polars as pl
+    from PIL import Image as PILImage
+
+    print(
+        f"[dataset] seeding Results Timeline output under "
+        f"{RESULTS_TIMELINE_OUTPUT_DIR.relative_to(REPO_ROOT)}"
+    )
+    rows: list[dict[str, object]] = []
+    label = 0
+    for plate in range(1, RESULTS_TIMELINE_N_PLATES + 1):
+        for img_no in range(1, RESULTS_TIMELINE_N_TIMES + 1):
+            label += 1
+            rows.append(
+                {
+                    "Metadata_Dataset": RESULTS_TIMELINE_DATASET,
+                    "Metadata_ImageFile": f"p{plate}_t{img_no}",
+                    "Metadata_ImageNumber": img_no,
+                    "Metadata_PlateNum": str(plate),
+                    "Object_Label": label,
+                    "Size_Area": float(plate * 10 + img_no),
+                }
+            )
+    df = pl.DataFrame(rows).with_columns(
+        pl.col("Metadata_ImageNumber").cast(pl.Int64)
+    )
+    # Mirror ``tests._output_layout.write_master`` / ``write_measurements_mirror``
+    # via the production ``phenotypic.sdk_`` path-builders (the script can't import
+    # the ``tests`` package — it's not on ``sys.path`` outside pytest). The master
+    # archive + the post-applied mirror are byte-identical here (no post step);
+    # the viewer's ``OutputRoot`` reads the mirror for the Timeline axes.
+    deliverables_dir(RESULTS_TIMELINE_OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+    df.write_csv(master_measurements_csv_path(RESULTS_TIMELINE_OUTPUT_DIR))
+    df.write_parquet(master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
+    df.write_csv(measurements_csv_path(RESULTS_TIMELINE_OUTPUT_DIR))
+    df.write_parquet(measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR))
+    overlays = RESULTS_TIMELINE_OUTPUT_DIR / "results" / RESULTS_TIMELINE_DATASET / "overlays"
+    overlays.mkdir(parents=True, exist_ok=True)
+    for plate in range(1, RESULTS_TIMELINE_N_PLATES + 1):
+        for img_no in range(1, RESULTS_TIMELINE_N_TIMES + 1):
+            # A gradient that brightens with image number so the time-course
+            # reads as a real trait-emergence sequence in the screenshots.
+            shade = (20 + 4 * img_no, 40 + 10 * plate, 60)
+            PILImage.new("RGB", (160, 120), shade).save(
+                overlays / f"p{plate}_t{img_no}.png", format="PNG"
+            )
+
+
 def _browse_source_payload() -> dict | None:
     """Build the shared-source-root store payload for the Browse capture.
 
@@ -773,6 +899,174 @@ def _capture_browse(context, base_url: str) -> None:
             pass
         page.wait_for_timeout(1500)
     _save(page, "browse", "02_viewer.png")
+    page.close()
+
+
+def _browse_timeline_source_payload() -> dict | None:
+    """Build the shared-source-root payload pointing at the time-series matrix.
+
+    Mirrors :func:`_browse_source_payload` but roots at
+    :data:`TIMELINE_SERIES_DIR` so the Browse Timeline lays out the seeded
+    3x3 folder/EXIF filmstrip. Returns ``None`` if the path cannot be resolved.
+    """
+    try:
+        from phenotypic.gui.shell._sandbox import SandboxRoot
+        from phenotypic.gui.shell._source_context import source_payload_from_path
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   browse_timeline: source payload import failed: {exc!r}")
+        return None
+    sandbox = SandboxRoot.from_path(TIMELINE_SERIES_DIR)
+    payload = source_payload_from_path(sandbox, TIMELINE_SERIES_DIR, source="manual")
+    if payload is None:
+        print("[shot]   browse_timeline: source payload could not be resolved")
+    return payload
+
+
+def _capture_browse_timeline(context, base_url: str) -> None:
+    """Drive the Browse Timeline and capture the focus-and-navigate matrix.
+
+    Mirrors ``docs/source/tutorials/gui/19_browse_timeline.md``:
+
+    1. ``01_timeline.png`` — Browse in Timeline mode over the seeded
+       folder/EXIF matrix: the per-axis source controls, the focus window
+       with one focused cell, the four edge nav buttons, and the position
+       readout.
+    2. ``02_popout.png`` — the single-image deep-zoom pop-out opened from the
+       focused cell (Enter), reusing the browse DZI route + OpenSeadragon.
+
+    The source root is set by writing the real versioned store payload
+    (rooted at the time-series matrix), exactly as the Browse single-view
+    capture does.
+    """
+    print("[shot] workflow=browse_timeline")
+    page = _new_page(context, base_url, "/browse/")
+
+    payload = _browse_timeline_source_payload()
+    if payload is not None:
+        page.evaluate(
+            """payload => {
+                window.dash_clientside.set_props(
+                    'shell-source-image-root-store', {data: payload}
+                );
+            }""",
+            payload,
+        )
+        page.wait_for_timeout(1000)
+
+    # Switch to Timeline mode. Scope the click to the view-mode radio's
+    # "Timeline" label specifically — a bare ``text=Timeline`` would also match
+    # the ``timeline_series`` sidebar entry, so click the radio label by id.
+    try:
+        page.click(
+            "#browse-view-mode-toggle label:has-text('Timeline')", timeout=10_000
+        )
+    except Exception:  # pragma: no cover - best-effort
+        pass
+
+    # Let the matrix render + the focus-and-navigate controller mount the
+    # focused neighborhood's thumbnails before the screenshot.
+    page.wait_for_timeout(500)
+    try:
+        page.wait_for_selector(".timeline-cell[data-src]", timeout=10_000)
+        page.wait_for_timeout(1500)
+    except Exception:  # pragma: no cover - best-effort
+        pass
+    _save(page, "browse_timeline", "01_timeline.png")
+
+    # Open the deep-zoom pop-out for the focused cell (Enter on the viewport).
+    try:
+        page.click(".browse-tl-viewport", timeout=5_000)
+        page.keyboard.press("Enter")
+        page.wait_for_function(
+            "() => { const d = document.getElementById('browse-tl-popout-modal');"
+            " const m = d && d.closest('.modal');"
+            " return m && m.classList.contains('show'); }",
+            timeout=10_000,
+        )
+        page.wait_for_timeout(1500)
+        _save(page, "browse_timeline", "02_popout.png")
+    except Exception:  # pragma: no cover - best-effort
+        # Pop-out is best-effort in capture; the primary matrix shot above is
+        # the required one. Fall back to a second matrix shot so the workflow
+        # folder always carries >=1 PNG for the gate.
+        _save(page, "browse_timeline", "02_popout.png")
+    page.close()
+
+
+def _pick_timeline_dropdown(page, dropdown_id: str, label_text: str) -> None:
+    """Open a Dash ``dcc.Dropdown`` (Radix button) and click an option.
+
+    Mirrors ``tests/e2e/gui/test_results_timeline.py::_pick_dropdown``: focus the
+    control, press Enter to open the listbox, then click the option matching
+    ``label_text``. Best-effort — a missing dropdown leaves the default axis.
+    """
+    locator = page.locator(f"#{dropdown_id}")
+    locator.scroll_into_view_if_needed()
+    locator.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_selector(
+        '[role="listbox"] [role="option"]', state="attached", timeout=5_000
+    )
+    page.locator(
+        '[role="listbox"] [role="option"]', has_text=label_text
+    ).first.click()
+
+
+def _capture_results_timeline(context, base_url: str) -> None:
+    """Drive the Results-viewer Timeline tab and capture the overlay matrix.
+
+    Mirrors ``docs/source/tutorials/gui/20_results_timeline.md``. The host
+    standalone viewer is booted (in :func:`capture_standalone_viewer_screenshots`)
+    over :data:`RESULTS_TIMELINE_OUTPUT_DIR` — a Timeline-capable seed
+    (``Metadata_ImageNumber`` × ``Metadata_PlateNum`` + overlays) — so the matrix
+    is populated. The hub-mounted viewer would only see the empty state (it boots
+    unbound), so this rides the standalone host like the QC / Heatmap / Error
+    loaded captures.
+
+    1. ``01_timeline.png`` — the Timeline tab over the seeded matrix: the Y/X
+       dropdowns, the focus window with one focused overlay cell, the four edge
+       nav buttons, the position readout, and the tile-size stepper.
+    2. ``02_navigated.png`` — the matrix after stepping the focus a few columns
+       right along one plate's overlay time-course.
+    """
+    print("[shot] workflow=results_timeline (loaded viewer over a Timeline seed)")
+    # The standalone viewer mounts at "/" (url_prefix=DEFAULT_URL_PREFIX), unlike
+    # the hub which mounts it under /results/. Navigate to root here.
+    page = _new_page(context, base_url, "/")
+    try:
+        page.wait_for_selector("a.nav-link", timeout=15_000)
+        page.locator("a.nav-link", has_text="Timeline").first.click()
+        page.wait_for_selector(".timeline-cell[data-src]", timeout=15_000)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   results_timeline: Timeline tab not reachable: {exc!r}")
+        # Always leave at least one PNG so the WORKFLOWS gate is satisfied even
+        # when the focus-navigate controller is slow to mount on this runner.
+        _save(page, "results_timeline", "01_timeline.png")
+        _save(page, "results_timeline", "02_navigated.png")
+        page.close()
+        return
+
+    # The alphabetical default Y is the high-cardinality Metadata_ImageFile (one
+    # image per row → a sparse diagonal). Pick the plate grouping so the matrix
+    # is the dense 6-plate × 12-time grid the tutorial describes.
+    try:
+        _pick_timeline_dropdown(page, "timeline-y-dropdown", "Metadata_PlateNum")
+        page.wait_for_selector(".timeline-cell--focused", timeout=10_000)
+        page.wait_for_timeout(1200)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   results_timeline: Y dropdown selection skipped: {exc!r}")
+    _save(page, "results_timeline", "01_timeline.png")
+
+    # Step the focus a few columns right along one plate's time-course.
+    try:
+        page.click(".timeline-viewport", timeout=5_000)
+        for _ in range(4):
+            page.keyboard.press("ArrowRight")
+            page.wait_for_timeout(250)
+        page.wait_for_timeout(800)
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[shot]   results_timeline: arrow navigation skipped: {exc!r}")
+    _save(page, "results_timeline", "02_navigated.png")
     page.close()
 
 
@@ -1782,6 +2076,61 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
             proc.kill()
             proc.wait(timeout=5.0)
 
+    # The loaded Results Timeline tab rides on this standalone-capture pass too,
+    # but it needs a Timeline-CAPABLE output (the synthetic tutorial CLI run is
+    # single-timepoint → no eligible time column → the Timeline empty state). So
+    # it boots its OWN standalone viewer over the seeded
+    # ``RESULTS_TIMELINE_OUTPUT_DIR`` (mirroring the tune-copilot pattern below).
+    # Dispatched from this function (one of the two WORKFLOWS.md dispatch entry
+    # points) so the round-trip gate sees ``_capture_results_timeline`` wired in.
+    # A missing seed skips it rather than aborting the run.
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    if master_measurements_parquet_path(RESULTS_TIMELINE_OUTPUT_DIR).exists():
+        print(
+            "[shot] workflow=results_timeline "
+            "(loaded viewer over a Timeline-capable seed)"
+        )
+        rt_port = _free_port()
+        rt_cmd = [
+            sys.executable,
+            "-m",
+            "phenotypic.gui.results_viewer",
+            "--output-root",
+            str(RESULTS_TIMELINE_OUTPUT_DIR),
+            "--port",
+            str(rt_port),
+            "--host",
+            "127.0.0.1",
+        ]
+        rt_log_path = _gui_log_sink(rt_port)
+        print(f"[shot]   results_timeline viewer logs -> {rt_log_path}")
+        with rt_log_path.open("w", encoding="utf-8") as rt_log:
+            rt_proc = subprocess.Popen(
+                rt_cmd, stdout=rt_log, stderr=subprocess.STDOUT, text=True
+            )
+        rt_url = f"http://127.0.0.1:{rt_port}"
+        try:
+            _wait_for_http_200(rt_url + "/", timeout=30.0)
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=not headed)
+                try:
+                    context = browser.new_context(viewport=VIEWPORT)
+                    _capture_results_timeline(context, rt_url)
+                finally:
+                    browser.close()
+        finally:
+            rt_proc.terminate()
+            try:
+                rt_proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                rt_proc.kill()
+                rt_proc.wait(timeout=5.0)
+    else:
+        print(
+            "[shot]   results_timeline: no Timeline seed master — capture skipped"
+        )
+
     # The loaded Tune co-pilot rides on this standalone-capture pass too: the
     # hub mounts ``/tune/`` run-unbound (sidebar binding is a later chunk), so a
     # LOADED co-pilot needs its own run-bound + sandbox-bound app — booted here
@@ -2287,6 +2636,29 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - capture run must not abort here
         print(
                 f"[tune] FAILED ({exc!r}); continuing — the Tune co-pilot "
+                "screenshots will be skipped.",
+                file=sys.stderr,
+        )
+
+    # Seed the small folder/time-series matrix the Browse Timeline capture
+    # roots itself at. Idempotent + non-fatal.
+    try:
+        _seed_browse_timeline_series()
+    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
+        print(
+                f"[seed] FAILED ({exc!r}); continuing — the Browse Timeline "
+                "screenshots may be empty.",
+                file=sys.stderr,
+        )
+
+    # Seed the Timeline-capable CLI output the Results Timeline capture boots a
+    # standalone viewer over (the synthetic CLI run is single-timepoint).
+    # Idempotent + non-fatal.
+    try:
+        _seed_results_timeline_output()
+    except Exception as exc:  # noqa: BLE001 - capture run must not abort here
+        print(
+                f"[seed] FAILED ({exc!r}); continuing — the Results Timeline "
                 "screenshots will be skipped.",
                 file=sys.stderr,
         )

@@ -60,6 +60,9 @@ from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
+from phenotypic.gui.results_viewer.timeline_view import (
+    _thumb_routes as timeline_thumb_routes,
+)
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._layout import (
     build_app_layout,
@@ -189,6 +192,7 @@ def create_app(
     app.server.config[CFG_OUTPUT_ROOT] = output_root
 
     _tile_routes.register(app, output_root)
+    timeline_thumb_routes.register(app, output_root)
 
     filtered_state = CurationLabels.load(output_root.root, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state

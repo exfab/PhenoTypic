@@ -69,6 +69,9 @@ from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.gui.results_viewer.colony_view import (
     _callbacks as _colony_callbacks,
 )
+from phenotypic.gui.results_viewer.timeline_view import (
+    _callbacks as _timeline_callbacks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +102,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     register_heatmap_callbacks(app)
     register_qc_callbacks(app)
     register_error_callbacks(app, output_root, filtered_state)
+    _timeline_callbacks.register_callbacks(app, output_root)
     _register_clientside_callbacks(app)
 
 

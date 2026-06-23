@@ -432,3 +432,78 @@ class TestFinalizeReemitsErrorDeliverables:
         assert not tools_.errors_dir(output_dir).exists()
         assert not tools_.error_analysis_parquet_path(output_dir).exists()
         assert tools_.measurements_parquet_path(output_dir).exists()
+
+
+class TestFinalizeCopiesMetadataCsv:
+    """``finalize_post_master_outputs`` copies the ``--metadata`` source CSV to
+    ``deliverables/metadata.csv`` (best-effort, never raising) — spec §8 / D6."""
+
+    @staticmethod
+    def _master_df() -> pl.DataFrame:
+        return pl.DataFrame(
+            {
+                "Metadata_Dataset": ["ds1", "ds1"],
+                "Metadata_ImageFile": ["plateA", "plateA"],
+                "Object_Label": [1, 2],
+                "Size_Area": [100.0, 110.0],
+            }
+        )
+
+    def test_copies_metadata_csv_byte_for_byte(self, tmp_path: Path) -> None:
+        import phenotypic.sdk_ as tools_
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        # A real metadata CSV whose key column matches the master so the inner
+        # join succeeds (the copy must not depend on join success, but this
+        # mirrors a normal run).
+        source = tmp_path / "meta.csv"
+        # Non-ASCII strain name (accented) so the byte-level read_bytes()
+        # comparison also catches any accidental text-mode re-encode in a
+        # future refactor (e.g. a copy that round-trips through str / a
+        # platform-default codec). A byte-for-byte copy preserves the UTF-8 cell.
+        source.write_text(
+            "Metadata_ImageFile,Metadata_Strain\nplateA,Säccharomyces\n",
+            encoding="utf-8",
+        )
+
+        finalize_post_master_outputs(
+            output_dir, self._master_df(), ImagePipeline(),
+            metadata_csv=source, no_qc=True,
+        )
+
+        copied = tools_.metadata_csv_deliverable_path(output_dir)
+        assert copied.exists()
+        assert copied.read_bytes() == source.read_bytes()
+
+    def test_no_metadata_csv_means_no_copy(self, tmp_path: Path) -> None:
+        import phenotypic.sdk_ as tools_
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+
+        finalize_post_master_outputs(
+            output_dir, self._master_df(), ImagePipeline(),
+            metadata_csv=None, no_qc=True,
+        )
+
+        assert not tools_.metadata_csv_deliverable_path(output_dir).exists()
+        # finalize still produced the mirror.
+        assert tools_.measurements_parquet_path(output_dir).exists()
+
+    def test_missing_source_is_best_effort_no_raise(self, tmp_path: Path) -> None:
+        import phenotypic.sdk_ as tools_
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        missing = tmp_path / "does_not_exist.csv"
+
+        # Must NOT raise even though the source is absent (the join itself is
+        # also guarded, so finalize completes and seeds the mirror).
+        finalize_post_master_outputs(
+            output_dir, self._master_df(), ImagePipeline(),
+            metadata_csv=missing, no_qc=True,
+        )
+
+        assert not tools_.metadata_csv_deliverable_path(output_dir).exists()
+        assert tools_.measurements_parquet_path(output_dir).exists()

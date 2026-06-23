@@ -16,7 +16,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME, TITLE_BROWSE
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
-from phenotypic.gui.browse import _source_render, _tile_routes
+from phenotypic.gui.browse import _source_render, _thumb_routes, _tile_routes
 from phenotypic.gui.browse._callbacks import register_callbacks
 from phenotypic.gui.browse._layout import build_browse_layout
 from phenotypic.gui.shell._sandbox import SandboxRoot
@@ -65,6 +65,7 @@ def create_app(sandbox: SandboxRoot, *, url_prefix: str = MOUNT_HOME) -> dash.Da
 
     _source_render.init_cache()  # wipe stale tiles + register atexit cleanup
     _tile_routes.register(app, sandbox)
+    _thumb_routes.register(app, sandbox)  # token-keyed Timeline thumbnails
     app.layout = build_browse_layout()
     register_callbacks(app, sandbox)
 
