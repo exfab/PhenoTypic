@@ -69,6 +69,7 @@ from phenotypic.gui.shell._routes import register_sandbox_api
 from phenotypic.gui.shell._runs_blueprint import register as register_runs
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._session import ToolSession, start_idle_release_thread
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 
 if TYPE_CHECKING:
     pass
@@ -483,9 +484,10 @@ def create_app(
     if viewer_session is not None:
         # Phase 3 backwards-compat: test path injects a stub session
         # and stops at the shell Dash (no sub-app composition).
-        return _build_shell_dash_app(
+        app = _build_shell_dash_app(
             sandbox, url_prefix=url_prefix, viewer_session=viewer_session
         )
+        return configure_url_prefix_routing(app, url_prefix)
 
     if start_idle_thread is None:
         # Don't leak daemon threads in pytest unless the test asks.
@@ -500,4 +502,4 @@ def create_app(
         start_idle_thread=start_idle_thread,
         progress=progress,
     )
-    return shell_app
+    return configure_url_prefix_routing(shell_app, url_prefix)

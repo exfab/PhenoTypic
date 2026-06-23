@@ -91,8 +91,8 @@ def launch_gui(
         port: TCP port. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose tracebacks).
             Defaults to ``False``.
-        url_prefix: Browser-visible path prefix for path-stripping
-            reverse proxies such as Open OnDemand. Defaults to ``"/"``.
+        url_prefix: Browser-visible path prefix for reverse proxies such as
+            Open OnDemand ``/node`` or ``/rnode``. Defaults to ``"/"``.
         reporter: Optional :class:`StartupReporter` driving staged progress
             feedback (sandbox resolution + hub composition). ``None``
             (default — the programmatic boot path) skips progress reporting

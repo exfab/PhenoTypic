@@ -28,6 +28,7 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.tune._callbacks import register_callbacks
 from phenotypic.gui.tune._layout import build_layout
 from phenotypic.gui.tune._run_root import TuneRunRoot
@@ -113,7 +114,7 @@ def create_app(
         )
     else:
         logger.info("Tune co-pilot ready: run=%s", root.path)
-    return app
+    return configure_url_prefix_routing(app, url_prefix)
 
 
 __all__ = ["create_app"]

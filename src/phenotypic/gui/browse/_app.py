@@ -16,6 +16,7 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME, TITLE_BROWSE
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.browse import _source_render, _thumb_routes, _tile_routes
 from phenotypic.gui.browse._callbacks import register_callbacks
 from phenotypic.gui.browse._layout import build_browse_layout
@@ -72,4 +73,4 @@ def create_app(sandbox: SandboxRoot, *, url_prefix: str = MOUNT_HOME) -> dash.Da
     logger.debug(
         "Browse app built: sandbox=%s url_prefix=%s", sandbox.root, url_prefix
     )
-    return app
+    return configure_url_prefix_routing(app, url_prefix)

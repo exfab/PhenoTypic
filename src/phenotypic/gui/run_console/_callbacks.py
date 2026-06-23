@@ -417,8 +417,8 @@ def _dashboard_url(rel_path: str, *, url_prefix: str = DEFAULT_URL_PREFIX) -> st
 
     The shell mounts ``/runs/<rel>/<file>`` regardless of the Dash sub-app's
     mount prefix. ``url_prefix`` is the optional browser-visible base path
-    supplied for path-stripping proxies such as Open OnDemand. The dashboard
-    now lives under the run's ``deliverables/`` subdirectory.
+    supplied for reverse proxies such as Open OnDemand ``/node`` or ``/rnode``.
+    The dashboard now lives under the run's ``deliverables/`` subdirectory.
     """
     safe_rel = rel_path.strip("/").replace("\\", "/")
     path = (

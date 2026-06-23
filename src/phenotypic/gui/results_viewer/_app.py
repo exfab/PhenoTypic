@@ -58,6 +58,7 @@ from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer.timeline_view import (
@@ -187,7 +188,7 @@ def create_app(
             "Results viewer built in empty-state mode (url_prefix=%s)",
             url_prefix,
         )
-        return app
+        return configure_url_prefix_routing(app, url_prefix)
 
     app.server.config[CFG_OUTPUT_ROOT] = output_root
 
@@ -241,7 +242,7 @@ def create_app(
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
     register_callbacks(app, output_root)
 
-    return app
+    return configure_url_prefix_routing(app, url_prefix)
 
 
 def _load_qc_pipeline(output_root_path: Path):
