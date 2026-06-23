@@ -314,15 +314,15 @@ def run_tune_once() -> None:
     from phenotypic.detect import OtsuDetector
     from phenotypic.enhance import GaussianBlur
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        GridConfig,
-        Knob,
-        QCScorer,
-        SearchSpace,
-        TuningSpec,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningSpec,
+)
+    from phenotypic.tune.score import QCScorer
+    from phenotypic.tune.strategy import GridConfig
     from phenotypic.tune._tune_cli._run import _load_images, run_tuning
 
     print("[tune] running a 6-trial grid tune over the synthetic plates")

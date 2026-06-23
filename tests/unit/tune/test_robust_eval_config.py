@@ -17,12 +17,12 @@ from phenotypic.tune import (
     Budget,
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
     TuningSpec,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._evaluation._held_out import HeldOutConfig, infer_group_key
 
 

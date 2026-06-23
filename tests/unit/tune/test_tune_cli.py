@@ -13,12 +13,14 @@ from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    ReferenceFreeScorer,
-    QCScorer,
     SearchSpace,
 )
+from phenotypic.tune.score import (
+    QCScorer,
+    ReferenceFreeScorer,
+)
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune._tune_cli._run import run_tuning
 
@@ -89,7 +91,8 @@ import importlib.util  # noqa: E402
 
 import pytest  # noqa: E402
 
-from phenotypic.tune import OptunaConfig, RandomConfig  # noqa: E402
+from phenotypic.tune.strategy import RandomConfig  # noqa: E402
+from phenotypic.tune.strategy import OptunaConfig  # noqa: E402
 from phenotypic.tune._tune_cli._run import resolve_strategy  # noqa: E402
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
@@ -114,7 +117,7 @@ def test_resolve_strategy_tpe_builds_optuna_config():
 def test_resolve_strategy_optuna_without_extra_raises_actionable(monkeypatch):
     # Without the tune extra, requesting an Optuna sampler raises an actionable
     # error pointing at `uv sync --extras tune` — never a bare KeyError.
-    import phenotypic.tune._strategies._optuna_support as support
+    import phenotypic.tune.strategy._optuna_support as support
 
     def _boom():
         raise ImportError("Optuna is required ... uv sync --extras tune")
@@ -149,7 +152,7 @@ def test_cli_storage_url_env_fallback(tmp_path, monkeypatch):
     # --storage-url is omitted but $PHENOTYPIC_TUNE_STORAGE_URL is set: the run
     # routes the env URL into the resolved Optuna strategy.
     from phenotypic.tune import __main__ as cli
-    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+    from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 
     captured = {}
 
@@ -180,8 +183,8 @@ def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
     # guards the marker-vs-engine divergence — _open_store and the run.json
     # marker must agree on the URL via the single _resolve_storage_url fallback.
     import phenotypic.tune._study._optuna_store as store_mod
-    from phenotypic.tune import OptunaConfig
-    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+    from phenotypic.tune.strategy import OptunaConfig
+    from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
     from phenotypic.tune._tune_cli._run import _open_store, _resolve_storage_url
 
     env_url = "postgresql://host:5432/tune"
@@ -214,7 +217,7 @@ def test_open_store_uses_env_url_for_local_run(tmp_path, monkeypatch):
 @pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 def test_spec_storage_url_wins_over_env_without_cli_url(tmp_path, monkeypatch):
     import phenotypic.tune._study._optuna_store as store_mod
-    from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+    from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 
     env_url = "sqlite:///env.db"
     spec_url = f"sqlite:///{tmp_path / 'spec.db'}"

@@ -6,11 +6,13 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    RandomConfig,
-    Scorer,
     SearchSpace,
+)
+from phenotypic.tune.score import Scorer
+from phenotypic.tune.strategy import (
+    GridConfig,
+    RandomConfig,
 )
 from phenotypic.tune._engine import TuningEngine
 from phenotypic.tune._spec import Budget, TuningSpec
@@ -117,7 +119,7 @@ def test_engine_pins_composite_active_set_to_available_children():
     # Phase 3 §6.3: the engine pins the augmented Tchebycheff composite's
     # study-global active set to the children available study-wide, once before
     # the trial loop. An unavailable child is dropped from the roster.
-    from phenotypic.tune._scoring._composite import CompositeScorer
+    from phenotypic.tune.score._composite import CompositeScorer
 
     comp = CompositeScorer(
         scorers=[_AvailScorer(ok=True), _AvailScorer(ok=False)],
@@ -201,7 +203,7 @@ class _SpyChannel:
 def test_engine_passes_channel_from_suggest_to_evaluate(monkeypatch):
     # The engine must hand the channel returned by suggest() to evaluate(),
     # not discard it (the channel reports during evaluation).
-    from phenotypic.tune._strategies._config import GridConfig as _GridConfig
+    from phenotypic.tune.strategy._config import GridConfig as _GridConfig
 
     spy = _SpyChannel()
 
@@ -232,7 +234,7 @@ def test_engine_registers_pruned_flag(monkeypatch):
     # A pruned EvaluationResult must persist Trial.pruned=True and flow
     # pruned=True into register_result; pruned counts toward budget, not failures.
     from phenotypic.tune._evaluation._evaluator import EvaluationResult
-    from phenotypic.tune._strategies._config import GridConfig as _GridConfig
+    from phenotypic.tune.strategy._config import GridConfig as _GridConfig
 
     seen_pruned: list[bool] = []
 

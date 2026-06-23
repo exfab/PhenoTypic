@@ -42,15 +42,15 @@ def _existing_spec(tmp_path):  # type: ignore[no-untyped-def]
     """A round-trippable existing ``TuningSpec`` (path-based QC scorer)."""
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        Knob,
-        QCScorer,
-        RandomConfig,
-        SearchSpace,
-        TuningSpec,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningSpec,
+)
+    from phenotypic.tune.score import QCScorer
+    from phenotypic.tune.strategy import RandomConfig
 
     csv = tmp_path / "layout.csv"
     pd.DataFrame(

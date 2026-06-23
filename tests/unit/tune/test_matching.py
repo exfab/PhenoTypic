@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.tune._scoring._matching import (
+from phenotypic.tune.score._matching import (
     match_iou_greedy,
     match_per_grid_cell,
 )

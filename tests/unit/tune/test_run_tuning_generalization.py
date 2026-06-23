@@ -26,12 +26,12 @@ from phenotypic.tune import (
     Budget,
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
     TuningSpec,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._tune_cli import _run as run_mod
 from phenotypic.tune._tune_cli._run import run_tuning
 

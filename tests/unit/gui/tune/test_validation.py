@@ -9,7 +9,9 @@ from phenotypic.gui.tune._callbacks import _load_spec_preflight_issues
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.enhance import GaussianBlur
-from phenotypic.tune import Evaluator, GridConfig, QCScorer
+from phenotypic.tune import Evaluator
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune._search_space import FloatRange, IntRange, Knob, SearchSpace
 from phenotypic.tune._search_space._targets import Param

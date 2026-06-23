@@ -105,7 +105,7 @@ class GroundTruthMasks(BaseModel):
 
         >>> import json, tempfile, numpy as np
         >>> from pathlib import Path
-        >>> from phenotypic.tune._scoring._gt_loader import GroundTruthMasks
+        >>> from phenotypic.tune.score._gt_loader import GroundTruthMasks
         >>> tmp = Path(tempfile.mkdtemp())
         >>> _ = np.save(tmp / "plate1.npy", np.array([[True, False]]))
         >>> _ = np.save(tmp / "labels.npy", np.array([[1, 0], [0, 2]]))

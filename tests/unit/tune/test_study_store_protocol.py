@@ -16,14 +16,14 @@ from phenotypic.tune import (
     Budget,
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    Scorer,
     SearchSpace,
     StudyStore,
     TuningEngine,
     TuningSpec,
 )
+from phenotypic.tune.score import Scorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._study._protocol import StudyStore as StudyStoreProtocol
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -113,14 +113,14 @@ class _FakeResumableStore:
 def test_engine_drives_a_fake_resumable_store_without_replay(monkeypatch):
     # When the store is resumable in place, the engine must NOT fast-forward the
     # strategy with len()-many suggest() replays.
-    from phenotypic.tune._strategies._config import GridConfig as _GridConfig
+    from phenotypic.tune.strategy._config import GridConfig as _GridConfig
 
     replays = {"count": 0}
     fed = {"first": True}
 
     class _CountingGrid:
         def suggest(self):
-            from phenotypic.tune._strategies._pruning import NoOpChannel
+            from phenotypic.tune.strategy._pruning import NoOpChannel
             replays["count"] += 1
             return {"0.ignore_zeros": True}, NoOpChannel()
 

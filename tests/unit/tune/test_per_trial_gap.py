@@ -16,7 +16,11 @@ from pydantic import PrivateAttr
 from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.tune import EvaluationResult, Evaluator, Scorer
+from phenotypic.tune import (
+    EvaluationResult,
+    Evaluator,
+)
+from phenotypic.tune.score import Scorer
 from phenotypic.tune._evaluation._evaluator import _per_trial_dispersion
 
 

@@ -33,7 +33,7 @@ from phenotypic.gui._config import THREAD_NAME_PREFIX
 from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
 from phenotypic.gui.builder._image_renderer import _downscale, to_overlay_rgb_array
 from phenotypic.tune._evaluation._builder import build_pipeline
-from phenotypic.tune._scoring._matching import match_iou_greedy
+from phenotypic.tune.score._matching import match_iou_greedy
 
 if TYPE_CHECKING:  # pragma: no cover - type-only imports
     import numpy.typing as npt
@@ -132,7 +132,7 @@ class DiffResult:
     """The object-id partition of an A-vs-B segmentation comparison.
 
     Produced by :func:`difference_objects`. ``A`` is the predicted side and
-    ``B`` the reference side of :func:`~phenotypic.tune._scoring._matching.\
+    ``B`` the reference side of :func:`~phenotypic.tune.score._matching.\
 match_iou_greedy`, so an object that both pipelines agree on lands in ``both``,
     an object only the A pipeline found lands in ``only_a``, and an object only
     the B pipeline found lands in ``only_b``.
@@ -160,7 +160,7 @@ def difference_objects(
     """Partition two objmaps' objects into agreed / A-only / B-only sets.
 
     Pairs A's objects against B's via
-    :func:`~phenotypic.tune._scoring._matching.match_iou_greedy` (A is the
+    :func:`~phenotypic.tune.score._matching.match_iou_greedy` (A is the
     ``pred`` side, B the ``gt`` side). A returned pair ``(a, b)`` with both
     non-``None`` is an agreement; ``(a, None)`` is an A-only object; ``(None,
     b)`` is a B-only object.

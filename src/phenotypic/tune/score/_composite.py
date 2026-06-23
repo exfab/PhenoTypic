@@ -101,7 +101,7 @@ class CompositeScorer(Scorer):
 
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
-        >>> from phenotypic.tune import CompositeScorer, QCScorer
+        >>> from phenotypic.tune.score import CompositeScorer, QCScorer
         >>> layout = pd.DataFrame(
         ...     {"Metadata_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
         ... )

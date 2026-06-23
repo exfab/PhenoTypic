@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phenotypic.tune import Categorical, FloatRange, Knob, SearchSpace
-from phenotypic.tune._strategies import (
+from phenotypic.tune.strategy import (
     GridStrategy,
     NoOpChannel,
     RandomStrategy,

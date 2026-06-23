@@ -9,7 +9,8 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
-from phenotypic.tune import Evaluator, QCScorer
+from phenotypic.tune import Evaluator
+from phenotypic.tune.score import QCScorer
 
 
 def _layout_csv(tmp_path, n: int, image_name: str = "Synthetic96PlateWithObjects"):

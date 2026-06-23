@@ -219,7 +219,7 @@ def fail_stale_running_trials(study: "optuna.Study") -> int:
     study clean.
 
     This legacy reconciliation helper predates the ask/tell heartbeat wrapper in
-    :mod:`phenotypic.tune._strategies._optuna`. It enumerates the RUNNING trials
+    :mod:`phenotypic.tune.strategy._optuna`. It enumerates the RUNNING trials
     and tells each ``FAIL`` by trial number itself (``skip_if_finished=True``
     tolerates a concurrent worker that finalized the same trial first).
     ``import optuna`` stays lazy in the body.

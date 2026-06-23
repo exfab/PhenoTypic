@@ -55,15 +55,15 @@ def _make_tune_run(run_dir: Path) -> None:
         tuning_spec_path,
     )
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        Knob,
-        QCScorer,
-        RandomConfig,
-        SearchSpace,
-        TuningSpec,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningSpec,
+)
+    from phenotypic.tune.score import QCScorer
+    from phenotypic.tune.strategy import RandomConfig
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
     run_dir.mkdir(parents=True, exist_ok=True)

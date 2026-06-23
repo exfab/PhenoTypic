@@ -29,10 +29,10 @@ from phenotypic.tune import (
     Categorical,
     Evaluator,
     Knob,
-    OptunaConfig,
-    Scorer,
     SearchSpace,
 )
+from phenotypic.tune.score import Scorer
+from phenotypic.tune.strategy import OptunaConfig
 from phenotypic.tune._engine import TuningEngine
 from phenotypic.tune._spec import Budget, TuningSpec
 

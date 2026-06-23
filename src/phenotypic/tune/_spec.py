@@ -26,10 +26,10 @@ from phenotypic.sdk_.typing_ import polymorphic_field
 
 from ._evaluation import Evaluator, HeldOutConfig
 from ._multi_objective import reject_grid_random_multi_objective
-from ._scoring import ScorerField
+from .score import ScorerField
 from ._search_space import SearchSpace
 from ._search_space._targets import KnobTarget, Nested, Param
-from ._strategies._config import StrategyConfig, StrategyConfigUnion
+from .strategy._config import StrategyConfig, StrategyConfigUnion
 
 #: A ``StrategyConfig``-valued field that round-trips **any** subclass via the
 #: class registry — Phase-1's built-in ``GridConfig``/``RandomConfig`` *and* the

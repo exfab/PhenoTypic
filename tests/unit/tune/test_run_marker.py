@@ -25,13 +25,13 @@ from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    QCScorer,
     SearchSpace,
 )
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import GridConfig
 from phenotypic.tune._spec import Budget, TuningSpec
-from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None

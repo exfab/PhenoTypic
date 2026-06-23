@@ -12,8 +12,8 @@ from phenotypic.tune._evaluation._evaluator import (
     _is_suspicious,
     _robust_aggregate,
 )
-from phenotypic.tune._scoring._scorer import Scorer
-from phenotypic.tune._strategies._pruning import NoOpChannel
+from phenotypic.tune.score._scorer import Scorer
+from phenotypic.tune.strategy._pruning import NoOpChannel
 
 
 def test_robust_aggregate_penalizes_spread():

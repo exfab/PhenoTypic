@@ -13,7 +13,7 @@ from __future__ import annotations
 import pandas as pd
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import QCScorer
+from phenotypic.tune.score import QCScorer
 
 
 def _layout(n: int, name: str = "p1") -> pd.DataFrame:

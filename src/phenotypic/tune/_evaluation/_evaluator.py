@@ -12,9 +12,9 @@ from typing import Any, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from .._scoring._orient import clamp01
-from .._scoring._scorer import Scorer, project_objectives_to_scalar
-from .._strategies._pruning import NoOpChannel, PruningChannel
+from ..score._orient import clamp01
+from ..score._scorer import Scorer, project_objectives_to_scalar
+from ..strategy._pruning import NoOpChannel, PruningChannel
 from ._aggregate_math import _median_iqr, _relative
 from ._builder import build_pipeline
 

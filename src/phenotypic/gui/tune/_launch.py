@@ -24,7 +24,7 @@ from dash import dcc, html
 
 from phenotypic.gui.tune import _ids as ids
 from phenotypic.gui.tune._command import render_launch_command
-from phenotypic.tune._strategies._config import STRATEGY_CHOICES
+from phenotypic.tune.strategy._config import STRATEGY_CHOICES
 
 if TYPE_CHECKING:
     from phenotypic.gui.tune._run_root import TuneRunRoot

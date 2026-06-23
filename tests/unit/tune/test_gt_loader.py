@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from phenotypic.tune._scoring._gt_loader import GroundTruthMasks
+from phenotypic.tune.score._gt_loader import GroundTruthMasks
 
 
 @pytest.fixture

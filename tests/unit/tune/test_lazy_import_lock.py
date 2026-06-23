@@ -34,16 +34,16 @@ def test_grid_random_paths_do_not_import_optuna():
     from phenotypic.data import load_synth_yeast_plate
     from phenotypic.detect import OtsuDetector
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        GridConfig,
-        Knob,
-        Scorer,
-        SearchSpace,
-        TuningEngine,
-        TuningSpec,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningEngine,
+    TuningSpec,
+)
+    from phenotypic.tune.score import Scorer
+    from phenotypic.tune.strategy import GridConfig
 
     class _ConstScorer(Scorer):
         def _score_terms(self, image, measurements) -> dict[str, float]:

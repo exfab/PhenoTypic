@@ -1,6 +1,6 @@
 from phenotypic.gui._param_forms import param_form
 from phenotypic.gui.tune._scorer_form import scorer_operation_info
-from phenotypic.tune._scoring import QCScorer
+from phenotypic.tune.score import QCScorer
 
 
 def test_scorer_operation_info_exposes_pydantic_fields():

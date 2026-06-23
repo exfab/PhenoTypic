@@ -172,7 +172,7 @@ class TestCompositeBlendLiteral:
         # scorer is, or GUI / from_json callers cannot name it.
         from typing import get_args
 
-        from phenotypic.tune import CompositeBlend
+        from phenotypic.tune.score import CompositeBlend
 
         assert "tchebycheff" in get_args(CompositeBlend)
 

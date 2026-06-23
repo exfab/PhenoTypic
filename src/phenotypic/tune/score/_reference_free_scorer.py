@@ -134,7 +134,7 @@ class ReferenceFreeScorer(Scorer):
         >>> from phenotypic.data import load_synth_yeast_plate
         >>> from phenotypic.detect import OtsuDetector
         >>> from phenotypic.measure import MeasureShape, MeasureSize
-        >>> from phenotypic.tune import ReferenceFreeScorer
+        >>> from phenotypic.tune.score import ReferenceFreeScorer
         >>> image = load_synth_yeast_plate()
         >>> pipe = ImagePipeline(
         ...     ops=[OtsuDetector()], meas=[MeasureShape(), MeasureSize()]

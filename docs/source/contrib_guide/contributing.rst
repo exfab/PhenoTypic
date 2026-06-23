@@ -17,7 +17,7 @@ This section will describe the coding standards and style guidelines for Phenoty
 Adding a tuning objective (Scorer)
 ----------------------------------
 
-A tuning *objective* is a :class:`~phenotypic.tune.Scorer`. Every value the
+A tuning *objective* is a :class:`~phenotypic.tune.score.Scorer`. Every value the
 tuner optimizes is a bounded **cost** in ``[0, 1]`` (``0`` = perfect, ``1`` =
 worst) and the optimizer **minimizes** it. You emit your metric's *natural*
 value and declare its *sense*; the framework orients, aggregates, and combines.
@@ -53,8 +53,8 @@ is already ``[0, 1]`` and higher-is-better, so it only declares the sense):
 
    import pandas as pd
 
-   from phenotypic.tune import Scorer
-   from phenotypic.tune._scoring._orient import Sense
+   from phenotypic.tune.score import Scorer
+   from phenotypic.tune.score._orient import Sense
 
 
    class SolidityScorer(Scorer):
@@ -70,10 +70,10 @@ is already ``[0, 1]`` and higher-is-better, so it only declares the sense):
            # HIGHER_BETTER — you write no flip.
            return {"Solidity": float(measurements["Shape_Solidity"].mean())}
 
-The base :meth:`~phenotypic.tune.Scorer.score_image` template method then turns
+The base :meth:`~phenotypic.tune.score.Scorer.score_image` template method then turns
 each natural term into cost via ``to_cost``; the ``Evaluator`` robust-aggregates
 (``median + λ·IQR``, clamped) and the optimizer minimizes. A
-:class:`~phenotypic.tune.CompositeScorer` combines several scorers' per-child
+:class:`~phenotypic.tune.score.CompositeScorer` combines several scorers' per-child
 cost with an **augmented Tchebycheff** scalarization (worst-axis-dominant by
 default) — see the explainer
 ``docs/superpowers/explain/tune-with-optuna.md`` for the math.

@@ -1,4 +1,11 @@
-"""Search strategies (private)."""
+"""Search strategies — the public ``phenotypic.tune.strategy`` namespace.
+
+The serializable optimizer configs a :class:`~phenotypic.tune.TuningSpec` carries:
+:class:`StrategyConfig` (the abstract base) plus :class:`GridConfig`,
+:class:`RandomConfig`, and :class:`OptunaConfig`, each of which ``build()``s a
+live :class:`SearchStrategy`. The inner ``_*`` modules stay private; import the
+configs from this package.
+"""
 from __future__ import annotations
 
 from ._config import (

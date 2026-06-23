@@ -25,12 +25,16 @@ from phenotypic.sdk_ import _io_constants as io
 from phenotypic.tune import (
     Categorical,
     Evaluator,
-    GridConfig,
     Knob,
-    OptunaConfig,
+    SearchSpace,
+)
+from phenotypic.tune.score import (
     QCScorer,
     Scorer,
-    SearchSpace,
+)
+from phenotypic.tune.strategy import (
+    GridConfig,
+    OptunaConfig,
 )
 from phenotypic.tune._spec import Budget, TuningSpec
 from phenotypic.tune._tune_cli._run import _STUDY_NAME, run_tuning

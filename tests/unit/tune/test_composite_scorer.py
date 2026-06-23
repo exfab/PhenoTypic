@@ -16,8 +16,11 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import QCScorer, Scorer
-from phenotypic.tune._scoring._composite import CompositeScorer
+from phenotypic.tune.score import (
+    QCScorer,
+    Scorer,
+)
+from phenotypic.tune.score._composite import CompositeScorer
 
 
 # --------------------------------------------------------------------------- #
@@ -199,15 +202,17 @@ def test_composite_nests_qc_and_supervised_round_trip(tmp_path):
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        GroundTruthMasks,
-        Knob,
-        OptunaConfig,
-        SearchSpace,
-        SupervisedScorer,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+)
+    from phenotypic.tune.score import (
+    GroundTruthMasks,
+    SupervisedScorer,
+)
+    from phenotypic.tune.strategy import OptunaConfig
     from phenotypic.tune._spec import TuningSpec
 
     counts = tmp_path / "counts.csv"

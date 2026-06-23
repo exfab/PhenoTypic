@@ -7,7 +7,7 @@ the cost cutover every study (and every axis of a multi-objective one) minimizes
 """
 from __future__ import annotations
 
-from phenotypic.tune._strategies._optuna_support import (
+from phenotypic.tune.strategy._optuna_support import (
     _MINIMIZE,
     study_objective_kwargs,
 )

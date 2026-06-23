@@ -1,5 +1,14 @@
-"""Internal scoring value types (private)."""
+"""Tuning objectives — the public ``phenotypic.tune.score`` namespace.
+
+The pluggable scoring objectives a :class:`~phenotypic.tune.TuningSpec` drives:
+the abstract :class:`Scorer` base plus the four concrete objectives (no-GT
+:class:`QCScorer`, supervised :class:`SupervisedScorer`, reference-free
+:class:`ReferenceFreeScorer`, and the :class:`CompositeScorer` panel). The
+inner ``_*`` modules stay private; import the classes from this package.
+"""
 from __future__ import annotations
+
+from phenotypic.sdk_.typing_ import CompositeBlend
 
 from ._gt_loader import GroundTruthMasks
 from ._qc_scorer import QCScorer, _threshold_anchored
@@ -22,5 +31,6 @@ __all__ = [
     "GroundTruthMasks",
     "SupervisedScorer",
     "CompositeScorer",
+    "CompositeBlend",
     "_threshold_anchored",
 ]

@@ -18,8 +18,8 @@ import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.grid import AutoGridFinder
-from phenotypic.tune._scoring._gt_loader import GroundTruthMasks
-from phenotypic.tune._scoring._supervised import SupervisedScorer
+from phenotypic.tune.score._gt_loader import GroundTruthMasks
+from phenotypic.tune.score._supervised import SupervisedScorer
 
 
 # --------------------------------------------------------------------------- #
@@ -224,13 +224,13 @@ def test_supervised_scorer_round_trips_in_tuning_spec(tmp_path):
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        GridConfig,
-        Knob,
-        SearchSpace,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+)
+    from phenotypic.tune.strategy import GridConfig
     from phenotypic.tune._spec import TuningSpec
 
     scorer = SupervisedScorer(
@@ -545,13 +545,13 @@ def test_gt_format_round_trips_through_tuning_spec(tmp_path):
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        GridConfig,
-        Knob,
-        SearchSpace,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+)
+    from phenotypic.tune.strategy import GridConfig
     from phenotypic.tune._spec import TuningSpec
 
     scorer = SupervisedScorer(

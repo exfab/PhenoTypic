@@ -20,15 +20,15 @@ def _runnable_spec(tmp_path: Path):  # type: ignore[no-untyped-def]
     from phenotypic.detect import OtsuDetector
     from phenotypic.enhance import GaussianBlur
     from phenotypic.tune import (
-        Budget,
-        Categorical,
-        Evaluator,
-        Knob,
-        QCScorer,
-        RandomConfig,
-        SearchSpace,
-        TuningSpec,
-    )
+    Budget,
+    Categorical,
+    Evaluator,
+    Knob,
+    SearchSpace,
+    TuningSpec,
+)
+    from phenotypic.tune.score import QCScorer
+    from phenotypic.tune.strategy import RandomConfig
 
     csv = tmp_path / "layout.csv"
     pd.DataFrame(

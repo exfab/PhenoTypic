@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import QCScorer
+from phenotypic.tune.score import QCScorer
 from phenotypic.tune._evaluation._generalization import (
     GeneralizationReport,
     compute_generalization_gap,

@@ -102,8 +102,9 @@ Gaussian-blur `sigma` ahead of an Otsu detector, scored against an expected
 >>> from phenotypic.analysis import ExpectedVsDetectedCount
 >>> from phenotypic.tune import (
 ...     TuningSpec, Budget, Evaluator, SearchSpace, Knob, FloatRange,
-...     QCScorer, GridConfig,
 ... )
+>>> from phenotypic.tune.score import QCScorer
+>>> from phenotypic.tune.strategy import GridConfig
 >>> pipe = ImagePipeline(ops=[GaussianBlur(sigma=2.0), OtsuDetector()])
 >>> space = SearchSpace(knobs=(
 ...     Knob(key="0.sigma", domain=FloatRange(low=0.5, high=8.0)),
@@ -177,7 +178,7 @@ from a metadata **path** so the scorer round-trips through `tuning_spec.json`:
 
 ```python
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import QCScorer
+from phenotypic.tune.score import QCScorer
 
 scorer = QCScorer(
     check=ExpectedVsDetectedCount(
@@ -203,7 +204,7 @@ enable threshold (Spearman ρ ≥ 0.7; ρ ≥ 0.8 for fully unattended tuning). 
 the gate abstains and the scorer stays unavailable.
 
 ```python
-from phenotypic.tune import ReferenceFreeScorer
+from phenotypic.tune.score import ReferenceFreeScorer
 
 scorer = ReferenceFreeScorer(replicate_groupby=["Metadata_ImageName"])
 ```
@@ -223,7 +224,7 @@ count tier additionally needs a configured `count_check`:
 
 ```python
 from phenotypic.analysis import ExpectedVsDetectedCount
-from phenotypic.tune import GroundTruthMasks, SupervisedScorer
+from phenotypic.tune.score import GroundTruthMasks, SupervisedScorer
 
 # Mask tier: a directory of per-image masks.
 masks = SupervisedScorer(
@@ -255,7 +256,7 @@ and composes them two ways:
   construction). The non-dominated front lands in `deliverables/pareto/`.
 
 ```python
-from phenotypic.tune import CompositeScorer
+from phenotypic.tune.score import CompositeScorer
 
 scorer = CompositeScorer(
     scorers=[qc_scorer, reference_free_scorer],

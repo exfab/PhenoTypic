@@ -19,17 +19,17 @@ from phenotypic.tune import (
     FloatRange,
     IntRange,
     Knob,
-    OptunaConfig,
     SearchSpace,
 )
-from phenotypic.tune._strategies._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
+from phenotypic.tune.strategy import OptunaConfig
+from phenotypic.tune.strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV
 
 _OPTUNA = importlib.util.find_spec("optuna") is not None
 pytestmark = pytest.mark.skipif(not _OPTUNA, reason="optuna extra not installed")
 
 
 def _strategy(space: SearchSpace, **kw):
-    from phenotypic.tune._strategies._optuna import OptunaStrategy
+    from phenotypic.tune.strategy._optuna import OptunaStrategy
 
     kw.setdefault("sampler", "tpe")
     kw.setdefault("n_trials", 5)
@@ -220,7 +220,7 @@ def test_register_result_failed_tells_fail():
 
 
 def test_suggest_returns_optuna_channel_when_pruning():
-    from phenotypic.tune._strategies._optuna import OptunaPruningChannel
+    from phenotypic.tune.strategy._optuna import OptunaPruningChannel
 
     space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, prune=True)
@@ -293,7 +293,7 @@ def test_multi_objective_selects_nsga2():
 
 
 def test_conforms_to_search_strategy_by_calling():
-    from phenotypic.tune._strategies._protocol import SearchStrategy
+    from phenotypic.tune.strategy._protocol import SearchStrategy
 
     space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     strat = _strategy(space, n_trials=1)
@@ -310,7 +310,7 @@ def test_conforms_to_search_strategy_by_calling():
 
 
 def test_config_build_constructs_strategy():
-    from phenotypic.tune._strategies._optuna import OptunaStrategy
+    from phenotypic.tune.strategy._optuna import OptunaStrategy
 
     space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1, 2))),))
     cfg = OptunaConfig(n_trials=5)

@@ -14,11 +14,13 @@ from phenotypic.tune import (
     Categorical,
     Evaluator,
     FloatRange,
-    GridConfig,
     Knob,
-    QCScorer,
-    RandomConfig,
     SearchSpace,
+)
+from phenotypic.tune.score import QCScorer
+from phenotypic.tune.strategy import (
+    GridConfig,
+    RandomConfig,
 )
 from phenotypic.tune._search_space._targets import Param
 from phenotypic.tune._spec import Budget, TuningSpec

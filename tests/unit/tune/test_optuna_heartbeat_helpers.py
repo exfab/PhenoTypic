@@ -5,7 +5,7 @@ import types
 
 
 def test_manual_heartbeat_records_initial_beat_without_optuna_extra():
-    from phenotypic.tune._strategies._optuna import _start_heartbeat
+    from phenotypic.tune.strategy._optuna import _start_heartbeat
 
     recorded: list[int] = []
 
@@ -28,7 +28,7 @@ def test_manual_heartbeat_records_initial_beat_without_optuna_extra():
 
 
 def test_manual_heartbeat_is_disabled_without_storage_interval():
-    from phenotypic.tune._strategies._optuna import _start_heartbeat
+    from phenotypic.tune.strategy._optuna import _start_heartbeat
 
     class _Storage:
         def get_heartbeat_interval(self):
@@ -44,7 +44,7 @@ def test_manual_heartbeat_is_disabled_without_storage_interval():
 
 
 def test_fail_stale_trials_delegates_to_optuna_when_available(monkeypatch):
-    from phenotypic.tune._strategies._optuna import _fail_stale_trials
+    from phenotypic.tune.strategy._optuna import _fail_stale_trials
 
     called = {}
     study = object()

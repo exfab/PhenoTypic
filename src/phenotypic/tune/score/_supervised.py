@@ -115,7 +115,7 @@ class SupervisedScorer(Scorer):
         >>> from pathlib import Path
         >>> import pandas as pd
         >>> from phenotypic.analysis import ExpectedVsDetectedCount
-        >>> from phenotypic.tune import GroundTruthMasks, SupervisedScorer
+        >>> from phenotypic.tune.score import GroundTruthMasks, SupervisedScorer
         >>> tmp = Path(tempfile.mkdtemp())
         >>> counts = tmp / "counts.csv"
         >>> _ = pd.DataFrame(

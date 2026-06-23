@@ -3,7 +3,7 @@
 A ``Scorer`` emits one image's **natural per-term values** (``_score_terms``);
 the base-class template method ``score_image`` orients each term into bounded
 **cost** ``∈ [0, 1]`` (``0`` = perfect, ``1`` = worst) via the shared
-:func:`~phenotypic.tune._scoring._orient.to_cost`, reading the scorer's
+:func:`~phenotypic.tune.score._orient.to_cost`, reading the scorer's
 ``_TERM_SENSE`` and optional ``_term_anchor``. The ``Evaluator`` collects the
 per-image cost terms across a calibration set, robust-aggregates each term
 (``median + λ·IQR``, clamped to ``[0, 1]``), then asks the scorer to
@@ -201,7 +201,7 @@ class Scorer(BaseModel, ABC):
 #: A ``Scorer``-valued field that round-trips any subclass via the ``phenotypic``
 #: class registry (Phase-0 ``polymorphic_field`` + ``_find_class_in_phenotypic``
 #: += ``phenotypic.tune``). Defined here — beside the ``Scorer`` base it widens,
-#: the lowest module in the ``_scoring`` import graph — so both ``CompositeScorer``
+#: the lowest module in the ``score`` import graph — so both ``CompositeScorer``
 #: (``_composite``) and ``TuningSpec`` (``_spec``) consume one canonical field
 #: without either re-building it. Typed ``TypeAlias`` so mypy accepts the
 #: ``Annotated`` core (erased to ``Any``) as a field annotation — the
