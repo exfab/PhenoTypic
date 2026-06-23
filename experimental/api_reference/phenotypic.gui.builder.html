@@ -609,8 +609,8 @@
 <p>Dash + dash-cytoscape interactive ImagePipeline builder.</p>
 <p>This subpackage provides a web-based node-graph editor for constructing
 <code class="xref py py-class docutils literal notranslate"><span class="pre">phenotypic.ImagePipeline</span></code> objects interactively. It is intended to
-run on an HPCC head node and be reached from a workstation via SSH port
-forwarding (<code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-L</span> <span class="pre">8050:localhost:8050</span> <span class="pre">user&#64;hpcc</span></code>).</p>
+run on an HPCC head or compute node and be reached from a workstation via SSH
+port forwarding (<code class="docutils literal notranslate"><span class="pre">ssh</span> <span class="pre">-N</span> <span class="pre">-L</span> <span class="pre">8050:&lt;server-host&gt;:8050</span> <span class="pre">&lt;cluster&gt;</span></code>).</p>
 <p>Public API will be filled in by Phase 4 once <code class="xref py py-func docutils literal notranslate"><span class="pre">create_app()</span></code> exists.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.gui.builder.__getattr__">

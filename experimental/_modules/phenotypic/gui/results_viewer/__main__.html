@@ -606,12 +606,13 @@
 <span class="sd">typical workflow is to run this on a cluster login or compute node and</span>
 <span class="sd">SSH-tunnel the chosen port back to a workstation::</span>
 
-<span class="sd">    ssh -L 8050:localhost:8050 user@cluster</span>
+<span class="sd">    ssh -N -L 8050:&lt;server-host&gt;:8050 &lt;cluster&gt;</span>
 <span class="sd">    # on the cluster:</span>
 <span class="sd">    cd &lt;output-root&gt;</span>
 <span class="sd">    uv run python -m phenotypic.gui.results_viewer</span>
 
-<span class="sd">Then point a local browser at ``http://localhost:8050/``.</span>
+<span class="sd">Then point a local browser at ``http://localhost:8050/``. For a plain SSH</span>
+<span class="sd">tunnel, omit ``--url-prefix``.</span>
 
 <span class="sd">Examples:</span>
 <span class="sd">    Default port, current working directory as the output root::</span>
@@ -680,8 +681,8 @@
 <span class="sd">        port: TCP port to bind. Defaults to :data:`DEFAULT_PORT`.</span>
 <span class="sd">        debug: Run Dash in debug mode (auto-reload + verbose</span>
 <span class="sd">            tracebacks). Defaults to ``False``.</span>
-<span class="sd">        url_prefix: Browser-visible path prefix for path-stripping</span>
-<span class="sd">            reverse proxies such as Open OnDemand. Defaults to ``&quot;/&quot;``.</span>
+<span class="sd">        url_prefix: Browser-visible path prefix for reverse proxies such as</span>
+<span class="sd">            Open OnDemand ``/node`` or ``/rnode``. Defaults to ``&quot;/&quot;``.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        FileNotFoundError: If *output_root* does not contain a valid CLI</span>

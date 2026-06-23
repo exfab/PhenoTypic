@@ -603,8 +603,8 @@
 
 <span class="sd">This subpackage provides a web-based node-graph editor for constructing</span>
 <span class="sd">:class:`phenotypic.ImagePipeline` objects interactively. It is intended to</span>
-<span class="sd">run on an HPCC head node and be reached from a workstation via SSH port</span>
-<span class="sd">forwarding (``ssh -L 8050:localhost:8050 user@hpcc``).</span>
+<span class="sd">run on an HPCC head or compute node and be reached from a workstation via SSH</span>
+<span class="sd">port forwarding (``ssh -N -L 8050:&lt;server-host&gt;:8050 &lt;cluster&gt;``).</span>
 
 <span class="sd">Public API will be filled in by Phase 4 once :func:`create_app` exists.</span>
 <span class="sd">&quot;&quot;&quot;</span>

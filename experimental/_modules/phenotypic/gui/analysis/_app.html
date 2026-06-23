@@ -640,6 +640,7 @@
     <span class="n">inject_design_tokens</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._url_prefix</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_url_prefix_routing</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">_ids</span> <span class="k">as</span> <span class="n">analysis_ids</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.analysis._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.analysis._layout</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -708,7 +709,7 @@
             <span class="n">url_prefix</span><span class="o">=</span><span class="n">url_prefix</span><span class="p">,</span>
             <span class="n">api_url_prefix</span><span class="o">=</span><span class="n">api_url_prefix</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">app</span>
+        <span class="k">return</span> <span class="n">configure_url_prefix_routing</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">url_prefix</span><span class="p">)</span>
 
     <span class="n">recipe</span> <span class="o">=</span> <span class="n">RecipeState</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">MeasurementSchema</span><span class="p">(</span><span class="n">output_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
@@ -729,7 +730,7 @@
         <span class="n">output_root</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
         <span class="n">recipe</span><span class="o">.</span><span class="n">pipeline</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="n">app</span></div>
+    <span class="k">return</span> <span class="n">configure_url_prefix_routing</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">url_prefix</span><span class="p">)</span></div>
 
 
 

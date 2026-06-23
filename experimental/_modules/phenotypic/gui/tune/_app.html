@@ -629,6 +629,7 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._design</span><span class="w"> </span><span class="kn">import</span> <span class="n">inject_design_tokens</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._shared</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_shared_static</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui._url_prefix</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_url_prefix_routing</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.tune._callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_callbacks</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.tune._layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_layout</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.gui.tune._run_root</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneRunRoot</span>
@@ -716,7 +717,7 @@
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tune co-pilot ready: run=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">app</span></div>
+    <span class="k">return</span> <span class="n">configure_url_prefix_routing</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">url_prefix</span><span class="p">)</span></div>
 
 
 
