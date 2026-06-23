@@ -48,7 +48,7 @@ from phenotypic.gui._config import (
     DEFAULT_PORT,        # 8050
     DEFAULT_URL_PREFIX,  # "/"
     LOG_FORMAT,          # logging.basicConfig format
-    SSH_TUNNEL_HINT,     # "ssh -L 8050:localhost:8050 user@cluster"
+    SSH_TUNNEL_HINT,     # "ssh -N -L 8050:<server-host>:8050 <cluster>"
     add_launcher_args,   # add --host/--port/--debug to a parser
     configure_launcher_logging,  # logging.basicConfig with LOG_FORMAT
     join_url_prefix,           # prepend optional browser-visible base prefix
@@ -63,10 +63,22 @@ either or you re-introduce drift like the `"%(name)s:"` vs
 `"%(name)s "` inconsistency we cleaned up.
 
 `--url-prefix` is shared by all GUI launchers and defaults to `/`. It is a
-path-only browser prefix for path-stripping proxies (for example Open
-OnDemand's `/node/hz01/30099/`), not a full URL. Use `join_url_prefix` for
-browser-facing links, API fetches, and iframe URLs that need to survive a
-proxy prefix.
+path-only browser prefix for reverse proxies (for example Open OnDemand
+`/node/hz01/30099/` or `/rnode/hz01/30099/`), not a full URL. Use
+`join_url_prefix` for browser-facing links, API fetches, and iframe URLs that
+need to survive a proxy prefix. Open OnDemand `/node` forwards the full prefix
+to the backend, so the shared URL-prefix WSGI middleware strips that configured
+prefix from incoming `PATH_INFO` before Flask, Dash, or `DispatcherMiddleware`
+route the request. Open OnDemand `/rnode` usually strips before the backend, so
+the middleware is effectively a no-op while generated browser URLs remain
+prefixed.
+
+Every GUI app factory that accepts `url_prefix` must finalize the Dash app with
+`configure_url_prefix_routing(app, url_prefix)` from
+`phenotypic.gui._url_prefix` immediately before returning it. Do not install
+prefix-stripping middleware directly in app factories; keep direct
+`install_url_prefix_strip_middleware(...)` calls inside `_url_prefix.py` and
+its unit tests so future proxy-routing changes have one implementation point.
 
 ### Mount prefixes
 
@@ -318,10 +330,18 @@ travels with the field annotation.
   mounted under `DispatcherMiddleware` see their mount prefix stripped
   before Dash routes. Standalone launches collapse to identical prefixes
   because `url_prefix` defaults to `MOUNT_HOME` ("/").
-- **External proxy prefixes are browser-facing only** — keep
-  `DispatcherMiddleware` mount keys at the internal `MOUNT_*` paths, but build
+- **External proxy prefixes are browser-facing and sometimes backend-facing** —
+  keep `DispatcherMiddleware` mount keys at the internal `MOUNT_*` paths, build
   Dash `requests_pathname_prefix`, chrome hrefs, shell API fetches, and
-  `/runs/...` iframe URLs through `join_url_prefix(base_prefix, path)`.
+  `/runs/...` iframe URLs through `join_url_prefix(base_prefix, path)`, and let
+  the URL-prefix WSGI middleware strip configured `/node/...` prefixes before
+  routing when the proxy forwards them to the backend.
+- **Finalize URL-prefix routing through the shared helper** — factories should
+  return `configure_url_prefix_routing(app, url_prefix)` after registering their
+  routes, callbacks, static blueprints, and layouts. For the composed hub, call
+  the helper only after `DispatcherMiddleware` has replaced
+  `shell_app.server.wsgi_app`; wrapping earlier would leave `/node/...`
+  requests visible to the dispatcher.
 - **Don't import dash from `_config.py` or `_design.py`** — they stay
   cheap to import everywhere, including from blueprint and test code.
 - **Registry keys are split by type** — the builder's

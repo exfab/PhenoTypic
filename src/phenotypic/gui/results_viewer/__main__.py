@@ -5,12 +5,13 @@ over a CLI output directory produced by ``python -m phenotypic``. The
 typical workflow is to run this on a cluster login or compute node and
 SSH-tunnel the chosen port back to a workstation::
 
-    ssh -L 8050:localhost:8050 user@cluster
+    ssh -N -L 8050:<server-host>:8050 <cluster>
     # on the cluster:
     cd <output-root>
     uv run python -m phenotypic.gui.results_viewer
 
-Then point a local browser at ``http://localhost:8050/``.
+Then point a local browser at ``http://localhost:8050/``. For a plain SSH
+tunnel, omit ``--url-prefix``.
 
 Examples:
     Default port, current working directory as the output root::
@@ -77,8 +78,8 @@ def launch_results_viewer(
         port: TCP port to bind. Defaults to :data:`DEFAULT_PORT`.
         debug: Run Dash in debug mode (auto-reload + verbose
             tracebacks). Defaults to ``False``.
-        url_prefix: Browser-visible path prefix for path-stripping
-            reverse proxies such as Open OnDemand. Defaults to ``"/"``.
+        url_prefix: Browser-visible path prefix for reverse proxies such as
+            Open OnDemand ``/node`` or ``/rnode``. Defaults to ``"/"``.
 
     Raises:
         FileNotFoundError: If *output_root* does not contain a valid CLI

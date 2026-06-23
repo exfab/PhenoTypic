@@ -770,7 +770,7 @@ TITLE_BROWSE: str = "PhenoTypic Source Browser"
 #: epilogue, and help-modal body. Constructed from :data:`DEFAULT_PORT`
 #: so a future port change propagates everywhere.
 SSH_TUNNEL_HINT: str = (
-    f"ssh -L {DEFAULT_PORT}:localhost:{DEFAULT_PORT} user@cluster"
+    f"ssh -N -L {DEFAULT_PORT}:<server-host>:{DEFAULT_PORT} <cluster>"
 )
 
 #: Shared prefix for ``threading.Thread`` / ``ThreadPoolExecutor`` names
@@ -789,7 +789,8 @@ def normalize_url_prefix(value: str | None) -> str:
         value: Path prefix supplied by a launcher flag. Empty values map
             to ``"/"``. Full URLs, network-location URLs, query strings,
             and fragments are rejected because this value is only the
-            browser-visible path prefix behind a path-stripping proxy.
+            browser-visible path prefix behind a reverse proxy such as
+            Open OnDemand ``/node`` or ``/rnode``.
 
     Returns:
         Prefix with one leading slash and one trailing slash.
@@ -884,9 +885,9 @@ def add_launcher_args(
         type=_argparse_url_prefix,
         default=DEFAULT_URL_PREFIX,
         help=(
-            "Browser-visible path prefix for path-stripping proxies such "
-            "as Open OnDemand. Pass only the path portion, e.g. "
-            "/node/hz01/30099/. Default /."
+            "Browser-visible path prefix for reverse proxies such as "
+            "Open OnDemand /node or /rnode. Pass only the path portion, "
+            "e.g. /node/hz01/30099/. Default /."
         ),
     )
     if include_debug:
@@ -943,7 +944,12 @@ def print_launcher_banner(
     print(f"  root  : {root}")
     print(f"  url   : http://{host}:{port}{prefix}")
     print()
-    print(f"  SSH tunnel from local: ssh -L {port}:localhost:{port} <cluster>")
+    print(
+        "  SSH tunnel from local: "
+        f"ssh -N -L {port}:<server-host>:{port} <cluster>"
+    )
+    print("  If running on a compute node, use that node as <server-host>.")
+    print("  For a plain SSH tunnel, omit --url-prefix and open localhost.")
     for line in extra_lines:
         print(f"  {line}")
     print()

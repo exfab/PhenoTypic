@@ -262,6 +262,14 @@ class TestAddLauncherArgs:
         assert ns.port == _config.DEFAULT_PORT
         assert ns.url_prefix == _config.DEFAULT_URL_PREFIX
 
+    def test_url_prefix_help_mentions_node_and_rnode(self) -> None:
+        parser = argparse.ArgumentParser()
+        _config.add_launcher_args(parser)
+
+        help_text = parser.format_help()
+
+        assert "Open OnDemand /node or /rnode" in help_text
+
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
@@ -322,7 +330,9 @@ class TestPrintLauncherBanner:
         out = capsys.readouterr().out
         assert _config.TITLE_HUB in out
         assert "http://127.0.0.1:8050/" in out
-        assert "ssh -L 8050:localhost:8050" in out
+        assert "ssh -N -L 8050:<server-host>:8050" in out
+        assert "If running on a compute node" in out
+        assert "omit --url-prefix" in out
         # ``Path.__str__`` is platform-native (``/tmp/sandbox`` on POSIX,
         # ``\tmp\sandbox`` on Windows) and the banner echoes it verbatim.
         assert str(root) in out

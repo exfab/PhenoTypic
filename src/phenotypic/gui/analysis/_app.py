@@ -39,6 +39,7 @@ from phenotypic.gui._design import (
     inject_design_tokens,
 )
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.analysis import _ids as analysis_ids
 from phenotypic.gui.analysis._callbacks import register_callbacks
 from phenotypic.gui.analysis._layout import (
@@ -105,7 +106,7 @@ def create_app(
             url_prefix=url_prefix,
             api_url_prefix=api_url_prefix,
         )
-        return app
+        return configure_url_prefix_routing(app, url_prefix)
 
     recipe = RecipeState.load(Path(output_root.root))
     schema = MeasurementSchema(output_root=Path(output_root.root))
@@ -126,7 +127,7 @@ def create_app(
         output_root.root,
         recipe.pipeline.name,
     )
-    return app
+    return configure_url_prefix_routing(app, url_prefix)
 
 
 def _register_empty_state_callbacks(

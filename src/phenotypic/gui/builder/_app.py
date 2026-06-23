@@ -37,6 +37,7 @@ from phenotypic.gui.builder._point_picker import (
 from phenotypic.gui.builder._preview_cache import init_cache as init_preview_cache
 from phenotypic.gui.builder._preview_tiles import register_node_preview_routes
 from phenotypic.gui.builder._state import BuilderState
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 
 
 def _index_string_with_prefix(url_prefix: str) -> str:
@@ -149,7 +150,7 @@ def create_app(
     init_preview_cache()
     register_point_picker_callbacks(app)
 
-    return app
+    return configure_url_prefix_routing(app, url_prefix)
 
 
 __all__ = ["create_app"]

@@ -35,6 +35,7 @@ from phenotypic.gui._config import (
 )
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
+from phenotypic.gui._url_prefix import configure_url_prefix_routing
 from phenotypic.gui.run_console._callbacks import register_callbacks
 from phenotypic.gui.run_console._layout import build_run_console_layout
 from phenotypic.gui.run_console._runner import LocalRunner
@@ -120,4 +121,4 @@ def create_app(
         sandbox.root,
         url_prefix,
     )
-    return app
+    return configure_url_prefix_routing(app, url_prefix)

@@ -17,7 +17,10 @@ exercises each mount point through the test client. Confirms:
 """
 from __future__ import annotations
 
+import html
+import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -28,6 +31,9 @@ from phenotypic.gui.shell import SandboxRoot, create_app
 @pytest.fixture()
 def sandbox(tmp_path: Path) -> SandboxRoot:
     return SandboxRoot.from_path(tmp_path)
+
+
+OOD_NODE_PREFIX = "/node/hz01/30099/"
 
 
 def _find_string_in_json(node: object, needle: str) -> str | None:
@@ -47,6 +53,26 @@ def _find_string_in_json(node: object, needle: str) -> str | None:
             if found is not None:
                 return found
     return None
+
+
+def _assert_content_type_prefix(resp: Any, expected: str) -> None:
+    """Assert a Flask test response has a content type prefix."""
+    content_type = resp.headers.get("content-type", "")
+    assert content_type.startswith(expected), content_type
+
+
+def _assert_not_dash_index(resp: Any) -> None:
+    """Assert a route did not silently fall through to Dash index HTML."""
+    body = resp.get_data(as_text=True)
+    assert "<!DOCTYPE html>" not in body[:200]
+    assert "react-entry-point" not in body[:500]
+
+
+def _first_component_suite_script(index_html: str) -> str:
+    """Return the first generated Dash component-suite JavaScript path."""
+    match = re.search(r'src="([^"]+/_dash-component-suites/[^"]+\.js)"', index_html)
+    assert match is not None, index_html[:1000]
+    return html.unescape(match.group(1))
 
 
 def test_shell_home_returns_200(sandbox: SandboxRoot) -> None:
@@ -285,6 +311,119 @@ def test_explicit_url_prefix_rewrites_empty_state_api_fetches(
 
     assert "/node/hz01/30099/sandbox/api/viewer/output-root" in results_html
     assert "/node/hz01/30099/sandbox/api/viewer/output-root" in analysis_html
+
+
+def test_explicit_url_prefix_routes_backend_dash_endpoints(
+    sandbox: SandboxRoot,
+) -> None:
+    """OOD /node forwards the full prefix, so Dash endpoints must strip it."""
+    app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
+    client = app.server.test_client()
+
+    layout = client.get(f"{OOD_NODE_PREFIX}_dash-layout")
+    assert layout.status_code == 200
+    _assert_content_type_prefix(layout, "application/json")
+    assert "shell-source-image-root-store" in layout.get_data(as_text=True)
+
+    deps = client.get(f"{OOD_NODE_PREFIX}_dash-dependencies")
+    assert deps.status_code == 200
+    _assert_content_type_prefix(deps, "application/json")
+    _assert_not_dash_index(deps)
+
+
+def test_explicit_url_prefix_routes_backend_assets_and_component_suites(
+    sandbox: SandboxRoot,
+) -> None:
+    """CSS and generated Dash JS must not return the HTML app shell under /node."""
+    app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
+    client = app.server.test_client()
+
+    index = client.get(OOD_NODE_PREFIX)
+    assert index.status_code == 200
+    index_html = index.get_data(as_text=True)
+
+    shell_css = client.get(f"{OOD_NODE_PREFIX}assets/shell.css")
+    assert shell_css.status_code == 200
+    _assert_content_type_prefix(shell_css, "text/css")
+    _assert_not_dash_index(shell_css)
+    assert "shell-" in shell_css.get_data(as_text=True)
+
+    script_path = _first_component_suite_script(index_html)
+    script = client.get(script_path)
+    assert script.status_code == 200
+    assert "javascript" in script.headers.get("content-type", "")
+    _assert_not_dash_index(script)
+
+
+def test_explicit_url_prefix_routes_backend_subapps_and_shell_blueprints(
+    tmp_path: Path,
+) -> None:
+    """The prefix strip must run before DispatcherMiddleware and shell blueprints."""
+    sandbox_dir = tmp_path / "sandbox"
+    sandbox_dir.mkdir()
+    out = sandbox_dir / "out"
+    out.mkdir()
+    (out / "dashboard.html").write_text("<html>dashboard</html>")
+    sandbox = SandboxRoot.from_path(sandbox_dir)
+
+    app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
+    client = app.server.test_client()
+
+    for path, marker in (
+        (f"{OOD_NODE_PREFIX}builder/_dash-layout", "builder-page-root"),
+        (f"{OOD_NODE_PREFIX}results/_dash-layout", "results-viewer-empty-state"),
+        (f"{OOD_NODE_PREFIX}run/_dash-layout", "run-console-root"),
+        (f"{OOD_NODE_PREFIX}analysis/_dash-layout", "analysis-page"),
+        (f"{OOD_NODE_PREFIX}tune/_dash-layout", "tune-"),
+        (f"{OOD_NODE_PREFIX}browse/_dash-layout", "browse-page"),
+    ):
+        resp = client.get(path)
+        assert resp.status_code == 200, path
+        _assert_content_type_prefix(resp, "application/json")
+        assert marker in resp.get_data(as_text=True)
+
+    root_resp = client.get(f"{OOD_NODE_PREFIX}sandbox/api/root")
+    assert root_resp.status_code == 200
+    _assert_content_type_prefix(root_resp, "application/json")
+    assert root_resp.get_json()["root"] == str(sandbox.root)
+
+    run_resp = client.get(f"{OOD_NODE_PREFIX}runs/out/dashboard.html")
+    assert run_resp.status_code == 200
+    _assert_content_type_prefix(run_resp, "text/html")
+    assert b"dashboard" in run_resp.data
+
+
+def test_explicit_url_prefix_preserves_script_root_through_dispatcher(
+    sandbox: SandboxRoot,
+) -> None:
+    """Flask should see both the external OOD prefix and internal mount."""
+    from flask import Blueprint, jsonify, request
+
+    app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
+    dispatcher = app.server.wsgi_app
+    builder_flask = dispatcher.mounts["/builder"]
+
+    bp = Blueprint("prefixed_probe", __name__)
+
+    @bp.route("/_prefixed_probe")
+    def _prefixed_probe() -> object:
+        return jsonify(
+            {
+                "script_root": request.script_root,
+                "path": request.path,
+                "url": request.url,
+            }
+        )
+
+    builder_flask.register_blueprint(bp)
+
+    client = app.server.test_client()
+    resp = client.get(f"{OOD_NODE_PREFIX}builder/_prefixed_probe")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["script_root"] == "/node/hz01/30099/builder"
+    assert data["path"] == "/_prefixed_probe"
+    assert "/node/hz01/30099/builder/_prefixed_probe" in data["url"]
 
 
 def test_builder_logo_uses_prefix(sandbox: SandboxRoot) -> None:
