@@ -43,6 +43,7 @@ from phenotypic.sdk_ import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    metadata_csv_deliverable_path,
     pipeline_json_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
@@ -601,6 +602,24 @@ def finalize_post_master_outputs(
             )
     post_df = _apply_post_to_master(working_df, pipeline)
     _seed_measurements(output_dir, post_df)
+
+    # Best-effort copy of the --metadata source CSV → deliverables/metadata.csv,
+    # so a portable, co-located copy of the FULL original mapping survives next to
+    # the run (the inner-join drops unmatched rows from the mirror, and
+    # job_metadata.json only holds an absolute path useless once results move off
+    # the cluster). Content-only copy (shutil.copy, not copy2 — mtime is not
+    # preserved by design); re-running/--recompile overwrites it with a fresh
+    # copy, mirroring master_measurements.*. Guarded like the other finalize side
+    # effects: a failure is logged and never raised (spec §8.3 / D6).
+    if metadata_csv is not None:
+        try:
+            shutil.copy(metadata_csv, metadata_csv_deliverable_path(output_dir))
+        except Exception:
+            logger.warning(
+                "Failed to copy --metadata CSV to deliverables/metadata.csv "
+                "(master/measurements still written)",
+                exc_info=True,
+            )
 
     if pipeline is not None:
         _persist_pipeline_to_output_dir(output_dir, pipeline)

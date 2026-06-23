@@ -1,0 +1,224 @@
+/*
+ * timeline.css — chrome for the focus-and-navigate timeline matrix (spec §16).
+ *
+ * SURFACE-AGNOSTIC: this file is authored against ONLY `.timeline-*` selectors
+ * (never a surface-specific `#browse-*` / `#timeline-*` id) so it can be
+ * vendored BYTE-FOR-BYTE into both the Browse (`browse/_assets/`) and Results
+ * (`results_viewer/_assets/`) Dash apps — which are SEPARATE apps mounted via
+ * DispatcherMiddleware, each auto-loading its own `_assets/*.css`. A CI
+ * byte-equality guard (added in Phase 3) enforces the two vendored copies
+ * never drift, mirroring the `timeline.js` guard.
+ *
+ * All colours come from the globally-injected `_design.py` design tokens
+ * (`var(--color-*)`); NO raw hex (per gui/CLAUDE.md).
+ */
+
+/* The cell box is position:relative (set inline in _grid.py) so the absolutely
+ * positioned pop-out button + badge anchor to its corners and the mounted
+ * <img> background layer fills it. */
+.timeline-cell {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.timeline-cell--empty {
+    background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+    border-style: dashed;
+}
+
+/* The mounted thumbnail layer (timeline.js sets the inline geometry; this keeps
+ * the rendering crisp and out of the way of the hover-revealed ⤢). */
+.timeline-cell-img {
+    border-radius: inherit;
+}
+
+/* --- Hover-gated pop-out (⤢) — spec §16.4 ------------------------------- */
+/* Hidden by default; revealed only while the enclosing cell is hovered. The
+ * keyboard path (Enter/Space on the focused cell) opens the same pop-out
+ * without needing hover. */
+.timeline-cell-popout {
+    visibility: hidden;
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    line-height: 1;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+    color: var(--color-navy);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.timeline-cell:hover .timeline-cell-popout {
+    visibility: visible;
+}
+.timeline-cell-popout:hover {
+    background: var(--color-surface);
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+}
+
+/* --- Focus highlight — spec §16.1 ("visibly highlighted") --------------- */
+/* The single focused cell is unambiguously outlined so it stays identifiable
+ * even when it sits off-centre near the matrix edges (the clamp-translate
+ * layout). A blue outline + ring shadow reads clearly over any thumbnail. */
+.timeline-cell--focused {
+    outline: 3px solid var(--color-blue);
+    outline-offset: -1px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blue) 35%, transparent);
+    z-index: 2;
+}
+
+/* --- N=k multi-member badge -------------------------------------------- */
+.timeline-cell-badge {
+    position: absolute;
+    bottom: 0.25rem;
+    left: 0.25rem;
+    z-index: 3;
+    padding: 0 0.35rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    line-height: 1.4;
+    color: var(--color-surface);
+    background: color-mix(in srgb, var(--color-navy) 85%, transparent);
+    border-radius: var(--radius);
+}
+
+/* --- Axis labels -------------------------------------------------------- */
+.timeline-axis-label {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    overflow-wrap: anywhere;
+    align-self: center;
+}
+.timeline-axis-label--y {
+    text-align: right;
+    padding-right: 0.35rem;
+}
+.timeline-axis-label--x {
+    text-align: center;
+}
+
+/* --- Compare-strip selection — spec §7 --------------------------------- */
+/* A multi-selected cell (shift/ctrl-click) is the Compare set's single source
+ * of truth (the JS keeps NO parallel Set). A gold ring distinguishes it from
+ * the blue focus outline so a focused-AND-selected cell stays legible. */
+.timeline-cell--selected {
+    outline: 3px solid var(--color-gold);
+    outline-offset: -1px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 40%, transparent);
+    z-index: 2;
+}
+/* The axis row-header is a click target (selects + compares the whole row). */
+.timeline-axis-label--y {
+    cursor: pointer;
+}
+
+/* --- Synced Compare strip (modal) — spec §7, §15.10 -------------------- */
+/* A plain-DOM, full-viewport overlay built by timeline.js (it owns the dynamic
+ * ≤cap OSD viewer set client-side, so no Dash round-trip per open). All colours
+ * come from the injected _design.py tokens — NO raw hex. */
+.timeline-compare-modal {
+    position: fixed;
+    inset: 0;
+    /* Above the shell top-bar chrome (z-index 1090) so this full-viewport
+       overlay covers the app chrome and its corner close button is clickable. */
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    padding: var(--sp-4);
+    background: color-mix(in srgb, var(--color-navy) 70%, transparent);
+}
+.timeline-compare-close {
+    position: absolute;
+    top: var(--sp-3);
+    right: var(--sp-3);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    line-height: 1;
+    font-size: var(--font-size-header-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-navy);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.timeline-compare-close:hover {
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+}
+.timeline-compare-notice {
+    flex: 0 0 auto;
+    margin: 0 auto var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    max-width: 60ch;
+    text-align: center;
+    color: var(--color-navy);
+    background: color-mix(in srgb, var(--color-gold) 30%, var(--color-surface));
+    border: 1px solid var(--color-gold);
+    border-radius: var(--radius);
+    font-size: var(--font-size-label);
+}
+/* Empty notice slot collapses so it never reserves vertical space under cap. */
+.timeline-compare-notice:empty {
+    display: none;
+}
+.timeline-compare-strip {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    gap: var(--sp-3);
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: stretch;
+}
+.timeline-compare-cell {
+    flex: 1 0 18rem;
+    min-width: 18rem;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.timeline-compare-cell-title {
+    flex: 0 0 auto;
+    padding: var(--sp-2) var(--sp-3);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-caption);
+    color: var(--color-muted);
+    border-bottom: 1px solid var(--color-border);
+    overflow-wrap: anywhere;
+}
+.timeline-compare-osd {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    background: var(--color-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timeline-cell-popout {
+        transition: none;
+    }
+    .timeline-compare-close {
+        transition: none;
+    }
+}

@@ -61,6 +61,7 @@ from phenotypic.gui.results_viewer._heatmap_tab import build_heatmap_tab_body
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._qc_tab import build_qc_tab_body
 from phenotypic.gui.results_viewer.colony_view import _layout as _colony_layout  # noqa: F401
+from phenotypic.gui.results_viewer.timeline_view import _layout as _timeline_layout
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -465,6 +466,7 @@ def build_app_layout(
     heatmap_tab_body = build_heatmap_tab_body(output_root, schema)
     error_tab_body = build_error_tab_body(output_root, schema)
     qc_tab_body = build_qc_tab_body(_resolve_qc_recipe(output_root))
+    timeline_tab_body = _timeline_layout.layout(output_root)
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -493,6 +495,11 @@ def build_app_layout(
                 error_tab_body,
                 label="Error",
                 tab_id=ids.TAB_ERROR_ID,
+            ),
+            dbc.Tab(
+                timeline_tab_body,
+                label="Timeline",
+                tab_id=ids.TAB_TIMELINE_ID,
             ),
         ],
         id=ids.TABS_ID,

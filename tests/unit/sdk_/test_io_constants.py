@@ -11,6 +11,7 @@ import pytest
 from phenotypic.sdk_ import (
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
+    DELIVERABLES_METADATA_CSV,
     DIR_HDF,
     DIR_MEASUREMENTS,
     DIR_OVERLAYS,
@@ -64,6 +65,7 @@ from phenotypic.sdk_ import (
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
+    metadata_csv_deliverable_path,
     pipeline_json_path,
     processing_state_path,
     progress_dir,
@@ -190,6 +192,9 @@ class TestFilenameConstants:
     def test_measurements_mirror_filenames(self) -> None:
         assert MEASUREMENTS_CSV == "measurements.csv"
         assert MEASUREMENTS_PARQUET == "measurements.parquet"
+
+    def test_metadata_csv_deliverable_filename(self) -> None:
+        assert DELIVERABLES_METADATA_CSV == "metadata.csv"
 
     def test_analysis_filenames(self) -> None:
         assert ANALYSIS_CSV == "analysis.csv"
@@ -341,6 +346,10 @@ class TestPathHelpers:
         deliv = output / "deliverables"
         assert measurements_csv_path(output) == deliv / "measurements.csv"
         assert measurements_parquet_path(output) == deliv / "measurements.parquet"
+
+    def test_metadata_csv_deliverable_path(self, output: Path) -> None:
+        deliv = output / "deliverables"
+        assert metadata_csv_deliverable_path(output) == deliv / "metadata.csv"
 
     def test_analysis_paths(self, output: Path) -> None:
         deliv = output / "deliverables"

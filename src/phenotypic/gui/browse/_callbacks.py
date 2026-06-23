@@ -17,20 +17,37 @@ from typing import Any, Literal
 import dash
 from dash import Input, Output, State, ctx, html, no_update
 
+from phenotypic.gui._config import (
+    BROWSE_THUMB_URL_SEGMENT,
+    CFG_URL_PREFIX,
+    MOUNT_HOME,
+    TIMELINE_TILE_SIZE_DEFAULT,
+    snap_thumb_bucket,
+    stepped_timeline_tile_size_from_trigger,
+)
 from phenotypic.gui._shared._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
+from phenotypic.gui._shared.timeline import build_matrix, build_timeline_grid
 from phenotypic.gui.browse import _ids as ids
 from phenotypic.gui.browse import _metadata, _source_lister, _source_render
+from phenotypic.gui.browse._capture_time import read_capture_time
 from phenotypic.gui.browse._layout import DATASET_ROW_STYLE
+from phenotypic.gui.browse._plate_pattern import PatternError, parse_plate_identity
+from phenotypic.gui.browse._timeline_records import (
+    BrowseAxisConfig,
+    build_browse_records,
+)
 from phenotypic.gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
 from phenotypic.gui.shell._metadata_context import (
     MetadataLookupResult,
+    read_metadata_csv_table,
     read_metadata_row_for_image_stem,
+    resolve_metadata_csv,
 )
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.shell._source_context import resolve_source_image_root
@@ -199,6 +216,118 @@ def _src_root_rel(sandbox: SandboxRoot, payload: Any) -> str | None:
 
 
 # --------------------------------------------------------------------------
+# Timeline pure helpers (unit-tested; the Dash callbacks below are thin wrappers)
+# --------------------------------------------------------------------------
+def timeline_thumb_url(prefix: str, token: str, fetch_size: int) -> str:
+    """Build a thumbnail ``<img>`` URL for the Browse thumb route."""
+    return f"{prefix}{BROWSE_THUMB_URL_SEGMENT}/{token}?size={fetch_size}"
+
+
+def render_timeline_grid(
+    records: Sequence[dict[str, object]], *, display_size: int, prefix: str
+) -> Any:
+    """Build matrix → grid component (encoding each cell_ref to a thumb token).
+
+    Each record's sandbox-rel ``cell_ref`` is encoded to a base64url token via
+    :func:`_source_render.encode_token` before the thumbnail URL is built; the
+    same token is written into each cell's ``data-ref`` (the pop-out identity).
+    """
+    fetch_size = snap_thumb_bucket(display_size)
+
+    def _url_builder(cell_ref: object, fetch: int) -> str:
+        token = _source_render.encode_token(str(cell_ref))
+        return timeline_thumb_url(prefix, token, fetch)
+
+    def _ref_builder(cell_ref: object) -> str:
+        return _source_render.encode_token(str(cell_ref))
+
+    matrix = build_matrix(records)
+    component, _grid_order = build_timeline_grid(
+        matrix,
+        url_builder=_url_builder,
+        display_size=display_size,
+        fetch_size=fetch_size,
+        ref_builder=_ref_builder,
+    )
+    return component
+
+
+def pattern_preview_rows(
+    datasets: dict[str, list[str]], pattern: str, advanced: bool
+) -> Any:
+    """Render a small live preview of the plate-identity pattern over stems.
+
+    Shows, per dataset folder, how the first few filenames resolve into
+    ``{plate}`` / ``{time}`` captures so the user can iterate on the pattern
+    before applying it. Invalid patterns surface their :class:`PatternError`.
+    """
+    if not pattern:
+        return html.Div("Enter a pattern to preview matches.", className="text-muted")
+
+    flat_stems = [Path(name).stem for files in datasets.values() for name in files]
+    preview_stems = flat_stems[:8]
+    try:
+        matches = parse_plate_identity(preview_stems, pattern, advanced=advanced)
+    except PatternError as exc:
+        return html.Div(f"Invalid pattern: {exc}", className="text-danger")
+
+    if not matches:
+        return html.Div("No filenames to preview.", className="text-muted")
+
+    body = [
+        html.Tr(
+            [
+                html.Td(match.stem),
+                html.Td(match.plate if match.plate is not None else "—"),
+                html.Td(match.time if match.time is not None else "—"),
+            ]
+        )
+        for match in matches
+    ]
+    return html.Table(
+        [
+            html.Thead(
+                html.Tr([html.Th("Filename"), html.Th("{plate}"), html.Th("{time}")])
+            ),
+            html.Tbody(body),
+        ],
+        className="table table-sm mb-0 browse-tl-pattern-preview-table",
+    )
+
+
+def _csv_column_options(columns: Sequence[str]) -> list[dict[str, str]]:
+    """Dropdown options for the CSV column / image-name dropdowns."""
+    return [{"label": column, "value": column} for column in columns]
+
+
+def strip_popout_nonce(value: str) -> str:
+    """Strip the ``#<nonce>`` uniqueness suffix timeline.js appends to a token.
+
+    ``setBridge`` (timeline.js) appends ``#<monotonic-counter>`` to every
+    bridge write so re-opening the pop-out on the SAME cell still changes the
+    controlled ``dcc.Input`` value (Dash's onChange only fires on a change). As
+    ``#`` is outside the base64url token alphabet, splitting on the first ``#``
+    recovers the original token (POP-OUT M5). Surface-agnostic: Results decodes
+    the same shape.
+    """
+    return value.split("#", 1)[0]
+
+
+def warnings_alert_state(warnings: Sequence[str] | None) -> tuple[Any, bool]:
+    """Render the CSV-join warnings alert body + open-state.
+
+    Returns ``(children, is_open)``: a stacked list of warning lines (open)
+    when ``warnings`` is non-empty, else ``(None, False)`` so the alert stays
+    hidden. Surfaces the otherwise-dead ``BROWSE_TL_STORE_WARNINGS`` store
+    (e.g. cross-folder stem collisions) to the user.
+    """
+    items = [w for w in (warnings or []) if w]
+    if not items:
+        return None, False
+    return [html.Div(message) for message in items], True
+
+
+# --------------------------------------------------------------------------
 # Callback registration
 # --------------------------------------------------------------------------
 def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
@@ -342,6 +471,246 @@ def register_callbacks(app: dash.Dash, sandbox: SandboxRoot) -> None:
         """,
         Output(ids.BROWSE_OSD_SYNC, "data"),
         Input(ids.BROWSE_CURRENT_IMAGE_STORE, "data"),
+    )
+
+    # ----------------------------------------------------------------------
+    # Timeline view (Phase 2)
+    # ----------------------------------------------------------------------
+    @app.callback(
+        Output(ids.BROWSE_SINGLE_BODY, "style"),
+        Output(ids.BROWSE_TIMELINE_BODY, "style"),
+        Input(ids.BROWSE_VIEW_MODE_TOGGLE, "value"),
+    )
+    def _toggle_view_mode(mode: str | None):
+        is_timeline = mode == "timeline"
+        single_style = {"display": "none"} if is_timeline else {"display": "block"}
+        timeline_style = {"display": "block"} if is_timeline else {"display": "none"}
+        return single_style, timeline_style
+
+    # Clientside companion: cancel any in-flight warm when leaving Timeline,
+    # re-attach the controller (re-render the centered window) when entering it.
+    # The body is shown by the server callback above; attach()'s first-paint
+    # requestAnimationFrame guard self-corrects if it fires before the show.
+    app.clientside_callback(
+        """
+        function(mode) {
+            if (window.__phenotypicTimeline) {
+                if (mode === "timeline") {
+                    window.__phenotypicTimeline.attach("%s");
+                } else if (window.__phenotypicTimeline.cancelWarm) {
+                    window.__phenotypicTimeline.cancelWarm();
+                }
+            }
+            return "";
+        }
+        """
+        % ids.BROWSE_TL_GRID,
+        Output(ids.BROWSE_TL_GRID, "data-attach-sync"),
+        Input(ids.BROWSE_VIEW_MODE_TOGGLE, "value"),
+    )
+
+    @app.callback(
+        Output(ids.BROWSE_TL_TILE_SIZE_READOUT, "children"),
+        Output(ids.BROWSE_TL_STORE_TILE_SIZE, "data"),
+        Input(ids.BROWSE_TL_TILE_SIZE_MINUS, "n_clicks"),
+        Input(ids.BROWSE_TL_TILE_SIZE_PLUS, "n_clicks"),
+        State(ids.BROWSE_TL_STORE_TILE_SIZE, "data"),
+        prevent_initial_call=True,
+    )
+    def _step_tile_size(_minus, _plus, current):
+        size = stepped_timeline_tile_size_from_trigger(
+            ctx.triggered_id,
+            current,
+            plus_id=ids.BROWSE_TL_TILE_SIZE_PLUS,
+            minus_id=ids.BROWSE_TL_TILE_SIZE_MINUS,
+        )
+        return f"{size} px", size
+
+    @app.callback(
+        Output(ids.BROWSE_TL_NUDGE, "style"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
+    )
+    def _nudge_visibility(metadata_payload: object):
+        # Shown only when no CSV is loaded (richer axes need one).
+        has_csv = resolve_metadata_csv(sandbox, metadata_payload) is not None
+        return {"display": "none"} if has_csv else {"display": "block"}
+
+    @app.callback(
+        Output(ids.BROWSE_TL_ROW_CSV_COL, "options"),
+        Output(ids.BROWSE_TL_TIME_CSV_COL, "options"),
+        Output(ids.BROWSE_TL_CSV_IMAGE_COL, "options"),
+        Input(SHELL_METADATA_CSV_STORE, "data"),
+    )
+    def _populate_csv_columns(metadata_payload: object):
+        path = resolve_metadata_csv(sandbox, metadata_payload)
+        if path is None:
+            return [], [], []
+        try:
+            columns, _rows = read_metadata_csv_table(path)
+        except OSError:
+            return [], [], []
+        options = _csv_column_options(columns)
+        return options, options, options
+
+    @app.callback(
+        Output(ids.BROWSE_TL_PATTERN_PREVIEW, "children"),
+        Input(ids.BROWSE_TL_PATTERN_INPUT, "value"),
+        Input(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
+        State(ids.BROWSE_DATASETS_STORE, "data"),
+    )
+    def _pattern_preview(pattern: str | None, advanced_value, datasets: dict | None):
+        advanced = bool(advanced_value) and "advanced" in advanced_value
+        return pattern_preview_rows(datasets or {}, pattern or "", advanced)
+
+    @app.callback(
+        Output(ids.BROWSE_TL_GRID, "children"),
+        Output(ids.BROWSE_TL_STORE_WARNINGS, "data"),
+        Input(ids.BROWSE_VIEW_MODE_TOGGLE, "value"),
+        Input(ids.BROWSE_TL_ROW_SOURCE, "value"),
+        Input(ids.BROWSE_TL_TIME_SOURCE, "value"),
+        Input(ids.BROWSE_TL_ROW_CSV_COL, "value"),
+        Input(ids.BROWSE_TL_TIME_CSV_COL, "value"),
+        Input(ids.BROWSE_TL_CSV_IMAGE_COL, "value"),
+        Input(ids.BROWSE_TL_PATTERN_INPUT, "value"),
+        Input(ids.BROWSE_TL_PATTERN_ADVANCED, "value"),
+        Input(ids.BROWSE_TL_STORE_TILE_SIZE, "data"),
+        State(SHELL_SOURCE_IMAGE_ROOT_STORE, "data"),
+        State(SHELL_METADATA_CSV_STORE, "data"),
+    )
+    def _render_grid(
+        mode: str | None,
+        row_source: str | None,
+        time_source: str | None,
+        row_csv_col: str | None,
+        time_csv_col: str | None,
+        csv_image_col: str | None,
+        pattern: str | None,
+        advanced_value,
+        tile_size,
+        source_payload: object,
+        metadata_payload: object,
+    ):
+        if mode != "timeline":
+            raise dash.exceptions.PreventUpdate
+        resolved = resolve_source_image_root(sandbox, source_payload)
+        src_root_rel = _src_root_rel(sandbox, source_payload)
+        if resolved is None or src_root_rel is None:
+            return no_update, no_update
+        datasets = _source_lister.list_datasets(resolved)
+
+        csv_rows: list[dict[str, str]] | None = None
+        if "csv" in (row_source, time_source):
+            csv_path = resolve_metadata_csv(sandbox, metadata_payload)
+            if csv_path is not None:
+                try:
+                    _columns, csv_rows = read_metadata_csv_table(csv_path)
+                except OSError:
+                    csv_rows = None
+
+        config = BrowseAxisConfig(
+            row_source=row_source or "folder",
+            time_source=time_source or "exif",
+            pattern=pattern or "",
+            advanced_pattern=bool(advanced_value) and "advanced" in advanced_value,
+            csv_image_col=csv_image_col,
+            row_csv_col=row_csv_col,
+            time_csv_col=time_csv_col,
+        )
+
+        def _capture_time_of(rel: str) -> str | None:
+            try:
+                return read_capture_time(sandbox.resolve(rel))
+            except (OSError, RuntimeError, ValueError):
+                return None
+
+        records, warnings = build_browse_records(
+            datasets,
+            src_root_rel,
+            config,
+            csv_rows=csv_rows,
+            capture_time_of=_capture_time_of,
+        )
+        display_size = int(tile_size or TIMELINE_TILE_SIZE_DEFAULT)
+        prefix = app.server.config.get(CFG_URL_PREFIX, MOUNT_HOME)
+        component = render_timeline_grid(
+            records, display_size=display_size, prefix=prefix
+        )
+        return component, warnings
+
+    @app.callback(
+        Output(ids.BROWSE_TL_WARNINGS_ALERT, "children"),
+        Output(ids.BROWSE_TL_WARNINGS_ALERT, "is_open"),
+        Input(ids.BROWSE_TL_STORE_WARNINGS, "data"),
+    )
+    def _surface_warnings(warnings: list[str] | None):
+        # Surface the CSV-join warnings the render callback wrote to the
+        # otherwise-dead warnings store; hidden when the list is empty.
+        return warnings_alert_state(warnings)
+
+    # Clientside: re-attach the focus-navigate controller after each grid
+    # render so it resets focus to the first populated cell and re-renders the
+    # centered window. The controller reads focus-margin/mount-cap/warm
+    # concurrency off the BROWSE_TL_GRID container's static data-* attrs.
+    app.clientside_callback(
+        """
+        function(children) {
+            if (window.__phenotypicTimeline) {
+                window.__phenotypicTimeline.attach("%s");
+            }
+            return "";
+        }
+        """
+        % ids.BROWSE_TL_GRID,
+        Output(ids.BROWSE_TL_GRID, "data-render-sync"),
+        Input(ids.BROWSE_TL_GRID, "children"),
+    )
+
+    # ----------------------------------------------------------------------
+    # Single-image deep-zoom pop-out (Task 9)
+    # ----------------------------------------------------------------------
+    # The shared JS→Dash bridge: timeline.js writes the clicked/focused cell's
+    # data-ref (token) into BROWSE_TL_POPOUT_INPUT (for both the hover ⤢ click
+    # AND Enter/Space on the focused cell). This server callback opens the modal
+    # and stores the {token, label} payload for the clientside OSD mount.
+    @app.callback(
+        Output(ids.BROWSE_TL_POPOUT_MODAL, "is_open"),
+        Output(ids.BROWSE_TL_POPOUT_STORE, "data"),
+        Input(ids.BROWSE_TL_POPOUT_INPUT, "value"),
+    )
+    def _open_popout(raw_value: str | None):
+        # The hidden bridge dcc.Input(value="") fires this on first page load
+        # with "" — guard so the modal never flickers open with an empty
+        # payload (C2/OQ-5).
+        if not raw_value:
+            raise dash.exceptions.PreventUpdate
+        # Strip the `#<nonce>` uniqueness suffix timeline.js appends so a
+        # same-cell re-open still fires this callback (POP-OUT M5).
+        token = strip_popout_nonce(raw_value)
+        if not token:
+            raise dash.exceptions.PreventUpdate
+        try:
+            label = _source_render.decode_token(token)
+        except Exception:  # noqa: BLE001 - label is best-effort; token still mounts
+            label = token
+        return True, {"token": token, "label": label}
+
+    # Clientside: mount the deep-zoom OSD viewer into the pop-out modal's
+    # dedicated OSD div. Dash requires every clientside callback to declare an
+    # Output sink (applyPopoutImage returns nothing useful), so mirror the
+    # existing BROWSE_OSD_SYNC idiom and write a throwaway synthetic data-attr
+    # on the pop-out OSD div — it never disturbs the OSD canvas children.
+    app.clientside_callback(
+        """
+        function(payload) {
+            if (window.__phenotypicBrowse
+                && window.__phenotypicBrowse.applyPopoutImage) {
+                window.__phenotypicBrowse.applyPopoutImage(payload);
+            }
+            return "";
+        }
+        """,
+        Output(ids.BROWSE_TL_POPOUT_OSD, "data-popout-sync"),
+        Input(ids.BROWSE_TL_POPOUT_STORE, "data"),
     )
 
 

@@ -183,3 +183,38 @@ def test_read_metadata_row_returns_all_matching_colony_rows(
         {"Colony": "A01", "Treatment": "control"},
         {"Colony": "A02", "Treatment": "stress"},
     ]
+
+
+def test_read_metadata_csv_table_returns_columns_and_rows(tmp_path: Path) -> None:
+    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+
+    csv_path = _write_csv(
+        tmp_path / "plain.csv",
+        "image,media,tp\nplateA,YPD,0h\nplateB,SD,6h\n",
+    )
+
+    columns, rows = read_metadata_csv_table(csv_path)
+
+    assert columns == ["image", "media", "tp"]
+    assert rows == [
+        {"image": "plateA", "media": "YPD", "tp": "0h"},
+        {"image": "plateB", "media": "SD", "tp": "6h"},
+    ]
+
+
+def test_read_metadata_csv_table_strips_excel_utf8_bom(tmp_path: Path) -> None:
+    # Excel CSV exports carry a UTF-8 BOM. Plain utf-8 would leave a "﻿"
+    # on the first header name, so a csv_image_col="image" join would miss
+    # ("﻿image" != "image"). utf-8-sig (matching _read_rows) strips it.
+    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+
+    csv_path = tmp_path / "bom.csv"
+    csv_path.write_text(
+        "image,media\nplateA,YPD\n", encoding="utf-8-sig"
+    )
+
+    columns, rows = read_metadata_csv_table(csv_path)
+
+    assert columns[0] == "image"
+    assert "﻿" not in columns[0]
+    assert rows == [{"image": "plateA", "media": "YPD"}]

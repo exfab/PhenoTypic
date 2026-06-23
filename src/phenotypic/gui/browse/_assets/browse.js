@@ -14,6 +14,10 @@
     const LOADING_TEXT_ID = "browse-loading-text";
 
     const ns = window.__phenotypicBrowse = window.__phenotypicBrowse || {};
+    // Single shared OSD handle: the single-pane viewer (applyImage) and the
+    // Timeline deep-zoom pop-out (applyPopoutImage) both mount through _mountOSD
+    // and reuse ns.viewer. They are mutually exclusive — the view-mode toggle
+    // shows only one body at a time — so one handle is sufficient.
     ns.viewer = ns.viewer || null;
     // Tokens whose DZI conversion has already been warmed this session, so a
     // rapid prev/next sweep never re-fetches the same neighbour. The browse
@@ -73,9 +77,14 @@
     }
     ns.osdReady = ns.osdReady || loadOSD();
 
-    ns.applyImage = async function (payload) {
+    // Mount (or replace) an OSD viewer for `payload` into the div `divId`,
+    // reusing the same /tiles/<token>.dzi source + loading/open handlers.
+    // Pure extraction of the original applyImage body, parameterized only by
+    // the target div id, so the single-viewport Browse pane (OSD_DIV_ID) and
+    // the Timeline pop-out (browse-tl-popout-osd) share one lifecycle path.
+    async function _mountOSD(divId, payload) {
         await ns.osdReady;
-        const el = document.getElementById(OSD_DIV_ID);
+        const el = document.getElementById(divId);
         if (!el) { return; }
         if (!payload || !payload.token) {
             if (ns.viewer) { try { ns.viewer.destroy(); } catch (e) {} ns.viewer = null; }
@@ -109,5 +118,16 @@
             setLoading("error", name ? ("Could not load " + name) : "Could not load image");
         });
         ns.viewer = viewer;
+    }
+
+    ns.applyImage = function (payload) {
+        return _mountOSD(OSD_DIV_ID, payload);
+    };
+
+    // Timeline deep-zoom pop-out: mount the same DZI viewer into the modal's
+    // dedicated OSD div. Reuses _mountOSD so the loading/open lifecycle stays
+    // identical to the single Browse viewer.
+    ns.applyPopoutImage = function (payload) {
+        return _mountOSD("browse-tl-popout-osd", payload);
     };
 })();

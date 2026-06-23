@@ -167,6 +167,22 @@ __all__ = [
     "COLONY_TILE_SIZE_MAX",
     "step_colony_tile_size",
     "stepped_colony_tile_size_from_trigger",
+    # Timeline view (Browse + Results) — shared engine constants
+    "THUMB_SIZE_BUCKETS",
+    "TIMELINE_TILE_SIZE_DEFAULT",
+    "TIMELINE_TILE_SIZE_STEP",
+    "TIMELINE_TILE_SIZE_MIN",
+    "TIMELINE_TILE_SIZE_MAX",
+    "TIMELINE_GRID_GAP_PX",
+    "TIMELINE_FOCUS_MARGIN",
+    "TIMELINE_MOUNT_CAP",
+    "TIMELINE_WARM_CONCURRENCY",
+    "TIMELINE_COMPARE_CAP",
+    "BROWSE_THUMB_URL_SEGMENT",
+    "VIEWER_THUMB_URL_SEGMENT",
+    "snap_thumb_bucket",
+    "step_timeline_tile_size",
+    "stepped_timeline_tile_size_from_trigger",
     # Tunables
     "DEFAULT_IDLE_RELEASE_SECONDS",
     "RSS_INTERVAL_MS",
@@ -605,6 +621,125 @@ def stepped_colony_tile_size_from_trigger(
     else:
         direction = 1
     return step_colony_tile_size(current, direction)
+
+
+# ---------------------------------------------------------------------------
+# Timeline view (Browse + Results) — shared engine constants
+# ---------------------------------------------------------------------------
+
+#: Server thumbnail size buckets (longest-edge px). The requested display
+#: size snaps UP to the nearest bucket so per-tile bytes track display size
+#: without ever upscaling. Bounded set → bounded thumbnail-cache key space.
+THUMB_SIZE_BUCKETS: tuple[int, ...] = (64, 96, 128, 192, 256)
+
+#: Timeline tile-size stepper — mirrors COLONY_TILE_SIZE_* so the two grids
+#: feel identical. Display size (CSS) steps in this range; the fetched
+#: thumbnail snaps to THUMB_SIZE_BUCKETS.
+TIMELINE_TILE_SIZE_DEFAULT: int = 150
+TIMELINE_TILE_SIZE_STEP: int = 16
+TIMELINE_TILE_SIZE_MIN: int = 64
+TIMELINE_TILE_SIZE_MAX: int = 400
+
+#: CSS gap between timeline tiles, in pixels.
+TIMELINE_GRID_GAP_PX: int = 8
+
+#: Focus-and-navigate mount ring (spec §16.3): mount the focused cell's visible
+#: window PLUS this many cells in every direction (off-screen pre-mount for smooth
+#: stepping); offload cells farther than this. Replaces the scroll-era
+#: TIMELINE_WINDOW_MARGIN_SCREENS.
+TIMELINE_FOCUS_MARGIN: int = 2
+
+#: Hard LRU ceiling on mounted <img> elements regardless of viewport/margin.
+TIMELINE_MOUNT_CAP: int = 400
+
+#: Background-warm concurrent fetches. Low because Browse warm triggers RAW
+#: normalize_to_png; raise for the (cheaper) Results overlay path if needed.
+TIMELINE_WARM_CONCURRENCY: int = 2
+
+#: Hard cap on live OpenSeadragon viewers in the synced Compare strip
+#: (spec §7/§9). Each OSD viewer holds its own canvas/WebGL context and
+#: browsers cap live WebGL contexts (~16 in Chrome, §12); 12 leaves headroom.
+#: An over-cap selection renders the first TIMELINE_COMPARE_CAP viewers PLUS a
+#: visible "Showing first N of M" notice — never a silent truncation.
+TIMELINE_COMPARE_CAP: int = 12
+
+#: URL segments for the per-surface thumbnail routes (mounted by
+#: register_thumbnail_route). Browse lives on the browse server; the viewer
+#: segment is distinct so the two blueprints never collide on one server.
+BROWSE_THUMB_URL_SEGMENT: str = "thumb"
+VIEWER_THUMB_URL_SEGMENT: str = "timeline-thumb"
+
+
+def snap_thumb_bucket(size: int) -> int:
+    """Return the smallest :data:`THUMB_SIZE_BUCKETS` value >= ``size``.
+
+    Sizes at or below the smallest bucket return the smallest bucket; sizes
+    at or above the largest bucket return the largest (never upscale, never
+    exceed the cap).
+
+    Args:
+        size: Requested display size, in pixels.
+
+    Returns:
+        The chosen bucket edge length, in pixels.
+    """
+    for bucket in THUMB_SIZE_BUCKETS:
+        if size <= bucket:
+            return bucket
+    return THUMB_SIZE_BUCKETS[-1]
+
+
+def step_timeline_tile_size(current: int | None, direction: int) -> int:
+    """Step the rendered timeline tile size one click and clamp it to range.
+
+    Mirrors :func:`step_colony_tile_size` so the two grids' steppers feel
+    identical.
+
+    Args:
+        current: Current tile size in CSS pixels. ``None`` falls back to
+            :data:`TIMELINE_TILE_SIZE_DEFAULT`.
+        direction: ``+1`` for the ``+`` button, ``-1`` for the ``−`` button.
+
+    Returns:
+        The stepped size clamped to
+        ``[TIMELINE_TILE_SIZE_MIN, TIMELINE_TILE_SIZE_MAX]``.
+    """
+    base = TIMELINE_TILE_SIZE_DEFAULT if current is None else int(current)
+    stepped = base + direction * TIMELINE_TILE_SIZE_STEP
+    return min(TIMELINE_TILE_SIZE_MAX, max(TIMELINE_TILE_SIZE_MIN, stepped))
+
+
+def stepped_timeline_tile_size_from_trigger(
+    triggered_id: object,
+    current: int | None,
+    *,
+    plus_id: str,
+    minus_id: str,
+) -> int:
+    """Resolve a timeline tile-size stepper click into the next size.
+
+    The thin, **Dash-free** decision shared by both timeline surfaces'
+    (Browse + Results) stepper callbacks so each callback body stays a
+    one-line adapter over this unit-testable helper — mirroring
+    :func:`stepped_colony_tile_size_from_trigger`.
+
+    Args:
+        triggered_id: ``dash.ctx.triggered_id`` for the button that fired.
+        current: Current tile size store value.
+        plus_id: Component id of the ``+`` button.
+        minus_id: Component id of the ``−`` button.
+
+    Returns:
+        The next rendered tile size in CSS pixels.
+    """
+    if triggered_id == minus_id:
+        direction = -1
+    elif triggered_id == plus_id:
+        direction = 1
+    else:
+        direction = 1
+    return step_timeline_tile_size(current, direction)
+
 
 # ---------------------------------------------------------------------------
 # Tunables
