@@ -1,7 +1,7 @@
 """Deploy helper for launching Tune runs through the run-console runner."""
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Any
 
 from phenotypic.gui.shell._runs_registry import RunRecord
@@ -9,6 +9,11 @@ from phenotypic.gui.shell._runs_registry import RunRecord
 if TYPE_CHECKING:
     from phenotypic.gui.shell._runs_registry import RunRegistry
     from phenotypic.gui.shell._sandbox import SandboxRoot
+
+
+def _relative_run_path(output_dir: PurePath, root: PurePath) -> str:
+    """Return the sandbox-relative run path using URL-style separators."""
+    return output_dir.relative_to(root).as_posix()
 
 
 def deploy_tune_run(
@@ -28,7 +33,7 @@ def deploy_tune_run(
     """
     output_dir = sandbox.resolve(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    rel_path = str(output_dir.relative_to(sandbox.root))
+    rel_path = _relative_run_path(output_dir, sandbox.root)
     run_id = rel_path
     if hasattr(runner, "reap"):
         runner.reap(run_id)
