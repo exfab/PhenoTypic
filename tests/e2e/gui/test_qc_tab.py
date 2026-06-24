@@ -395,6 +395,111 @@ def test_add_check_modal(
     expect(page.locator('[id*="qc-card-root"]')).to_have_count(1, timeout=10_000)
 
 
+def test_add_count_check_with_metadata_path(
+    page: Page,
+    hub_url: str,
+    output_rel: str,
+    output_dir: Path,
+) -> None:
+    """Adding an ``ExpectedVsDetectedCount`` via the modal persists it.
+
+    End-to-end regression guard for the QC modal Save no-op on
+    metadata-backed checks. ``ExpectedVsDetectedCount.metadata`` is a
+    ``pandas.DataFrame | str`` field that must render as a plain path text
+    box (``param-str``) the submit callback collects — not the multi-type
+    tag widget it silently dropped, which made Save a no-op for the Count /
+    Occupancy checks. Filling the layout path + a ``groupby`` column and
+    clicking Save must append a card AND write the entry (with its
+    ``metadata`` path) into ``pipeline.json``'s ``qc`` array.
+
+    Unlike ``test_add_check_modal`` (which adds a metadata-less
+    ``ReplicateAgreement``), this drives the exact widget the bug hid in.
+    """
+    csv_path = _write_count_metadata(output_dir)
+
+    _hand_off_viewer(page, hub_url, output_rel)
+    _navigate_to_qc_tab(page, hub_url)
+
+    page.wait_for_selector("#qc-add-check-btn", timeout=10_000)
+    page.click("#qc-add-check-btn")
+    page.wait_for_selector("#qc-add-check-modal", timeout=10_000)
+    page.wait_for_function(
+        "() => {"
+        "  const m = document.getElementById('qc-add-check-modal');"
+        "  return m && m.parentElement && m.parentElement.classList.contains('show');"
+        "}",
+        timeout=10_000,
+    )
+
+    # Pick the metadata-backed Count check from the registry-backed picker.
+    picker = page.locator("#qc-add-check-class-picker")
+    picker.scroll_into_view_if_needed()
+    picker.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_selector(
+        '[role="listbox"] [role="option"]', state="attached", timeout=10_000
+    )
+    option = page.locator(
+        '[role="listbox"] [role="option"]', has_text="ExpectedVsDetectedCount"
+    ).first
+    expect(option).to_be_visible(timeout=10_000)
+    option.click()
+
+    # Fill the metadata layout PATH into the text box. This is the fix:
+    # the field renders as the sole ``param-str`` input in the form (its
+    # `on` is a column dropdown, thresholds are numbers), so a substring
+    # match on the pattern-matched id is unambiguous. ``debounce=True`` means
+    # the value commits on blur, so blur before moving on.
+    metadata_input = page.locator("input[id*='param-str'][id*='metadata']")
+    expect(metadata_input).to_be_visible(timeout=10_000)
+    metadata_input.fill(str(csv_path))
+    metadata_input.blur()
+
+    # Select a ``groupby`` column (required; empty would fail construction).
+    # Target the dropdown <button> specifically — the value <span> shares the
+    # pattern-matched id with a ``-value`` suffix, so a tag-qualified selector
+    # avoids a strict-mode match on both.
+    groupby = page.locator("button[id*='param-column-multi'][id*='groupby']")
+    groupby.scroll_into_view_if_needed()
+    groupby.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_selector(
+        '[role="listbox"] [role="option"]', state="attached", timeout=10_000
+    )
+    page.locator(
+        '[role="listbox"] [role="option"]', has_text="Metadata_ImageFile"
+    ).first.click()
+    # Close the multi-select overlay so it can't intercept the Save click.
+    page.keyboard.press("Escape")
+
+    # Save → exactly one card appears (recipe.add succeeded).
+    page.click("#qc-add-check-submit")
+    expect(page.locator('[id*="qc-card-root"]')).to_have_count(1, timeout=10_000)
+
+    # ...and the qc array in pipeline.json carries the Count entry, with the
+    # layout persisted under the unified ``metadata`` key (recipe.add writes
+    # synchronously before the revision bump that rendered the card; poll a
+    # few ticks to absorb any filesystem lag).
+    count_entries: list[dict] = []
+    for _ in range(25):
+        count_entries = [
+            c
+            for c in _read_recipe(output_dir)["checks"]
+            if c.get("class") == "ExpectedVsDetectedCount"
+        ]
+        if count_entries:
+            break
+        page.wait_for_timeout(200)
+
+    assert count_entries, (
+        "ExpectedVsDetectedCount was not persisted to pipeline.json's qc "
+        "array — the modal Save dropped the metadata-backed check"
+    )
+    params = count_entries[0]["params"]
+    assert params["metadata"] == str(csv_path)
+    assert params["groupby"] == ["Metadata_ImageFile"]
+
+
 def test_edit_check_modal(
     page: Page,
     hub_url: str,
