@@ -58,7 +58,7 @@
         "warn_threshold": 0.05,
         "fail_threshold": 0.1,
         "unmatched_groups": [],
-        "metadata_source": "__METADATA_CSV__"
+        "metadata": "__METADATA_CSV__"
       }
     }
   },

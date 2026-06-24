@@ -7,8 +7,8 @@ Covers the ``pipeline.json`` ``qc`` array contract:
   ``enabled`` across ``to_json``/``from_json``;
 * **duplicate-class** entries are sliced by ``instance_id`` (not class);
 * an :class:`ExpectedVsDetectedCount` configured from a metadata **path**
-  round-trips that path via ``metadata_source`` (never a null DataFrame),
-  and a rebuilt instance re-reads the layout file;
+  round-trips that path under the unified ``metadata`` key (never a null
+  DataFrame), and a rebuilt instance re-reads the layout file;
 * an unknown QC class follows the **analyzer** path: skip+warn when
   ``skip_unknown_analyzers=True``, hard error when ``False`` — one stale
   entry must never brick pipeline load.
@@ -122,7 +122,7 @@ class TestDuplicateClassRoundTrip:
 class TestExpectedVsDetectedMetadataPath:
     """``ExpectedVsDetectedCount`` round-trips its metadata as a path."""
 
-    def test_metadata_source_preserved_no_frame_leak(
+    def test_metadata_path_preserved_no_frame_leak(
         self, layout_csv: Path
     ) -> None:
         cfg = json.loads(_mixed_qc_pipeline(layout_csv).to_json())
@@ -130,9 +130,11 @@ class TestExpectedVsDetectedMetadataPath:
             e["params"] for e in cfg["qc"] if e["class"] == "ExpectedVsDetectedCount"
         )
 
-        assert count_params["metadata_source"] == str(layout_csv)
-        # The DataFrame field must never leak into the JSON params.
-        assert "metadata" not in count_params
+        # The unified ``metadata`` field persists the layout *path*; a
+        # resolved DataFrame must never leak into the JSON params.
+        assert count_params["metadata"] == str(layout_csv)
+        # The legacy split field is gone (hard cutover).
+        assert "metadata_source" not in count_params
 
     def test_rebuilt_count_reads_layout_from_path(
         self, layout_csv: Path
@@ -143,7 +145,10 @@ class TestExpectedVsDetectedMetadataPath:
         )
 
         rebuilt = count_entry.instantiate()
-        assert len(rebuilt.metadata) == 96
+        # ``metadata`` echoes the path it round-tripped under; the resolved
+        # layout frame lives on the private ``_metadata`` slot.
+        assert rebuilt.metadata == str(layout_csv)
+        assert len(rebuilt._metadata) == 96
 
 
 class TestUnknownClassTolerance:

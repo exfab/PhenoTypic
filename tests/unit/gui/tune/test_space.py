@@ -134,7 +134,7 @@ def test_space_to_spec_preserves_existing_scorer_strategy_budget(tmp_path) -> No
     # Scorer / strategy / budget / evaluator are carried verbatim; only the
     # search space changes.
     assert type(result.scorer).__name__ == "QCScorer"
-    assert result.scorer.check.metadata_source == spec_in.scorer.check.metadata_source
+    assert result.scorer.check.metadata == spec_in.scorer.check.metadata
     assert type(result.strategy).__name__ == "RandomConfig"
     assert result.strategy.n_trials == 17
     assert result.budget.n_trials == 23

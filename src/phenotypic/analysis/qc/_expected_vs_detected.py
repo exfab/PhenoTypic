@@ -9,32 +9,55 @@ missing or over-detected.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any, Callable, ClassVar, Optional
+from typing import Annotated, Any, Callable, ClassVar
 
 import pandas as pd
 import plotly.graph_objects as go
 from pydantic import (
-    Field,
     PrivateAttr,
     WithJsonSchema,
+    field_serializer,
     field_validator,
-    model_validator,
 )
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.sdk_ import ColumnRef
 from phenotypic.schema import OBJECT, QUALITY_COUNT
 
-# The metadata layout frame is an ``arbitrary_types_allowed`` field: a
-# raw ``pandas.DataFrame`` has no JSON schema, so attach an object-typed
-# placeholder so ``model_json_schema()`` succeeds. The frame is excluded
-# from ``model_dump`` (``Field(exclude=True)``) — a DataFrame is not
-# JSON-native — and the serializable surface carries only the
-# ``metadata_source`` path string, so ``pipeline.json`` round-trips the
-# layout *source* and re-reads the frame on load.
-_MetadataFrame = Annotated[
-    pd.DataFrame,
-    WithJsonSchema({"type": "object"}),
+# ``metadata`` is a single, unified field that accepts **either** an
+# in-memory layout :class:`pandas.DataFrame` (an "array") **or** a path
+# string to a ``.csv``/``.parquet`` layout file. The value is stored
+# verbatim — ``self.metadata`` echoes exactly what the caller passed —
+# while the *resolved* frame is precomputed onto the private ``_metadata``
+# slot.
+#
+# Only a path string is JSON-native, so that is the form that round-trips
+# through ``model_dump`` / ``pipeline.json``: ``_serialize_metadata``
+# emits the path when ``metadata`` is a string and ``None`` when it is an
+# in-memory frame (which therefore cannot be rebuilt from JSON — configure
+# the check from a path whenever it must round-trip). A raw
+# ``pandas.DataFrame`` has no JSON schema, so the object branch attaches a
+# placeholder so ``model_json_schema()`` succeeds.
+_MetadataField = Annotated[
+    pd.DataFrame | str,
+    WithJsonSchema({
+        "oneOf": [
+            {
+                "type": "string",
+                "description": (
+                    "Path to a .csv/.parquet layout file (the form that "
+                    "round-trips through JSON)."
+                ),
+            },
+            {
+                "type": "object",
+                "description": (
+                    "In-memory pandas DataFrame layout (runtime-only; not "
+                    "JSON-serializable)."
+                ),
+            },
+        ]
+    }),
 ]
 
 
@@ -65,38 +88,31 @@ class ExpectedVsDetectedCount(QualityCheck):
     parameter-form rendering driver hides the ``agg_func`` field. The
     base ``SetAnalyzer.agg_func`` is pinned to ``"first"`` internally.
 
-    The ``metadata`` argument can be either a ready-made
-    :class:`pandas.DataFrame` or a path (``Path`` or ``str``) to a
-    ``.csv``/``.parquet`` file. The file is read once at construction
-    time and the resolved frame is stored on the instance. Every column
-    named in ``groupby`` must be present in the metadata frame;
-    otherwise :class:`KeyError` is raised at ``__init__`` so the failure
-    surfaces before ``analyze`` runs.
+    The single ``metadata`` argument accepts **either** an in-memory
+    :class:`pandas.DataFrame` (an "array") **or** a path (``Path`` or
+    ``str``) to a ``.csv``/``.parquet`` file. The value is stored verbatim
+    — ``self.metadata`` echoes exactly what was passed — and the *resolved*
+    frame is read once at construction time onto the private ``_metadata``
+    slot. Every column named in ``groupby`` must be present in the resolved
+    frame; otherwise :class:`KeyError` is raised at ``__init__`` so the
+    failure surfaces before ``analyze`` runs.
 
-    **Serialization:** the resolved frame is *not* part of the
-    JSON-serializable parameter surface (a DataFrame is not JSON-native).
-    When ``metadata`` is supplied as a path, that path string is captured
-    in the serializable :attr:`metadata_source` field, so
-    ``model_dump`` / ``pipeline.json`` round-trip the layout *source* and
-    a reloaded instance re-reads the file. When ``metadata`` is supplied
-    as an in-memory DataFrame there is no source path to persist —
-    :attr:`metadata_source` stays ``None`` and the check cannot be
-    rebuilt from JSON alone (it will fail to instantiate with a clear
-    error, surfaced as a skip-with-warning by the lazy QC instantiation
-    path). Configure QC checks from a metadata *path* whenever the
-    pipeline is meant to round-trip.
+    **Serialization:** only a path is JSON-native, so the path is the form
+    that round-trips. When ``metadata`` is a path, ``model_dump`` /
+    ``pipeline.json`` persist that path string under the same ``metadata``
+    key and a reloaded instance re-reads the file. When ``metadata`` is an
+    in-memory DataFrame there is no source path to persist — the JSON form
+    is ``None`` and the check cannot be rebuilt from JSON alone (it fails
+    to instantiate with a clear error, surfaced as a skip-with-warning by
+    the lazy QC instantiation path). Configure QC checks from a metadata
+    *path* whenever the pipeline is meant to round-trip.
 
     Args:
-        metadata: Layout frame whose row count per ``groupby`` key is the
-            expected colony count. Either a DataFrame or a path to a CSV
-            or Parquet file. Excluded from serialization — supply
-            ``metadata_source`` instead when rebuilding from JSON.
-        metadata_source: Path to the layout CSV/Parquet, captured
-            automatically when ``metadata`` is given as a path. This is
-            the JSON-serializable handle to the layout: on
-            reconstruction from ``pipeline.json`` the frame is re-read
-            from here. Usually set implicitly; pass it explicitly only
-            when reconstructing without a ``metadata`` frame.
+        metadata: Layout whose row count per ``groupby`` key is the
+            expected colony count. Either an in-memory DataFrame or a path
+            (``Path``/``str``) to a ``.csv``/``.parquet`` file. The path
+            form is what serializes and round-trips through JSON; an
+            in-memory frame is runtime-only.
         groupby: Columns that define a comparison unit. Must be present
             in both the metadata frame and the measurement frame passed
             to :meth:`analyze`.
@@ -112,14 +128,13 @@ class ExpectedVsDetectedCount(QualityCheck):
             :class:`SetAnalyzer`.
 
     Raises:
-        FileNotFoundError: If ``metadata`` (or ``metadata_source``) is a
-            path that does not exist.
+        FileNotFoundError: If ``metadata`` is a path that does not exist.
         KeyError: If any column in ``groupby`` is absent from the
             resolved metadata frame.
         ValueError: If ``metadata`` is a path with an unsupported suffix,
-            or if neither ``metadata`` nor ``metadata_source`` is
-            supplied (e.g. reconstructing from JSON that was built from
-            an in-memory frame, which has no source path to persist).
+            or if it is ``None`` — i.e. reconstructing from JSON that was
+            built from an in-memory frame, which has no source path to
+            persist.
 
     Attributes:
         unmatched_groups: List of group-key tuples that appeared in the
@@ -182,125 +197,114 @@ class ExpectedVsDetectedCount(QualityCheck):
     fail_threshold: float = 0.10
     on: ColumnRef = str(OBJECT.LABEL)
     agg_func: Callable | str | list | dict | None = "first"
-    # ``metadata`` carries the resolved frame at runtime but is excluded
-    # from ``model_dump`` (a DataFrame is not JSON-native). The
-    # serializable handle is ``metadata_source``.
-    metadata: _MetadataFrame = Field(exclude=True)
-    metadata_source: Optional[str] = None
+    # Single unified field: an in-memory layout DataFrame *or* a path to a
+    # ``.csv``/``.parquet`` layout file. Stored verbatim; the resolved
+    # frame is precomputed onto the private ``_metadata`` slot. Only a path
+    # round-trips through JSON (see ``_serialize_metadata``). NOTE:
+    # reassigning ``metadata`` post-construction does not re-resolve
+    # ``_metadata``/``_expected_counts`` (``model_post_init`` runs once);
+    # construct a new instance to change the layout.
+    metadata: _MetadataField
 
     _metadata: pd.DataFrame = PrivateAttr(default_factory=pd.DataFrame)
     _expected_counts: pd.Series = PrivateAttr(default_factory=pd.Series)
 
-    @model_validator(mode="before")
-    @classmethod
-    def _capture_metadata_source(cls, data: Any) -> Any:
-        """Capture a metadata *path* into ``metadata_source`` and resolve it.
-
-        Runs before field validation on the raw input mapping. Two
-        construction shapes feed this check:
-
-        * **Direct / GUI construction** — the caller passes
-          ``metadata=<path-or-frame>``. When it is a path, the path
-          string is recorded in ``metadata_source`` (unless the caller
-          already supplied one) so the value survives a later
-          ``model_dump`` even though the resolved ``metadata`` frame does
-          not.
-        * **Reconstruction from JSON** — ``model_dump`` excluded the
-          frame, so the input has ``metadata_source`` but no
-          ``metadata``. Here the frame is resolved *from*
-          ``metadata_source`` and injected as ``metadata`` so the
-          downstream field validator and ``model_post_init`` see a real
-          frame.
-
-        Args:
-            data: The raw input. Normally the constructor kwargs mapping;
-                pydantic may also hand this validator a non-dict (e.g. an
-                already-built model on revalidation), which passes
-                through untouched.
-
-        Returns:
-            The input mapping with ``metadata`` resolved to a frame and
-            ``metadata_source`` populated when a source path is known.
-
-        Raises:
-            ValueError: If neither ``metadata`` nor ``metadata_source``
-                is provided.
-        """
-        if not isinstance(data, dict):
-            return data
-
-        raw_metadata = data.get("metadata")
-        raw_source = data.get("metadata_source")
-
-        if raw_metadata is None and raw_source is None:
-            raise ValueError(
-                "ExpectedVsDetectedCount requires either 'metadata' "
-                "(a DataFrame or path) or 'metadata_source' (a path). "
-                "Both are missing — a check serialized from an in-memory "
-                "DataFrame cannot be rebuilt from JSON; configure it from "
-                "a metadata CSV/Parquet path so the source round-trips."
-            )
-
-        # Reconstruction path: only the source survived serialization.
-        if raw_metadata is None and raw_source is not None:
-            data = dict(data)
-            data["metadata"] = raw_source
-            return data
-
-        # Direct construction: capture the path (if it is one) so a later
-        # dump preserves it. An in-memory frame has no path to record.
-        if raw_source is None and isinstance(raw_metadata, (str, Path)):
-            data = dict(data)
-            data["metadata_source"] = str(raw_metadata)
-
-        return data
-
     @field_validator("metadata", mode="before")
     @classmethod
-    def _coerce_metadata(
-        cls, value: pd.DataFrame | Path | str
-    ) -> pd.DataFrame:
-        """Resolve a DataFrame-or-path ``metadata`` argument to a frame.
+    def _normalize_metadata(
+        cls, value: pd.DataFrame | Path | str | None
+    ) -> pd.DataFrame | str:
+        """Normalize the raw ``metadata`` input to a frame or a path string.
+
+        Keeps the value in its caller-supplied form — a frame stays a
+        frame, a path becomes a plain ``str`` — so ``self.metadata`` echoes
+        what was passed and a path round-trips through JSON. The file is
+        *not* read here; resolution into the working frame happens in
+        :meth:`model_post_init`.
 
         Args:
-            value: Either an in-memory DataFrame or a path (``Path`` or
-                ``str``) to a ``.csv``/``.parquet`` file.
+            value: An in-memory DataFrame, a path (``Path`` or ``str``) to
+                a ``.csv``/``.parquet`` layout file, or ``None`` — the
+                sentinel a JSON dump of an in-memory-frame check emits,
+                which cannot be rebuilt.
 
         Returns:
-            The resolved DataFrame.
+            The DataFrame unchanged, or the path coerced to ``str``.
 
         Raises:
-            FileNotFoundError: If ``value`` is a path that does not exist.
-            ValueError: If the path has an unsupported suffix.
+            ValueError: If ``value`` is ``None`` — i.e. the check was
+                serialized from an in-memory frame (which has no source
+                path) and cannot be reconstructed from JSON. Configure it
+                from a ``.csv``/``.parquet`` path so the source round-trips.
         """
-        return cls._resolve_metadata(value)
+        if value is None:
+            raise ValueError(
+                f"{cls.__name__} requires 'metadata' as a layout DataFrame "
+                "or a .csv/.parquet path. Got None — a check serialized "
+                "from an in-memory DataFrame has no source path to "
+                "round-trip; configure it from a metadata file path so it "
+                "can be rebuilt from JSON."
+            )
+        if isinstance(value, Path):
+            return str(value)
+        return value
+
+    @field_serializer("metadata")
+    def _serialize_metadata(
+        self, value: pd.DataFrame | str, info: Any
+    ) -> str | pd.DataFrame | None:
+        """Serialize ``metadata`` as its source *path*, never the frame.
+
+        A path string is JSON-native and round-trips; an in-memory frame is
+        not, so the JSON form is ``None`` (a reload then fails fast in
+        :meth:`_normalize_metadata` with a clear error). In Python mode the
+        frame passes through unchanged.
+
+        Args:
+            value: The stored ``metadata`` value (a frame or a path str).
+            info: Pydantic serialization info; ``info.mode`` is ``"json"``
+                or ``"python"``.
+
+        Returns:
+            The path string when ``metadata`` is a path; otherwise the
+            frame in Python mode, or ``None`` in JSON mode.
+        """
+        if isinstance(value, str):
+            return value
+        if info.mode == "json":
+            return None
+        return value
 
     def model_post_init(self, __context: Any) -> None:
-        """Validate metadata columns and pre-compute expected counts.
+        """Resolve the layout frame, validate columns, pre-compute counts.
 
-        Runs after pydantic has validated every field. Mirrors the
-        resolved ``metadata`` frame onto the private ``_metadata`` slot,
-        verifies every ``groupby`` column is present, and caches the
-        per-key expected colony counts.
+        Runs after pydantic has validated every field. Resolves
+        ``self.metadata`` (a frame or a path) into the working frame on the
+        private ``_metadata`` slot, verifies every ``groupby`` column is
+        present, and caches the per-key expected colony counts.
 
         Args:
             __context: Pydantic post-init context (unused).
 
         Raises:
+            FileNotFoundError: If ``metadata`` is a path that does not
+                exist.
+            ValueError: If ``metadata`` is a path with an unsupported
+                suffix.
             KeyError: If any column in ``groupby`` is absent from the
                 resolved metadata frame.
         """
         super().model_post_init(__context)
+        self._metadata = self._resolve_metadata(self.metadata)
         missing = [
-            col for col in self.groupby if col not in self.metadata.columns
+            col for col in self.groupby if col not in self._metadata.columns
         ]
         if missing:
             raise KeyError(
                 "metadata frame is missing required groupby column(s): "
                 f"{missing}"
             )
-        self._metadata = self.metadata
-        self._expected_counts = self.metadata.groupby(
+        self._expected_counts = self._metadata.groupby(
             self.groupby, dropna=False
         ).size()
 

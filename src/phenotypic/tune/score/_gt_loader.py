@@ -2,7 +2,7 @@
 
 ``GroundTruthMasks`` resolves per-image annotation masks from a configurable source,
 mirroring the path-config round-trip discipline of
-:class:`phenotypic.analysis.ExpectedVsDetectedCount` (its ``metadata_source`` field): a
+:class:`phenotypic.analysis.ExpectedVsDetectedCount` (its unified ``metadata`` field): a
 **serializable** ``gt_masks_source`` path survives ``model_dump`` / ``tuning_spec.json``,
 while the resolved frames/arrays live in an **excluded** in-memory cache. A loader
 constructed without a source path cannot resolve anything on reload and honestly reports
@@ -77,8 +77,8 @@ _COUNT_SUFFIXES: frozenset[str] = frozenset({".csv", ".parquet"})
 class GroundTruthMasks(BaseModel):
     """Resolve per-image ground-truth masks from a serializable source path.
 
-    Mirrors :class:`phenotypic.analysis.ExpectedVsDetectedCount`'s
-    ``metadata_source`` round-trip: ``gt_masks_source`` is the JSON-serializable
+    Mirrors :class:`phenotypic.analysis.ExpectedVsDetectedCount`'s unified
+    ``metadata`` path round-trip: ``gt_masks_source`` is the JSON-serializable
     handle (a directory of masks or a count table); the resolved masks are cached
     in an **excluded** private attribute, never serialized, and re-resolved on
     reload. A loader with ``gt_masks_source=None`` abstains
@@ -147,7 +147,7 @@ class GroundTruthMasks(BaseModel):
     def _capture_source(cls, data: Any) -> Any:
         """Normalize an empty ``gt_masks_source`` to ``None`` (capture step).
 
-        Mirrors ``ExpectedVsDetectedCount._capture_metadata_source``: the
+        Mirrors ``ExpectedVsDetectedCount``'s unified ``metadata`` field: the
         serializable handle is the source *path*. Pydantic natively coerces a
         ``str`` (e.g. from ``tuning_spec.json``) into the ``Path`` field in both
         Python and JSON modes, so this validator only canonicalizes an empty

@@ -169,7 +169,7 @@ class TestMissingCellColumn:
 
 
 class TestSerializationRoundTrip:
-    """Inherits the metadata_source path round-trip from the parent."""
+    """Inherits the unified ``metadata`` path round-trip from the parent."""
 
     def test_round_trips_through_json(self, tmp_path) -> None:
         layout_path = tmp_path / "layout.csv"
@@ -179,9 +179,10 @@ class TestSerializationRoundTrip:
             metadata=str(layout_path), groupby=["Metadata_ImageFile"]
         )
         dumped = chk.model_dump(mode="json")
-        # The frame is excluded; only the source path persists.
-        assert "metadata" not in dumped
-        assert dumped["metadata_source"] == str(layout_path)
+        # The unified field persists the source *path*; the legacy split
+        # ``metadata_source`` field is gone (hard cutover).
+        assert dumped["metadata"] == str(layout_path)
+        assert "metadata_source" not in dumped
 
         rebuilt = GridOccupancy(**dumped)
         result = rebuilt.analyze(_measurements("plate1.png", list(range(96))))

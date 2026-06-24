@@ -79,7 +79,7 @@ def test_availability_reflects_metadata():
 
 
 def test_path_configured_scorer_round_trips(tmp_path):
-    # Configure the check from a CSV path so metadata_source persists through JSON.
+    # Configure the check from a CSV path so the layout path persists through JSON.
     csv = tmp_path / "layout.csv"
     _layout(96).to_csv(csv, index=False)
     scorer = QCScorer(
@@ -88,6 +88,6 @@ def test_path_configured_scorer_round_trips(tmp_path):
         )
     )
     reloaded = QCScorer.model_validate_json(scorer.model_dump_json())
-    assert reloaded.check.metadata_source == str(csv)
+    assert reloaded.check.metadata == str(csv)
     # the reloaded scorer scores identically (re-read the layout from disk)
     assert reloaded.score_image(None, _measurements(96))["Count"] == pytest.approx(0.0)

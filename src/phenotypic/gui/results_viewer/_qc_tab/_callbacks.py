@@ -33,7 +33,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Iterable, Literal
+from typing import Any, Iterable, Iterator, Literal
 
 import dash
 import pandas as pd
@@ -276,6 +276,94 @@ def _merge_removed_keys(
         seen.add(key)
         out.append([key[0], key[1]])
     return out
+
+
+def _gather_modal_raw_values(
+    *,
+    prefix_marker: str,
+    simple: Iterable[tuple[Any, Any]] = (),
+    multi_tags: tuple[Any, Any] = ([], []),
+    multi_values: tuple[Any, Any] = ([], []),
+    column_scalars: tuple[Any, Any] = ([], []),
+    column_modes: tuple[Any, Any] = ([], []),
+) -> dict[str, Any]:
+    """Collect ``{param_name: raw_value}`` from the modal's widget state.
+
+    Reduces the param form's pattern-matched ``(values, ids)`` lists to a
+    flat ``{name: raw}`` mapping, keeping only widgets whose ``prefix``
+    starts with ``prefix_marker`` (so the shared param-widget id types don't
+    leak in from another modal/tool). Single-widget kinds map their value
+    directly. Two-id widgets are repacked into the tuple that
+    :func:`parse_widget_value` dispatches on, mirroring the analysis
+    sub-app's ``_apply_param_edit`` multi-component handling:
+
+    * **multi-type unions** — a ``param-multi-tag`` selector + a
+      ``param-multi-value`` input sharing one ``(prefix, name)`` → packed as
+      ``(tag, value)``. Without this a genuine multi-primitive union param
+      (e.g. ``bool | float``) would be silently dropped on save.
+    * **column-with-alt** (``ColumnRef | None``) — a ``param-column-mode``
+      toggle + a ``param-column-scalar`` dropdown → packed as
+      ``(mode, scalar)`` so a "None" selection round-trips as ``None``. A
+      *plain* ``ColumnRef`` scalar has no mode toggle, so it stays a bare
+      scalar value.
+
+    Args:
+        prefix_marker: Form-id prefix that scopes this modal's widgets
+            (e.g. ``"qc-modal-"``).
+        simple: Iterable of ``(values, ids)`` pairs for the single-widget
+            kinds (bool/num/str/enum/list/tuple/column-multi).
+        multi_tags: The ``(values, ids)`` pair for ``param-multi-tag``.
+        multi_values: The ``(values, ids)`` pair for ``param-multi-value``.
+        column_scalars: The ``(values, ids)`` pair for
+            ``param-column-scalar`` (plain or column-with-alt).
+        column_modes: The ``(values, ids)`` pair for ``param-column-mode``
+            (only emitted for column-with-alt params).
+
+    Returns:
+        Mapping of parameter name to its raw widget value — a scalar for
+        single widgets, a ``(tag, value)`` tuple for multi-union widgets,
+        and a ``(mode, scalar)`` tuple for column-with-alt widgets.
+    """
+    def _in_scope(pair: tuple[Any, Any]) -> Iterator[tuple[str, str, Any]]:
+        """Yield ``(prefix, name, value)`` for this modal's widgets in a pair.
+
+        Filters a single ``(values, ids)`` pattern-match pair down to the
+        widgets whose id ``prefix`` belongs to this modal, skipping any
+        malformed or out-of-scope ids.
+        """
+        values, ids_state = pair
+        for value, id_dict in zip(values or [], ids_state or []):
+            if not isinstance(id_dict, dict):
+                continue
+            prefix = id_dict.get("prefix", "")
+            name = id_dict.get("name")
+            if not isinstance(prefix, str) or not prefix.startswith(prefix_marker):
+                continue
+            if isinstance(name, str):
+                yield prefix, name, value
+
+    def _selector_by_key(pair: tuple[Any, Any]) -> dict[tuple[str, str], Any]:
+        """Index a two-id widget's selector values by ``(prefix, name)``."""
+        return {(prefix, name): value for prefix, name, value in _in_scope(pair)}
+
+    raw_by_name: dict[str, Any] = {}
+    for pair in simple:
+        for _prefix, name, value in _in_scope(pair):
+            raw_by_name[name] = value
+
+    # Multi-type unions: (param-multi-tag, param-multi-value) → (tag, value).
+    tag_by_key = _selector_by_key(multi_tags)
+    for prefix, name, value in _in_scope(multi_values):
+        raw_by_name[name] = (tag_by_key.get((prefix, name)), value)
+
+    # Column-with-alt: (param-column-mode, param-column-scalar) → (mode,
+    # scalar). A plain ColumnRef scalar has no mode and stays a bare value.
+    mode_by_key = _selector_by_key(column_modes)
+    for prefix, name, value in _in_scope(column_scalars):
+        key = (prefix, name)
+        raw_by_name[name] = (mode_by_key[key], value) if key in mode_by_key else value
+
+    return raw_by_name
 
 
 # ---------------------------------------------------------------------------
@@ -618,6 +706,12 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         State({"type": "param-column-scalar", "prefix": ALL, "name": ALL}, "id"),
         State({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "value"),
         State({"type": "param-column-multi", "prefix": ALL, "name": ALL}, "id"),
+        State({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "value"),
+        State({"type": "param-column-mode", "prefix": ALL, "name": ALL}, "id"),
+        State({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "value"),
+        State({"type": "param-multi-tag", "prefix": ALL, "name": ALL}, "id"),
+        State({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "value"),
+        State({"type": "param-multi-value", "prefix": ALL, "name": ALL}, "id"),
         prevent_initial_call=True,
     )
     def _on_modal_submit(  # noqa: PLR0913 - state-rich gathering matches form widget set
@@ -641,6 +735,12 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         col_scalar_ids: list[dict[str, str]],
         col_multi_values: list[Any],
         col_multi_ids: list[dict[str, str]],
+        col_mode_values: list[Any],
+        col_mode_ids: list[dict[str, str]],
+        multi_tag_values: list[Any],
+        multi_tag_ids: list[dict[str, str]],
+        multi_value_values: list[Any],
+        multi_value_ids: list[dict[str, str]],
     ) -> tuple[int, bool, str | None]:
         """Persist the modal's state via :meth:`QcRecipe.add` / :meth:`update`."""
         if not n_clicks or not class_name:
@@ -655,28 +755,22 @@ def register_qc_callbacks(app: dash.Dash) -> None:
 
         # Build {param_name: raw_value} from the pattern-matched state
         # tuples, filtered to widgets belonging to this modal's prefix.
-        modal_prefix_marker = "qc-modal-"
-        raw_by_name: dict[str, Any] = {}
-        for values, ids_state in (
-            (bool_values, bool_ids),
-            (num_values, num_ids),
-            (str_values, str_ids),
-            (enum_values, enum_ids),
-            (list_values, list_ids),
-            (tuple_values, tuple_ids),
-            (col_scalar_values, col_scalar_ids),
-            (col_multi_values, col_multi_ids),
-        ):
-            for value, id_dict in zip(values or [], ids_state or []):
-                prefix = id_dict.get("prefix", "")
-                if not isinstance(prefix, str) or not prefix.startswith(
-                    modal_prefix_marker
-                ):
-                    continue
-                name = id_dict.get("name")
-                if not isinstance(name, str):
-                    continue
-                raw_by_name[name] = value
+        raw_by_name = _gather_modal_raw_values(
+            prefix_marker="qc-modal-",
+            simple=(
+                (bool_values, bool_ids),
+                (num_values, num_ids),
+                (str_values, str_ids),
+                (enum_values, enum_ids),
+                (list_values, list_ids),
+                (tuple_values, tuple_ids),
+                (col_multi_values, col_multi_ids),
+            ),
+            multi_tags=(multi_tag_values, multi_tag_ids),
+            multi_values=(multi_value_values, multi_value_ids),
+            column_scalars=(col_scalar_values, col_scalar_ids),
+            column_modes=(col_mode_values, col_mode_ids),
+        )
 
         # Convert raw widget values to typed params using each ParamInfo.
         new_params: dict[str, Any] = {}
@@ -1013,6 +1107,7 @@ __all__ = [
     "_worst_status",
     "_badge_color_for_status",
     "_merge_removed_keys",
+    "_gather_modal_raw_values",
     "_empty_figure",
     "_error_figure",
 ]

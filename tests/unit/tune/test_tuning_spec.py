@@ -137,7 +137,7 @@ def test_phase1_grid_spec_json_still_loads(tmp_path):
     raw = json.loads(_PHASE1_FIXTURE.read_text())
     # Confirm the frozen fixture really carries the Phase-1 discriminator form.
     assert raw["strategy"] == {"seed": 0, "kind": "grid"}
-    raw["scorer"]["params"]["check"]["metadata_source"] = str(csv)
+    raw["scorer"]["params"]["check"]["metadata"] = str(csv)
     back = TuningSpec.model_validate(raw)
     assert isinstance(back.strategy, GridConfig)
     assert back.strategy.kind == "grid"
