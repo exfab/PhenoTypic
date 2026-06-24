@@ -1,10 +1,11 @@
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
 from phenotypic.gui.shell._runs_registry import RunRegistry
 from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.tune._deploy import deploy_tune_run
+
+from phenotypic.gui.tune._deploy import _relative_run_path, deploy_tune_run
 
 
 class _Process:
@@ -69,6 +70,13 @@ def test_deploy_resolves_relative_output_inside_sandbox(tmp_path: Path):
 
     assert run_id == "relative-out"
     assert runner.started[0][2] == tmp_path / "relative-out"
+
+
+def test_relative_run_path_uses_posix_separators_for_windows_paths():
+    root = PureWindowsPath("C:/sandbox")
+    output_dir = root / "tune-runs" / "run1"
+
+    assert _relative_run_path(output_dir, root) == "tune-runs/run1"
 
 
 def test_deploy_slurm_uses_runner_without_job_id(tmp_path: Path):

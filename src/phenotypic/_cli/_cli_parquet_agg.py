@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 SOURCE_PATH_COLUMN = "filename"
 
 
+def _source_path_key(path: object) -> str:
+    """Normalize source-path spellings for file-to-dataset lookups."""
+    return str(path).replace("\\", "/")
+
+
 def aggregate_parquet_files(
     file_paths: list[Path],
     path_to_dataset: dict[Path, str],
@@ -105,9 +110,10 @@ def aggregate_parquet_files(
         and path_to_dataset
         and "Metadata_Dataset" not in df.columns
     ):
-        mapping = {str(p): name for p, name in path_to_dataset.items()}
+        mapping = {_source_path_key(p): name for p, name in path_to_dataset.items()}
         df = df.with_columns(
             pl.col(SOURCE_PATH_COLUMN)
+            .str.replace_all(r"\\", "/")
             .replace_strict(mapping, default=None)
             .alias("Metadata_Dataset")
         )

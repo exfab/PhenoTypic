@@ -279,7 +279,25 @@ def _deserialize_operation_value(value: Any) -> Any:
     return value
 
 
-def _make_require_value(base: "type | Callable[[], type]"):
+class _RequireValue:
+    """Pickleable validator that requires a value to be a base instance."""
+
+    __slots__ = ("base",)
+
+    def __init__(self, base: "type | Callable[[], type]") -> None:
+        self.base = base
+
+    def __call__(self, value: Any) -> Any:
+        resolved = self.base if isinstance(self.base, type) else self.base()
+        if not isinstance(value, resolved):
+            raise ValueError(
+                f"expected an instance of {resolved.__name__}, got "
+                f"{type(value).__name__}"
+            )
+        return value
+
+
+def _make_require_value(base: "type | Callable[[], type]") -> _RequireValue:
     """Build an ``AfterValidator`` guard asserting a value is a ``base`` instance.
 
     ``base`` may be a concrete type or a zero-arg callable that returns the
@@ -291,22 +309,12 @@ def _make_require_value(base: "type | Callable[[], type]"):
             callable returning that class (resolved on first validation).
 
     Returns:
-        A validator ``_require(value)`` that returns ``value`` unchanged when
-        it is a ``base`` instance, and raises ``ValueError`` otherwise. The
-        error is a ``ValueError`` (not ``TypeError``) so pydantic wraps it
-        into a :class:`pydantic.ValidationError`.
+        A pickleable validator that returns ``value`` unchanged when it is a
+        ``base`` instance, and raises ``ValueError`` otherwise. The error is a
+        ``ValueError`` (not ``TypeError``) so pydantic wraps it into a
+        :class:`pydantic.ValidationError`.
     """
-
-    def _require(value: Any) -> Any:
-        resolved = base if isinstance(base, type) else base()
-        if not isinstance(value, resolved):
-            raise ValueError(
-                f"expected an instance of {resolved.__name__}, got "
-                f"{type(value).__name__}"
-            )
-        return value
-
-    return _require
+    return _RequireValue(base)
 
 
 def polymorphic_field(base: "type | Callable[[], type]", *, marker: Any = None):

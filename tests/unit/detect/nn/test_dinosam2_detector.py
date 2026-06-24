@@ -7,6 +7,8 @@ foundation + sam2 + weights and skips otherwise.
 """
 
 import json
+import sys
+import types
 
 import numpy as np
 import pytest
@@ -95,8 +97,6 @@ class TestDinoSam2Serialization:
 
 class TestDinoV3LoadPath:
     def test_dinov3_load_routes_through_gated_manager(self, monkeypatch):
-        import transformers
-
         from phenotypic.detect.nn import _checkpoint_manager as cm
         from phenotypic.detect.nn import _sam2_detector as sam2_mod
 
@@ -121,20 +121,26 @@ class TestDinoV3LoadPath:
 
         seen: dict = {}
 
-        # Patch ``from_pretrained`` on the real Auto* classes so the
-        # ``from transformers import AutoModel`` inside the method picks up the
-        # stub (no network, gated repo never actually hit).
-        monkeypatch.setattr(
-            transformers.AutoModel,
-            "from_pretrained",
-            classmethod(
-                lambda cls, repo_id: seen.update(model=repo_id) or _FakeModel()
+        class _FakeAutoModel:
+            @classmethod
+            def from_pretrained(cls, repo_id):
+                seen["model"] = repo_id
+                return _FakeModel()
+
+        class _FakeAutoImageProcessor:
+            @classmethod
+            def from_pretrained(cls, repo_id):
+                return object()
+
+        # Stub the module import itself. On Windows the real Transformers
+        # AutoModel placeholder requires torch before it can be monkeypatched.
+        monkeypatch.setitem(
+            sys.modules,
+            "transformers",
+            types.SimpleNamespace(
+                AutoModel=_FakeAutoModel,
+                AutoImageProcessor=_FakeAutoImageProcessor,
             ),
-        )
-        monkeypatch.setattr(
-            transformers.AutoImageProcessor,
-            "from_pretrained",
-            classmethod(lambda cls, repo_id: object()),
         )
 
         det = DinoSam2Detector(dino_version=3, dino_size="base", device="cpu")
