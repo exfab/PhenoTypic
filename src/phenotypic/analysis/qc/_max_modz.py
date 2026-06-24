@@ -22,7 +22,7 @@ from typing import ClassVar
 import numpy as np
 import pandas as pd
 
-from phenotypic.analysis._qc_math import median_abs_deviation, modified_z_scores
+from phenotypic.analysis._helper._qc_math import median_abs_deviation, modified_z_scores
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.schema import QUALITY_ZMAX
 from phenotypic.sdk_ import ColumnRef
@@ -56,7 +56,7 @@ class MaxModifiedZScore(QualityCheck):
        zero is reported as ``metric = NaN`` (perfect agreement is not an
        outlier and should never gate curation), matching the
        "no outliers" semantics of
-       :func:`~phenotypic.analysis._qc_math.modified_z_scores`.
+       :func:`~phenotypic.analysis._helper._qc_math.modified_z_scores`.
 
     When ``self.time_label`` is absent from the input data, the entire
     group is treated as a single timepoint bin so the check remains

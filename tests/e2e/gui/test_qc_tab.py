@@ -103,10 +103,8 @@ def _seed_real_output(sandbox: Path) -> Path:
     write_master(cli_out, df)
     write_measurements_mirror(cli_out, df)
 
-    # Ensure a real ``results/<dataset>/overlays/`` subdir per OutputRoot.
-    dataset_dir = cli_out / "results" / "ds1"
-    overlays = dataset_dir / "overlays"
-    overlays.mkdir(parents=True, exist_ok=True)
+    # Ensure a real ``results/<dataset>/`` subdir per OutputRoot.discover.
+    (cli_out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
     return cli_out
 
 

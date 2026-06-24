@@ -40,8 +40,10 @@ def _seed_cli_output(parent: Path) -> Path:
         "Shape_Area": [100.0, 200.0],
     })
     seed_output_dir(out, df, mirror=df, pipeline=ImagePipeline(name="t"))
-    (out / "results" / "ds1" / "overlays").mkdir(parents=True)
-    (out / "results" / "ds1" / "overlays" / "a.png").write_bytes(b"PNG")
+    (out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = out / "deliverables" / "overlays" / "ds1"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    (overlay_dir / "a.png").write_bytes(b"PNG")
     return out
 
 

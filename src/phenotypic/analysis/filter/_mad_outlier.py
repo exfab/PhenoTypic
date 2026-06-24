@@ -8,8 +8,8 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 from pydantic import field_validator, PrivateAttr
 
-from . import _qc_math
-from .abc_ import SetAnalyzer
+from .._helper import _qc_math
+from ..abc_ import SetAnalyzer
 
 # Iglewicz & Hoaglin (1993) consistency constant: for a normal distribution
 # sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute

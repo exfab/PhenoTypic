@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.analysis._qc_math import median_abs_deviation
+from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.qc import RelativeMAD
 
 

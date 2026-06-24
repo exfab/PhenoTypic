@@ -389,7 +389,7 @@ class TestOutputManager:
         # Check dataset-first structure under results/ (results/dataset1/...)
         assert (temp_output_dir / "results" / "dataset1" / "measurements").exists()
         # overlays dir created only because save_overlays=True
-        assert (temp_output_dir / "results" / "dataset1" / "overlays").exists()
+        assert (temp_output_dir / "deliverables" / "overlays" / "dataset1").exists()
         # hdf dir always created when requested in save_layers
         assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
 
@@ -397,6 +397,7 @@ class TestOutputManager:
         assert not (temp_output_dir / "dataset1").exists()
         assert not (temp_output_dir / "measurements").exists()
         assert not (temp_output_dir / "overlays").exists()
+        assert not (temp_output_dir / "results" / "dataset1" / "overlays").exists()
 
     def test_create_structure_overlays_gated(self, temp_output_dir):
         """Without save_overlays=True, overlays/ must NOT be created."""
@@ -421,7 +422,7 @@ class TestOutputManager:
 
         assert (temp_output_dir / "results" / "dataset1" / "hdf").exists()
         assert not (
-            temp_output_dir / "results" / "dataset1" / "overlays"
+            temp_output_dir / "deliverables" / "overlays" / "dataset1"
         ).exists()
 
     def test_from_config_factory(self, temp_output_dir):
@@ -1258,7 +1259,7 @@ class TestEdgeCases:
         measurements_file = (
             output_dir / "results" / "input" / "measurements" / "single.parquet"
         )
-        overlay_file = output_dir / "results" / "input" / "overlays" / "single.png"
+        overlay_file = output_dir / "deliverables" / "overlays" / "input" / "single.png"
         hdf_file = output_dir / "results" / "input" / "hdf" / "single.h5"
 
         assert measurements_file.exists(), f"Expected {measurements_file} to exist"
@@ -1432,9 +1433,9 @@ class TestNewCoverageGaps:
             path
             == temp_output_dir
             / "output"
-            / "results"
-            / "my_dataset"
+            / "deliverables"
             / "overlays"
+            / "my_dataset"
             / "image2.png"
         )
 

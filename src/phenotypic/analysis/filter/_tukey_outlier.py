@@ -8,8 +8,8 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as plt
 from pydantic import field_validator, PrivateAttr
 
-from . import _qc_math
-from .abc_ import SetAnalyzer
+from .._helper import _qc_math
+from ..abc_ import SetAnalyzer
 
 
 class TukeyOutlierRemover(SetAnalyzer):

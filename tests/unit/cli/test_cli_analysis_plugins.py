@@ -396,7 +396,9 @@ class TestAnalysisData:
             AnalysisPrepareContext,
         )
 
-        overlay_dir = tmp_dir / "results" / "plate1" / "overlays"
+        from phenotypic.sdk_ import dataset_overlays_dir, overlay_manifest_path
+
+        overlay_dir = dataset_overlays_dir(tmp_dir, "plate1")
         overlay_dir.mkdir(parents=True)
         (overlay_dir / "img001.png").touch()
         (overlay_dir / "img002.png").touch()
@@ -412,9 +414,7 @@ class TestAnalysisData:
         plugin = ImageViewerPlugin()
         plugin.prepare_data(ctx)
 
-        manifest = json.loads(
-            (progress_dir / "overlay_manifest.json").read_text()
-        )
+        manifest = json.loads(overlay_manifest_path(tmp_dir).read_text())
         assert "datasets" in manifest
         assert "plate1" in manifest["datasets"]
         assert len(manifest["datasets"]["plate1"]) == 2
@@ -461,7 +461,9 @@ class TestPluginPrepareData:
         from phenotypic._cli._dashboard import _analysis  # noqa: F401
 
         # Create overlay PNGs for image viewer plugin
-        overlay_dir = tmp_dir / "results" / "plate1" / "overlays"
+        from phenotypic.sdk_ import dataset_overlays_dir, overlay_manifest_path
+
+        overlay_dir = dataset_overlays_dir(tmp_dir, "plate1")
         overlay_dir.mkdir(parents=True)
         (overlay_dir / "img001.png").touch()
 
@@ -486,4 +488,4 @@ class TestPluginPrepareData:
             plugin.prepare_data(ctx)
 
         assert (progress_dir / "analysis_stats.json").exists()
-        assert (progress_dir / "overlay_manifest.json").exists()
+        assert overlay_manifest_path(tmp_dir).exists()

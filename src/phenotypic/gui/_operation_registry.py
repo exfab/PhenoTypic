@@ -237,13 +237,14 @@ class OperationRegistry:
     def _discover_analyzers(self, module: Any) -> None:
         """Walk an analysis module and register filters + models.
 
-        ``ModelFitter`` extends ``SetAnalyzer``; subclasses of the former
-        become category ``"Model"`` and subclasses of the latter (excluding
-        ``ModelFitter`` lineage) become category ``"Filter"``. Analyzers do
+        ``ModelFitter`` and ``EdgeCorrection`` both extend ``SetAnalyzer``;
+        ``ModelFitter`` subclasses become category ``"Model"``,
+        ``EdgeCorrection`` subclasses become ``"Edge Correction"``, and the
+        remaining ``SetAnalyzer`` subclasses become ``"Filter"``. Analyzers do
         NOT extend ``ImageOperation`` so they bypass
         :meth:`_discover_from_module`'s ``base_class`` constraint.
         """
-        from phenotypic.analysis.abc_ import ModelFitter, QualityCheck, SetAnalyzer
+        from phenotypic.analysis.abc_ import EdgeCorrection, ModelFitter, QualityCheck, SetAnalyzer
 
         for name, obj in inspect.getmembers(module, inspect.isclass):
             if name.startswith("_"):
@@ -258,6 +259,8 @@ class OperationRegistry:
                 category = "quality_check"
             elif issubclass(obj, ModelFitter):
                 category = "Model"
+            elif issubclass(obj, EdgeCorrection):
+                category = "Edge Correction"
             else:
                 category = "Filter"
             try:

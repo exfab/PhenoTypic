@@ -16,7 +16,8 @@ python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
 
 ```
 output/
-├── overlays/          # Detection overlay images
+├── deliverables/
+│   └── overlays/      # Detection overlay images (per-dataset subfolders)
 ├── measurements.csv   # Combined measurements for all plates
 ├── summary.html       # Processing summary report
 └── checkpoints/       # Resume state

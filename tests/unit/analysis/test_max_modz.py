@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis.qc import MaxModifiedZScore
-from phenotypic.analysis._qc_math import modified_z_scores
+from phenotypic.analysis._helper._qc_math import modified_z_scores
 
 
 # --------------------------------------------------------------------------- #
@@ -223,3 +223,15 @@ class TestBehavioralEdges:
             ("plate1.png", 2, 11.0),
             ("plate1.png", 3, 12.0),
         ]
+
+
+def test_qc_math_moved_to_helper():
+    from phenotypic.analysis._helper._qc_math import modified_z_scores
+    from phenotypic.analysis._helper import render_error_analysis_report
+    import importlib
+    import pytest
+    # old private path is gone (hard cutover)
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("phenotypic.analysis._qc_math")
+    assert callable(modified_z_scores)
+    assert callable(render_error_analysis_report)

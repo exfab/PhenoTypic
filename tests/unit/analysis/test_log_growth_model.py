@@ -551,7 +551,7 @@ class TestLogGrowthModel:
 
 def test_set_analyzer_dash_not_implemented():
     """Test that SetAnalyzer.dash() raises NotImplementedError."""
-    from phenotypic.analysis._tukey_outlier import TukeyOutlierRemover
+    from phenotypic.analysis.filter._tukey_outlier import TukeyOutlierRemover
 
     analyzer = TukeyOutlierRemover(on="Shape_Area", groupby=["Group"], k=1.5)
     with pytest.raises(NotImplementedError, match="does not implement"):

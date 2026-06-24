@@ -232,12 +232,12 @@ class TestColumnRefDetection:
                 ("LogGrowthModel", "on", False),
                 ("LogGrowthModel", "groupby", True),
                 ("LogGrowthModel", "time_label", False),
-                ("LinearSoftplus", "on", False),
-                ("LinearSoftplus", "groupby", True),
-                ("LinearSoftplus", "time_label", False),
-                ("DoubleSoftplus", "on", False),
-                ("DoubleSoftplus", "groupby", True),
-                ("DoubleSoftplus", "time_label", False),
+                ("LinearLagModel", "on", False),
+                ("LinearLagModel", "groupby", True),
+                ("LinearLagModel", "time_label", False),
+                ("LinearCapAndLagModel", "on", False),
+                ("LinearCapAndLagModel", "groupby", True),
+                ("LinearCapAndLagModel", "time_label", False),
             ],
     )
     def test_column_ref_populated(
@@ -421,3 +421,17 @@ class TestQualityCheckCategory:
         info = registry.get("EdgeCorrector")
         assert info is not None
         assert "agg_func" in info.parameters
+
+
+class TestEdgeCorrectionCategory:
+    def test_edge_corrector_is_edge_category(self):
+        reg = OperationRegistry()
+        reg.discover()
+        info = reg.get("EdgeCorrector")
+        assert info is not None
+        assert info.category == "Edge Correction"
+        filter_names = {i.name for i in reg.get_by_category("Filter")}
+        model_names = {i.name for i in reg.get_by_category("Model")}
+        assert "EdgeCorrector" not in filter_names
+        assert "EdgeCorrector" not in model_names
+        assert "EdgeCorrector" in {i.name for i in reg.get_by_category("Edge Correction")}

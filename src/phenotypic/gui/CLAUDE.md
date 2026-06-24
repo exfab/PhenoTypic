@@ -188,8 +188,10 @@ paths. The user-facing run artifacts (`master_measurements.*`,
 `DIR_DELIVERABLES` in `phenotypic.sdk_`). Join them via the
 `phenotypic.sdk_` path helpers (`deliverables_dir(output)`,
 `master_measurements_parquet_path(output)`, …) so the subfolder stays
-single-sourced. The root-level directories `RESULTS_DIRNAME` (`results/`,
-per-image hdf/measurements/overlays), `PROGRESS_DIRNAME` (`progress/`),
+single-sourced. Detection overlay PNGs now live under
+`deliverables/overlays/<dataset>/` (also accessed via the `phenotypic.sdk_`
+path helpers). The root-level directories `RESULTS_DIRNAME` (`results/`,
+per-image hdf/measurements), `PROGRESS_DIRNAME` (`progress/`),
 `QC_DIRNAME` (`qc/`), and `processing_state.json` are **not** deliverables
 and stay at the output-dir root.
 

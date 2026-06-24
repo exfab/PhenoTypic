@@ -325,7 +325,8 @@ CHUNK_MANIFEST_JSON: Final[str] = "chunk_manifest.json"
 #: SLURM checkpoint chunk state (which per-image files have been chunked).
 CHUNK_STATE_JSON: Final[str] = "chunk_state.json"
 
-#: Manifest of overlay PNGs (one entry per per-image overlay).
+#: Manifest of overlay PNGs (one entry per per-image overlay). Lives alongside
+#: the overlays under ``<output>/deliverables/overlays/``.
 OVERLAY_MANIFEST_JSON: Final[str] = "overlay_manifest.json"
 
 #: Top-level dashboard manifest read by the dashboard HTML JS shim.
@@ -397,7 +398,7 @@ DIR_LOGS: Final[str] = "logs"
 #: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
 DIR_HDF: Final[str] = "hdf"
 
-#: Overlay PNG subdirectory: ``<output>/results/<ds>/overlays/``.
+#: Overlay PNG subdirectory: ``<output>/deliverables/overlays/<ds>/``.
 DIR_OVERLAYS: Final[str] = "overlays"
 
 #: Inspect-figure PNG subdirectory:
@@ -1139,9 +1140,14 @@ def dataset_hdf_dir(output_dir: Path, dataset: str) -> Path:
     return dataset_results_dir(output_dir, dataset) / DIR_HDF
 
 
+def overlays_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/overlays/`` — the overlay package root."""
+    return deliverables_dir(output_dir) / DIR_OVERLAYS
+
+
 def dataset_overlays_dir(output_dir: Path, dataset: str) -> Path:
-    """Return ``<output>/results/<dataset>/overlays/``."""
-    return dataset_results_dir(output_dir, dataset) / DIR_OVERLAYS
+    """Return ``<output>/deliverables/overlays/<dataset>/``."""
+    return overlays_dir(output_dir) / dataset
 
 
 def measurements_by_feature_dir(output_dir: Path) -> Path:
@@ -1210,8 +1216,8 @@ def chunk_state_path(output_dir: Path) -> Path:
 
 
 def overlay_manifest_path(output_dir: Path) -> Path:
-    """Return ``<output>/progress/overlay_manifest.json``."""
-    return progress_dir(output_dir) / OVERLAY_MANIFEST_JSON
+    """Return ``<output>/deliverables/overlays/overlay_manifest.json``."""
+    return overlays_dir(output_dir) / OVERLAY_MANIFEST_JSON
 
 
 def analysis_html_path(output_dir: Path) -> Path:

@@ -301,7 +301,8 @@ the gate:
   `deliverables/measurements_by_feature/<feature>.{csv,parquet}`,
   `deliverables/analysis.{csv,parquet}`, `deliverables/dashboard.html`,
   `deliverables/analysis.html`, `deliverables/processing_report.html`,
-  `deliverables/README.md`, and `deliverables/pipeline.json`. The
+  `deliverables/README.md`, `deliverables/pipeline.json`, and
+  `deliverables/overlays/<ds>/<stem>.png` (detection overlay PNGs). The
   **per-image** parquets in `results/<ds>/measurements/` (and the rest
   of `results/`, `qc/`, `progress/`, `processing_state.json`) stay at the
   output-dir **root**. Resolve these paths via the `phenotypic.sdk_`

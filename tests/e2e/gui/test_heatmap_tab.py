@@ -98,8 +98,8 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     cli_out = sandbox / "results" / _OUTPUT_NAME
     write_master(cli_out, df)
     write_measurements_mirror(cli_out, df)
-    dataset_dir = cli_out / "results" / "ds1"
-    overlays = dataset_dir / "overlays"
+    (cli_out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = cli_out / "deliverables" / "overlays" / "ds1"
     overlays.mkdir(parents=True, exist_ok=True)
     for image in _IMAGES:
         (overlays / f"{image}.png").write_bytes(_TINY_PNG)

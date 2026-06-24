@@ -183,8 +183,9 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
     from phenotypic.gui.results_viewer import _filter_panel
 
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1", "d1"],
@@ -198,7 +199,7 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
     for stem in ("a", "b"):
-        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+        (overlay_dir / f"{stem}.png").touch()
 
     output_root = OutputRoot.discover(tmp_path)
     state = CurationLabels.load(output_root.root, output_root.clean_master_df)

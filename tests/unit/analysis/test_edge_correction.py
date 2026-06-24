@@ -607,3 +607,15 @@ class TestIntegration:
 
         # Area correction shouldn't affect other columns
         assert corrected_area["MeanRadius"].equals(data["MeanRadius"])
+
+
+def test_edge_subpackage_and_base():
+    from phenotypic.analysis.edge import EdgeCorrector
+    from phenotypic.analysis import EdgeCorrector as PublicEC
+    from phenotypic.analysis.abc_ import EdgeCorrection
+    import importlib
+    import pytest
+    assert EdgeCorrector is PublicEC
+    assert issubclass(EdgeCorrector, EdgeCorrection)
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("phenotypic.analysis._edge_correction")

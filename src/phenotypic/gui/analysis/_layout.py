@@ -12,7 +12,7 @@ The page is a vertical stepper:
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -55,6 +55,36 @@ def _choices_for_category(category: str) -> list[str]:
     return sorted(info.name for info in get_registry().get_by_category(category))
 
 
+#: Registry category whose analyzers render in the dedicated edge stack.
+_EDGE_CATEGORY = "Edge Correction"
+
+
+def filter_items_for_kind(
+    pipeline: Any,
+    kind: str,
+    registry: OperationRegistry | None = None,
+) -> list[tuple[str, Any]]:
+    """Split the shared ``pipeline._filters`` dict by GUI section kind.
+
+    The pipeline stores every non-model ``SetAnalyzer`` in one
+    ``get_filters()`` dict; the GUI shows outlier filters and edge
+    correctors in separate stacks. This returns the ordered
+    ``(key, instance)`` sublist whose registry category maps to *kind*
+    (``"edge"`` for ``"Edge Correction"``, ``"filter"`` for everything
+    else). Local list position is the section's stable index for the
+    remove/edit/preview callbacks.
+    """
+    registry = registry or get_registry()
+    out: list[tuple[str, Any]] = []
+    for key, inst in pipeline.get_filters().items():
+        info = registry.get(type(inst).__name__)
+        category = info.category if info is not None else "Filter"
+        item_kind = "edge" if category == _EDGE_CATEGORY else "filter"
+        if item_kind == kind:
+            out.append((key, inst))
+    return out
+
+
 def build_app_layout(
     output_root: "OutputRoot",
     recipe: "RecipeState",
@@ -93,6 +123,7 @@ def build_app_layout(
             _build_recompile_banner(),
             _build_post_panel(recipe),
             _build_filter_panel(recipe, columns_provider=columns_provider),
+            _build_edge_panel(recipe, columns_provider=columns_provider),
             _build_model_panel(recipe, columns_provider=columns_provider),
             _build_run_console(recipe),
             dcc.Store(
@@ -224,12 +255,14 @@ def pipeline_header_children(recipe: "RecipeState") -> list:
     """
     pipeline = recipe.pipeline
     n_post = len(pipeline.get_post())
-    n_filters = len(pipeline.get_filters())
+    n_edge = len(filter_items_for_kind(pipeline, "edge"))
+    n_filters = len(filter_items_for_kind(pipeline, "filter"))
     model = pipeline.get_model()
     model_name = type(model).__name__ if model is not None else "(none)"
     summary = (
         f"{len(pipeline.get_ops())} ops · {len(pipeline.get_meas())} meas · "
-        f"{n_post} post · {n_filters} filters · model: {model_name}"
+        f"{n_post} post · {n_filters} filters · {n_edge} edge · "
+        f"model: {model_name}"
     )
     return [
         html.Strong(f"Pipeline: {pipeline.name}"),
@@ -365,6 +398,22 @@ def _build_filter_panel(
     )
 
 
+def _build_edge_panel(
+    recipe: "RecipeState",
+    *,
+    columns_provider: Optional[ColumnsProvider] = None,
+) -> html.Div:
+    return _build_section_panel(
+        title="Edge Correction",
+        section_label="edge",
+        choices=_choices_for_category("Edge Correction"),
+        add_dropdown_id=ids.ANALYSIS_EDGE_ADD_DROPDOWN,
+        stack_id=ids.ANALYSIS_EDGE_STACK,
+        recipe=recipe,
+        columns_provider=columns_provider,
+    )
+
+
 def _build_section_panel(
     *,
     title: str,
@@ -421,23 +470,22 @@ def build_section_stack(
     pattern-matching callback can map any param edit back to the correct
     section without colliding with the builder's prefixes.
 
-    Filter cards additionally host a :func:`plot_controls_form` — a
+    Filter and edge cards additionally host a :func:`plot_controls_form` — a
     Display-settings disclosure plus a Preview button. Its widget values
     re-seed from ``plot_prefs`` (the session-scoped plotting-preference
     store) so display tweaks survive stack rebuilds. Post cards carry no
     plot controls.
     """
     pipeline = recipe.pipeline
+    if registry is None:
+        registry = get_registry()
     items: list[tuple[str, Any]]
     if kind == "post":
         items = list(pipeline.get_post().items())
-    elif kind == "filter":
-        items = list(pipeline.get_filters().items())
+    elif kind in ("filter", "edge"):
+        items = filter_items_for_kind(pipeline, kind, registry)
     else:
         return []
-
-    if registry is None:
-        registry = get_registry()
 
     cards: list = []
     for index, (name, instance) in enumerate(items):
@@ -456,12 +504,16 @@ def build_section_stack(
                 style={"color": COLOR_MUTED},
             )
         )
-        # Filter cards carry a plotting-preview affordance; post cards
+        # Filter and edge cards carry a plotting-preview affordance; post cards
         # keep the table-preview path and get no plot controls.
-        if kind == "filter":
+        if kind in ("filter", "edge"):
+            # ``kind`` is narrowed to a ``PlotSectionKind`` by the guard above,
+            # but mypy can't infer that from a tuple-membership test.
             body = [
                 body,
-                plot_controls_form("filter", index, instance, plot_prefs),
+                plot_controls_form(
+                    cast("ids.PlotSectionKind", kind), index, instance, plot_prefs
+                ),
             ]
         cards.append(
             html.Div(
@@ -493,7 +545,11 @@ def build_section_stack(
                 ],
                 id=ids.post_section_id(index)
                 if kind == "post"
-                else ids.filter_section_id(index),
+                else (
+                    ids.edge_section_id(index)
+                    if kind == "edge"
+                    else ids.filter_section_id(index)
+                ),
                 className=f"analysis-{kind}-section",
                 style={
                     "border": f"1px solid {COLOR_BORDER}",

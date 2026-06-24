@@ -39,6 +39,10 @@ def _make_minimal_output(
 ) -> pl.DataFrame:
     """Build a minimal CLI-style output directory under ``root``.
 
+    Discovery still enumerates datasets from ``results/`` (per-image
+    hdf/measurements live there); overlay PNGs now live under
+    ``deliverables/overlays/<dataset>/``.
+
     Args:
         root: Existing tmp dir to populate.
         dataset: Single dataset name to create under ``results/``.
@@ -51,7 +55,7 @@ def _make_minimal_output(
         tests can compare against expected unique sets).
     """
 
-    (root / "results" / dataset / "overlays").mkdir(parents=True)
+    # discovery still enumerates datasets from results/
     (root / "results" / dataset / "hdf").mkdir(parents=True)
     (root / "results" / dataset / "measurements").mkdir(parents=True)
 
@@ -66,8 +70,10 @@ def _make_minimal_output(
     if write_master:
         _write_master_parquet(root, df)
     if with_overlays:
+        overlays = root / "deliverables" / "overlays" / dataset
+        overlays.mkdir(parents=True, exist_ok=True)
         for stem in ("a", "b"):
-            (root / "results" / dataset / "overlays" / f"{stem}.png").touch()
+            (overlays / f"{stem}.png").touch()
     return df
 
 
@@ -180,7 +186,7 @@ def test_discover_results_with_no_overlays_succeeds(
 def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
     """Missing both ``Metadata_ImageFile`` and ``Metadata_ImageName`` raises."""
 
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     _write_master_parquet(
         tmp_path, pl.DataFrame({"Metadata_Dataset": ["d1"], "Other": ["x"]})
     )
@@ -192,7 +198,6 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
 def test_discover_aliases_imagename_when_imagefile_absent(tmp_path: Path) -> None:
     """``Metadata_ImageName`` is aliased as ``Metadata_ImageFile`` when the latter is absent."""
 
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
     _write_master_parquet(
@@ -209,10 +214,8 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
     """When master lacks ``Metadata_Dataset``, it is recovered from the per-image parquets."""
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
     (tmp_path / "results" / "d2" / "measurements").mkdir(parents=True)
-    (tmp_path / "results" / "d2" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d2" / "measurements" / "b.parquet").touch()
     _write_master_parquet(
         tmp_path,
@@ -250,15 +253,15 @@ def test_column_value_sets_outer_mapping_is_immutable(tmp_path: Path) -> None:
 
 
 def test_overlay_path_returns_expected_absolute_path(tmp_path: Path) -> None:
-    """``overlay_path`` resolves to ``<root>/results/<ds>/overlays/<stem>.png``."""
+    """``overlay_path`` resolves to ``<root>/deliverables/overlays/<ds>/<stem>.png``."""
 
     _make_minimal_output(tmp_path)
     out = OutputRoot.discover(tmp_path)
     expected = (
         tmp_path.resolve()
-        / "results"
-        / "d1"
+        / "deliverables"
         / "overlays"
+        / "d1"
         / "a.png"
     )
     assert out.overlay_path("d1", "a") == expected
@@ -269,7 +272,9 @@ def test_has_overlay_distinguishes_present_and_absent(tmp_path: Path) -> None:
 
     _make_minimal_output(tmp_path, with_overlays=False)
     # Touch only "a"; leave "b" absent.
-    (tmp_path / "results" / "d1" / "overlays" / "a.png").touch()
+    overlays = tmp_path / "deliverables" / "overlays" / "d1"
+    overlays.mkdir(parents=True, exist_ok=True)
+    (overlays / "a.png").touch()
     out = OutputRoot.discover(tmp_path)
 
     assert out.has_overlay("d1", "a") is True
@@ -346,8 +351,9 @@ def test_all_parse_as_float_false_for_mixed_or_empty() -> None:
 
 def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
     """An all-numeric metadata column sorts 2 < 10, not lexically '10' < '2'."""
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    overlays = tmp_path / "deliverables" / "overlays" / "d1"
+    overlays.mkdir(parents=True)
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 3,
@@ -357,7 +363,7 @@ def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
     )
     _write_master_parquet(tmp_path, df)
     for stem in ("a", "b", "c"):
-        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+        (overlays / f"{stem}.png").touch()
 
     out = OutputRoot.discover(tmp_path)
     assert out.column_value_sets["Metadata_Time"] == ["1", "2", "10"]
@@ -378,8 +384,9 @@ def test_is_numeric_column_true_for_float_measurement(tmp_path) -> None:
 
 
 def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    overlays = tmp_path / "deliverables" / "overlays" / "d1"
+    overlays.mkdir(parents=True)
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1", "d1"],
@@ -389,7 +396,7 @@ def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
     )
     _write_master_parquet(tmp_path, df)
     for stem in ("a", "b"):
-        (tmp_path / "results" / "d1" / "overlays" / f"{stem}.png").touch()
+        (overlays / f"{stem}.png").touch()
     out = OutputRoot.discover(tmp_path)
     assert out.is_numeric_column("Metadata_Time") is True
 

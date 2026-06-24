@@ -4,10 +4,10 @@ from ._measurement_info import Entry
 from ._tiers import DerivedMeasure
 
 
-class LINEAR_SOFTPLUS_MODEL(DerivedMeasure):
+class LINEAR_LAG_MODEL(DerivedMeasure):
     @classmethod
     def category(cls) -> str:
-        return "LinearSoftplus"
+        return "LinearLagModel"
 
     v = Entry("v", "The post-lag phase growth rate.",
               bio_desc="The post-lag phase growth rate "

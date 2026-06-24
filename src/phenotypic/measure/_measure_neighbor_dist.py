@@ -13,10 +13,10 @@ from scipy import ndimage as ndi
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.schema import OBJECT
-from phenotypic.schema import GRID_SPATIAL, GRID
+from phenotypic.schema import NEIGHBOR_DIST, GRID
 
 
-class MeasureGridSpatial(GridMeasureFeatures):
+class MeasureNeighborDist(GridMeasureFeatures):
     """Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
 
     For each detected colony, identify the nearest object in the left,
@@ -61,18 +61,18 @@ class MeasureGridSpatial(GridMeasureFeatures):
         walkthrough of grid-level measurements.
     """
 
-    _measurement_infoclass: ClassVar[type] = GRID_SPATIAL
+    _measurement_infoclass: ClassVar[type] = NEIGHBOR_DIST
 
     # (d_row, d_col, label_col, dist_col)
     _DIRECTIONS: ClassVar[tuple] = (
-        (0, -1, GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL,
-         GRID_SPATIAL.LEFT_DISTANCE),
-        (0, +1, GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL,
-         GRID_SPATIAL.RIGHT_DISTANCE),
-        (-1, 0, GRID_SPATIAL.ABOVE_NEIGHBOR_OBJ_LABEL,
-         GRID_SPATIAL.ABOVE_DISTANCE),
-        (+1, 0, GRID_SPATIAL.UNDER_NEIGHBOR_OBJ_LABEL,
-         GRID_SPATIAL.UNDER_DISTANCE),
+        (0, -1, NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL,
+         NEIGHBOR_DIST.LEFT_DISTANCE),
+        (0, +1, NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL,
+         NEIGHBOR_DIST.RIGHT_DISTANCE),
+        (-1, 0, NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL,
+         NEIGHBOR_DIST.ABOVE_DISTANCE),
+        (+1, 0, NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL,
+         NEIGHBOR_DIST.UNDER_DISTANCE),
     )
 
     def _operate(self, image: GridImage) -> pd.DataFrame:
@@ -86,14 +86,14 @@ class MeasureGridSpatial(GridMeasureFeatures):
         label_to_row = {int(label): i for i, label in enumerate(labels)}
 
         results: dict = {
-            GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL : np.full(n_objs, np.nan),
-            GRID_SPATIAL.LEFT_DISTANCE           : np.full(n_objs, np.nan),
-            GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
-            GRID_SPATIAL.RIGHT_DISTANCE          : np.full(n_objs, np.nan),
-            GRID_SPATIAL.ABOVE_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
-            GRID_SPATIAL.ABOVE_DISTANCE          : np.full(n_objs, np.nan),
-            GRID_SPATIAL.UNDER_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
-            GRID_SPATIAL.UNDER_DISTANCE          : np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL : np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.LEFT_DISTANCE           : np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.RIGHT_DISTANCE          : np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.ABOVE_DISTANCE          : np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL: np.full(n_objs, np.nan),
+            NEIGHBOR_DIST.UNDER_DISTANCE          : np.full(n_objs, np.nan),
         }
 
         # Build (row, col) -> section_df once so neighbour lookups are O(1)
@@ -232,4 +232,4 @@ class MeasureGridSpatial(GridMeasureFeatures):
         return valid
 
 
-MeasureGridSpatial.__doc__ = GRID_SPATIAL.append_rst_to_doc(MeasureGridSpatial)
+MeasureNeighborDist.__doc__ = NEIGHBOR_DIST.append_rst_to_doc(MeasureNeighborDist)

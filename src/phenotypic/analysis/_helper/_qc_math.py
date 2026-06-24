@@ -1,8 +1,8 @@
 """Shared robust-statistics primitives for QC checks and outlier removers.
 
 This module isolates the *numerics* used by the analysis-layer outlier
-removers (:class:`~phenotypic.analysis._mad_outlier.MADOutlierRemover` and
-:class:`~phenotypic.analysis._tukey_outlier.TukeyOutlierRemover`) so that
+removers (:class:`~phenotypic.analysis.filter._mad_outlier.MADOutlierRemover` and
+:class:`~phenotypic.analysis.filter._tukey_outlier.TukeyOutlierRemover`) so that
 smart-QC checks can reuse the exact same formulas. Every function is a pure,
 NumPy-based helper with no pydantic, no pandas, and no I/O.
 
@@ -51,7 +51,7 @@ def median_abs_deviation(values: np.ndarray) -> float:
 
     Examples:
         >>> import numpy as np
-        >>> from phenotypic.analysis._qc_math import median_abs_deviation
+        >>> from phenotypic.analysis._helper._qc_math import median_abs_deviation
         >>> float(median_abs_deviation(np.array([1.0, 2.0, 3.0, 4.0, 5.0])))
         1.0
         >>> float(median_abs_deviation(np.array([7.0, 7.0, 7.0])))
@@ -86,7 +86,7 @@ def modified_z_scores(values: np.ndarray) -> np.ndarray:
 
     Examples:
         >>> import numpy as np
-        >>> from phenotypic.analysis._qc_math import modified_z_scores
+        >>> from phenotypic.analysis._helper._qc_math import modified_z_scores
         >>> scores = modified_z_scores(np.array([1.0, 2.0, 3.0, 4.0, 100.0]))
         >>> bool(scores[-1] > scores[0])
         True
@@ -131,7 +131,7 @@ def tukey_fences(values: np.ndarray, k: float = 1.5) -> tuple[float, float]:
 
     Examples:
         >>> import numpy as np
-        >>> from phenotypic.analysis._qc_math import tukey_fences
+        >>> from phenotypic.analysis._helper._qc_math import tukey_fences
         >>> lower, upper = tukey_fences(np.arange(1.0, 11.0))
         >>> round(lower, 4), round(upper, 4)
         (-3.5, 14.5)
@@ -165,7 +165,7 @@ def tukey_outlier_mask(values: np.ndarray, k: float = 1.5) -> np.ndarray:
 
     Examples:
         >>> import numpy as np
-        >>> from phenotypic.analysis._qc_math import tukey_outlier_mask
+        >>> from phenotypic.analysis._helper._qc_math import tukey_outlier_mask
         >>> data = np.array([10.0, 11.0, 12.0, 13.0, 14.0, 100.0])
         >>> tukey_outlier_mask(data).tolist()
         [False, False, False, False, False, True]
@@ -188,7 +188,7 @@ def tukey_outlier_fraction(values: np.ndarray, k: float = 1.5) -> float:
 
     Examples:
         >>> import numpy as np
-        >>> from phenotypic.analysis._qc_math import tukey_outlier_fraction
+        >>> from phenotypic.analysis._helper._qc_math import tukey_outlier_fraction
         >>> data = np.array([10.0, 11.0, 12.0, 13.0, 14.0, 100.0])
         >>> round(tukey_outlier_fraction(data), 4)
         0.1667

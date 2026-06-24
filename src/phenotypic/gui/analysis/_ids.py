@@ -14,18 +14,18 @@ from typing import Literal
 #: layout/callback dispatch. Aliased so layout, callbacks, and pattern-
 #: matching ID builders all share the same string-union type — typos like
 #: ``"filters"`` get caught by mypy at every call site.
-SectionKind = Literal["post", "filter"]
+SectionKind = Literal["post", "filter", "edge"]
 
 #: Wider set of analyzer-creation kinds used by ``_instantiate``. Includes
 #: ``"model"`` because the model section is exclusive (not a stack) but
 #: still constructed from the same dropdown-driven flow.
-InstantiationKind = Literal["post", "filter", "model"]
+InstantiationKind = Literal["post", "filter", "model", "edge"]
 
 #: Section kinds that carry a plotting-preview affordance. Post sections
 #: use the table-preview path instead, so they are intentionally absent;
 #: ``"model"`` is included because the model card hosts a plot preview
 #: even though it is not a stack (it always uses ``index`` 0).
-PlotSectionKind = Literal["filter", "model"]
+PlotSectionKind = Literal["filter", "model", "edge"]
 
 # ---------------------------------------------------------------------------
 # Page chrome
@@ -74,6 +74,12 @@ ANALYSIS_POST_ADD_DROPDOWN = "analysis-post-add-dropdown"
 
 #: Dropdown to add a new filter to the chain.
 ANALYSIS_FILTER_ADD_DROPDOWN = "analysis-filter-add-dropdown"
+
+#: Container holding the edge-correction section accordion stack.
+ANALYSIS_EDGE_STACK = "analysis-edge-stack"
+
+#: Dropdown to add a new edge corrector to the chain.
+ANALYSIS_EDGE_ADD_DROPDOWN = "analysis-edge-add-dropdown"
 
 #: Dropdown to choose / replace the endpoint model.
 ANALYSIS_MODEL_DROPDOWN = "analysis-model-dropdown"
@@ -130,6 +136,11 @@ def filter_section_id(index: int) -> dict[str, str | int]:
     return {"type": "analysis-filter-section", "index": index}
 
 
+def edge_section_id(index: int) -> dict[str, str | int]:
+    """Pattern-matching ID for one edge-correction section in the stack."""
+    return {"type": "analysis-edge-section", "index": index}
+
+
 def section_remove_button_id(
     kind: SectionKind, index: int
 ) -> dict[str, str | int]:
@@ -182,6 +193,8 @@ __all__ = [
     "ANALYSIS_MODEL_SECTION",
     "ANALYSIS_POST_ADD_DROPDOWN",
     "ANALYSIS_FILTER_ADD_DROPDOWN",
+    "ANALYSIS_EDGE_STACK",
+    "ANALYSIS_EDGE_ADD_DROPDOWN",
     "ANALYSIS_MODEL_DROPDOWN",
     "ANALYSIS_RUN_BUTTON",
     "ANALYSIS_RUN_STATUS",
@@ -194,6 +207,7 @@ __all__ = [
     "EMPTY_HANDOFF_ERROR",
     "post_section_id",
     "filter_section_id",
+    "edge_section_id",
     "section_remove_button_id",
     "preview_button_id",
     "plot_slot_id",

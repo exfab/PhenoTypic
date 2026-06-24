@@ -87,7 +87,8 @@ def output_root(tmp_path: Path) -> OutputRoot:
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
 
-    overlays = tmp_path / "results" / "d1" / "overlays"
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True)
     for stem in ("img-1", "img-2"):
         PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
@@ -205,10 +206,10 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     )
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
-    PILImage.new("RGB", (120, 120), (200, 0, 0)).save(
-        tmp_path / "results" / "d1" / "overlays" / "img-1.png"
-    )
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlay_dir / "img-1.png")
     write_pipeline_json(tmp_path, ImagePipeline(name="no-qc"))
     sidecar_dir = tmp_path / ".viewer_cache"
     sidecar_dir.mkdir()

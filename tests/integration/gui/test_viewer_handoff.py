@@ -26,8 +26,9 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
     archive lands under ``root/deliverables/``; the per-image ``results/``
     tree stays at the output root.
     """
-    (root / "results" / dataset / "overlays").mkdir(parents=True)
-    (root / "results" / dataset / "measurements").mkdir(parents=True)
+    (root / "results" / dataset / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = root / "deliverables" / "overlays" / dataset
+    overlay_dir.mkdir(parents=True, exist_ok=True)
     write_master(
         root,
         pl.DataFrame(
@@ -41,7 +42,7 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
         ),
     )
     for stem in ("a", "b"):
-        (root / "results" / dataset / "overlays" / f"{stem}.png").touch()
+        (overlay_dir / f"{stem}.png").touch()
 
 
 @pytest.fixture()

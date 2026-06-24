@@ -44,7 +44,7 @@ class MeasureGridLinRegStats(GridMeasureFeatures):
           before downstream phenotypic analysis.
 
     Consider Also:
-        - :class:`MeasureGridSpatial` for neighbor-distance metrics
+        - :class:`MeasureNeighborDist` for neighbor-distance metrics
           between adjacent grid cells.
         - :class:`MeasureGridSpread` for detecting over-segmentation
           and multi-object wells.

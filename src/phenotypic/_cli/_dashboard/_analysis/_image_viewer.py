@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List
 
 from phenotypic.sdk_.register import register_analysis
-from phenotypic.sdk_ import DIR_RESULTS, DIR_OVERLAYS, OVERLAY_MANIFEST_JSON
+from phenotypic.sdk_ import overlays_dir, overlay_manifest_path
 
 from ._base_plugin import BaseAnalysisPlugin
 
@@ -22,26 +22,23 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
     sort_order = 30
 
     def prepare_data(self, ctx: AnalysisPrepareContext) -> None:
-        """Write ``overlay_manifest.json`` by scanning overlay PNGs."""
+        """Write ``overlay_manifest.json`` by scanning the overlay package."""
         from .._analysis_helpers import write_json_atomic
 
-        results_dir = ctx.output_dir / DIR_RESULTS
+        package_dir = overlays_dir(ctx.output_dir)
         datasets: Dict[str, List[str]] = {}
 
-        if results_dir.is_dir():
-            for dataset_dir in sorted(results_dir.iterdir()):
+        if package_dir.is_dir():
+            for dataset_dir in sorted(package_dir.iterdir()):
                 if not dataset_dir.is_dir():
                     continue
-                overlay_dir = dataset_dir / DIR_OVERLAYS
-                if not overlay_dir.is_dir():
-                    continue
-                png_files = sorted(f.name for f in overlay_dir.glob("*.png"))
+                png_files = sorted(f.name for f in dataset_dir.glob("*.png"))
                 if png_files:
                     datasets[dataset_dir.name] = png_files
 
         write_json_atomic(
             {"datasets": datasets},
-            ctx.progress_dir / OVERLAY_MANIFEST_JSON,
+            overlay_manifest_path(ctx.output_dir),
         )
 
     def css(self) -> str:
@@ -107,7 +104,6 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
     def js(self) -> str:
         """Return JS including an ``initAnalysis_images()`` function."""
         no_data = self._js_empty_msg("No measurement data for this image.")
-        empty_file = self._js_empty_msg("Empty measurement file.")
         load_error = self._js_empty_msg("Could not load measurement data.")
 
         return (
@@ -183,28 +179,19 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
             "  if (images.length > 0) loadOverlayImage();\n"
             "}\n"
             "\n"
-            "function measurementPath(ds, filename) {\n"
-            "  return 'results/' + encodeURIComponent(ds)"
-            " + '/measurements/' + encodeURIComponent(filename);\n"
-            "}\n"
-            "\n"
             "function loadOverlayImage() {\n"
             "  var ds = document.getElementById('iv-dataset').value;\n"
             "  var img = document.getElementById('iv-image').value;\n"
             "  if (!ds || !img) return;\n"
             "  var imgWrap = document.getElementById('iv-img-wrap');\n"
-            "  var overlayPath = 'results/' + encodeURIComponent(ds)"
-            " + '/overlays/' + encodeURIComponent(img);\n"
+            "  var overlayPath = 'overlays/' + encodeURIComponent(ds)"
+            " + '/' + encodeURIComponent(img);\n"
             "  imgWrap.innerHTML = '<img src=\"' + overlayPath"
             " + '\" alt=\"' + esc(img)"
             " + '\" onerror=\"this.parentElement.innerHTML="
             "\\'<div class=analysis-empty>Image not found.</div>\\'\">';\n"
             "  var dataWrap = document.getElementById('iv-data-wrap');\n"
-            "  if (window.hyparquet) {\n"
-            "    loadMeasurementsParquet(dataWrap, ds, img);\n"
-            "  } else {\n"
-            "    loadMeasurementsCsv(dataWrap, ds, img);\n"
-            "  }\n"
+            "  loadMeasurementsParquet(dataWrap, ds, img);\n"
             "}\n"
             "\n"
             "function loadMeasurementsParquet(dataWrap, ds, img) {\n"
@@ -241,36 +228,6 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
             "        return val != null ? val : '';\n"
             "      });\n"
             "    });\n"
-            "    dataWrap.innerHTML ="
-            " buildMeasurementTable(headers, rowValues);\n"
-            "  }).catch(function() {\n"
-            "    loadMeasurementsCsv(dataWrap, ds, img);\n"
-            "  });\n"
-            "}\n"
-            "\n"
-            "function loadMeasurementsCsv(dataWrap, ds, img) {\n"
-            "  var csvName = img.replace(/\\.png$/i, '.csv');\n"
-            "  var csvPath = measurementPath(ds, csvName);\n"
-            "  fetch(csvPath + '?' + Date.now()).then(function(resp) {\n"
-            "    if (!resp.ok) {\n"
-            "      dataWrap.innerHTML = '" + no_data + "';\n"
-            "      return;\n"
-            "    }\n"
-            "    return resp.text();\n"
-            "  }).then(function(text) {\n"
-            "    if (!text) return;\n"
-            "    var lines = text.trim().split('\\n');\n"
-            "    if (lines.length < 2) {\n"
-            "      dataWrap.innerHTML = '" + empty_file + "';\n"
-            "      return;\n"
-            "    }\n"
-            "    var headers = lines[0].split(',').map(function(h) {"
-            " return h.trim(); });\n"
-            "    var rowValues = [];\n"
-            "    for (var r = 1; r < lines.length; r++) {\n"
-            "      rowValues.push(lines[r].split(',').map(function(c) {"
-            " return c.trim(); }));\n"
-            "    }\n"
             "    dataWrap.innerHTML ="
             " buildMeasurementTable(headers, rowValues);\n"
             "  }).catch(function() {\n"

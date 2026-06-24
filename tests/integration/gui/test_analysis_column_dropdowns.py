@@ -14,7 +14,7 @@ import polars as pl
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.analysis import EdgeCorrector, LogGrowthModel
+from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
 from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -59,7 +59,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
 
 @pytest.fixture()
 def output_root_with_filter(tmp_path: Path) -> OutputRoot:
-    """Output root whose pipeline.json already configures an EdgeCorrector."""
+    """Output root whose pipeline.json already configures a TukeyOutlierRemover filter."""
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d"] * 4,
@@ -76,10 +76,9 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
 
     pipeline = ImagePipeline(name="t")
     pipeline.set_filters({
-        "edge": EdgeCorrector(
+        "tukey": TukeyOutlierRemover(
             on="Shape_Area",
             groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
         )
     })
     pipeline.set_model(
@@ -110,7 +109,7 @@ class TestColumnDropdownsRender:
         self, output_root_with_filter
     ):
         app = create_app(output_root=output_root_with_filter)
-        # Find the EdgeCorrector's `on` widget and verify it's a dbc.Select
+        # Find the TukeyOutlierRemover's `on` widget and verify it's a dbc.Select
         # (dropdown) populated from measurements.parquet — not a text input.
         cols = {"Metadata_Strain", "Metadata_Time", "Shape_Area"}
         seen_on_dropdown = False
@@ -130,7 +129,7 @@ class TestColumnDropdownsRender:
                 assert component.value == "Shape_Area"
                 seen_on_dropdown = True
                 break
-        assert seen_on_dropdown, "EdgeCorrector.on did not render as a dropdown"
+        assert seen_on_dropdown, "TukeyOutlierRemover.on did not render as a dropdown"
 
     def test_model_form_renders_kmax_label_two_button_toggle(
         self, output_root_with_filter

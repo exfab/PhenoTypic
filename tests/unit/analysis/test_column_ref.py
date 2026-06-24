@@ -83,8 +83,8 @@ class TestAnalyzerSignatureMarkers:
                 "LogGrowthModel",
                 {"on", "groupby", "time_label", "Kmax_label"},
             ),
-            ("LinearSoftplus", {"on", "groupby", "time_label"}),
-            ("DoubleSoftplus", {"on", "groupby", "time_label"}),
+            ("LinearLagModel", {"on", "groupby", "time_label"}),
+            ("LinearCapAndLagModel", {"on", "groupby", "time_label"}),
         ],
     )
     def test_subclass_marker_coverage(self, cls_name, expected_params):

@@ -9,6 +9,7 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
+import phenotypic.gui.results_viewer as results_viewer_pkg
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.gui.results_viewer._layout import build_app_layout
@@ -21,7 +22,8 @@ def _seed_output(tmp_path: Path) -> Path:
 
     ``OutputRoot.discover`` requires the
     ``<root>/deliverables/master_measurements.parquet`` layout plus a
-    ``<root>/results/<dataset>/overlays/`` tree.
+    ``<root>/results/<dataset>/`` directory and overlays under
+    ``<root>/deliverables/overlays/<dataset>/``.
     """
     out = tmp_path / "results" / "Example"
     out.mkdir(parents=True)
@@ -36,7 +38,8 @@ def _seed_output(tmp_path: Path) -> Path:
     write_master(out, master)
     write_measurements_mirror(out, master)
 
-    overlays = out / "results" / "ds1" / "overlays"
+    (out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = out / "deliverables" / "overlays" / "ds1"
     overlays.mkdir(parents=True, exist_ok=True)
     for stem in ("a", "b"):
         PILImage.new("RGB", (64, 64), (200, 0, 0)).save(overlays / f"{stem}.png")
@@ -70,6 +73,12 @@ def _ids_in(component: Any) -> set[Any]:
     return out
 
 
+def _viewer_css() -> str:
+    """Return the packaged results-viewer stylesheet."""
+    css_path = Path(results_viewer_pkg.__file__).parent / "_assets" / "results_viewer.css"
+    return css_path.read_text(encoding="utf-8")
+
+
 def test_offcanvas_hosts_filter_panel_and_toggle_present(
     output_root: OutputRoot,
 ) -> None:
@@ -101,3 +110,12 @@ def test_body_has_no_lg_sidebar_columns(output_root: OutputRoot) -> None:
     for node in _walk(layout):
         if getattr(node, "_type", None) == "Col":
             assert getattr(node, "lg", None) not in (3, 9)
+
+
+def test_filter_toggle_keeps_stable_control_height() -> None:
+    """The zero-height sticky action strip must not shrink the Filters button."""
+    css = _viewer_css()
+    assert "align-items: flex-start;" in css
+    assert "#btn-filters-toggle {" in css
+    assert "min-height: 31px;" in css
+    assert "line-height: 1.5;" in css

@@ -214,7 +214,7 @@ class TestParamFormViaRegistry:
     def test_edge_corrector_registered(self, registry):
         info = registry.get("EdgeCorrector")
         assert info is not None
-        assert info.category == "Filter"
+        assert info.category == "Edge Correction"
         assert "on" in info.parameters
         assert "groupby" in info.parameters
 
@@ -233,7 +233,7 @@ class TestParamFormViaRegistry:
         a bad value rather than pydantic raising ``ValidationError`` — so
         it is no longer a multi-union.
         """
-        info = registry.get("LinearSoftplus")
+        info = registry.get("LinearLagModel")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None
@@ -242,7 +242,7 @@ class TestParamFormViaRegistry:
     def test_double_softplus_s0_prior_exposed_as_any(self, registry):
         """``s0_prior`` is exposed but intentionally ``Any`` — see
         ``test_linear_softplus_s0_prior_exposed_as_any``."""
-        info = registry.get("DoubleSoftplus")
+        info = registry.get("LinearCapAndLagModel")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None

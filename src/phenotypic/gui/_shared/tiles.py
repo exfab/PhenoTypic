@@ -2,7 +2,7 @@
 
 Two GUI surfaces render fixed-size, centroid-aligned crops of the
 overlay PNGs the CLI writes at
-``<root>/results/<dataset>/overlays/<stem>.png``:
+``<root>/deliverables/overlays/<dataset>/<stem>.png``:
 
 * the **colony-view** tab — a 2D axis-header grid (see
   :mod:`phenotypic.gui.results_viewer.colony_view._grid`), and
@@ -146,7 +146,7 @@ def crop_overlay(
 
     Args:
         png_path: Path to the overlay PNG written by the CLI (typically
-            ``<root>/results/<dataset>/overlays/<stem>.png``). RGB and
+            ``<root>/deliverables/overlays/<dataset>/<stem>.png``). RGB and
             RGBA sources are both accepted; the result is always RGB.
         center_rr: Row coordinate (Y) of the colony centroid, in image
             pixels. Read from ``master_measurements.parquet``.

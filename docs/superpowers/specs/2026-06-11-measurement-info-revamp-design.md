@@ -27,6 +27,7 @@ self-documenting** declaration that still reads like a string in normal use.
 ## 2. Goals & Non-Goals
 
 ### Goals
+
 - One **universal** declaration format for every `MeasurementInfo` member.
 - New fields are **optional / opt-in** per member.
 - **Strict input**: impossible to swap `bio_desc`/`image`; raw tuples become
@@ -40,6 +41,7 @@ self-documenting** declaration that still reads like a string in normal use.
 - Reference navigation groups enums into **5 captioned groups**.
 
 ### Non-Goals
+
 - No rename of `desc`; no `tech_desc`.
 - No rewrite/splitting of existing description text.
 - No bulk authoring of `bio_desc`/`image` content — only **one worked example**
@@ -84,6 +86,7 @@ class Entry:
   which is what lets `__new__` reject anything that isn't an `Entry`.
 
 ### Why keyword-only optionals
+
 `label`/`desc` stay positional so the lean case is barely more verbose than the
 old tuple: `Entry("Perimeter", "Boundary length in px.")`. `bio_desc`/`image`
 are keyword-only, so `Entry("Area", "tech", "bio")` is a `TypeError` — the swap
@@ -168,6 +171,7 @@ assert the post-change tree matches exactly (§8).
 ## 7. Rendering — one conditional-column table everywhere
 
 ### 7.1 Shared renderer
+
 Introduce a single private helper in `schema/_measurement_info.py`:
 
 ```python
@@ -178,6 +182,7 @@ def _render_info_table(rows, *, title, name_header="Name") -> str:
 ```
 
 Behavior:
+
 - Always emits `name_header | Description`.
 - Emits a **Biology** column iff any row has non-empty `bio_desc`.
 - Emits an **Image** column iff any row has non-empty `image`; the cell is a
@@ -189,6 +194,7 @@ Behavior:
   escaping so there is a single implementation.
 
 ### 7.2 Callers collapse onto the helper
+
 - `MeasurementInfo.rst_table(...)` builds rows `(m.label, m.desc, m.bio_desc,
   m.image)` and calls the helper → docstrings now get the conditional columns
   (per the requirement *"the rst_table in docstrings should be the conditional
@@ -203,6 +209,7 @@ Behavior:
   substitution is preserved).
 
 ### 7.3 Why root-absolute image paths
+
 The same table string is embedded in **two** doc locations: operation autodoc
 pages (`api_reference/…`, via `append_rst_to_doc` baked into `__doc__` at import)
 and the generated `measurements_ref/…` pages. A relative path can't resolve from
@@ -210,6 +217,7 @@ both; `/_static/measurements/<relpath>` resolves from either because Sphinx
 treats a leading `/` as relative to the source root.
 
 ### 7.4 Layering note
+
 `schema` already owns RST emission (`rst_table`/`append_rst_to_doc` predate this
 work), so adding the `_ASSET_URL_PREFIX` string constant there is consistent with
 its existing responsibility — it introduces no import, only a literal.
@@ -226,8 +234,8 @@ its existing responsibility — it introduces no import, only a literal.
   with five captioned groups:
 
   | Group | Enums |
-  |-------|-------|
-  | Measurements | SIZE, SHAPE, BBOX, INTENSITY, TEXTURE, ColorLab, ColorHSV, Colorxy, ColorXYZ, ColorComposition, OBJECT, GRID, GRID_SPATIAL, GRID_LINREG_STATS, GRID_SPREAD, SYMMETRIC_ZONES, RADIAL_EXPANSION |
+    |-------|-------|
+  | Measurements | SIZE, SHAPE, BBOX, INTENSITY, TEXTURE, ColorLab, ColorHSV, Colorxy, ColorXYZ, ColorComposition, OBJECT, GRID, NEIGHBOR_DIST, GRID_LINREG_STATS, GRID_SPREAD, SYMMETRIC_ZONES, RADIAL_EXPANSION |
   | Models & Analysis | LOG_GROWTH_MODEL, LINEAR_SOFTPLUS_MODEL, DOUBLE_SOFTPLUS_MODEL, EDGE_CORRECTION, MODEL_METRICS |
   | Quality Control | QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE, QUALITY_TUKEY, QUALITY_ZMAX |
   | Curation & Errors | CURATION, ErrorCategory |
@@ -288,20 +296,20 @@ exception is `SHAPE.AREA`, whose `bio_desc`/`image` the human author supplies.
 
 ## 11. Touch points
 
-| File / area | Change |
-|-------------|--------|
-| `schema/_measurement_info.py` | Add `Entry`; rewrite `__new__`; add `.bio_desc`/`.image`; add `_render_info_table` + `_ASSET_URL_PREFIX`; refactor `rst_table` (conditional columns + `use_headers` flag); update docstring doctests to use `Entry` |
-| `schema/__init__.py` | Export `Entry` |
-| `schema/_*.py` (~33) | Rewrite all members to `Entry(...)` |
-| `schema/_quality_check.py` | Rewrite members; route override through shared helper |
-| `schema/_shape.py` | `AREA` worked example (`bio_desc` + `image`) |
-| `tools_/constants_.py` | Rewrite `GAMMA_ENCODINGS`/`PIPE_STATUS` members; import `Entry` |
-| `docs/source/_extensions/measurements_ref.py` | 5-group IA; delete `_full_column_table` → `rst_table(use_headers=True)`; asset copy step |
-| `pyproject.toml` | Add `_assets/measurements/**` to package-data |
-| `src/phenotypic/_assets/measurements/shape/area.png` | New example asset |
-| **project-root `CLAUDE.md`** | Add the §10.1 authoring guardrail (applied first) |
-| `schema/CLAUDE.md` | Document `Entry`, new fields, rendering |
-| Doctests elsewhere | Grep for `MeasurementInfo` subclasses built with tuples; convert to `Entry` |
+| File / area                                          | Change                                                                                                                                                                                                              |
+|------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `schema/_measurement_info.py`                        | Add `Entry`; rewrite `__new__`; add `.bio_desc`/`.image`; add `_render_info_table` + `_ASSET_URL_PREFIX`; refactor `rst_table` (conditional columns + `use_headers` flag); update docstring doctests to use `Entry` |
+| `schema/__init__.py`                                 | Export `Entry`                                                                                                                                                                                                      |
+| `schema/_*.py` (~33)                                 | Rewrite all members to `Entry(...)`                                                                                                                                                                                 |
+| `schema/_quality_check.py`                           | Rewrite members; route override through shared helper                                                                                                                                                               |
+| `schema/_shape.py`                                   | `AREA` worked example (`bio_desc` + `image`)                                                                                                                                                                        |
+| `tools_/constants_.py`                               | Rewrite `GAMMA_ENCODINGS`/`PIPE_STATUS` members; import `Entry`                                                                                                                                                     |
+| `docs/source/_extensions/measurements_ref.py`        | 5-group IA; delete `_full_column_table` → `rst_table(use_headers=True)`; asset copy step                                                                                                                            |
+| `pyproject.toml`                                     | Add `_assets/measurements/**` to package-data                                                                                                                                                                       |
+| `src/phenotypic/_assets/measurements/shape/area.png` | New example asset                                                                                                                                                                                                   |
+| **project-root `CLAUDE.md`**                         | Add the §10.1 authoring guardrail (applied first)                                                                                                                                                                   |
+| `schema/CLAUDE.md`                                   | Document `Entry`, new fields, rendering                                                                                                                                                                             |
+| Doctests elsewhere                                   | Grep for `MeasurementInfo` subclasses built with tuples; convert to `Entry`                                                                                                                                         |
 
 ## 12. Testing
 

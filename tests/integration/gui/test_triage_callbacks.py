@@ -64,8 +64,9 @@ def output_root(tmp_path: Path) -> OutputRoot:
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
 
-    # OutputRoot.discover requires results/<dataset>/overlays/<stem>.png.
-    overlays = tmp_path / "results" / "d1" / "overlays"
+    # OutputRoot.discover requires results/<dataset>/ dir + overlays under deliverables/.
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True)
     for stem in ("img-A", "img-B"):
         PILImage.new("RGB", (64, 64), (128, 128, 128)).save(overlays / f"{stem}.png")

@@ -83,12 +83,12 @@ both a phenotype and a feature. It is both.
 The phenotype↔feature question is only meaningful for *measured signal*. About a
 third of the schema is not signal, so columns are split into four kinds first.
 
-| Kind | Families | What it is / why it is separate |
-|---|---|---|
+| Kind                          | Families                                                                                                                                                                                | What it is / why it is separate                                                                                                                                                                                                                  |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Identity / design factors** | `METADATA` + the 7 experimental-tag enums (`GENETIC_`, `SAMPLE_`, `PLATE_`, `CONDITION_`, `INCUBATION_`, `ACQUISITION_`, `EXPERIMENT_METADATA`); geometric bookkeeping `BBOX`, `OBJECT` | Not outcomes. These are the **independent variables** you analyze phenotypes *against* (group by replicate, regress on condition) plus provenance/locator columns. Reframing "metadata = nothing": metadata is the *X* in your model, not noise. |
-| **Quality / trust** | `QUALITY_CHECK`, `QUALITY_COUNT`, `QUALITY_SE`, `QUALITY_MAD`, `QUALITY_ZMAX`, `QUALITY_TUKEY`, `QUALITY_ICC`, `CURATION`, `ErrorCategory` | Answer "can I believe this row/plate." They **gate** analysis; never a biological claim. |
-| **Primary measurements** | `SHAPE`, `SIZE`, `INTENSITY`, `TEXTURE`, the 5 color enums (`ColorLab`, `ColorHSV`, `ColorXYZ`, `Colorxy`, `ColorComposition`), `RADIAL_EXPANSION`, `SYMMETRIC_ZONES` | The measured signal. **The three-tier spectrum (Section 4) applies only here.** |
-| **Derived / model outputs** | `LOG_GROWTH_MODEL`, `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL`, `EDGE_CORRECTION`, `MODEL_METRICS`, `GRID`, `GRID_SPATIAL`, `GRID_SPREAD`, `GRID_LINREG_STATS` | Results computed *from* primary measurements (or from the array geometry). Not a fifth tier — a **resolution layer** (Section 5) that routes each column back into one of the four kinds / three tiers. |
+| **Quality / trust**           | `QUALITY_CHECK`, `QUALITY_COUNT`, `QUALITY_SE`, `QUALITY_MAD`, `QUALITY_ZMAX`, `QUALITY_TUKEY`, `QUALITY_ICC`, `CURATION`, `ErrorCategory`                                              | Answer "can I believe this row/plate." They **gate** analysis; never a biological claim.                                                                                                                                                         |
+| **Primary measurements**      | `SHAPE`, `SIZE`, `INTENSITY`, `TEXTURE`, the 5 color enums (`ColorLab`, `ColorHSV`, `ColorXYZ`, `Colorxy`, `ColorComposition`), `RADIAL_EXPANSION`, `SYMMETRIC_ZONES`                   | The measured signal. **The three-tier spectrum (Section 4) applies only here.**                                                                                                                                                                  |
+| **Derived / model outputs**   | `LOG_GROWTH_MODEL`, `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL`, `EDGE_CORRECTION`, `MODEL_METRICS`, `GRID`, `NEIGHBOR_DIST`, `GRID_SPREAD`, `GRID_LINREG_STATS`                   | Results computed *from* primary measurements (or from the array geometry). Not a fifth tier — a **resolution layer** (Section 5) that routes each column back into one of the four kinds / three tiers.                                          |
 
 ---
 
@@ -175,33 +175,33 @@ not asserted**:
 
 ### The four transformation archetypes
 
-| Archetype | What it does | Referent of the output | Resolves to |
-|---|---|---|---|
-| **A. Parameterization** | Fit a dynamical/empirical model to a primary phenotype, extract its parameters | The *same biological process*, summarized | **Same tier as the input phenotype** (often sharper) |
-| **B. Normalization** | De-confound a primary phenotype (remove an artifact) | The input quantity, cleaned | **The input's tier, exactly** (parametric in the target) |
-| **C. Diagnostic** | Goodness-of-fit, optimizer state, regularization hyperparameters | The *model*, not the colony | **Quality kind** |
-| **D. Spatial / relational** | Describe array layout or neighbor relations | The *grid geometry / inter-object relations* | **Quality**, or a measured **design-covariate** |
+| Archetype                   | What it does                                                                   | Referent of the output                       | Resolves to                                              |
+|-----------------------------|--------------------------------------------------------------------------------|----------------------------------------------|----------------------------------------------------------|
+| **A. Parameterization**     | Fit a dynamical/empirical model to a primary phenotype, extract its parameters | The *same biological process*, summarized    | **Same tier as the input phenotype** (often sharper)     |
+| **B. Normalization**        | De-confound a primary phenotype (remove an artifact)                           | The input quantity, cleaned                  | **The input's tier, exactly** (parametric in the target) |
+| **C. Diagnostic**           | Goodness-of-fit, optimizer state, regularization hyperparameters               | The *model*, not the colony                  | **Quality kind**                                         |
+| **D. Spatial / relational** | Describe array layout or neighbor relations                                    | The *grid geometry / inter-object relations* | **Quality**, or a measured **design-covariate**          |
 
 ### Worked placement of every derived family
 
-| Family · members | `derivation_type` | `derives_from` | Resolved placement | Why |
-|---|---|---|---|---|
-| `LOG_GROWTH_MODEL` · `r`, `K`, `N0`, `µmax` | A. parameterization | `SIZE` (size-vs-time) | **Tier 1** | kinetic parameters of the proliferation process |
-| `LOG_GROWTH_MODEL` · `lambda`, `beta`, `Kmax` | C. diagnostic (hyperparam) | the fit | **Quality** | regularization / bounds of the optimizer, not biology |
-| `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL` · fitted params | A. parameterization | the fitted phenotype-vs-x series | **Same tier as the fitted phenotype** | empirical-model parameters of a primary signal |
-| `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL` · any fit knobs/bounds | C. diagnostic | the fit | **Quality** | fit machinery |
-| `EDGE_CORRECTION` · `NewVal`, `Cap` | B. normalization | target measurement (e.g. `SIZE`) | **= target's tier** | de-confounded *same* quantity |
-| `MODEL_METRICS` · `MAE`, `MSE`, `RMSE`, `R2`, `NumSamples`, `OptimizerLoss`, `OptimizerStatus` | C. diagnostic | the fit | **Quality** | describes fit quality, not the colony |
-| `GRID_LINREG_STATS` · `ResidualError`, `RowM/B`, `ColM/B`, `PredRR`, `PredCC` | D. spatial diagnostic | centroids + grid | **Quality** | docstring: "evaluate grid alignment quality" |
-| `GRID_SPATIAL` · `Left/Right/Above/UnderDistance` (+ neighbor labels) | D. relational | centroids | **Quality** or **design-covariate** | neighbor proximity = merge signal *and* a competition/edge-effect covariate |
-| `GRID_SPREAD` · `ObjectSpread` | D. relational | centroids | **Quality** (lean) | over-segmentation flag; secondary "invasive spreading" signal |
-| `GRID` · layout params | D. relational | array geometry | **Identity / design factor** | describes plate layout, not a colony trait |
+| Family · members                                                                               | `derivation_type`          | `derives_from`                   | Resolved placement                    | Why                                                                         |
+|------------------------------------------------------------------------------------------------|----------------------------|----------------------------------|---------------------------------------|-----------------------------------------------------------------------------|
+| `LOG_GROWTH_MODEL` · `r`, `K`, `N0`, `µmax`                                                    | A. parameterization        | `SIZE` (size-vs-time)            | **Tier 1**                            | kinetic parameters of the proliferation process                             |
+| `LOG_GROWTH_MODEL` · `lambda`, `beta`, `Kmax`                                                  | C. diagnostic (hyperparam) | the fit                          | **Quality**                           | regularization / bounds of the optimizer, not biology                       |
+| `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL` · fitted params                               | A. parameterization        | the fitted phenotype-vs-x series | **Same tier as the fitted phenotype** | empirical-model parameters of a primary signal                              |
+| `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL` · any fit knobs/bounds                        | C. diagnostic              | the fit                          | **Quality**                           | fit machinery                                                               |
+| `EDGE_CORRECTION` · `NewVal`, `Cap`                                                            | B. normalization           | target measurement (e.g. `SIZE`) | **= target's tier**                   | de-confounded *same* quantity                                               |
+| `MODEL_METRICS` · `MAE`, `MSE`, `RMSE`, `R2`, `NumSamples`, `OptimizerLoss`, `OptimizerStatus` | C. diagnostic              | the fit                          | **Quality**                           | describes fit quality, not the colony                                       |
+| `GRID_LINREG_STATS` · `ResidualError`, `RowM/B`, `ColM/B`, `PredRR`, `PredCC`                  | D. spatial diagnostic      | centroids + grid                 | **Quality**                           | docstring: "evaluate grid alignment quality"                                |
+| `NEIGHBOR_DIST` · `Left/Right/Above/UnderDistance` (+ neighbor labels)                         | D. relational              | centroids                        | **Quality** or **design-covariate**   | neighbor proximity = merge signal *and* a competition/edge-effect covariate |
+| `GRID_SPREAD` · `ObjectSpread`                                                                 | D. relational              | centroids                        | **Quality** (lean)                    | over-segmentation flag; secondary "invasive spreading" signal               |
+| `GRID` · layout params                                                                         | D. relational              | array geometry                   | **Identity / design factor**          | describes plate layout, not a colony trait                                  |
 
 Two consequences the coarse model cannot express:
 
 1. **Per-member classification.** The `LOG_GROWTH_MODEL` split shows the unit of
    classification is sometimes the member, not the enum.
-2. **A measured design-covariate home.** Neighbor distance (`GRID_SPATIAL`) is
+2. **A measured design-covariate home.** Neighbor distance (`NEIGHBOR_DIST`) is
    something you regress phenotypes *against* — like metadata, but *computed* rather
    than supplied. It belongs with Identity / design factors when used as a covariate.
 
@@ -367,16 +367,16 @@ MeasurementInfo (str, Enum)        # naming via category() — unchanged
   `ColorXYZ(DiscriminativeFeature)`, `Colorxy(DiscriminativeFeature)`,
   `ColorComposition(DiscriminativeFeature)`, `METADATA`/experimental tags +
   `BBOX`/`OBJECT` → `IdentityInfo`, `QUALITY_*`/`CURATION`/`ErrorCategory` →
-  `QualityInfo`, `MODEL_METRICS`/`GRID_LINREG_STATS`/`GRID_SPATIAL`/`GRID_SPREAD` →
+  `QualityInfo`, `MODEL_METRICS`/`GRID_LINREG_STATS`/`NEIGHBOR_DIST`/`GRID_SPREAD` →
   per Section 5 placement (mostly `QualityInfo`; `GRID` → `IdentityInfo`),
   `EDGE_CORRECTION`/`LINEAR_SOFTPLUS_MODEL`/`DOUBLE_SOFTPLUS_MODEL` →
   `DerivedMeasure`.
 - **Straddlers** re-parent to the neutral parent and override the minority members:
-  - `SHAPE(PrimaryMeasure)` — class default Tier 2; size-magnitude members (`Area`,
-    `ConvexArea`, `MeanRadius`/`MedianRadius`/`MaxRadius`, `Min/MaxFeretDiameter`,
-    `Major/MinorAxisLength`, `BboxArea`, `Perimeter`) get `Entry(..., tier=1)`.
-  - `LOG_GROWTH_MODEL(DerivedMeasure)` — `r`/`K`/`µmax`/`N0` resolve to Tier 1;
-    `lambda`/`beta`/`Kmax` get `Entry(..., derivation_type="diagnostic")` → Quality.
+    - `SHAPE(PrimaryMeasure)` — class default Tier 2; size-magnitude members (`Area`,
+      `ConvexArea`, `MeanRadius`/`MedianRadius`/`MaxRadius`, `Min/MaxFeretDiameter`,
+      `Major/MinorAxisLength`, `BboxArea`, `Perimeter`) get `Entry(..., tier=1)`.
+    - `LOG_GROWTH_MODEL(DerivedMeasure)` — `r`/`K`/`µmax`/`N0` resolve to Tier 1;
+      `lambda`/`beta`/`Kmax` get `Entry(..., derivation_type="diagnostic")` → Quality.
 
 ### 10.3 `Entry` + resolution
 
@@ -407,7 +407,9 @@ MeasurementInfo (str, Enum)        # naming via category() — unchanged
 **Changed (additive / one-line):** `schema/_measurement_info.py` (or new
 `schema/_tiers.py`) for the bases + `Entry` fields + `resolved_tier`; ~22 one-line
 enum re-parents; 2 straddler files with per-member overrides; `schema/__init__.py`
-exports; new CI **coverage gate** (mirroring `tests/unit/tune/test_annotation_coverage.py`)
+exports; new CI **coverage gate** (mirroring
+`tests/unit/tune/test_annotation_coverage.py`)
+
 + resolution/straddler unit tests; new docs page (Section 10.6).
 
 **Untouched:** no column renames (the ~38 `Shape_Area` literal files, `measure/`
@@ -421,7 +423,8 @@ gate; R4 `derives_from` import coupling → string token.
 
 ### 10.6 New documentation
 
-- **Conceptual page:** new `docs/source/explanation/measurement_classification_system.md`,
+- **Conceptual page:** new
+  `docs/source/explanation/measurement_classification_system.md`,
   wired into `explanation/index.rst` under the **"Measurement & Analysis"** caption
   (alongside `measurement_metrics_biological_meaning.md`, cross-linked both ways). It
   presents the two axes, four kinds, three tiers, the derived resolution layer, and —
@@ -469,7 +472,8 @@ https://doi.org/10.1186/s12976-018-0093-x
 
 Lam, U. T.-F., Nguyen, T. T. T., Raechell, R., et al. (2023). A normalization protocol
 reduces edge effect in high-throughput analyses of hydroxyurea hypersensitivity in
-fission yeast. *Biomedicines, 11*(10), 2829. https://doi.org/10.3390/biomedicines11102829
+fission yeast. *Biomedicines, 11*(10),
+2829. https://doi.org/10.3390/biomedicines11102829
 
 Rattray, J. B., Lowhorn, R. J., Walden, R., et al. (2023). Machine learning
 identification of *Pseudomonas aeruginosa* strains from colony image data. *PLOS

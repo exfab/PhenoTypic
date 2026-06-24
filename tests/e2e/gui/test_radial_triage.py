@@ -86,7 +86,8 @@ def _seed_real_output(sandbox: Path) -> Path:
     write_master(cli_out, df)
     write_measurements_mirror(cli_out, df)
 
-    overlays = cli_out / "results" / _DATASET / "overlays"
+    (cli_out / "results" / _DATASET / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = cli_out / "deliverables" / "overlays" / _DATASET
     overlays.mkdir(parents=True, exist_ok=True)
     for image in _IMAGES:
         stem = Path(image).stem

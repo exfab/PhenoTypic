@@ -10,7 +10,7 @@ Requires PLAYWRIGHT=1 (enforced by the conftest module-skip).
 
 Fixture design notes:
 
-* The fixtures REPLICATE the Phase 2 ``live_browse_timeline`` seeding idiom
+* The fixtures BIO_REPLICATE the Phase 2 ``live_browse_timeline`` seeding idiom
   (sidebar-tree-click source seeding, verified at
   ``test_shared_source_root._select_plate1_source`` /
   ``test_browse_timeline.live_browse_timeline``) rather than import it: a pytest
@@ -102,7 +102,7 @@ def _seed_and_open_timeline(page, fake_sandbox, hub_url, folders, names):
     if not page.locator("#shell-settings-popover").is_visible():
         page.click("#shell-settings-button")
     expect(page.locator("#shell-source-image-root-label")).to_contain_text(
-        "source: plate1", timeout=5_000
+            "source: plate1", timeout=5_000
     )
 
     # Open the Browse mount (it reads the shared source from the store).
@@ -124,7 +124,7 @@ def live_browse_timeline(fake_sandbox, live_server, hub_url, page):
     strip mounts every selected viewer without the over-cap notice.
     """
     return _seed_and_open_timeline(
-        page, fake_sandbox, hub_url, _SMALL_FOLDERS, _SMALL_NAMES
+            page, fake_sandbox, hub_url, _SMALL_FOLDERS, _SMALL_NAMES
     )
 
 
@@ -138,7 +138,7 @@ def live_browse_timeline_large(fake_sandbox, live_server, hub_url, page):
     ``"Showing first 12 of 14 — narrow the selection"``.
     """
     return _seed_and_open_timeline(
-        page, fake_sandbox, hub_url, _LARGE_FOLDERS, _LARGE_NAMES
+            page, fake_sandbox, hub_url, _LARGE_FOLDERS, _LARGE_NAMES
     )
 
 
@@ -150,11 +150,12 @@ def _real_png_cells(page):
     decodable sources.
     """
     return page.query_selector_all(
-        '.timeline-cell[data-src][data-row^="t"][data-ref]'
+            '.timeline-cell[data-src][data-row^="t"][data-ref]'
     )
 
 
-def test_multiselect_then_compare_mounts_exactly_n_viewers(live_browse_timeline) -> None:
+def test_multiselect_then_compare_mounts_exactly_n_viewers(
+        live_browse_timeline) -> None:
     page = live_browse_timeline
     page.wait_for_selector('.timeline-cell[data-src][data-row="t0"]')
     cells = _real_png_cells(page)
@@ -166,20 +167,20 @@ def test_multiselect_then_compare_mounts_exactly_n_viewers(live_browse_timeline)
     page.click("#browse-tl-compare-btn")
     # Exactly 3 OSD viewers mount, each with a canvas.
     page.wait_for_selector(
-        "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
+            "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
     )
     osd_cells = page.query_selector_all(
-        "#timeline-compare-modal .timeline-compare-cell"
+            "#timeline-compare-modal .timeline-compare-cell"
     )
     assert len(osd_cells) == 3
     canvases = page.query_selector_all(
-        "#timeline-compare-modal .timeline-compare-osd canvas"
+            "#timeline-compare-modal .timeline-compare-osd canvas"
     )
     assert len(canvases) >= 3  # OSD draws ≥1 canvas per viewer
     # Teardown: close via the × button and assert no viewer cell remains.
     page.click("#timeline-compare-close")
     page.wait_for_function(
-        "() => document.querySelectorAll('.timeline-compare-cell').length === 0"
+            "() => document.querySelectorAll('.timeline-compare-cell').length === 0"
     )
     assert page.query_selector("#timeline-compare-modal") is None
 
@@ -192,33 +193,33 @@ def test_pan_zoom_one_viewer_propagates_to_peers(live_browse_timeline) -> None:
         cell.click(modifiers=["Shift"])
     page.click("#browse-tl-compare-btn")
     page.wait_for_selector(
-        "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
+            "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
     )
     # Drive viewer[0]'s viewport via the OSD API and poll viewer[1]'s zoom +
     # center to confirm the shared viewport propagated. window.__phenotypicTimeline
     # .__compareViewers is the COMMITTED test seam assigned in the controller.
     page.evaluate(
-        "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
-        "vs[0].viewport.zoomTo(2.0); }"
+            "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
+            "vs[0].viewport.zoomTo(2.0); }"
     )
     page.wait_for_function(
-        "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
-        "return Math.abs(vs[1].viewport.getZoom(true) "
-        "- vs[0].viewport.getZoom(true)) < 0.05; }",
-        timeout=10_000,
+            "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
+            "return Math.abs(vs[1].viewport.getZoom(true) "
+            "- vs[0].viewport.getZoom(true)) < 0.05; }",
+            timeout=10_000,
     )
     # Center follows too (within tolerance): pan viewer[0] and poll viewer[1].
     page.evaluate(
-        "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
-        "const OSD = window.OpenSeadragon; "
-        "vs[0].viewport.panTo(new OSD.Point(0.4, 0.3)); }"
+            "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
+            "const OSD = window.OpenSeadragon; "
+            "vs[0].viewport.panTo(new OSD.Point(0.4, 0.3)); }"
     )
     page.wait_for_function(
-        "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
-        "const a = vs[0].viewport.getCenter(true); "
-        "const b = vs[1].viewport.getCenter(true); "
-        "return Math.abs(a.x - b.x) < 0.05 && Math.abs(a.y - b.y) < 0.05; }",
-        timeout=10_000,
+            "() => { const vs = window.__phenotypicTimeline.__compareViewers; "
+            "const a = vs[0].viewport.getCenter(true); "
+            "const b = vs[1].viewport.getCenter(true); "
+            "return Math.abs(a.x - b.x) < 0.05 && Math.abs(a.y - b.y) < 0.05; }",
+            timeout=10_000,
     )
 
 
@@ -229,10 +230,10 @@ def test_row_header_click_opens_strip_for_that_row(live_browse_timeline) -> None
     page.wait_for_selector(sel)
     page.click(sel)
     page.wait_for_selector(
-        "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
+            "#timeline-compare-modal .timeline-compare-osd canvas", timeout=15_000
     )
     osd_cells = page.query_selector_all(
-        "#timeline-compare-modal .timeline-compare-cell"
+            "#timeline-compare-modal .timeline-compare-cell"
     )
     # The seeded matrix has 3 time columns per row → 3 viewers for that row.
     assert len(osd_cells) == 3
@@ -248,15 +249,15 @@ def test_over_cap_selection_shows_notice(live_browse_timeline_large) -> None:
     # selection source of truth is the .timeline-cell--selected class, so
     # setting it is equivalent to clicking.
     total = page.evaluate(
-        "() => { const cs = document.querySelectorAll("
-        "'.timeline-cell[data-src][data-row^=\"t\"][data-ref]'); "
-        "cs.forEach(c => c.classList.add('timeline-cell--selected')); "
-        "return cs.length; }"
+            "() => { const cs = document.querySelectorAll("
+            "'.timeline-cell[data-src][data-row^=\"t\"][data-ref]'); "
+            "cs.forEach(c => c.classList.add('timeline-cell--selected')); "
+            "return cs.length; }"
     )
     assert total == 14
     page.click("#browse-tl-compare-btn")
     page.wait_for_selector(
-        "#timeline-compare-modal .timeline-compare-notice", timeout=15_000
+            "#timeline-compare-modal .timeline-compare-notice", timeout=15_000
     )
     notice = page.text_content("#timeline-compare-modal .timeline-compare-notice")
     # EXACT full string — guards the em-dash "—" coupling between the JS mirror
@@ -265,8 +266,9 @@ def test_over_cap_selection_shows_notice(live_browse_timeline_large) -> None:
     assert notice == "Showing first 12 of 14 — narrow the selection"
     # Cap honored: exactly 12 viewer cells despite 14 selected.
     assert (
-        len(page.query_selector_all("#timeline-compare-modal .timeline-compare-cell"))
-        == 12
+            len(page.query_selector_all(
+                "#timeline-compare-modal .timeline-compare-cell"))
+            == 12
     )
 
 
@@ -282,8 +284,8 @@ def test_shift_click_does_not_open_popout(live_browse_timeline) -> None:
     # …but neither the compare strip nor the single-image pop-out opened.
     assert page.query_selector("#timeline-compare-modal") is None
     popout_open = page.evaluate(
-        "() => { const d = document.getElementById('browse-tl-popout-modal');"
-        " const m = d && d.closest('.modal');"
-        " return !!(m && m.classList.contains('show')); }"
+            "() => { const d = document.getElementById('browse-tl-popout-modal');"
+            " const m = d && d.closest('.modal');"
+            " return !!(m && m.classList.contains('show')); }"
     )
     assert popout_open is False

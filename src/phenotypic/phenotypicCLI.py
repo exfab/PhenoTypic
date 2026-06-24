@@ -63,7 +63,7 @@ Examples:
 
     # Recompile a previous output directory: re-aggregate the master
     # measurements CSV, fill in any overlay PNGs missing under
-    # results/<ds>/overlays/ by reloading their HDFs (threaded across
+    # deliverables/overlays/<ds>/ by reloading their HDFs (threaded across
     # --njobs workers, alpha from --overlay-alpha), rerun analysis
     # plugins, rebuild the manifest, and regenerate the HTML dashboard.
     # Existing overlays are left untouched.  Pipeline JSON is NOT
@@ -75,7 +75,7 @@ Outputs:
     `<output>/results/<dataset>/hdf/<stem>.h5` (layers + metadata + grid
     state, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`).
     Overlay PNGs are always written under
-    `<output>/results/<dataset>/overlays/<stem>.png` for forward runs;
+    `<output>/deliverables/overlays/<dataset>/<stem>.png` for forward runs;
     `--mode measure` reruns reuse existing overlays and do not regenerate them.
     `--mode recompile` fills in only-missing overlay PNGs from HDFs but
     leaves existing ones untouched.
@@ -181,7 +181,7 @@ from phenotypic._cli._cli_constants import (
 )
 from phenotypic.sdk_ import (
     DIR_RESULTS,
-    DIR_OVERLAYS,
+    dataset_overlays_dir,
     JOB_METADATA_JSON,
     RECOMPILE_TASK_MANIFEST_JSON,
     JobMetadataKey,
@@ -1530,7 +1530,7 @@ def _regenerate_missing_overlays(
     overlay_alpha: float,
     n_jobs: int,
 ) -> None:
-    """Re-render overlay PNGs that are missing under ``results/<ds>/overlays/``.
+    """Re-render overlay PNGs that are missing under ``deliverables/overlays/<ds>/``.
 
     HDF-driven: walks ``results/<ds>/hdf/*.h5`` (the same discovery
     used by measure mode) and, for each HDF whose corresponding
@@ -1592,7 +1592,7 @@ def _regenerate_missing_overlays(
         return
 
     for dataset_name in {ds for ds, _ in work}:
-        (output_dir / DIR_RESULTS / dataset_name / DIR_OVERLAYS).mkdir(
+        dataset_overlays_dir(output_dir, dataset_name).mkdir(
             parents=True, exist_ok=True
         )
 

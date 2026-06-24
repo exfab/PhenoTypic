@@ -58,7 +58,6 @@ from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
     DIR_INSPECT,
     DIR_MEASUREMENTS,
-    DIR_OVERLAYS,
     DIR_PHENOTYPIC,
     DIR_PROGRESS,
     DIR_QC,
@@ -141,7 +140,6 @@ __all__ = [
     "DELIVERABLES_DIRNAME",
     "DIR_INSPECT",
     "DIR_MEASUREMENTS",
-    "DIR_OVERLAYS",
     # Dashboard filename — re-exported from phenotypic.sdk_
     "DASHBOARD_FILENAME",
     # URL constants

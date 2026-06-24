@@ -99,7 +99,8 @@ def _seed_review_output(sandbox: Path) -> Path:
     write_master(out, master)
     write_measurements_mirror(out, master)
 
-    overlays = out / "results" / "ds1" / "overlays"
+    (out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = out / "deliverables" / "overlays" / "ds1"
     overlays.mkdir(parents=True, exist_ok=True)
     for image in _IMAGES:
         stem = Path(image).stem

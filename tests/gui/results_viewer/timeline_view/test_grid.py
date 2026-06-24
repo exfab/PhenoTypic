@@ -107,7 +107,8 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     df = _df()
     write_master(cli_out, df)
     write_measurements_mirror(cli_out, df)
-    overlays = cli_out / "results" / "ds" / "overlays"
+    (cli_out / "results" / "ds" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = cli_out / "deliverables" / "overlays" / "ds"
     overlays.mkdir(parents=True, exist_ok=True)
     for stem in ("a", "b"):
         PILImage.new("RGB", (40, 30), (10, 20, 30)).save(overlays / f"{stem}.png")

@@ -415,3 +415,14 @@ class TestMADOutlierRemover:
         detector_identical = MADOutlierRemover(on="Area", groupby=["ImageName"])
         filtered_identical = detector_identical.analyze(identical)
         assert len(filtered_identical) == len(identical)
+
+
+def test_filter_subpackage_paths():
+    from phenotypic.analysis.filter import MADOutlierRemover, TukeyOutlierRemover
+    from phenotypic.analysis import MADOutlierRemover as PublicMAD
+    import importlib
+    import pytest
+    assert MADOutlierRemover is PublicMAD
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("phenotypic.analysis._mad_outlier")
+    assert TukeyOutlierRemover is not None

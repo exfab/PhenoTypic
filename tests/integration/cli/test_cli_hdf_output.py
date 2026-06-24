@@ -126,7 +126,7 @@ class TestForwardRunHdfLayout:
         dataset_dir = output_dir / "results" / "plates"
         hdf_file = dataset_dir / "hdf" / "plate_001.h5"
         parquet_file = dataset_dir / "measurements" / "plate_001.parquet"
-        overlay_file = dataset_dir / "overlays" / "plate_001.png"
+        overlay_file = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
         assert hdf_file.exists(), (
             f"Expected HDF output at {hdf_file} (got contents: "
@@ -153,10 +153,10 @@ class TestForwardRunHdfLayout:
         # other subdir (e.g. a renamed or new per-layer folder) would regress
         # the layout.
         actual_children = {p.name for p in dataset_dir.iterdir() if p.is_dir()}
-        assert actual_children == {"hdf", "measurements", "overlays"}, (
+        assert actual_children == {"hdf", "measurements"}, (
             f"Unexpected dataset-level folders after forward run. "
-            f"Got {sorted(actual_children)}; expected "
-            f"{{'hdf', 'measurements', 'overlays'}}."
+            f"Got {sorted(actual_children)}; expected {{'hdf', 'measurements'}} "
+            f"(overlays now live under deliverables/overlays/<ds>/)."
         )
 
 
@@ -193,7 +193,7 @@ class TestOverlayAlwaysOn:
         )
 
         overlay_png = (
-            output_dir / "results" / "plates" / "overlays" / "plate_001.png"
+            output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
         )
         assert overlay_png.exists(), (
             f"Expected overlay PNG at {overlay_png} on a default forward run."
@@ -237,7 +237,7 @@ class TestMeasureRerun:
         dataset_dir = output_dir / "results" / "plates"
         hdf_path = dataset_dir / "hdf" / "plate_001.h5"
         parquet_path = dataset_dir / "measurements" / "plate_001.parquet"
-        overlay_path = dataset_dir / "overlays" / "plate_001.png"
+        overlay_path = output_dir / "deliverables" / "overlays" / "plates" / "plate_001.png"
 
         assert hdf_path.exists()
         assert parquet_path.exists()

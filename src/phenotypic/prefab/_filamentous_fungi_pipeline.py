@@ -9,7 +9,7 @@ from phenotypic.detect import FilamentousFungiDetector
 from phenotypic.enhance import FlattenIllumination
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.measure import (
-    MeasureGridSpatial,
+    MeasureNeighborDist,
     MeasureIntensity,
     MeasureShape,
     MeasureTexture,
@@ -33,7 +33,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
            Dijkstra branch reconnection.
 
     Measurements:
-        - ``MeasureGridSpatial`` -- Grid-level spatial statistics.
+        - ``MeasureNeighborDist`` -- Grid-level spatial statistics.
         - ``MeasureShape`` -- Per-colony shape descriptors.
         - ``MeasureIntensity`` -- Per-colony intensity statistics.
         - ``MeasureTexture`` -- Haralick texture features.
@@ -176,7 +176,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
         ]
 
         meas = [
-            MeasureGridSpatial(),
+            MeasureNeighborDist(),
             MeasureShape(),
             MeasureIntensity(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),

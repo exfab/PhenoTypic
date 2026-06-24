@@ -1,7 +1,7 @@
 # Results — trait emergence over time
 
 Once a run is finished, the colony **overlays** under
-`results/<dataset>/overlays/` capture how each plate looked at every timepoint.
+`deliverables/overlays/<dataset>/` capture how each plate looked at every timepoint.
 The **Timeline** tab of the results viewer lays those overlays out as a matrix —
 one row per grouping (e.g. plate number), one column per timepoint — so you can
 watch a trait emerge across a single plate's time-course and compare plates side

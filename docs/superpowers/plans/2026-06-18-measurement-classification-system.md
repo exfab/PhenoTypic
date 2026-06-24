@@ -1,29 +1,54 @@
 # Measurement Classification System Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:
+> subagent-driven-development (recommended) or superpowers:executing-plans to implement
+> this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a queryable tier/kind classification (Direct phenotype / Descriptive trait / Discriminative feature, plus Identity / Quality / Derived) to every `phenotypic.schema` measurement column, via an intermediate-class spine + per-`Entry` overrides, with a CI coverage gate and a user-facing docs page — **without renaming any column**.
+**Goal:** Add a queryable tier/kind classification (Direct phenotype / Descriptive
+trait / Discriminative feature, plus Identity / Quality / Derived) to every
+`phenotypic.schema` measurement column, via an intermediate-class spine + per-`Entry`
+overrides, with a CI coverage gate and a user-facing docs page — **without renaming any
+column**.
 
-**Architecture:** Member-less `MeasurementInfo` subclasses (`DirectPhenotype`, `DescriptiveTrait`, `DiscriminativeFeature`, `IdentityInfo`, `QualityInfo`, `DerivedMeasure`) carry `kind()`/`tier()` classmethods. Tier-uniform enums re-parent to the matching base; the straddlers (`SHAPE`, the three growth-model enums, `EDGE_CORRECTION`) keep their members and tag the minority via new optional `Entry` fields (`tier`, `derivation_type`, `derives_from`). A single `resolved_kind`/`resolved_tier` accessor is the one read path. Enum **values** (header strings) never change, so the operation layer, goldens, and serialization are untouched.
+**Architecture:** Member-less `MeasurementInfo` subclasses (`DirectPhenotype`,
+`DescriptiveTrait`, `DiscriminativeFeature`, `IdentityInfo`, `QualityInfo`,
+`DerivedMeasure`) carry `kind()`/`tier()` classmethods. Tier-uniform enums re-parent to
+the matching base; the straddlers (`SHAPE`, the three growth-model enums,
+`EDGE_CORRECTION`) keep their members and tag the minority via new optional `Entry`
+fields (`tier`, `derivation_type`, `derives_from`). A single `resolved_kind`/
+`resolved_tier` accessor is the one read path. Enum **values** (header strings) never
+change, so the operation layer, goldens, and serialization are untouched.
 
-**Tech Stack:** Python 3, stdlib `enum`/`dataclasses`, pytest, Sphinx (MyST markdown), `uv` runner.
+**Tech Stack:** Python 3, stdlib `enum`/`dataclasses`, pytest, Sphinx (MyST markdown),
+`uv` runner.
 
 ## Global Constraints
 
-- **`uv` is the sole runner.** Tests: `uv run pytest ...`; types: `uv run mypy src/phenotypic`; lint: `uv run ruff check --fix`. Never bare `python`/`pip`.
-- **`schema/` is import-light:** modules import **only** stdlib and the sibling `_measurement_info` / `_tiers` base. No other `phenotypic` imports (preserves the package load-order trick in `phenotypic/__init__.py`).
-- **No column renames.** Enum `.value` (e.g. `Shape_Area`) is invariant. This is the Path 3 invariant — any change that alters a header string is out of scope.
-- **`bio_desc` is human-authored only.** Do not author or auto-fill `bio_desc`. The mechanical tier/kind is fine to auto-assign; biological caveat prose is not.
-- **`derives_from` is a string token** (e.g. `"SIZE"`), never a typed class reference (import-light rule).
+- **`uv` is the sole runner.** Tests: `uv run pytest ...`; types:
+  `uv run mypy src/phenotypic`; lint: `uv run ruff check --fix`. Never bare `python`/
+  `pip`.
+- **`schema/` is import-light:** modules import **only** stdlib and the sibling
+  `_measurement_info` / `_tiers` base. No other `phenotypic` imports (preserves the
+  package load-order trick in `phenotypic/__init__.py`).
+- **No column renames.** Enum `.value` (e.g. `Shape_Area`) is invariant. This is the
+  Path 3 invariant — any change that alters a header string is out of scope.
+- **`bio_desc` is human-authored only.** Do not author or auto-fill `bio_desc`. The
+  mechanical tier/kind is fine to auto-assign; biological caveat prose is not.
+- **`derives_from` is a string token** (e.g. `"SIZE"`), never a typed class reference (
+  import-light rule).
 - **Google-style docstrings** on new public classes/methods.
-- **One class per file** convention in `schema/`; the intermediate bases are the sole exception (grouped in `_tiers.py`).
-- Spec: `docs/superpowers/specs/measurement-classification-system/2026-06-18-measurement-classification-system-design.md`.
+- **One class per file** convention in `schema/`; the intermediate bases are the sole
+  exception (grouped in `_tiers.py`).
+- Spec:
+  `docs/superpowers/specs/measurement-classification-system/2026-06-18-measurement-classification-system-design.md`.
 
 ---
 
-### Task 1: Foundation — `Entry` fields, base classmethods, resolution, intermediate classes
+### Task 1: Foundation —
+`Entry` fields, base classmethods, resolution, intermediate classes
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/_measurement_info.py`
 - Create: `src/phenotypic/schema/_tiers.py`
 - Modify: `src/phenotypic/schema/__init__.py`
@@ -31,11 +56,21 @@
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Produces:
-  - `Entry(label, desc, *, bio_desc="", image=None, tier=None, derivation_type=None, derives_from=None)` — `tier ∈ {1,2,3,None}`, `derivation_type ∈ {"parameterization","normalization","diagnostic",None}`, `derives_from: str | None`.
-  - On `MeasurementInfo`: classmethods `kind() -> str | None` (default `None`), `tier() -> int | None` (default `None`); instance attrs `tier_override`, `derivation_type`, `derives_from`; properties `resolved_kind -> str` and `resolved_tier -> int | None` (raise `ValueError` for an unclassified member).
-  - In `_tiers.py`: `IdentityInfo`, `QualityInfo`, `PrimaryMeasure`, `DirectPhenotype` (tier 1), `DescriptiveTrait` (tier 2), `DiscriminativeFeature` (tier 3), `DerivedMeasure` — all member-less.
-  - Valid kinds: `"identity" | "quality" | "primary" | "derived"`.
+    -
+    `Entry(label, desc, *, bio_desc="", image=None, tier=None, derivation_type=None, derives_from=None)` —
+    `tier ∈ {1,2,3,None}`,
+    `derivation_type ∈ {"parameterization","normalization","diagnostic",None}`,
+    `derives_from: str | None`.
+    - On `MeasurementInfo`: classmethods `kind() -> str | None` (default `None`),
+      `tier() -> int | None` (default `None`); instance attrs `tier_override`,
+      `derivation_type`, `derives_from`; properties `resolved_kind -> str` and
+      `resolved_tier -> int | None` (raise `ValueError` for an unclassified member).
+    - In `_tiers.py`: `IdentityInfo`, `QualityInfo`, `PrimaryMeasure`,
+      `DirectPhenotype` (tier 1), `DescriptiveTrait` (tier 2), `DiscriminativeFeature` (
+      tier 3), `DerivedMeasure` — all member-less.
+    - Valid kinds: `"identity" | "quality" | "primary" | "derived"`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -102,7 +137,8 @@ def test_entry_validates_tier_and_derivation_type():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/schema/test_classification.py -q`
-Expected: FAIL — `ImportError`/`AttributeError` (`_tiers` missing, `resolved_tier` undefined).
+Expected: FAIL — `ImportError`/`AttributeError` (`_tiers` missing, `resolved_tier`
+undefined).
 
 - [ ] **Step 3: Extend `Entry` and `MeasurementInfo` in `_measurement_info.py`**
 
@@ -139,7 +175,8 @@ Extend `Entry.__post_init__` with validation (append to the existing body):
             raise TypeError("Entry.derives_from must be a string token or None")
 ```
 
-In `MeasurementInfo`, add the bare annotations (next to the existing `label`/`desc`/...):
+In `MeasurementInfo`, add the bare annotations (next to the existing `label`/
+`desc`/...):
 
 ```python
     tier_override: int | None
@@ -302,7 +339,9 @@ And add those seven names to `__all__` (after `"MeasurementInfo",`).
 
 - [ ] **Step 6: Guard `_measurement_descriptions()` against member-less classes**
 
-In `src/phenotypic/util/_measurement_outputs.py`, inside the `for name in getattr(schema, "__all__", ()):` loop of `_measurement_descriptions`, after the `if not _is_info_class(obj): continue` line add:
+In `src/phenotypic/util/_measurement_outputs.py`, inside the
+`for name in getattr(schema, "__all__", ()):` loop of `_measurement_descriptions`, after
+the `if not _is_info_class(obj): continue` line add:
 
 ```python
         if not list(obj):  # member-less classification bases contribute no columns
@@ -316,7 +355,8 @@ Expected: PASS (all 7 tests).
 
 - [ ] **Step 8: Type-check and lint**
 
-Run: `uv run mypy src/phenotypic/schema && uv run ruff check --fix src/phenotypic/schema`
+Run:
+`uv run mypy src/phenotypic/schema && uv run ruff check --fix src/phenotypic/schema`
 Expected: no errors.
 
 - [ ] **Step 9: Commit**
@@ -333,10 +373,14 @@ git commit -m "feat(schema): add measurement classification foundation (tiers + 
 ### Task 2: Re-parent Identity enums
 
 **Files:**
-- Modify: `src/phenotypic/schema/_metadata.py`, `_bbox.py`, `_object.py`, `_grid.py`, and the seven `_experimental_tags/*.py` (`_genetic.py`, `_sample.py`, `_plate.py`, `_condition.py`, `_incubation.py`, `_acquisition.py`, `_experiment.py`)
+
+- Modify: `src/phenotypic/schema/_metadata.py`, `_bbox.py`, `_object.py`, `_grid.py`,
+  and the seven `_experimental_tags/*.py` (`_genetic.py`, `_sample.py`, `_plate.py`,
+  `_condition.py`, `_incubation.py`, `_acquisition.py`, `_experiment.py`)
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `IdentityInfo` (Task 1).
 
 - [ ] **Step 1: Write the failing test** (append to `test_classification.py`)
@@ -356,12 +400,14 @@ def test_identity_enums_resolve_identity():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_identity_enums_resolve_identity -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_identity_enums_resolve_identity -q`
 Expected: FAIL — members resolve via base `MeasurementInfo` (kind None → `ValueError`).
 
 - [ ] **Step 3: Re-parent each enum**
 
-In each file, change the import and class declaration. Pattern (shown for `_metadata.py`):
+In each file, change the import and class declaration. Pattern (shown for
+`_metadata.py`):
 
 ```python
 # from: from ._measurement_info import Entry, MeasurementInfo
@@ -371,11 +417,16 @@ from ._tiers import IdentityInfo
 class METADATA(IdentityInfo):
 ```
 
-Apply the identical swap (`MeasurementInfo` → `IdentityInfo`) to: `BBOX` (`_bbox.py`), `OBJECT` (`_object.py`), `GRID` (`_grid.py`), `GENETIC_METADATA`, `SAMPLE_METADATA`, `PLATE_METADATA`, `CONDITION_METADATA`, `INCUBATION_METADATA`, `ACQUISITION_METADATA`, `EXPERIMENT_METADATA`. If a file still references `MeasurementInfo` elsewhere, keep that import; otherwise drop it.
+Apply the identical swap (`MeasurementInfo` → `IdentityInfo`) to: `BBOX` (`_bbox.py`),
+`OBJECT` (`_object.py`), `GRID` (`_grid.py`), `GENETIC_METADATA`, `SAMPLE_METADATA`,
+`PLATE_METADATA`, `CONDITION_METADATA`, `INCUBATION_METADATA`, `ACQUISITION_METADATA`,
+`EXPERIMENT_METADATA`. If a file still references `MeasurementInfo` elsewhere, keep that
+import; otherwise drop it.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_identity_enums_resolve_identity -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_identity_enums_resolve_identity -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -392,10 +443,15 @@ git commit -m "feat(schema): classify identity/metadata columns"
 ### Task 3: Re-parent Quality enums
 
 **Files:**
-- Modify: `src/phenotypic/schema/_quality_check.py`, `_quality_count.py`, `_quality_icc.py`, `_quality_mad.py`, `_quality_se.py`, `_quality_tukey.py`, `_quality_zmax.py`, `_curation.py`, `_error_category.py`, `_model_metrics.py`, `_grid_linreg_stats.py`, `_grid_spatial.py`, `_grid_spread.py`
+
+- Modify: `src/phenotypic/schema/_quality_check.py`, `_quality_count.py`,
+  `_quality_icc.py`, `_quality_mad.py`, `_quality_se.py`, `_quality_tukey.py`,
+  `_quality_zmax.py`, `_curation.py`, `_error_category.py`, `_model_metrics.py`,
+  `_grid_linreg_stats.py`, `_grid_spatial.py`, `_grid_spread.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `QualityInfo` (Task 1).
 
 - [ ] **Step 1: Write the failing test** (append)
@@ -405,24 +461,28 @@ def test_quality_enums_resolve_quality():
     from phenotypic.schema import (
         QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
         QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
-        GRID_LINREG_STATS, GRID_SPATIAL, GRID_SPREAD,
+        GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD,
     )
+
     for enum in (QUALITY_CHECK, QUALITY_COUNT, QUALITY_ICC, QUALITY_MAD, QUALITY_SE,
                  QUALITY_TUKEY, QUALITY_ZMAX, CURATION, ErrorCategory, MODEL_METRICS,
-                 GRID_LINREG_STATS, GRID_SPATIAL, GRID_SPREAD):
+                 GRID_LINREG_STATS, NEIGHBOR_DIST, GRID_SPREAD):
         assert all(m.resolved_kind == "quality" for m in enum), enum.__name__
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_quality_enums_resolve_quality -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_quality_enums_resolve_quality -q`
 Expected: FAIL.
 
-- [ ] **Step 3: Re-parent each enum** — swap `MeasurementInfo` → `QualityInfo` (import + class line) in all 13 files, same pattern as Task 2 Step 3.
+- [ ] **Step 3: Re-parent each enum** — swap `MeasurementInfo` → `QualityInfo` (import +
+  class line) in all 13 files, same pattern as Task 2 Step 3.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_quality_enums_resolve_quality -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_quality_enums_resolve_quality -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -430,7 +490,7 @@ Expected: PASS.
 ```bash
 git add src/phenotypic/schema/_quality_*.py src/phenotypic/schema/_curation.py \
         src/phenotypic/schema/_error_category.py src/phenotypic/schema/_model_metrics.py \
-        src/phenotypic/schema/_grid_linreg_stats.py src/phenotypic/schema/_grid_spatial.py \
+        src/phenotypic/schema/_grid_linreg_stats.py src/phenotypic/schema/_neighbor_dist.py \
         src/phenotypic/schema/_grid_spread.py tests/unit/schema/test_classification.py
 git commit -m "feat(schema): classify quality/QC and grid-diagnostic columns"
 ```
@@ -440,10 +500,12 @@ git commit -m "feat(schema): classify quality/QC and grid-diagnostic columns"
 ### Task 4: Re-parent Tier-1 primary enums (`SIZE`, `INTENSITY`)
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/_size.py`, `_intensity.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `DirectPhenotype` (Task 1).
 
 - [ ] **Step 1: Write the failing test** (append)
@@ -458,14 +520,17 @@ def test_tier1_primary_enums():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier1_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier1_primary_enums -q`
 Expected: FAIL.
 
-- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DirectPhenotype` in `_size.py` and `_intensity.py`.
+- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DirectPhenotype` in `_size.py`
+  and `_intensity.py`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier1_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier1_primary_enums -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -478,13 +543,17 @@ git commit -m "feat(schema): classify Tier-1 direct phenotypes (size, intensity)
 
 ---
 
-### Task 5: Re-parent Tier-2 primary enums (`ColorLab`, `ColorHSV`, `RADIAL_EXPANSION`, `SYMMETRIC_ZONES`)
+### Task 5: Re-parent Tier-2 primary enums (`ColorLab`, `ColorHSV`, `RADIAL_EXPANSION`,
+`SYMMETRIC_ZONES`)
 
 **Files:**
-- Modify: `src/phenotypic/schema/_color_lab.py`, `_color_hsv.py`, `_radial_expansion.py`, `_symmetric_zones.py`
+
+- Modify: `src/phenotypic/schema/_color_lab.py`, `_color_hsv.py`,
+  `_radial_expansion.py`, `_symmetric_zones.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `DescriptiveTrait` (Task 1).
 
 - [ ] **Step 1: Write the failing test** (append)
@@ -498,14 +567,17 @@ def test_tier2_primary_enums():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier2_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier2_primary_enums -q`
 Expected: FAIL.
 
-- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DescriptiveTrait` in all four files.
+- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DescriptiveTrait` in all four
+  files.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier2_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier2_primary_enums -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -519,13 +591,17 @@ git commit -m "feat(schema): classify Tier-2 descriptive traits (Lab/HSV color, 
 
 ---
 
-### Task 6: Re-parent Tier-3 primary enums (`TEXTURE`, `ColorXYZ`, `Colorxy`, `ColorComposition`)
+### Task 6: Re-parent Tier-3 primary enums (`TEXTURE`, `ColorXYZ`, `Colorxy`,
+`ColorComposition`)
 
 **Files:**
-- Modify: `src/phenotypic/schema/_texture.py`, `_color_xyz.py`, `_color_xy.py`, `_color_composition.py`
+
+- Modify: `src/phenotypic/schema/_texture.py`, `_color_xyz.py`, `_color_xy.py`,
+  `_color_composition.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `DiscriminativeFeature` (Task 1).
 
 - [ ] **Step 1: Write the failing test** (append)
@@ -539,14 +615,17 @@ def test_tier3_primary_enums():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier3_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier3_primary_enums -q`
 Expected: FAIL.
 
-- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DiscriminativeFeature` in all four files.
+- [ ] **Step 3: Re-parent** — swap `MeasurementInfo` → `DiscriminativeFeature` in all
+  four files.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_tier3_primary_enums -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_tier3_primary_enums -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -563,10 +642,12 @@ git commit -m "feat(schema): classify Tier-3 discriminative features (texture, X
 ### Task 7: Straddler — `SHAPE` (form descriptors Tier 2; size-magnitude members Tier 1)
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/_shape.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `PrimaryMeasure` (Task 1), `Entry(tier=1)`.
 
 - [ ] **Step 1: Write the failing test** (append)
@@ -589,12 +670,19 @@ def test_shape_straddles_tier1_and_tier2():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_shape_straddles_tier1_and_tier2 -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_shape_straddles_tier1_and_tier2 -q`
 Expected: FAIL.
 
-- [ ] **Step 3: Re-parent `SHAPE` to `PrimaryMeasure` and add `tier=1` to the size-magnitude members**
+- [ ] **Step 3: Re-parent `SHAPE` to `PrimaryMeasure` and add `tier=1` to the
+  size-magnitude members**
 
-Change the base: `from ._tiers import PrimaryMeasure` and `class SHAPE(PrimaryMeasure):`. Add `tier=1` (keyword) to the `Entry(...)` of exactly these members, preserving their existing `desc`/`bio_desc`/`image`: `AREA`, `PERIMETER`, `CONVEX_AREA`, `MEDIAN_RADIUS`, `MEAN_RADIUS`, `MAX_RADIUS`, `MIN_FERET_DIAMETER`, `MAX_FERET_DIAMETER`, `MAJOR_AXIS_LENGTH`, `MINOR_AXIS_LENGTH`, `BBOX_AREA`. Example for the first two:
+Change the base: `from ._tiers import PrimaryMeasure` and
+`class SHAPE(PrimaryMeasure):`. Add `tier=1` (keyword) to the `Entry(...)` of exactly
+these members, preserving their existing `desc`/`bio_desc`/`image`: `AREA`, `PERIMETER`,
+`CONVEX_AREA`, `MEDIAN_RADIUS`, `MEAN_RADIUS`, `MAX_RADIUS`, `MIN_FERET_DIAMETER`,
+`MAX_FERET_DIAMETER`, `MAJOR_AXIS_LENGTH`, `MINOR_AXIS_LENGTH`, `BBOX_AREA`. Example for
+the first two:
 
 ```python
     AREA = Entry(
@@ -617,7 +705,10 @@ Change the base: `from ._tiers import PrimaryMeasure` and `class SHAPE(PrimaryMe
     )
 ```
 
-PrimaryMeasure has no class-level `tier()`, so the remaining members (`CIRCULARITY`, `CONVEX_AREA`'s neighbors that are ratios, `ECCENTRICITY`, `SOLIDITY`, `EXTENT`, `COMPACTNESS`, `ORIENTATION`) would resolve as primary-with-no-tier and **raise**. To give them Tier 2, add a class-level default by overriding `tier` on `SHAPE` itself:
+PrimaryMeasure has no class-level `tier()`, so the remaining members (`CIRCULARITY`,
+`CONVEX_AREA`'s neighbors that are ratios, `ECCENTRICITY`, `SOLIDITY`, `EXTENT`,
+`COMPACTNESS`, `ORIENTATION`) would resolve as primary-with-no-tier and **raise**. To
+give them Tier 2, add a class-level default by overriding `tier` on `SHAPE` itself:
 
 ```python
     @classmethod
@@ -631,12 +722,14 @@ PrimaryMeasure has no class-level `tier()`, so the remaining members (`CIRCULARI
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_shape_straddles_tier1_and_tier2 -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_shape_straddles_tier1_and_tier2 -q`
 Expected: PASS.
 
 - [ ] **Step 5: Verify no value changed**
 
-Run: `uv run python -c "from phenotypic.schema import SHAPE; assert SHAPE.AREA.value=='Shape_Area'; print('ok')"`
+Run:
+`uv run python -c "from phenotypic.schema import SHAPE; assert SHAPE.AREA.value=='Shape_Area'; print('ok')"`
 Expected: `ok`.
 
 - [ ] **Step 6: Commit**
@@ -648,14 +741,19 @@ git commit -m "feat(schema): classify SHAPE (size-magnitude Tier 1, form descrip
 
 ---
 
-### Task 8: Derived enums (`LOG_GROWTH_MODEL`, `LINEAR_SOFTPLUS_MODEL`, `DOUBLE_SOFTPLUS_MODEL`, `EDGE_CORRECTION`)
+### Task 8: Derived enums (`LOG_GROWTH_MODEL`, `LINEAR_SOFTPLUS_MODEL`,
+`DOUBLE_SOFTPLUS_MODEL`, `EDGE_CORRECTION`)
 
 **Files:**
-- Modify: `src/phenotypic/schema/_log_growth_model.py`, `_linear_softplus_model.py`, `_double_softplus_model.py`, `_edge_correction.py`
+
+- Modify: `src/phenotypic/schema/_log_growth_model.py`, `_linear_softplus_model.py`,
+  `_double_softplus_model.py`, `_edge_correction.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
-- Consumes: `DerivedMeasure` (Task 1), `Entry(tier=..., derivation_type=..., derives_from=...)`.
+
+- Consumes: `DerivedMeasure` (Task 1),
+  `Entry(tier=..., derivation_type=..., derives_from=...)`.
 
 - [ ] **Step 1: Write the failing test** (append)
 
@@ -691,7 +789,8 @@ def test_derived_growth_models_and_edge_correction():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_derived_growth_models_and_edge_correction -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_derived_growth_models_and_edge_correction -q`
 Expected: FAIL.
 
 - [ ] **Step 3: Edit `_log_growth_model.py`**
@@ -761,7 +860,10 @@ class LINEAR_SOFTPLUS_MODEL(DerivedMeasure):
 
 - [ ] **Step 5: Edit `_double_softplus_model.py`**
 
-Re-parent to `DerivedMeasure`; add `tier=1` to `v`/`s0`/`lam`/`smax`, `tier=2` to `alpha`/`beta`, and `derivation_type="diagnostic"` to `mode` (leave each existing `desc` text intact; add `derivation_type="parameterization", derives_from="SIZE"` to the Tier-1/Tier-2 members). For example:
+Re-parent to `DerivedMeasure`; add `tier=1` to `v`/`s0`/`lam`/`smax`, `tier=2` to
+`alpha`/`beta`, and `derivation_type="diagnostic"` to `mode` (leave each existing `desc`
+text intact; add `derivation_type="parameterization", derives_from="SIZE"` to the
+Tier-1/Tier-2 members). For example:
 
 ```python
     v = Entry("v", "The post-lag phase growth rate.",
@@ -816,7 +918,8 @@ class EDGE_CORRECTION(DerivedMeasure):
 
 - [ ] **Step 7: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_derived_growth_models_and_edge_correction -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_derived_growth_models_and_edge_correction -q`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
@@ -833,10 +936,12 @@ git commit -m "feat(schema): classify derived growth-model + edge-correction col
 ### Task 9: Render Tier/Use column in `rst_table()`
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/_measurement_info.py`
 - Test: `tests/unit/schema/test_classification.py`
 
 **Interfaces:**
+
 - Consumes: `resolved_kind`/`resolved_tier` (Task 1).
 - Produces: a human-readable `use_label` per member used in docs rendering.
 
@@ -854,7 +959,8 @@ def test_rst_table_includes_use_column():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_rst_table_includes_use_column -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_rst_table_includes_use_column -q`
 Expected: FAIL.
 
 - [ ] **Step 3: Add a `use_label` helper and thread it through rendering**
@@ -879,7 +985,8 @@ Add to `MeasurementInfo`:
         return _USE_LABELS.get((tier, kind), "")
 ```
 
-Extend `_render_info_table` to accept a 5-tuple `(name, desc, bio, img, use)` and emit a `Use` column when any `use` is non-empty (mirror the `has_bio` pattern):
+Extend `_render_info_table` to accept a 5-tuple `(name, desc, bio, img, use)` and emit a
+`Use` column when any `use` is non-empty (mirror the `has_bio` pattern):
 
 ```python
 def _render_info_table(
@@ -940,7 +1047,8 @@ Update `rst_table()` to build 5-tuples:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/schema/test_classification.py::test_rst_table_includes_use_column -q`
+Run:
+`uv run pytest tests/unit/schema/test_classification.py::test_rst_table_includes_use_column -q`
 Expected: PASS.
 
 - [ ] **Step 5: Run the full schema suite (catch any rst_table callers)**
@@ -960,9 +1068,11 @@ git commit -m "feat(schema): render Tier/Use column in measurement rst tables"
 ### Task 10: CI coverage gate
 
 **Files:**
+
 - Test: `tests/unit/schema/test_classification_coverage.py`
 
 **Interfaces:**
+
 - Consumes: every exported enum's `resolved_kind`/`resolved_tier` (Tasks 2–8).
 
 - [ ] **Step 1: Write the gate test**
@@ -1016,7 +1126,8 @@ def test_intermediate_bases_have_no_members():
 - [ ] **Step 2: Run the gate**
 
 Run: `uv run pytest tests/unit/schema/test_classification_coverage.py -q`
-Expected: PASS (if a column is unclassified, it lists exactly which — that is the gate working).
+Expected: PASS (if a column is unclassified, it lists exactly which — that is the gate
+working).
 
 - [ ] **Step 3: Run the full schema suite + type check**
 
@@ -1035,12 +1146,16 @@ git commit -m "test(schema): CI gate requiring every measurement column be class
 ### Task 11: User-facing documentation page
 
 **Files:**
+
 - Create: `docs/source/explanation/measurement_classification_system.md`
 - Modify: `docs/source/explanation/index.rst`
-- Modify: `docs/source/explanation/measurement_metrics_biological_meaning.md` (add a cross-link)
+- Modify: `docs/source/explanation/measurement_metrics_biological_meaning.md` (add a
+  cross-link)
 
 **Interfaces:**
-- Consumes: the conceptual framework (spec Sections 2–7) and `use_label` rendering (Task 9).
+
+- Consumes: the conceptual framework (spec Sections 2–7) and `use_label` rendering (Task
+  9).
 
 - [ ] **Step 1: Create the explanation page**
 
@@ -1106,7 +1221,9 @@ every column.
 
 - [ ] **Step 2: Wire it into the toctree**
 
-In `docs/source/explanation/index.rst`, under the `:caption: Measurement & Analysis` toctree, add `measurement_classification_system` as the **first** entry (before `measurement_metrics_biological_meaning`):
+In `docs/source/explanation/index.rst`, under the `:caption: Measurement & Analysis`
+toctree, add `measurement_classification_system` as the **first** entry (before
+`measurement_metrics_biological_meaning`):
 
 ```rst
 .. toctree::
@@ -1122,7 +1239,8 @@ In `docs/source/explanation/index.rst`, under the `:caption: Measurement & Analy
 
 - [ ] **Step 3: Add the reverse cross-link**
 
-At the top of `docs/source/explanation/measurement_metrics_biological_meaning.md`, after the intro paragraph, add:
+At the top of `docs/source/explanation/measurement_metrics_biological_meaning.md`, after
+the intro paragraph, add:
 
 ```markdown
 > For *how to apply* each metric — which to report directly vs. use as a
@@ -1133,7 +1251,8 @@ At the top of `docs/source/explanation/measurement_metrics_biological_meaning.md
 - [ ] **Step 4: Build the docs to verify the page renders and links resolve**
 
 Run: `uv run --group docs sphinx-build -b html -q docs/source docs/_build/html`
-Expected: build succeeds; no warning about `measurement_classification_system` missing from a toctree or broken cross-references.
+Expected: build succeeds; no warning about `measurement_classification_system` missing
+from a toctree or broken cross-references.
 
 - [ ] **Step 5: Commit**
 
@@ -1160,7 +1279,15 @@ git commit -m "docs(explanation): add measurement classification system page"
 
 ## Self-Review notes
 
-- **Spec coverage:** Foundation (Task 1) ↔ §10.1/10.3; re-parenting (Tasks 2–6) ↔ §10.2; straddlers (Tasks 7–8) ↔ §10.2; rst rendering (Task 9) ↔ §10.6 reference annotation; coverage gate (Task 10) ↔ §10.5 + resolved-design-decision #5; docs page (Task 11) ↔ §10.6 conceptual page; non-breaking guards (Task 1 Step 6, Task 7 Step 5) ↔ §10.4.
-- **Straddler note:** all three growth-model enums straddle (kinetics Tier 1, curve-shape Tier 2, `mode`/knobs diagnostic), not just `LOG_GROWTH_MODEL`; Task 8 handles all three.
-- **`EDGE_CORRECTION`** uses `derivation_type="normalization"` → resolves as kind `derived`, tier `None` (deferred to the runtime target); the coverage gate accepts `None` tier for non-primary kinds.
+- **Spec coverage:** Foundation (Task 1) ↔ §10.1/10.3; re-parenting (Tasks 2–6) ↔ §10.2;
+  straddlers (Tasks 7–8) ↔ §10.2; rst rendering (Task 9) ↔ §10.6 reference annotation;
+  coverage gate (Task 10) ↔ §10.5 + resolved-design-decision #5; docs page (Task 11) ↔
+  §10.6 conceptual page; non-breaking guards (Task 1 Step 6, Task 7 Step 5) ↔ §10.4.
+- **Straddler note:** all three growth-model enums straddle (kinetics Tier 1,
+  curve-shape Tier 2, `mode`/knobs diagnostic), not just `LOG_GROWTH_MODEL`; Task 8
+  handles all three.
+- **`EDGE_CORRECTION`** uses `derivation_type="normalization"` → resolves as kind
+  `derived`, tier `None` (deferred to the runtime target); the coverage gate accepts
+  `None` tier for non-primary kinds.
+
 ```

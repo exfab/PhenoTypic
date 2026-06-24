@@ -102,12 +102,12 @@ output_folder/
 |   +-- dashboard.html                # Live processing dashboard
 |   +-- analysis.html                 # Analysis & visualization
 |   +-- processing_report.html        # HTML summary report
+|   +-- overlays/                     # Detection overlay PNGs (per-dataset subfolders, one per input image)
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results
 {dataset_list}
 |       +-- hdf/                      # Processed images as single .h5 per input (layers + metadata + grid state)
 |       +-- measurements/             # Per-image Parquet measurement files
-|       +-- overlays/                 # Detection overlay PNGs (one per input image)
 +-- processing_state.json             # Resume/state tracking
 +-- logs/                             # Execution logs
 |   +-- slurm/                        # SLURM job logs (if applicable)
@@ -123,7 +123,9 @@ Each dataset directory contains the following folders:
 |--------|--------|-------------|
 | `hdf/` | HDF5 | Processed image (layers + metadata + grid state) saved as a single `.h5` per input image, reloadable via `Image.load_hdf5` / `GridImage.load_hdf5`. |
 | `measurements/` | Parquet | Per-object measurements. |
-| `overlays/` | PNG | Detection overlay visualizations (always written for forward runs). |"""
+
+Detection overlay PNGs are written per input image under
+`deliverables/overlays/<dataset>/` (always written for forward runs)."""
 
     def _generate_measurements_section(self) -> str:
         """Generate measurement documentation from pipeline's MeasureFeatures.
@@ -173,7 +175,9 @@ No measurements configured in this pipeline."""
             measurement_infos = self._get_measurement_infoclasses(measurer)
 
             if not measurement_infos:
-                sections.append(f"\n### {meas_name}\n\n*No measurement documentation available.*")
+                sections.append(
+                    f"\n### {meas_name}\n\n*No measurement documentation available.*"
+                )
                 continue
 
             for info_cls in measurement_infos:
@@ -200,21 +204,21 @@ No measurements configured in this pipeline."""
             BBOX,
             GRID_SPREAD,
             GRID_LINREG_STATS,
-            GRID_SPATIAL,
+            NEIGHBOR_DIST,
         )
 
         # Map measurer class names to their MeasurementInfo classes
         measurer_to_info = {
-            "MeasureShape": [SHAPE],
-            "MeasureIntensity": [INTENSITY],
-            "MeasureTexture": [TEXTURE],
-            "MeasureColor": [ColorLab, ColorHSV],
+            "MeasureShape"           : [SHAPE],
+            "MeasureIntensity"       : [INTENSITY],
+            "MeasureTexture"         : [TEXTURE],
+            "MeasureColor"           : [ColorLab, ColorHSV],
             "MeasureColorComposition": [ColorComposition],
-            "MeasureSize": [SIZE],
-            "MeasureBounds": [BBOX],
-            "MeasureGridLinRegStats": [GRID_LINREG_STATS],
-            "MeasureGridSpread": [GRID_SPREAD],
-            "MeasureGridSpatial": [GRID_SPATIAL],
+            "MeasureSize"            : [SIZE],
+            "MeasureBounds"          : [BBOX],
+            "MeasureGridLinRegStats" : [GRID_LINREG_STATS],
+            "MeasureGridSpread"      : [GRID_SPREAD],
+            "MeasureNeighborDist"    : [NEIGHBOR_DIST],
         }
 
         class_name = measurer.__class__.__name__

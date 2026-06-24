@@ -9,7 +9,7 @@ path keeps working.
 See :func:`phenotypic.gui._shared.tiles.crop_overlay` for the full
 contract: it slices a fixed-size, centroid-aligned square crop out of
 the overlay PNG the CLI writes at
-``<root>/results/<dataset>/overlays/<stem>.png``, padding any portion
+``<root>/deliverables/overlays/<dataset>/<stem>.png``, padding any portion
 that spills past the image edge so the result is always exactly
 ``size`` x ``size`` PNG-encoded bytes.
 """

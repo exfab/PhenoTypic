@@ -1194,7 +1194,7 @@ def _build_js(
       document.getElementById('cmd-csv').textContent =
         'wget' + auth + ' ' + base + 'deliverables/measurements.csv';
       document.getElementById('cmd-png').textContent =
-        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'results/';
+        'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + ' -A "*.png"' + auth + ' ' + base + 'deliverables/overlays/';
       document.getElementById('cmd-full').textContent =
         'wget -r -np -nH -e robots=off --cut-dirs=' + cutDirs + auth + ' ' + base;
     }}
@@ -1717,12 +1717,14 @@ def _build_analysis_js(plugins: list, root_prefix: str = "../") -> str:
     }
 
     async function fetchAnalysisData() {
-      const files = ['analysis_stats.json', 'overlay_manifest.json'];
-      const keys = ['stats', 'overlay'];
-      for (let i = 0; i < files.length; i++) {
+      const sources = [
+        { key: 'stats', url: ROOT_PREFIX + 'progress/analysis_stats.json' },
+        { key: 'overlay', url: 'overlays/overlay_manifest.json' },
+      ];
+      for (const src of sources) {
         try {
-          const resp = await fetch(ROOT_PREFIX + 'progress/' + files[i] + '?' + Date.now());
-          if (resp.ok) analysisData[keys[i]] = await resp.json();
+          const resp = await fetch(src.url + '?' + Date.now());
+          if (resp.ok) analysisData[src.key] = await resp.json();
         } catch(e) { /* file not ready yet */ }
       }
     }
