@@ -19,12 +19,12 @@ import polars as pl
 
 from phenotypic.gui._config import (
     DIR_MEASUREMENTS,
-    DIR_OVERLAYS,
     RESULTS_DIRNAME,
     VIEWER_CACHE_DIRNAME,
 )
 from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
 from phenotypic.sdk_ import (
+    dataset_overlays_dir,
     master_measurements_parquet_path,
     measurements_parquet_path,
     resolve_pipeline_config_path,
@@ -92,7 +92,7 @@ class OutputRoot:
         The expected layout is:
 
             <root>/deliverables/master_measurements.parquet
-            <root>/results/<dataset>/overlays/<image_stem>.png
+            <root>/deliverables/overlays/<dataset>/<image_stem>.png
             <root>/deliverables/pipeline.json     # optional
 
         Args:
@@ -104,7 +104,7 @@ class OutputRoot:
         Raises:
             FileNotFoundError: If ``master_measurements.parquet`` is
                 missing, or if the ``results/`` directory is missing
-                or contains no datasets with an ``overlays`` subdir.
+                or contains no dataset directories.
             ValueError: If the master DataFrame lacks either
                 ``Metadata_Dataset`` or ``Metadata_ImageFile``.
         """
@@ -152,9 +152,10 @@ class OutputRoot:
         if not results_dir.is_dir():
             raise FileNotFoundError(
                 f"Expected results directory not found at {results_dir!s}. "
-                "The viewer requires a layout of "
-                "<root>/results/<dataset>/overlays/<image_stem>.png produced "
-                "by `python -m phenotypic`."
+                "The viewer requires a layout with per-image results under "
+                "<root>/results/<dataset>/ and overlays under "
+                "<root>/deliverables/overlays/<dataset>/<image_stem>.png, "
+                "produced by `python -m phenotypic`."
             )
 
         datasets = sorted(
@@ -172,7 +173,7 @@ class OutputRoot:
             clean_master_df, results_dir, datasets
         )
         datasets_with_overlays = [
-            ds for ds in datasets if (results_dir / ds / DIR_OVERLAYS).is_dir()
+            ds for ds in datasets if dataset_overlays_dir(root, ds).is_dir()
         ]
         if datasets_with_overlays:
             logger.info(
@@ -182,8 +183,8 @@ class OutputRoot:
             )
         else:
             logger.warning(
-                "Discovered datasets: %s — none have an overlays/ directory. "
-                "Image picker entries will be disabled. Re-run with "
+                "Discovered datasets: %s — none have a deliverables/overlays/<dataset>/ "
+                "directory. Image picker entries will be disabled. Re-run with "
                 "`--save-overlays` to enable pixel-level viewing.",
                 datasets,
             )
@@ -194,7 +195,7 @@ class OutputRoot:
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         pipeline_summary = _read_pipeline_summary(resolve_pipeline_config_path(root))
-        overlay_index = _scan_overlay_index(results_dir, datasets_with_overlays)
+        overlay_index = _scan_overlay_index(root, datasets_with_overlays)
 
         return cls(
             root=root,
@@ -220,11 +221,11 @@ class OutputRoot:
                 its extension).
 
         Returns:
-            ``<root>/results/<dataset>/overlays/<stem>.png``. The
+            ``<root>/deliverables/overlays/<dataset>/<stem>.png``. The
             returned path is not checked for existence; use
             :meth:`has_overlay` for that.
         """
-        return self.root / RESULTS_DIRNAME / dataset / DIR_OVERLAYS / f"{stem}.png"
+        return dataset_overlays_dir(self.root, dataset) / f"{stem}.png"
 
     def has_overlay(self, dataset: str, stem: str) -> bool:
         """Return ``True`` if the overlay PNG exists on disk.
@@ -396,15 +397,15 @@ def _ensure_required_columns(
 
 
 def _scan_overlay_index(
-    results_dir: Path, datasets_with_overlays: list[str]
+    root: Path, datasets_with_overlays: list[str]
 ) -> frozenset[tuple[str, str]]:
     """Snapshot every ``(dataset, stem)`` whose overlay PNG exists on disk.
 
     Args:
-        results_dir: ``<root>/results``.
-        datasets_with_overlays: Dataset names known to have an
-            ``overlays`` subdirectory; pre-filtered by the discovery
-            scan to avoid an extra ``is_dir`` check.
+        root: The CLI output root directory.
+        datasets_with_overlays: Dataset names known to have a
+            ``deliverables/overlays/<dataset>/`` directory; pre-filtered
+            by the discovery scan to avoid an extra ``is_dir`` check.
 
     Returns:
         Frozen set of ``(dataset, stem)`` tuples; the stem is the PNG
@@ -412,8 +413,7 @@ def _scan_overlay_index(
     """
     pairs: set[tuple[str, str]] = set()
     for dataset in datasets_with_overlays:
-        overlays_dir = results_dir / dataset / DIR_OVERLAYS
-        for entry in overlays_dir.iterdir():
+        for entry in dataset_overlays_dir(root, dataset).iterdir():
             if entry.suffix.lower() == ".png" and entry.is_file():
                 pairs.add((dataset, entry.stem))
     return frozenset(pairs)

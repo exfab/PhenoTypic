@@ -162,15 +162,16 @@ def _ids_in(component) -> set:
 
 
 def _make_output(tmp_path: Path) -> OutputRoot:
-    (tmp_path / "results" / "d1" / "overlays").mkdir(parents=True)
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"], "Size_Area": [1.0]}
     )
     target = master_measurements_parquet_path(tmp_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     df.write_parquet(target)
-    (tmp_path / "results" / "d1" / "overlays" / "a.png").touch()
+    (overlay_dir / "a.png").touch()
     return OutputRoot.discover(tmp_path)
 
 

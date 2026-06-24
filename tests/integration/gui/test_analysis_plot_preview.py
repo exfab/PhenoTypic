@@ -23,7 +23,7 @@ import pytest
 from dash import dcc, html
 
 from phenotypic import ImagePipeline
-from phenotypic.analysis import EdgeCorrector, LogGrowthModel
+from phenotypic.analysis import EdgeCorrector, LogGrowthModel, TukeyOutlierRemover
 from phenotypic.gui.analysis import _ids as ids
 from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.analysis._callbacks import _resolve_preview_node
@@ -78,10 +78,9 @@ def output_root(tmp_path: Path) -> OutputRoot:
 
     pipeline = ImagePipeline(name="t")
     pipeline.set_filters({
-        "edge": EdgeCorrector(
+        "tukey": TukeyOutlierRemover(
             on="Shape_Area",
             groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
         )
     })
     pipeline.set_model(
@@ -179,10 +178,10 @@ class TestPreviewFlow:
         pipeline.set_model(model)
         recipe = self._recipe_with(pipeline)
 
-        assert _resolve_preview_node(recipe, "filter", 0) is edge
+        assert _resolve_preview_node(recipe, "edge", 0) is edge
         assert _resolve_preview_node(recipe, "model", 0) is model
         # Out-of-range / unknown kinds resolve to None.
-        assert _resolve_preview_node(recipe, "filter", 9) is None
+        assert _resolve_preview_node(recipe, "edge", 9) is None
         assert _resolve_preview_node(recipe, "post", 0) is None
 
     def test_model_preview_renders_a_plot(

@@ -48,7 +48,7 @@ def test_write_authored_setup_spec_uses_path_backed_qc_scorer(tmp_path: Path):
     reloaded = TuningSpec.model_validate_json(written.read_text(encoding="utf-8"))
     assert isinstance(reloaded.scorer, QCScorer)
     assert reloaded.scorer.availability() is True
-    assert reloaded.scorer.check.metadata_source == str(metadata_path)
+    assert reloaded.scorer.check.metadata == str(metadata_path)
     assert reloaded.search_space.knobs
 
 

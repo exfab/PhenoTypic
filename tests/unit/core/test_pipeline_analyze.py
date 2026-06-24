@@ -13,7 +13,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import (
     EdgeCorrector,
-    LinearSoftplus,
+    LinearLagModel,
     LogGrowthModel,
     TukeyOutlierRemover,
 )
@@ -228,7 +228,7 @@ class TestJSONRoundTrip:
         # and stores it as ``self.n_jobs``, so JSON written today carries
         # the ``n_jobs`` key and round-trips without consulting the alias
         # map.
-        model = LinearSoftplus(
+        model = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
@@ -237,7 +237,7 @@ class TestJSONRoundTrip:
         pipe = ImagePipeline(model=model)
         loaded = ImagePipeline.from_json(pipe.to_json())
         loaded_model = loaded.get_model()
-        assert isinstance(loaded_model, LinearSoftplus)
+        assert isinstance(loaded_model, LinearLagModel)
         assert loaded_model.n_jobs == 2
 
     def test_legacy_num_workers_json_loads_as_n_jobs(self):
@@ -245,7 +245,7 @@ class TestJSONRoundTrip:
         # ``n_jobs`` rename used ``num_workers`` as the param key.
         # ``_ANALYZER_INIT_ALIASES`` must translate it to ``n_jobs`` so
         # such payloads still load.
-        seed_model = LinearSoftplus(
+        seed_model = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
@@ -261,5 +261,5 @@ class TestJSONRoundTrip:
 
         loaded = ImagePipeline.from_json(json.dumps(payload))
         loaded_model = loaded.get_model()
-        assert isinstance(loaded_model, LinearSoftplus)
+        assert isinstance(loaded_model, LinearLagModel)
         assert loaded_model.n_jobs == 3

@@ -135,11 +135,12 @@ class QcRecipeEntry:
         The ``params`` are **canonicalized through the check's own pydantic
         ``model_dump(mode="json")``** whenever the entry can be instantiated.
         This guarantees the persisted params are exactly the check's
-        JSON-serializable surface — most importantly it converts an
-        :class:`ExpectedVsDetectedCount` ``metadata`` *path* into the
-        serializable ``metadata_source`` field and drops the (non-JSON)
-        resolved frame, rather than echoing whatever raw kwargs the caller
-        happened to pass. When the entry cannot be built (bad params), the
+        JSON-serializable surface — most importantly it persists an
+        :class:`ExpectedVsDetectedCount` ``metadata`` *path* under the
+        ``metadata`` key (a resolved in-memory frame serializes to ``None``,
+        i.e. it cannot round-trip), rather than echoing whatever raw kwargs
+        the caller happened to pass. When the entry cannot be built (bad
+        params), the
         raw :attr:`params` are emitted verbatim so a misconfigured-but-saved
         check still round-trips its config rather than vanishing.
 
@@ -234,8 +235,8 @@ class QcRecipeLoadWarning:
     * **Construction failures** (:meth:`QcRecipe.instantiate`): the class
       resolved but its constructor raised (e.g. bad metadata path,
       ``KeyError`` on a missing ``groupby`` column, or an
-      ``ExpectedVsDetectedCount`` serialized from an in-memory frame with
-      no ``metadata_source`` to re-read).
+      ``ExpectedVsDetectedCount`` serialized from an in-memory frame whose
+      ``metadata`` round-tripped as ``None`` and cannot be re-read).
     * **Whole-file corruption** (:meth:`QcRecipe.load`): the JSON itself is
       malformed. The synthetic ``instance_id="__file__"`` distinguishes
       this from per-entry failures.

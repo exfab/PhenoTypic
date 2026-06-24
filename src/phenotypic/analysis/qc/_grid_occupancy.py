@@ -23,13 +23,13 @@ class GridOccupancy(ExpectedVsDetectedCount):
     """Flag groups whose grid occupancy (filled cells / expected) is low.
 
     Inherits the entire metadata-form surface of
-    :class:`ExpectedVsDetectedCount` — the ``metadata`` (DataFrame or
-    ``.csv``/``.parquet`` path) and ``metadata_source`` fields, their
-    path-or-frame coercion, the ``pipeline.json`` serialization round-trip
-    (the *source path* persists and the frame re-reads on load), and the
-    per-key expected-count precompute. The expected cell count for a group
-    is the number of metadata rows for that ``groupby`` key (one row per
-    expected pin position).
+    :class:`ExpectedVsDetectedCount` — the single ``metadata`` field
+    (an in-memory DataFrame *or* a ``.csv``/``.parquet`` path), its
+    store-verbatim coercion, the ``pipeline.json`` serialization round-trip
+    (the *source path* persists under the ``metadata`` key and the frame
+    re-reads on load), and the per-key expected-count precompute. The
+    expected cell count for a group is the number of metadata rows for that
+    ``groupby`` key (one row per expected pin position).
 
     Where the parent counts ``len(group)`` (raw detections, doublets
     included), this check counts ``group[cell_label].nunique()`` distinct
@@ -57,11 +57,11 @@ class GridOccupancy(ExpectedVsDetectedCount):
     a genuinely empty plate.
 
     Args:
-        metadata: Layout frame (or path) whose row count per ``groupby``
-            key is the expected cell count. Same semantics, coercion, and
-            serialization as :class:`ExpectedVsDetectedCount`.
-        metadata_source: JSON-serializable path handle to the layout,
-            captured automatically when ``metadata`` is given as a path.
+        metadata: Layout (in-memory DataFrame or ``.csv``/``.parquet``
+            path) whose row count per ``groupby`` key is the expected cell
+            count. Same semantics, coercion, and serialization as
+            :class:`ExpectedVsDetectedCount` (the path form round-trips
+            through JSON).
         groupby: Columns that define one plate. Usually
             ``["Metadata_ImageFile"]``. Must be present in both the
             metadata frame and the measurement frame.
@@ -79,11 +79,11 @@ class GridOccupancy(ExpectedVsDetectedCount):
         KeyError: If ``cell_label`` is absent from the measurement frame, or
             (inherited) if any ``groupby`` column is absent from the
             metadata frame.
-        FileNotFoundError: (inherited) If ``metadata``/``metadata_source``
-            is a path that does not exist.
+        FileNotFoundError: (inherited) If ``metadata`` is a path that does
+            not exist.
         ValueError: (inherited) If ``metadata`` is a path with an
-            unsupported suffix, or if neither ``metadata`` nor
-            ``metadata_source`` is supplied.
+            unsupported suffix, or if it is ``None`` (a check serialized
+            from an in-memory frame, which cannot round-trip).
 
     Examples:
         Basic — 96-cell metadata vs. a measurement frame with 92 colonies

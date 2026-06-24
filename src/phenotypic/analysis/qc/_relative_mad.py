@@ -23,7 +23,7 @@ from typing import ClassVar
 import numpy as np
 import pandas as pd
 
-from phenotypic.analysis._qc_math import median_abs_deviation
+from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.schema import QUALITY_MAD
 from phenotypic.sdk_ import ColumnRef

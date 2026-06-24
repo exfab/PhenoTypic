@@ -87,9 +87,10 @@ class QCScorer(Scorer):
 
     Args:
         check: A configured count check. **Configure it from a metadata path**
-            (``metadata="layout.csv"``) so ``metadata_source`` persists and the
-            scorer round-trips through ``tuning_spec.json``; a check built from
-            an in-memory frame cannot be rebuilt from JSON.
+            (``metadata="layout.csv"``) so the layout path persists under the
+            check's ``metadata`` field and the scorer round-trips through
+            ``tuning_spec.json``; a check built from an in-memory frame cannot
+            be rebuilt from JSON.
 
     Examples:
         >>> import pandas as pd
@@ -119,8 +120,12 @@ class QCScorer(Scorer):
     check: ExpectedVsDetectedCount
 
     def availability(self) -> bool:
-        """``True`` when the check resolved a non-empty layout frame."""
-        return not self.check.metadata.empty
+        """``True`` when the check resolved a non-empty layout frame.
+
+        Reads the check's *resolved* layout frame (``_metadata``) rather
+        than the raw ``metadata`` field, which may hold a path string.
+        """
+        return not self.check._metadata.empty
 
     def _score_terms(
         self, image: Any, measurements: pd.DataFrame

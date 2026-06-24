@@ -27,7 +27,7 @@ def app_client(tmp_path: Path):
 
     Lays out:
       <tmp>/deliverables/master_measurements.parquet  (1 colony in dataset 'd1')
-      <tmp>/results/d1/overlays/img-1.png             (uniform red 100×100 PNG)
+      <tmp>/deliverables/overlays/d1/img-1.png         (uniform red 100×100 PNG)
     """
     # 1. master_measurements.parquet (under deliverables/)
     master = pl.DataFrame(
@@ -46,7 +46,8 @@ def app_client(tmp_path: Path):
     write_master(tmp_path, master)
 
     # 2. overlay PNG
-    overlay_dir = tmp_path / "results" / "d1" / "overlays"
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
         overlay_dir / "img-1.png", format="PNG"

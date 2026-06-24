@@ -52,6 +52,7 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     dataset_overlays_dir,
     dataset_results_dir,
+    overlays_dir,
     default_output_dir_name,
     deliverables_dir,
     event_log_path,
@@ -426,7 +427,11 @@ class TestPathHelpers:
         assert dataset_results_dir(output, "ds1") == output / "results" / "ds1"
         assert dataset_measurements_dir(output, "ds1") == output / "results" / "ds1" / "measurements"
         assert dataset_hdf_dir(output, "ds1") == output / "results" / "ds1" / "hdf"
-        assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
+        assert dataset_overlays_dir(output, "ds1") == output / "deliverables" / "overlays" / "ds1"
+
+    def test_overlays_dir_roots_under_deliverables(self) -> None:
+        output = Path("/tmp/out")
+        assert overlays_dir(output) == output / "deliverables" / "overlays"
 
     def test_measurements_by_feature_dir(self, output: Path) -> None:
         assert measurements_by_feature_dir(output) == (
@@ -487,7 +492,7 @@ class TestPathHelpers:
         assert failures_jsonl_path(output) == prog / "failures.jsonl"
         assert chunk_manifest_path(output) == prog / "chunk_manifest.json"
         assert chunk_state_path(output) == prog / "chunk_state.json"
-        assert overlay_manifest_path(output) == prog / "overlay_manifest.json"
+        assert overlay_manifest_path(output) == output / "deliverables" / "overlays" / "overlay_manifest.json"
 
 
 # ---------------------------------------------------------------------------
@@ -557,15 +562,16 @@ class TestDeliverablesLayout:
         Neither is a deliverable: ``results/`` is per-image output at the
         output root, and ``processing_state.json`` now lives in the hidden
         machine-state cache ``<output>/.phenotypic/`` — but never under
-        ``deliverables/``.
+        ``deliverables/``.  Overlays have moved to ``deliverables/overlays/``
+        and are tested separately.
         """
         assert results_dir(output) == output / "results"
         assert dataset_measurements_dir(output, "ds1") == (
             output / "results" / "ds1" / "measurements"
         )
-        assert dataset_overlays_dir(output, "ds1") == output / "results" / "ds1" / "overlays"
+        assert dataset_overlays_dir(output, "ds1") == output / "deliverables" / "overlays" / "ds1"
         assert processing_state_path(output) == output / ".phenotypic" / "processing_state.json"
-        # None of these touch the deliverables folder.
+        # Per-image results and machine-state do not touch the deliverables folder.
         deliv = deliverables_dir(output)
         assert deliv not in results_dir(output).parents
         assert deliv not in processing_state_path(output).parents

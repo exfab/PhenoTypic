@@ -11,7 +11,7 @@ from phenotypic.analysis.abc_._linear_softplus_base import (
     _LinearSoftplusBase,
 )
 from phenotypic.schema import (
-    DOUBLE_SOFTPLUS_MODEL,
+    LINEAR_CAP_AND_LAG_MODEL,
     MODEL_METRICS,
 )
 
@@ -19,7 +19,7 @@ _MODE_FIXED_BETA = "fixed_beta"
 _MODE_FITTED_BETA = "fitted_beta"
 
 
-class DoubleSoftplus(_LinearSoftplusBase):
+class LinearCapAndLagModel(_LinearSoftplusBase):
     r"""Linear-softplus growth fitter with a softplus saturation ceiling.
 
     Fits a linear post-lag growth phase with a softplus lag transition
@@ -37,11 +37,11 @@ class DoubleSoftplus(_LinearSoftplusBase):
 
     Use this class when colonies show a clear carrying-capacity plateau
     in the observation window. For pre-saturation linear growth, use
-    :class:`LinearSoftplus` instead.
+    :class:`LinearLagModel` instead.
 
     Per-group mode dispatch:
         The fit picks one of two variants per fit group, recorded in
-        ``DOUBLE_SOFTPLUS_MODEL.mode``:
+        ``LINEAR_CAP_AND_LAG_MODEL.mode``:
 
         - ``"fitted_beta"`` — 5-parameter fit. Triggered when ``beta``
           is ``None`` *and* a saturation shoulder is detected in the
@@ -65,9 +65,9 @@ class DoubleSoftplus(_LinearSoftplusBase):
             Set a positive scalar to force ``"fixed_beta"`` mode
             unconditionally.
         stderr_label (str | None): Column providing per-timepoint standard
-            errors used as weights. Same semantics as :class:`LinearSoftplus`.
+            errors used as weights. Same semantics as :class:`LinearLagModel`.
         s0_prior (bool | float | str | None): Unified Gaussian-prior
-            source for ``s0``. Same dispatch as :class:`LinearSoftplus`.
+            source for ``s0``. Same dispatch as :class:`LinearLagModel`.
         s0_prior_cv (float | None): CV coefficient for the prior σ
             (``σ = cv × µ``). Mutually exclusive with
             ``s0_prior_sigma``. Defaults to ``None``; if neither knob
@@ -103,7 +103,7 @@ class DoubleSoftplus(_LinearSoftplusBase):
           unaffected.
     """
 
-    _measurement_infoclass = DOUBLE_SOFTPLUS_MODEL
+    _measurement_infoclass = LINEAR_CAP_AND_LAG_MODEL
 
     smax: float | None = None
     beta: float | None = None
@@ -360,38 +360,38 @@ class DoubleSoftplus(_LinearSoftplusBase):
             )
 
         return {
-            DOUBLE_SOFTPLUS_MODEL.v    : v,
-            DOUBLE_SOFTPLUS_MODEL.s0   : s0,
-            DOUBLE_SOFTPLUS_MODEL.lam  : lam,
-            DOUBLE_SOFTPLUS_MODEL.alpha: alpha,
-            DOUBLE_SOFTPLUS_MODEL.smax : smax_val,
-            DOUBLE_SOFTPLUS_MODEL.beta : beta_val,
-            DOUBLE_SOFTPLUS_MODEL.mode : mode,
+            LINEAR_CAP_AND_LAG_MODEL.v    : v,
+            LINEAR_CAP_AND_LAG_MODEL.s0   : s0,
+            LINEAR_CAP_AND_LAG_MODEL.lam  : lam,
+            LINEAR_CAP_AND_LAG_MODEL.alpha: alpha,
+            LINEAR_CAP_AND_LAG_MODEL.smax : smax_val,
+            LINEAR_CAP_AND_LAG_MODEL.beta : beta_val,
+            LINEAR_CAP_AND_LAG_MODEL.mode : mode,
         }
 
     def _predict_kwargs(self, row) -> Dict[str, Any]:
-        smax_val = row[DOUBLE_SOFTPLUS_MODEL.smax]
-        beta_val = row[DOUBLE_SOFTPLUS_MODEL.beta]
+        smax_val = row[LINEAR_CAP_AND_LAG_MODEL.smax]
+        beta_val = row[LINEAR_CAP_AND_LAG_MODEL.beta]
         return {
-            "v"    : float(row[DOUBLE_SOFTPLUS_MODEL.v]),
-            "s0"   : float(row[DOUBLE_SOFTPLUS_MODEL.s0]),
-            "lam"  : float(row[DOUBLE_SOFTPLUS_MODEL.lam]),
-            "alpha": float(row[DOUBLE_SOFTPLUS_MODEL.alpha]),
+            "v"    : float(row[LINEAR_CAP_AND_LAG_MODEL.v]),
+            "s0"   : float(row[LINEAR_CAP_AND_LAG_MODEL.s0]),
+            "lam"  : float(row[LINEAR_CAP_AND_LAG_MODEL.lam]),
+            "alpha": float(row[LINEAR_CAP_AND_LAG_MODEL.alpha]),
             "smax" : float(smax_val),
             "beta" : _DEFAULT_BETA if pd.isna(beta_val) else float(beta_val),
         }
 
     def _hover_fields(self) -> List[Tuple[str, Any, str]]:
         return [
-            ("v", DOUBLE_SOFTPLUS_MODEL.v, ".4f"),
-            ("s0", DOUBLE_SOFTPLUS_MODEL.s0, ".3f"),
-            ("lambda", DOUBLE_SOFTPLUS_MODEL.lam, ".3f"),
-            ("alpha", DOUBLE_SOFTPLUS_MODEL.alpha, ".2f"),
-            ("smax", DOUBLE_SOFTPLUS_MODEL.smax, ".3f"),
-            ("beta", DOUBLE_SOFTPLUS_MODEL.beta, ".2f"),
-            ("mode", DOUBLE_SOFTPLUS_MODEL.mode, ""),
+            ("v", LINEAR_CAP_AND_LAG_MODEL.v, ".4f"),
+            ("s0", LINEAR_CAP_AND_LAG_MODEL.s0, ".3f"),
+            ("lambda", LINEAR_CAP_AND_LAG_MODEL.lam, ".3f"),
+            ("alpha", LINEAR_CAP_AND_LAG_MODEL.alpha, ".2f"),
+            ("smax", LINEAR_CAP_AND_LAG_MODEL.smax, ".3f"),
+            ("beta", LINEAR_CAP_AND_LAG_MODEL.beta, ".2f"),
+            ("mode", LINEAR_CAP_AND_LAG_MODEL.mode, ""),
             ("RMSE", MODEL_METRICS.RMSE, ".4f"),
         ]
 
 
-DoubleSoftplus.__doc__ = DOUBLE_SOFTPLUS_MODEL.append_rst_to_doc(DoubleSoftplus)
+LinearCapAndLagModel.__doc__ = LINEAR_CAP_AND_LAG_MODEL.append_rst_to_doc(LinearCapAndLagModel)

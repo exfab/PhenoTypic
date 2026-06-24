@@ -51,7 +51,7 @@ class MeasureBounds(MeasureFeatures):
           top of bounding box data.
         - :class:`MeasureGridLinRegStats` for regression-based grid
           alignment quality using centroid positions.
-        - :class:`MeasureGridSpatial` for neighbor distance calculations
+        - :class:`MeasureNeighborDist` for neighbor distance calculations
           using bounding boxes.
 
     See Also:
@@ -108,7 +108,7 @@ class MeasureBounds(MeasureFeatures):
             nbr_max = ndi.maximum_filter(objmap, size=3)
             nbr_min_nz = ndi.minimum_filter(masked_for_min, size=3)
             inter_boundary = nonzero & (
-                (nbr_max > objmap) | (nbr_min_nz < objmap)
+                    (nbr_max > objmap) | (nbr_min_nz < objmap)
             )
 
             binary = nonzero & ~inter_boundary
@@ -119,7 +119,7 @@ class MeasureBounds(MeasureFeatures):
             # (low DT weight) AND budding doublets (two lobes balance to the neck),
             # replacing the former DT-argmax which snapped onto a single lobe.
             positions = np.asarray(
-                ndi.center_of_mass(dt, labels=objmap, index=labels), dtype=float
+                    ndi.center_of_mass(dt, labels=objmap, index=labels), dtype=float
             )
             # Degenerate guard: objects whose pixels were all zeroed as inter-object
             # boundary have zero DT mass -> center_of_mass returns NaN. Fall back to
@@ -127,13 +127,14 @@ class MeasureBounds(MeasureFeatures):
             nan_rows = np.isnan(positions).any(axis=1)
             if nan_rows.any():
                 geom = np.asarray(
-                    ndi.center_of_mass(nonzero.astype(float), labels=objmap, index=labels),
-                    dtype=float,
+                        ndi.center_of_mass(nonzero.astype(float), labels=objmap,
+                                           index=labels),
+                        dtype=float,
                 )
                 positions[nan_rows] = geom[nan_rows]
 
             dist_df = pd.DataFrame({
-                OBJECT.LABEL                      : labels,
+                OBJECT.LABEL                     : labels,
                 str(BBOX.DIST_WEIGHTED_CENTER_RR): positions[:, 0],
                 str(BBOX.DIST_WEIGHTED_CENTER_CC): positions[:, 1],
             })

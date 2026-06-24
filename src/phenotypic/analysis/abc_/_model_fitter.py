@@ -146,7 +146,7 @@ class ModelFitter(SetAnalyzer, ABC):
         model (e.g. ``r``, ``K``, ``N0``, ``µmax`` for log-growth). May also
         include per-group bounds that should be preserved in results
         (e.g. ``K_max``), or string-valued diagnostic fields (e.g. the
-        per-group fit mode emitted by :class:`DoubleSoftplus`).
+        per-group fit mode emitted by :class:`LinearCapAndLagModel`).
         """
         pass
 
@@ -364,7 +364,7 @@ class ModelFitter(SetAnalyzer, ABC):
 
         Samples ``[0, upper]`` with ``2 * upper`` points (floor 2) so
         that sharp model transitions (e.g. the softplus lag/saturation
-        in :class:`DoubleSoftplus`) render smoothly rather than as
+        in :class:`LinearCapAndLagModel`) render smoothly rather than as
         a polyline sampled at the observed timepoints.
         """
         upper = float(timepoints.max() if tmax is None else tmax)

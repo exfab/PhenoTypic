@@ -7,12 +7,12 @@ import pandas as pd
 
 from phenotypic.analysis.abc_._linear_softplus_base import _LinearSoftplusBase
 from phenotypic.schema import (
-    LINEAR_SOFTPLUS_MODEL,
+    LINEAR_LAG_MODEL,
     MODEL_METRICS,
 )
 
 
-class LinearSoftplus(_LinearSoftplusBase):
+class LinearLagModel(_LinearSoftplusBase):
     r"""Linear-with-softplus lag-phase growth fitter (no saturation).
 
     Fits a 4-parameter linear post-lag growth model with a softplus lag
@@ -25,7 +25,7 @@ class LinearSoftplus(_LinearSoftplusBase):
     Use this class when colonies are still in the linear-growth regime
     or when you want the saturation tail discarded as observation noise.
     For data with a clear carrying-capacity plateau, use
-    :class:`DoubleSoftplus` instead.
+    :class:`LinearCapAndLagModel` instead.
 
     Pruning is ON by default — post-saturation timepoints are dropped
     from the fit so the linear regime is recovered cleanly. Disable with
@@ -96,7 +96,7 @@ class LinearSoftplus(_LinearSoftplusBase):
           unaffected.
     """
 
-    _measurement_infoclass = LINEAR_SOFTPLUS_MODEL
+    _measurement_infoclass = LINEAR_LAG_MODEL
 
     _PRUNE_SLOPE_RATIO: ClassVar[float] = 0.05
     """Fraction of peak ``ds/dt`` below which a tail point counts as
@@ -257,28 +257,28 @@ class LinearSoftplus(_LinearSoftplusBase):
     ) -> Dict[Any, Any]:
         v, s0, lam, alpha = (float(x[i]) for i in range(4))
         return {
-            LINEAR_SOFTPLUS_MODEL.v    : v,
-            LINEAR_SOFTPLUS_MODEL.s0   : s0,
-            LINEAR_SOFTPLUS_MODEL.lam  : lam,
-            LINEAR_SOFTPLUS_MODEL.alpha: alpha,
+            LINEAR_LAG_MODEL.v    : v,
+            LINEAR_LAG_MODEL.s0   : s0,
+            LINEAR_LAG_MODEL.lam  : lam,
+            LINEAR_LAG_MODEL.alpha: alpha,
         }
 
     def _predict_kwargs(self, row) -> Dict[str, Any]:
         return {
-            "v"    : float(row[LINEAR_SOFTPLUS_MODEL.v]),
-            "s0"   : float(row[LINEAR_SOFTPLUS_MODEL.s0]),
-            "lam"  : float(row[LINEAR_SOFTPLUS_MODEL.lam]),
-            "alpha": float(row[LINEAR_SOFTPLUS_MODEL.alpha]),
+            "v"    : float(row[LINEAR_LAG_MODEL.v]),
+            "s0"   : float(row[LINEAR_LAG_MODEL.s0]),
+            "lam"  : float(row[LINEAR_LAG_MODEL.lam]),
+            "alpha": float(row[LINEAR_LAG_MODEL.alpha]),
         }
 
     def _hover_fields(self) -> List[Tuple[str, Any, str]]:
         return [
-            ("v", LINEAR_SOFTPLUS_MODEL.v, ".4f"),
-            ("s0", LINEAR_SOFTPLUS_MODEL.s0, ".3f"),
-            ("lambda", LINEAR_SOFTPLUS_MODEL.lam, ".3f"),
-            ("alpha", LINEAR_SOFTPLUS_MODEL.alpha, ".2f"),
+            ("v", LINEAR_LAG_MODEL.v, ".4f"),
+            ("s0", LINEAR_LAG_MODEL.s0, ".3f"),
+            ("lambda", LINEAR_LAG_MODEL.lam, ".3f"),
+            ("alpha", LINEAR_LAG_MODEL.alpha, ".2f"),
             ("RMSE", MODEL_METRICS.RMSE, ".4f"),
         ]
 
 
-LinearSoftplus.__doc__ = LINEAR_SOFTPLUS_MODEL.append_rst_to_doc(LinearSoftplus)
+LinearLagModel.__doc__ = LINEAR_LAG_MODEL.append_rst_to_doc(LinearLagModel)

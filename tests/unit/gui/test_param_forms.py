@@ -15,6 +15,7 @@ import pytest
 from phenotypic.gui._param_forms import (
     _is_multi_union,
     _multi_union_branches,
+    _opaque_str_union,
     _unwrap_optional,
     _widget_for_param,
     param_form,
@@ -73,6 +74,34 @@ class TestMultiUnion:
     def test_branches_strip_none(self):
         branches = _multi_union_branches(bool | float | int | str | None)
         assert set(branches) == {bool, float, int, str}
+
+
+class TestOpaqueStrUnion:
+    """``<opaque class> | str`` unions render as a plain path text input.
+
+    Regression guard for the QC tab's ``metadata`` field
+    (``pandas.DataFrame | str``): it must NOT render as the multi-type tag
+    widget (which the QC modal's submit callback never collects), or the
+    Save button silently no-ops for Count / Occupancy checks.
+    """
+
+    def test_dataframe_or_str_is_opaque_str_union(self):
+        import pandas as pd
+
+        assert _opaque_str_union(pd.DataFrame | str)
+        assert _opaque_str_union(pd.DataFrame | str | None)
+
+    def test_genuine_multi_primitive_union_is_not_opaque(self):
+        # agg_func-style unions keep the tag widget.
+        from typing import Callable
+
+        assert not _opaque_str_union(bool | float | int | str | None)
+        assert not _opaque_str_union(Callable | str | list | dict | None)
+
+    def test_plain_and_optional_str_are_not_opaque(self):
+        assert not _opaque_str_union(str)
+        assert not _opaque_str_union(str | None)
+        assert not _opaque_str_union(int | str)
 
 
 class TestParseWidgetValue:
@@ -167,6 +196,16 @@ class TestWidgetForParam:
         assert "param-multi-tag" in types
         assert "param-multi-value" in types
 
+    def test_dataframe_or_str_renders_text_input(self):
+        # ``metadata: pandas.DataFrame | str`` must render as a single
+        # ``param-str`` text box (a path), not the multi-type tag widget —
+        # the QC modal submit only collects ``param-str``.
+        import pandas as pd
+
+        p = _StubParamInfo("metadata", pd.DataFrame | str, has_default=False)
+        widget = _widget_for_param(p, current_value=None, form_id_prefix="t")
+        assert widget.id["type"] == "param-str"
+
     def test_picker_factory_called_when_param_matches(self):
         called = {}
 
@@ -214,7 +253,7 @@ class TestParamFormViaRegistry:
     def test_edge_corrector_registered(self, registry):
         info = registry.get("EdgeCorrector")
         assert info is not None
-        assert info.category == "Filter"
+        assert info.category == "Edge Correction"
         assert "on" in info.parameters
         assert "groupby" in info.parameters
 
@@ -233,7 +272,7 @@ class TestParamFormViaRegistry:
         a bad value rather than pydantic raising ``ValidationError`` — so
         it is no longer a multi-union.
         """
-        info = registry.get("LinearSoftplus")
+        info = registry.get("LinearLagModel")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None
@@ -242,7 +281,7 @@ class TestParamFormViaRegistry:
     def test_double_softplus_s0_prior_exposed_as_any(self, registry):
         """``s0_prior`` is exposed but intentionally ``Any`` — see
         ``test_linear_softplus_s0_prior_exposed_as_any``."""
-        info = registry.get("DoubleSoftplus")
+        info = registry.get("LinearCapAndLagModel")
         assert info is not None
         sp = info.parameters.get("s0_prior")
         assert sp is not None

@@ -32,7 +32,7 @@ from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
     CHUNK_MANIFEST_JSON,
-    OVERLAY_MANIFEST_JSON,
+    overlay_manifest_path,
     DATASET_AGGREGATED_PARQUET,
     DIR_RESULTS,
     DIR_MEASUREMENTS,
@@ -88,7 +88,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
     new_files = _scan_unchunked_parquets(output_dir / DIR_RESULTS, chunked_files)
     if not new_files:
         logger.info("No new measurement files to chunk")
-        _ensure_overlay_manifest(output_dir, progress_dir)
+        _ensure_overlay_manifest(output_dir)
         return
 
     chunk_df = _read_and_concat(new_files)
@@ -405,23 +405,27 @@ def _write_json(data: dict[str, Any], path: Path) -> None:
         os.fsync(f.fileno())
 
 
-def _ensure_overlay_manifest(output_dir: Path, progress_dir: Path) -> None:
+def _ensure_overlay_manifest(output_dir: Path) -> None:
     """Write overlay_manifest.json if it does not already exist.
 
     Called on the early-return path when no new measurement files were found,
     to ensure the overlay manifest is present even if previous plugin
     runs were skipped or failed.
     """
-    manifest_path = progress_dir / OVERLAY_MANIFEST_JSON
+    manifest_path = overlay_manifest_path(output_dir)
     if manifest_path.exists():
         return
     try:
         from ._dashboard._analysis._prepare_context import AnalysisPrepareContext
         from ._dashboard._analysis._image_viewer import ImageViewerPlugin
 
+        # ImageViewerPlugin.prepare_data writes the manifest under deliverables/
+        # (derived from output_dir) and never reads progress_dir; it remains a
+        # required AnalysisPrepareContext field, so derive it here rather than
+        # threading an unused parameter through this function.
         ctx = AnalysisPrepareContext(
             output_dir=output_dir,
-            progress_dir=progress_dir,
+            progress_dir=progress_dir_helper(output_dir),
             merged_df=None,
         )
         ImageViewerPlugin().prepare_data(ctx)

@@ -9,7 +9,7 @@ import phenotypic
 from phenotypic.schema import (
     ColorHSV,
     ColorLab,
-    LINEAR_SOFTPLUS_MODEL,
+    LINEAR_LAG_MODEL,
     MODEL_METRICS,
     OBJECT,
     SHAPE,
@@ -110,8 +110,8 @@ def test_split_measurements_groups_model_metrics_with_linear_softplus() -> None:
     frame = pd.DataFrame(
         {
             "Metadata_Strain": ["WT", "KO"],
-            str(LINEAR_SOFTPLUS_MODEL.v): [1.1, 1.2],
-            str(LINEAR_SOFTPLUS_MODEL.s0): [0.1, 0.2],
+            str(LINEAR_LAG_MODEL.v): [1.1, 1.2],
+            str(LINEAR_LAG_MODEL.s0): [0.1, 0.2],
             str(MODEL_METRICS.RMSE): [0.01, 0.02],
             str(MODEL_METRICS.R2): [0.99, 0.98],
         }
@@ -119,8 +119,8 @@ def test_split_measurements_groups_model_metrics_with_linear_softplus() -> None:
 
     splits = split_measurements(frame)
 
-    assert set(splits) == {"LinearSoftplus"}
-    assert list(splits["LinearSoftplus"].columns) == list(frame.columns)
+    assert set(splits) == {"LinearLagModel"}
+    assert list(splits["LinearLagModel"].columns) == list(frame.columns)
 
 
 def test_generate_output_key_returns_known_measurement_descriptions() -> None:
@@ -130,7 +130,7 @@ def test_generate_output_key_returns_known_measurement_descriptions() -> None:
             "Custom_Note": ["a"],
             str(OBJECT.LABEL): [1],
             str(SIZE.AREA): [10.0],
-            str(LINEAR_SOFTPLUS_MODEL.v): [1.1],
+            str(LINEAR_LAG_MODEL.v): [1.1],
             str(MODEL_METRICS.RMSE): [0.01],
         }
     )
@@ -141,13 +141,13 @@ def test_generate_output_key_returns_known_measurement_descriptions() -> None:
     assert key["column_header"].tolist() == [
         str(OBJECT.LABEL),
         str(SIZE.AREA),
-        str(LINEAR_SOFTPLUS_MODEL.v),
+        str(LINEAR_LAG_MODEL.v),
         str(MODEL_METRICS.RMSE),
     ]
     descriptions = dict(zip(key["column_header"], key["description"]))
     assert descriptions[str(OBJECT.LABEL)] == OBJECT.LABEL.desc
     assert descriptions[str(SIZE.AREA)] == SIZE.AREA.desc
-    assert descriptions[str(LINEAR_SOFTPLUS_MODEL.v)] == (
-        LINEAR_SOFTPLUS_MODEL.v.desc
+    assert descriptions[str(LINEAR_LAG_MODEL.v)] == (
+        LINEAR_LAG_MODEL.v.desc
     )
     assert descriptions[str(MODEL_METRICS.RMSE)] == MODEL_METRICS.RMSE.desc

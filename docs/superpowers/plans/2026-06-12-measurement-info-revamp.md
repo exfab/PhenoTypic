@@ -1,22 +1,38 @@
 # MeasurementInfo Revamp Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:
+> subagent-driven-development (recommended) or superpowers:executing-plans to implement
+> this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace `MeasurementInfo`'s positional `(label, desc)` member tuples with a strict, universal `Entry(...)` wrapper that keeps `desc` and adds optional keyword-only `bio_desc` + `image`, rendered as conditional Sphinx columns.
+**Goal:** Replace `MeasurementInfo`'s positional `(label, desc)` member tuples with a
+strict, universal `Entry(...)` wrapper that keeps `desc` and adds optional keyword-only
+`bio_desc` + `image`, rendered as conditional Sphinx columns.
 
-**Architecture:** A frozen `Entry` dataclass becomes the sole legal member value (`__new__` rejects everything else once migration completes). The bulk member rewrite is value-preserving and guarded by a golden snapshot; a transient dual-accept `__new__` keeps the suite green during the rewrite, then flips to strict. One conditional-column table renderer is shared by docstrings, the Sphinx generator, and the `QUALITY_CHECK` override. Images live under the packaged `_assets/measurements/` and are copied into the docs `_static` tree at build time, referenced by a source-root-absolute path so they resolve from any embedding.
+**Architecture:** A frozen `Entry` dataclass becomes the sole legal member value (
+`__new__` rejects everything else once migration completes). The bulk member rewrite is
+value-preserving and guarded by a golden snapshot; a transient dual-accept `__new__`
+keeps the suite green during the rewrite, then flips to strict. One conditional-column
+table renderer is shared by docstrings, the Sphinx generator, and the `QUALITY_CHECK`
+override. Images live under the packaged `_assets/measurements/` and are copied into the
+docs `_static` tree at build time, referenced by a source-root-absolute path so they
+resolve from any embedding.
 
-**Tech Stack:** Python 3.12, stdlib `dataclasses`/`enum`, pydantic-free `schema` package, pytest, Sphinx (custom `measurements_ref` extension), setuptools package-data, `uv`.
+**Tech Stack:** Python 3.12, stdlib `dataclasses`/`enum`, pydantic-free `schema`
+package, pytest, Sphinx (custom `measurements_ref` extension), setuptools package-data,
+`uv`.
 
 **Spec:** `docs/superpowers/specs/2026-06-11-measurement-info-revamp-design.md`
 
-**Working tree:** worktree `measurement-info-revamp`, branch `worktree-measurement-info-revamp`. All paths below are relative to the worktree root. Run everything with `uv run`.
+**Working tree:** worktree `measurement-info-revamp`, branch
+`worktree-measurement-info-revamp`. All paths below are relative to the worktree root.
+Run everything with `uv run`.
 
 ---
 
 ## File Structure
 
 **Created:**
+
 - `tests/unit/schema/test_entry.py` — `Entry` construction/validation/strictness.
 - `tests/unit/schema/test_measurement_info_format.py` — universal-format smoke test.
 - `tests/unit/schema/test_measurement_info_golden.py` — value-preserving snapshot test.
@@ -27,14 +43,17 @@
 - `scripts/make_measurement_example_images.py` — regenerates example assets.
 
 **Modified:**
+
 - `CLAUDE.md` — authoring guardrail (Task 0).
-- `src/phenotypic/schema/_measurement_info.py` — `Entry`, `__new__`, attrs, `_render_info_table`, `rst_table` refactor, escaping helpers, `_ASSET_URL_PREFIX`.
+- `src/phenotypic/schema/_measurement_info.py` — `Entry`, `__new__`, attrs,
+  `_render_info_table`, `rst_table` refactor, escaping helpers, `_ASSET_URL_PREFIX`.
 - `src/phenotypic/schema/__init__.py` — export `Entry`.
 - `src/phenotypic/schema/_*.py` (~33 enum modules) — members → `Entry(...)`.
 - `src/phenotypic/schema/_quality_check.py` — members + override via shared helper.
 - `src/phenotypic/schema/_shape.py` — `AREA` worked example.
 - `src/phenotypic/tools_/constants_.py` — `GAMMA_ENCODINGS`/`PIPE_STATUS` members.
-- `docs/source/_extensions/measurements_ref.py` — shared renderer, 5-group IA, asset copy.
+- `docs/source/_extensions/measurements_ref.py` — shared renderer, 5-group IA, asset
+  copy.
 - `pyproject.toml` — package-data for `_assets/measurements/**`.
 - `src/phenotypic/schema/CLAUDE.md` — document `Entry` + new fields + rendering.
 - `tests/unit/docs/test_measurements_ref_extension.py` — group coverage + asset copy.
@@ -46,7 +65,9 @@
 Applied **first** so it is in force before any member is touched (spec §10.1).
 
 **Files:**
-- Modify: `CLAUDE.md` (Gotchas section, after the "Measurement columns are category-prefixed" bullet)
+
+- Modify: `CLAUDE.md` (Gotchas section, after the "Measurement columns are
+  category-prefixed" bullet)
 
 - [ ] **Step 1: Insert the guardrail bullet**
 
@@ -82,6 +103,7 @@ git commit -m "docs(claude): guardrail — agents author label/desc only, never 
 ## Task 1: The `Entry` value type
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/_measurement_info.py` (top of module, before the class)
 - Test: `tests/unit/schema/test_entry.py`
 
@@ -142,7 +164,8 @@ Expected: FAIL — `ImportError: cannot import name 'Entry'`.
 
 - [ ] **Step 3: Add `Entry` to `_measurement_info.py`**
 
-At the top of `src/phenotypic/schema/_measurement_info.py`, replace the existing imports:
+At the top of `src/phenotypic/schema/_measurement_info.py`, replace the existing
+imports:
 
 ```python
 from enum import Enum
@@ -226,7 +249,9 @@ The dual-accept branch is a **migration scaffold**: it keeps every existing
 legacy-tuple member working while Task 4 rewrites them. Task 5 removes it.
 
 **Files:**
-- Modify: `src/phenotypic/schema/_measurement_info.py` (`__new__`, class-level annotations)
+
+- Modify: `src/phenotypic/schema/_measurement_info.py` (`__new__`, class-level
+  annotations)
 - Test: `tests/unit/schema/test_measurement_info_format.py`
 
 - [ ] **Step 1: Write the failing smoke test**
@@ -279,7 +304,8 @@ Expected: FAIL — members have no `bio_desc`/`image` attribute (`AttributeError
 
 - [ ] **Step 3: Rewrite `__new__` (dual-accept) and declare new attributes**
 
-In `src/phenotypic/schema/_measurement_info.py`, change the class-level annotation block from:
+In `src/phenotypic/schema/_measurement_info.py`, change the class-level annotation block
+from:
 
 ```python
     label: str
@@ -333,7 +359,8 @@ Replace the entire existing `__new__` method with:
 
 - [ ] **Step 4: Run both schema test files**
 
-Run: `uv run pytest tests/unit/schema/test_measurement_info_format.py tests/unit/schema/test_entry.py -q`
+Run:
+`uv run pytest tests/unit/schema/test_measurement_info_format.py tests/unit/schema/test_entry.py -q`
 Expected: PASS.
 
 - [ ] **Step 5: Run the broader schema/regression sanity**
@@ -356,6 +383,7 @@ Captured **before** the rewrite (members are still legacy tuples here), so it
 records the true current values that Task 4 must preserve.
 
 **Files:**
+
 - Create: `tests/unit/schema/_golden/measurement_info_values.json`
 - Test: `tests/unit/schema/test_measurement_info_golden.py`
 
@@ -437,10 +465,10 @@ file. Commit per group so a regression is bisectable.
 
 **Transformation recipe** — wrap each member's right-hand side in `Entry(...)`:
 
-| Before | After |
-|--------|-------|
-| `AREA = ("Area", "desc")` | `AREA = Entry("Area", "desc")` |
-| `UUID = "UUID", "desc"` (bare tuple) | `UUID = Entry("UUID", "desc")` |
+| Before                                   | After                              |
+|------------------------------------------|------------------------------------|
+| `AREA = ("Area", "desc")`                | `AREA = Entry("Area", "desc")`     |
+| `UUID = "UUID", "desc"` (bare tuple)     | `UUID = Entry("UUID", "desc")`     |
 | multi-line `X = (\n  "L",\n  "desc",\n)` | `X = Entry(\n  "L",\n  "desc",\n)` |
 
 Each rewritten module must import `Entry`. In `schema/_*.py` files, change
@@ -465,7 +493,7 @@ content is Task 10.
   `uv run pytest tests/unit/schema/test_measurement_info_golden.py tests/unit/schema/test_measurement_info_format.py -q`
   Expected: PASS. Then:
   ```bash
-  git add src/phenotypic/schema/_size.py src/phenotypic/schema/_shape.py src/phenotypic/schema/_bbox.py src/phenotypic/schema/_intensity.py src/phenotypic/schema/_texture.py src/phenotypic/schema/_color_lab.py src/phenotypic/schema/_color_hsv.py src/phenotypic/schema/_color_xy.py src/phenotypic/schema/_color_xyz.py src/phenotypic/schema/_color_composition.py src/phenotypic/schema/_object.py src/phenotypic/schema/_grid.py src/phenotypic/schema/_grid_spatial.py src/phenotypic/schema/_grid_linreg_stats.py src/phenotypic/schema/_grid_spread.py src/phenotypic/schema/_symmetric_zones.py src/phenotypic/schema/_radial_expansion.py
+  git add src/phenotypic/schema/_size.py src/phenotypic/schema/_shape.py src/phenotypic/schema/_bbox.py src/phenotypic/schema/_intensity.py src/phenotypic/schema/_texture.py src/phenotypic/schema/_color_lab.py src/phenotypic/schema/_color_hsv.py src/phenotypic/schema/_color_xy.py src/phenotypic/schema/_color_xyz.py src/phenotypic/schema/_color_composition.py src/phenotypic/schema/_object.py src/phenotypic/schema/_grid.py src/phenotypic/schema/_neighbor_dist.py src/phenotypic/schema/_grid_linreg_stats.py src/phenotypic/schema/_grid_spread.py src/phenotypic/schema/_symmetric_zones.py src/phenotypic/schema/_radial_expansion.py
   git commit -m "refactor(schema): Entry(...) members — measurements group"
   ```
 
@@ -502,7 +530,8 @@ content is Task 10.
 
 - [ ] **Step 7: Full schema regression**
 
-Run: `uv run pytest tests/unit/schema tests/unit/util/test_measurement_outputs.py tests/smoke/test_measurement.py -q`
+Run:
+`uv run pytest tests/unit/schema tests/unit/util/test_measurement_outputs.py tests/smoke/test_measurement.py -q`
 Expected: PASS.
 
 ---
@@ -510,7 +539,9 @@ Expected: PASS.
 ## Task 5: Flip `__new__` to strict (reject non-`Entry`) + update base doctests
 
 **Files:**
-- Modify: `src/phenotypic/schema/_measurement_info.py` (`__new__`, class docstring doctests)
+
+- Modify: `src/phenotypic/schema/_measurement_info.py` (`__new__`, class docstring
+  doctests)
 - Test: `tests/unit/schema/test_entry.py` (add strictness cases)
 
 - [ ] **Step 1: Add the strictness tests**
@@ -544,14 +575,16 @@ def test_member_declared_with_bare_string_is_rejected():
             X = "X"
 ```
 
-- [ ] **Step 2: Run to verify the strictness tests fail (dual-accept still allows tuples)**
+- [ ] **Step 2: Run to verify the strictness tests fail (dual-accept still allows
+  tuples)**
 
 Run: `uv run pytest tests/unit/schema/test_entry.py -q -k rejected`
 Expected: FAIL (no error raised yet).
 
 - [ ] **Step 3: Replace dual-accept `__new__` with the strict version**
 
-In `src/phenotypic/schema/_measurement_info.py`, replace the `__new__` body from Task 2 with:
+In `src/phenotypic/schema/_measurement_info.py`, replace the `__new__` body from Task 2
+with:
 
 ```python
     def __new__(cls, entry: "Entry"):
@@ -621,7 +654,9 @@ git commit -m "feat(schema): require Entry for members — raw tuples now error 
 ## Task 6: Shared conditional-column renderer + `rst_table` refactor + QC override
 
 **Files:**
-- Modify: `src/phenotypic/schema/_measurement_info.py` (add `_ASSET_URL_PREFIX`, `_RST_ROLE_RE`, `_rst_cell_text`, `_render_info_table`; refactor `rst_table`)
+
+- Modify: `src/phenotypic/schema/_measurement_info.py` (add `_ASSET_URL_PREFIX`,
+  `_RST_ROLE_RE`, `_rst_cell_text`, `_render_info_table`; refactor `rst_table`)
 - Modify: `src/phenotypic/schema/_quality_check.py` (route override through helper)
 - Test: `tests/unit/schema/test_rst_rendering.py`
 
@@ -698,7 +733,8 @@ Expected: FAIL — `rst_table()` has no `use_headers` kwarg / no Biology/Image c
 
 - [ ] **Step 3: Add module constants + escaping + the shared renderer**
 
-In `src/phenotypic/schema/_measurement_info.py`, add `import re` to the imports, and after the `Entry` dataclass add:
+In `src/phenotypic/schema/_measurement_info.py`, add `import re` to the imports, and
+after the `Entry` dataclass add:
 
 ```python
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -840,6 +876,7 @@ git commit -m "feat(schema): conditional-column rst_table shared by docstrings +
 ## Task 7: Generator uses `rst_table(use_headers=True)`; delete the duplicate
 
 **Files:**
+
 - Modify: `docs/source/_extensions/measurements_ref.py`
 - Test: `tests/unit/docs/test_measurements_ref_extension.py`
 
@@ -847,7 +884,8 @@ git commit -m "feat(schema): conditional-column rst_table shared by docstrings +
 
 In `docs/source/_extensions/measurements_ref.py`:
 
-1. Delete the `_full_column_table` function and the `_rst_cell_text` function and the `_RST_ROLE_RE` constant.
+1. Delete the `_full_column_table` function and the `_rst_cell_text` function and the
+   `_RST_ROLE_RE` constant.
 2. Add to the imports near the top:
 
 ```python
@@ -866,12 +904,14 @@ to:
     out.append(info_cls.rst_table(header=("Column label", "Description"), use_headers=True))
 ```
 
-(`_rst_cell_text` is still used by `_enum_page`/`_append_metadata_sections` for prose — now imported from schema instead of locally defined.)
+(`_rst_cell_text` is still used by `_enum_page`/`_append_metadata_sections` for prose —
+now imported from schema instead of locally defined.)
 
 - [ ] **Step 2: Run the docs extension tests**
 
 Run: `uv run pytest tests/unit/docs/test_measurements_ref_extension.py -q`
-Expected: PASS (update any test asserting on the old `_full_column_table` to call `rst_table(use_headers=True)` instead).
+Expected: PASS (update any test asserting on the old `_full_column_table` to call
+`rst_table(use_headers=True)` instead).
 
 - [ ] **Step 3: Commit**
 
@@ -885,6 +925,7 @@ git commit -m "refactor(docs): generator uses shared rst_table; drop _full_colum
 ## Task 8: 5-group toctree IA + asset-copy step
 
 **Files:**
+
 - Modify: `docs/source/_extensions/measurements_ref.py`
 - Test: `tests/unit/docs/test_measurements_ref_extension.py`
 
@@ -915,22 +956,22 @@ mapping (ordered) near the top, after `_METADATA_INFO_NAMES`:
 #: Toctree groups (caption -> ordered enum names). Single source of truth; a test
 #: asserts every public schema enum lands in exactly one group.
 _GROUPS: dict[str, tuple[str, ...]] = {
-    "Measurements": (
+    "Measurements"     : (
         "SIZE", "SHAPE", "BBOX", "INTENSITY", "TEXTURE", "ColorLab", "ColorHSV",
         "Colorxy", "ColorXYZ", "ColorComposition", "OBJECT", "GRID",
-        "GRID_SPATIAL", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
+        "NEIGHBOR_DIST", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
         "RADIAL_EXPANSION",
     ),
     "Models & Analysis": (
         "LOG_GROWTH_MODEL", "LINEAR_SOFTPLUS_MODEL", "DOUBLE_SOFTPLUS_MODEL",
         "EDGE_CORRECTION", "MODEL_METRICS",
     ),
-    "Quality Control": (
+    "Quality Control"  : (
         "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_ICC", "QUALITY_MAD",
         "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
     ),
     "Curation & Errors": ("CURATION", "ErrorCategory"),
-    "Metadata": (
+    "Metadata"         : (
         "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
         "EXPERIMENT_METADATA", "GENETIC_METADATA", "INCUBATION_METADATA",
         "PLATE_METADATA", "SAMPLE_METADATA",
@@ -944,7 +985,8 @@ Replace `_build_pages`'s two-way `metadata_names`/`measurement_names` split with
 iteration over `_GROUPS`, and add the three builder functions below. The
 per-enum `_enum_page` output is unchanged; the per-group index is a captioned
 toctree of that group's enum pages (plus the metadata overview table for the
-Metadata group). **Delete only** these now-superseded symbols: `_build_measurements_index`,
+Metadata group). **Delete only** these now-superseded symbols:
+`_build_measurements_index`,
 `_build_metadata_index`, `_append_operator_sections`,
 `_append_object_identifier_section`, `_append_metadata_sections`,
 `_toctree_entries`, `_experimental_tag_list`, and the
@@ -1117,7 +1159,9 @@ git commit -m "feat(docs): 5-group measurements_ref IA + measurement asset copy 
 ## Task 9: Assets directory + packaging + image-resolution test
 
 **Files:**
-- Create: `src/phenotypic/_assets/measurements/` (with a `.gitkeep` until Task 10 adds the PNG)
+
+- Create: `src/phenotypic/_assets/measurements/` (with a `.gitkeep` until Task 10 adds
+  the PNG)
 - Modify: `pyproject.toml`
 - Test: `tests/unit/schema/test_measurement_assets.py`
 
@@ -1156,18 +1200,21 @@ def test_declared_images_exist():
     assert not missing, f"declared images with no file: {missing}"
 ```
 
-- [ ] **Step 2: Create the assets dir and run the test (no images yet → passes vacuously)**
+- [ ] **Step 2: Create the assets dir and run the test (no images yet → passes
+  vacuously)**
 
 ```bash
 mkdir -p src/phenotypic/_assets/measurements
 touch src/phenotypic/_assets/measurements/.gitkeep
 uv run pytest tests/unit/schema/test_measurement_assets.py -q
 ```
+
 Expected: PASS (no member declares an image yet).
 
 - [ ] **Step 3: Add package-data globs**
 
-In `pyproject.toml`, under `[tool.setuptools.package-data]` `"phenotypic" = [ ... ]`, add after `"_assets/vendor/*",`:
+In `pyproject.toml`, under `[tool.setuptools.package-data]` `"phenotypic" = [ ... ]`,
+add after `"_assets/vendor/*",`:
 
 ```toml
     "_assets/measurements/*",
@@ -1189,6 +1236,7 @@ git commit -m "feat(assets): measurements asset dir, package-data, resolution te
 wires the field, but the **`bio_desc` text is human-authored** — do not invent it.
 
 **Files:**
+
 - Create: `scripts/make_measurement_example_images.py`
 - Create: `src/phenotypic/_assets/measurements/shape/area.png`
 - Modify: `src/phenotypic/schema/_shape.py` (`AREA` member)
@@ -1278,7 +1326,8 @@ the user's `bio_desc` text):
 
 - [ ] **Step 5: Run asset, golden, format, and rendering tests**
 
-Run: `uv run pytest tests/unit/schema/test_measurement_assets.py tests/unit/schema/test_measurement_info_golden.py tests/unit/schema/test_measurement_info_format.py tests/unit/schema/test_rst_rendering.py -q`
+Run:
+`uv run pytest tests/unit/schema/test_measurement_assets.py tests/unit/schema/test_measurement_info_golden.py tests/unit/schema/test_measurement_info_format.py tests/unit/schema/test_rst_rendering.py -q`
 Expected: PASS. (The golden test still passes — it snapshots only
 `name/value/label/desc`, which are unchanged; `bio_desc`/`image` are not part of
 the golden contract.)
@@ -1296,8 +1345,10 @@ git commit -m "feat(schema): SHAPE.AREA worked example (bio_desc + figure)"
 ## Task 11: Docs, doctests, and full regression
 
 **Files:**
+
 - Modify: `src/phenotypic/schema/CLAUDE.md`
-- Modify: any doctest/test elsewhere that builds a `MeasurementInfo` subclass with a tuple
+- Modify: any doctest/test elsewhere that builds a `MeasurementInfo` subclass with a
+  tuple
 
 - [ ] **Step 1: Find any remaining tuple-style member declarations / doctests**
 
@@ -1342,17 +1393,20 @@ with:
 - [ ] **Step 3: Type-check and lint**
 
 Run: `uv run mypy src/phenotypic/schema src/phenotypic/tools_/constants_.py`
-Run: `uv run ruff check --fix src/phenotypic/schema src/phenotypic/tools_/constants_.py docs/source/_extensions/measurements_ref.py`
+Run:
+`uv run ruff check --fix src/phenotypic/schema src/phenotypic/tools_/constants_.py docs/source/_extensions/measurements_ref.py`
 Expected: clean (fix any issues surfaced).
 
 - [ ] **Step 4: Docs build smoke**
 
-Run: `uv run --group docs sphinx-build -b html -W --keep-going docs/source /tmp/phenodocs 2>&1 | tail -20`
+Run:
+`uv run --group docs sphinx-build -b html -W --keep-going docs/source /tmp/phenodocs 2>&1 | tail -20`
 Expected: build succeeds. Verify the SHAPE page embeds the image:
 
 ```bash
 grep -r "measurements/shape/area.png" /tmp/phenodocs/measurements_ref | head
 ```
+
 Expected: at least one hit (SHAPE per-enum page, and the MeasureShape autodoc page).
 
 - [ ] **Step 5: Full targeted regression**
@@ -1362,6 +1416,7 @@ Run:
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/schema tests/unit/docs tests/unit/util/test_measurement_outputs.py tests/smoke/test_measurement.py -q
 ```
+
 Expected: PASS.
 
 - [ ] **Step 6: Commit**

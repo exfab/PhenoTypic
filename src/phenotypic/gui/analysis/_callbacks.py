@@ -64,16 +64,18 @@ _POST_DEFAULTS: dict[str, dict[str, Any]] = {
     "MergeMetadata": {"metadata_path": "metadata.csv", "on": KEY_IMAGE_FILE},
 }
 _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
-    "EdgeCorrector": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
     "TukeyOutlierRemover": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
+}
+_EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
+    "EdgeCorrector": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
 }
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
     "LogGrowthModel": {"on": "Shape_Area", "groupby": ["Metadata_Strain"],
                        "time_label": "Metadata_Time", "n_jobs": 1},
-    "LinearSoftplus": {"on": "Shape_Area",
+    "LinearLagModel": {"on": "Shape_Area",
                        "groupby": ["Metadata_Strain"],
                        "time_label": "Metadata_Time"},
-    "DoubleSoftplus": {"on": "Shape_Area",
+    "LinearCapAndLagModel": {"on": "Shape_Area",
                        "groupby": ["Metadata_Strain"],
                        "time_label": "Metadata_Time"},
 }
@@ -159,6 +161,35 @@ def register_callbacks(app: "dash.Dash") -> None:
         )
 
     @app.callback(
+        Output(ids.ANALYSIS_EDGE_STACK, "children"),
+        Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
+        Input(ids.ANALYSIS_EDGE_ADD_DROPDOWN, "value"),
+        State(ids.ANALYSIS_PLOT_PREFS_STORE, "data"),
+        prevent_initial_call=True,
+    )
+    def _add_edge(class_name: str | None, plot_prefs: dict | None):
+        if not class_name:
+            return no_update, no_update, no_update
+        recipe = server.config[CFG_RECIPE_STATE]
+        instance = _instantiate("edge", class_name)
+        if instance is None:
+            return no_update, no_update, no_update
+        filters_dict = recipe.pipeline.get_filters()
+        filters_dict[_unique_key(filters_dict, class_name)] = instance
+        recipe.pipeline.set_filters(filters_dict)
+        recipe.save()
+        return (
+            build_section_stack(
+                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
+                columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
+            ),
+            _pipeline_summary(recipe),
+            recipe.last_json,
+        )
+
+    @app.callback(
         Output(ids.ANALYSIS_MODEL_SECTION, "children"),
         Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_RUN_BUTTON, "disabled"),
@@ -201,6 +232,7 @@ def register_callbacks(app: "dash.Dash") -> None:
     @app.callback(
         Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_EDGE_STACK, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
         # ``ALL`` is Dash's pattern-matching wildcard; the strict Literal/int
@@ -216,34 +248,37 @@ def register_callbacks(app: "dash.Dash") -> None:
         # button via callback_context.
         ctx = callback_context
         if not ctx.triggered:
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         triggered = ctx.triggered[0]
         if not triggered["value"]:
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         triggered_id = ctx.triggered_id
         if not isinstance(triggered_id, dict):
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
 
         kind = triggered_id["kind"]
         index = triggered_id["index"]
 
         recipe = server.config[CFG_RECIPE_STATE]
         if kind == "post":
-            items = list(recipe.pipeline.get_post().items())
-        elif kind == "filter":
-            items = list(recipe.pipeline.get_filters().items())
-        else:
-            return no_update, no_update, no_update, no_update
+            post_dict = recipe.pipeline.get_post()
+            items = list(post_dict.items())
+            if not (0 <= index < len(items)):
+                return no_update, no_update, no_update, no_update, no_update
+            items.pop(index)
+            recipe.pipeline.set_post(dict(items))
+        elif kind in ("filter", "edge"):
+            from phenotypic.gui.analysis._layout import filter_items_for_kind
 
-        if not (0 <= index < len(items)):
-            return no_update, no_update, no_update, no_update
-
-        items.pop(index)
-        new_dict = dict(items)
-        if kind == "post":
-            recipe.pipeline.set_post(new_dict)
+            sub = filter_items_for_kind(recipe.pipeline, kind)
+            if not (0 <= index < len(sub)):
+                return no_update, no_update, no_update, no_update, no_update
+            key = sub[index][0]
+            full = recipe.pipeline.get_filters()
+            del full[key]
+            recipe.pipeline.set_filters(full)
         else:
-            recipe.pipeline.set_filters(new_dict)
+            return no_update, no_update, no_update, no_update, no_update
         recipe.save()
 
         return (
@@ -253,6 +288,11 @@ def register_callbacks(app: "dash.Dash") -> None:
             ),
             build_section_stack(
                 ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
+            ),
+            build_section_stack(
+                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
                 columns_provider=_columns_provider,
                 plot_prefs=plot_prefs,
             ),
@@ -269,6 +309,7 @@ def register_callbacks(app: "dash.Dash") -> None:
     @app.callback(
         Output(ids.ANALYSIS_POST_STACK, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_FILTER_STACK, "children", allow_duplicate=True),
+        Output(ids.ANALYSIS_EDGE_STACK, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_MODEL_SECTION, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_PIPELINE_HEADER, "children", allow_duplicate=True),
         Output(ids.ANALYSIS_PIPELINE_STORE, "data", allow_duplicate=True),
@@ -292,20 +333,21 @@ def register_callbacks(app: "dash.Dash") -> None:
         plot_prefs = _values[-1] if _values else None
         ctx = callback_context
         if not ctx.triggered_id or not isinstance(ctx.triggered_id, dict):
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
         prefix = ctx.triggered_id.get("prefix", "")
         if not isinstance(prefix, str) or not prefix.startswith("analysis-"):
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
         recipe = server.config[CFG_RECIPE_STATE]
         applied, kind = _apply_param_edit(recipe, ctx)
         if not applied:
-            return no_update, no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
-        # Only rebuild the touched stack — the other two are unchanged
+        # Only rebuild the touched stack — the others are unchanged
         # so we send ``no_update`` and avoid wasted Dash component diffs.
         post_out: Any = no_update
         filter_out: Any = no_update
+        edge_out: Any = no_update
         model_out: Any = no_update
         if kind == "post":
             post_out = build_section_stack(
@@ -315,6 +357,12 @@ def register_callbacks(app: "dash.Dash") -> None:
         elif kind == "filter":
             filter_out = build_section_stack(
                 ids.ANALYSIS_FILTER_STACK, "filter", recipe,
+                columns_provider=_columns_provider,
+                plot_prefs=plot_prefs,
+            )
+        elif kind == "edge":
+            edge_out = build_section_stack(
+                ids.ANALYSIS_EDGE_STACK, "edge", recipe,
                 columns_provider=_columns_provider,
                 plot_prefs=plot_prefs,
             )
@@ -334,6 +382,7 @@ def register_callbacks(app: "dash.Dash") -> None:
         return (
             post_out,
             filter_out,
+            edge_out,
             model_out,
             _pipeline_summary(recipe),
             recipe.last_json,
@@ -431,10 +480,12 @@ def register_callbacks(app: "dash.Dash") -> None:
 
 def _resolve_preview_node(recipe: Any, kind: Any, index: Any) -> Any:
     """Return the analyzer instance for a ``(kind, index)`` section, or None."""
-    if kind == "filter":
-        filters = list(recipe.pipeline.get_filters().values())
-        if isinstance(index, int) and 0 <= index < len(filters):
-            return filters[index]
+    from phenotypic.gui.analysis._layout import filter_items_for_kind
+
+    if kind in ("filter", "edge"):
+        items = filter_items_for_kind(recipe.pipeline, kind)
+        if isinstance(index, int) and 0 <= index < len(items):
+            return items[index][1]
         return None
     if kind == "model":
         return recipe.pipeline.get_model()
@@ -463,8 +514,8 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     Returns:
         ``(applied, kind)`` where ``applied`` is ``True`` only when the
         edit was saved. ``kind`` is the section kind that changed
-        (``"post"`` / ``"filter"`` / ``"model"``) so the caller can
-        rebuild only the touched stack; ``None`` when nothing applied.
+        (``"post"`` / ``"filter"`` / ``"edge"`` / ``"model"``) so the caller
+        can rebuild only the touched stack; ``None`` when nothing applied.
     """
     from phenotypic.gui._operation_registry import get_registry
     from phenotypic.gui._param_forms import parse_widget_value
@@ -490,9 +541,11 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     if kind == "post":
         section_dict = pipeline.get_post()
         items = list(section_dict.items())
-    elif kind == "filter":
+    elif kind in ("filter", "edge"):
+        from phenotypic.gui.analysis._layout import filter_items_for_kind
+
         section_dict = pipeline.get_filters()
-        items = list(section_dict.items())
+        items = filter_items_for_kind(pipeline, kind)
     elif kind == "model":
         model = pipeline.get_model()
         if model is None:
@@ -562,7 +615,7 @@ def _apply_param_edit(recipe: Any, ctx: Any) -> tuple[bool, str | None]:
     if kind == "post":
         section_dict[section_key] = new_instance  # type: ignore[index]
         pipeline.set_post(section_dict)  # type: ignore[arg-type]
-    elif kind == "filter":
+    elif kind in ("filter", "edge"):
         section_dict[section_key] = new_instance  # type: ignore[index]
         pipeline.set_filters(section_dict)  # type: ignore[arg-type]
     else:
@@ -653,12 +706,14 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
 _KIND_DEFAULTS: dict[ids.InstantiationKind, dict[str, dict[str, Any]]] = {
     "post": _POST_DEFAULTS,
     "filter": _FILTER_DEFAULTS,
+    "edge": _EDGE_DEFAULTS,
     "model": _MODEL_DEFAULTS,
 }
 
 _KIND_MODULES: dict[ids.InstantiationKind, str] = {
     "post": ModulePath.POST,
     "filter": ModulePath.ANALYSIS,
+    "edge": ModulePath.ANALYSIS,
     "model": ModulePath.ANALYSIS,
 }
 

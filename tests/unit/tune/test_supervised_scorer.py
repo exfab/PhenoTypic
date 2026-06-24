@@ -43,7 +43,7 @@ def _count_table(tmp_path: Path, n: int = 96, name: str = "p1") -> Path:
 
 
 def _count_check(tmp_path: Path, n: int = 96, name: str = "p1") -> ExpectedVsDetectedCount:
-    """A path-configured count check (so ``metadata_source`` round-trips)."""
+    """A path-configured count check (so the ``metadata`` path round-trips)."""
     return ExpectedVsDetectedCount(
         metadata=str(_count_table(tmp_path, n, name)),
         groupby=["Metadata_ImageName"],

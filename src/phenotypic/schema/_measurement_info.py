@@ -13,6 +13,10 @@ _DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diag
 # Not used by _classify; consumed by the Task 10 coverage-gate test.
 _VALID_KINDS: Final = frozenset({"identity", "quality", "primary", "derived"})
 
+# NOTE: keep the tier rows here in sync with :data:`_BADGE_SPECS` below — both
+# encode the same (tier, kind) → Tier-1/2/3 taxonomy (this one as plain text for
+# the frozen ``use_label`` contract, the other as rendered badges). Adding a tier
+# means editing both.
 _USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
     (1, "primary"): "Direct phenotype (Tier 1)",
     (2, "primary"): "Descriptive trait (Tier 2)",
@@ -22,6 +26,34 @@ _USE_LABELS: Final[dict[tuple[int | None, str], str]] = {
     # same badge strings — no "(derived)" suffix.
     (1, "derived"): "Direct phenotype (Tier 1)",
     (2, "derived"): "Descriptive trait (Tier 2)",
+}
+
+#: MyST ``(label)=`` anchors in ``explanation/measurement_classification_system``.
+#: Tier badges deep-link to the trust-contract table; kind-only badges (Quality /
+#: Identity / normalization-Derived) link to the page top.
+_ANCHOR_TIERS: Final = "measurement-tiers"
+_ANCHOR_PAGE: Final = "measurement-classification"
+
+#: Visual-badge spec per ``(tier, kind)``: ``(text, sphinx-design color, ref anchor)``.
+#: Keyed identically to :data:`_USE_LABELS` (tier first); keep the tier rows in the
+#: two dicts in sync. The colours encode the
+#: single-value-trust gradient — green (report alone) → blue (interpret
+#: directionally) → amber (use only in aggregate) — with greys for the
+#: non-outcome Identity/Quality columns. Rendered as ``:bdg-ref-{color}:`` xref
+#: badges (sphinx-design) so each pill links to the explanation page.
+_BADGE_SPECS: Final[dict[tuple[int | None, str], tuple[str, str, str]]] = {
+    (1, "primary"): ("Tier 1 · Direct phenotype", "success", _ANCHOR_TIERS),
+    (2, "primary"): ("Tier 2 · Descriptive trait", "primary", _ANCHOR_TIERS),
+    (3, "primary"): ("Tier 3 · Discriminative feature", "warning", _ANCHOR_TIERS),
+    # Parameterization-derived members inherit their input's trust contract, so
+    # they reuse the Tier-1/Tier-2 pills verbatim.
+    (1, "derived"): ("Tier 1 · Direct phenotype", "success", _ANCHOR_TIERS),
+    (2, "derived"): ("Tier 2 · Descriptive trait", "primary", _ANCHOR_TIERS),
+    # Non-tiered kinds: de-emphasised greys for design/quality columns, cyan for
+    # normalization-derived outputs (tier inherited at runtime, not declared here).
+    (None, "quality"): ("Quality", "secondary", _ANCHOR_PAGE),
+    (None, "identity"): ("Identity / design", "muted", _ANCHOR_PAGE),
+    (None, "derived"): ("Derived", "info", _ANCHOR_PAGE),
 }
 
 
@@ -105,11 +137,12 @@ def _render_info_table(
     name_header: str = "Name",
     desc_header: str = "Description",
 ) -> str:
-    """Render a list-table; Use/Biology/Image columns appear only when populated.
+    """Render a list-table; Type/Biology/Image columns appear only when populated.
 
     Args:
-        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, use_label)``
-            per member.
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge)``
+            per member. ``type_badge`` is raw RST (a sphinx-design ``:bdg-ref:``
+            role) inserted unescaped, so the pill renders as a link.
         title: Bold table caption (rendered ``Category: **{title}**``).
         name_header: Header for the first (name) column.
         desc_header: Header for the description column.
@@ -126,7 +159,7 @@ def _render_info_table(
         f"     - {desc_header}",
     ]
     if has_use:
-        lines.append("     - Use")
+        lines.append("     - Type")
     if has_bio:
         lines.append("     - Biology")
     if has_img:
@@ -395,6 +428,27 @@ class MeasurementInfo(str, Enum):
             return ""
         return _USE_LABELS.get((tier, kind), "")
 
+    @property
+    def use_badge(self) -> str:
+        """RST sphinx-design xref badge for this member's classification.
+
+        A coloured ``:bdg-ref-{color}:`` pill linking to the measurement-
+        classification explanation page (tier badges deep-link to the trust-
+        contract table). Unlike :attr:`use_label`, this covers *every* kind —
+        Identity, Quality and normalization-Derived included — so the rendered
+        reference table classifies every column. Returns ``""`` for members that
+        do not classify (e.g. enums that subclass ``MeasurementInfo`` directly).
+        """
+        try:
+            kind, tier = _classify(self)
+        except ValueError:
+            return ""
+        spec = _BADGE_SPECS.get((tier, kind))
+        if spec is None:
+            return ""
+        text, color, anchor = spec
+        return f":bdg-ref-{color}:`{text} <{anchor}>`"
+
     @classmethod
     def get_labels(cls) -> list[str]:
         """Get all measurement labels without category prefix.
@@ -454,7 +508,7 @@ class MeasurementInfo(str, Enum):
                 m.desc,
                 m.bio_desc,
                 m.image,
-                m.use_label,
+                m.use_badge,
             )
             for m in cls
         ]

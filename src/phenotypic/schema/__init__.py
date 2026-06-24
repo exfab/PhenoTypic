@@ -44,11 +44,11 @@ from ._color_xyz import ColorXYZ
 from ._edge_correction import EDGE_CORRECTION
 from ._grid import GRID
 from ._grid_linreg_stats import GRID_LINREG_STATS
-from ._grid_spatial import GRID_SPATIAL
+from ._neighbor_dist import NEIGHBOR_DIST
 from ._grid_spread import GRID_SPREAD
-from ._double_softplus_model import DOUBLE_SOFTPLUS_MODEL
+from ._linear_cap_and_lag_model import LINEAR_CAP_AND_LAG_MODEL
 from ._intensity import INTENSITY
-from ._linear_softplus_model import LINEAR_SOFTPLUS_MODEL
+from ._linear_lag_model import LINEAR_LAG_MODEL
 from ._log_growth_model import LOG_GROWTH_MODEL
 from ._model_metrics import MODEL_METRICS
 from ._object import OBJECT
@@ -86,15 +86,15 @@ __all__ = [
     "Colorxy",
     "ColorXYZ",
     "CURATION",
-    "DOUBLE_SOFTPLUS_MODEL",
+    "LINEAR_CAP_AND_LAG_MODEL",
     "EDGE_CORRECTION",
     "ErrorCategory",
     "GRID",
     "GRID_LINREG_STATS",
-    "GRID_SPATIAL",
+    "NEIGHBOR_DIST",
     "GRID_SPREAD",
     "INTENSITY",
-    "LINEAR_SOFTPLUS_MODEL",
+    "LINEAR_LAG_MODEL",
     "LOG_GROWTH_MODEL",
     "MODEL_METRICS",
     "OBJECT",

@@ -37,7 +37,7 @@ class MeasureGridSpread(GridMeasureFeatures):
           review or exclusion from downstream analysis.
 
     Consider Also:
-        - :class:`MeasureGridSpatial` for between-well neighbor
+        - :class:`MeasureNeighborDist` for between-well neighbor
           distances rather than within-well dispersion.
         - :class:`MeasureGridLinRegStats` for positional accuracy
           metrics based on linear regression.
@@ -53,7 +53,7 @@ class MeasureGridSpread(GridMeasureFeatures):
     def _operate(self, image: GridImage) -> pd.DataFrame:
         gs_table = image.grid.info()
         gs_counts = pd.DataFrame(
-            gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)].value_counts())
+                gs_table.loc[:, str(GRID.ROW_MAJOR_IDX)].value_counts())
 
         obj_spread = []
         for gs_bindex in gs_counts.index:

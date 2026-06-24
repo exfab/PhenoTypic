@@ -16,6 +16,7 @@ from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._qc_tab._callbacks import (
     _badge_color_for_status,
+    _gather_modal_raw_values,
     _left_join_qc_columns,
     _merge_removed_keys,
     _render_summary_strip,
@@ -97,6 +98,111 @@ def test_merge_removed_keys_dedupes() -> None:
     new = [("b", 2), ("c", 3)]
     merged = _merge_removed_keys(current, new)
     assert merged == [["a", 1], ["b", 2], ["c", 3]]
+
+
+# ---------------------------------------------------------------------------
+# _gather_modal_raw_values — the Add/Edit modal's widget-state reducer
+# ---------------------------------------------------------------------------
+
+
+def _gather(
+    simple=(),
+    multi_tags=([], []),
+    multi_values=([], []),
+    column_scalars=([], []),
+    column_modes=([], []),
+):
+    """Call the gatherer with the QC modal's prefix marker."""
+    return _gather_modal_raw_values(
+        prefix_marker="qc-modal-",
+        simple=simple,
+        multi_tags=multi_tags,
+        multi_values=multi_values,
+        column_scalars=column_scalars,
+        column_modes=column_modes,
+    )
+
+
+def test_gather_maps_single_widgets_by_name() -> None:
+    """Single-widget kinds map their value directly under the param name."""
+    raw = _gather(
+        simple=(
+            ([0.9], [{"prefix": "qc-modal-X", "name": "warn_threshold"}]),
+            (["/layout.csv"], [{"prefix": "qc-modal-X", "name": "metadata"}]),
+        )
+    )
+    assert raw == {"warn_threshold": 0.9, "metadata": "/layout.csv"}
+
+
+def test_gather_drops_out_of_scope_prefix() -> None:
+    """Widgets whose prefix isn't this modal's are ignored (shared id types)."""
+    raw = _gather(
+        simple=(
+            (["mine"], [{"prefix": "qc-modal-X", "name": "on"}]),
+            (["leak"], [{"prefix": "analysis-Y", "name": "on"}]),
+        )
+    )
+    assert raw == {"on": "mine"}
+
+
+def test_gather_packs_multi_union_tag_value_pair() -> None:
+    """Multi-union widgets repack to the (tag, value) tuple parse expects.
+
+    Regression guard: the QC modal submit must collect ``param-multi-tag``
+    + ``param-multi-value`` so a genuine multi-primitive union param is not
+    silently dropped on Save.
+    """
+    raw = _gather(
+        multi_tags=(["number"], [{"prefix": "qc-modal-X", "name": "thing"}]),
+        multi_values=(["1.5"], [{"prefix": "qc-modal-X", "name": "thing"}]),
+    )
+    assert raw == {"thing": ("number", "1.5")}
+
+
+def test_gather_pairs_multi_union_independent_of_order() -> None:
+    """Tag/value are paired by (prefix, name), not by list position."""
+    raw = _gather(
+        multi_tags=(
+            ["string", "none"],
+            [
+                {"prefix": "qc-modal-X", "name": "a"},
+                {"prefix": "qc-modal-X", "name": "b"},
+            ],
+        ),
+        multi_values=(
+            ["", "hi"],
+            [
+                {"prefix": "qc-modal-X", "name": "b"},
+                {"prefix": "qc-modal-X", "name": "a"},
+            ],
+        ),
+    )
+    assert raw == {"a": ("string", "hi"), "b": ("none", "")}
+
+
+def test_gather_packs_column_with_alt_mode_scalar_pair() -> None:
+    """A ``ColumnRef | None`` widget repacks to the (mode, scalar) tuple.
+
+    ``param-column-mode`` + ``param-column-scalar`` sharing one
+    (prefix, name) must pair so a "None" selection round-trips as ``None``
+    via ``parse_widget_value``.
+    """
+    raw = _gather(
+        column_modes=(["none"], [{"prefix": "qc-modal-X", "name": "cell_label"}]),
+        column_scalars=(
+            ["Grid_RowMajorIdx"],
+            [{"prefix": "qc-modal-X", "name": "cell_label"}],
+        ),
+    )
+    assert raw == {"cell_label": ("none", "Grid_RowMajorIdx")}
+
+
+def test_gather_plain_column_scalar_stays_bare_value() -> None:
+    """A plain ``ColumnRef`` scalar (no mode toggle) stays a bare value."""
+    raw = _gather(
+        column_scalars=(["Size_Area"], [{"prefix": "qc-modal-X", "name": "on"}]),
+    )
+    assert raw == {"on": "Size_Area"}
 
 
 # ---------------------------------------------------------------------------

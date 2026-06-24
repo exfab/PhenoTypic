@@ -58,7 +58,7 @@ def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:
         },
         "model": {
             # Pre-rename class name -- matches the user's report.
-            "class": "LinearSoftplusModel",
+            "class": "LinearLagModelModel",
             "params": {},
         },
     }
@@ -88,7 +88,7 @@ def test_from_json_skip_mode_collects_unknown_analyzers(tmp_path: Path) -> None:
 
     # One warning per dropped entry, regardless of slot.
     classes = {w.class_name for w in warnings}
-    assert classes == {"LegacyZScoreFilter", "LinearSoftplusModel"}
+    assert classes == {"LegacyZScoreFilter", "LinearLagModelModel"}
     slots = {w.slot for w in warnings}
     assert slots == {"filter", "model"}
 
@@ -114,7 +114,7 @@ def test_recipe_state_load_records_unknown_analyzer(tmp_path: Path) -> None:
     assert len(state.load_warnings) == 2
     assert {w.class_name for w in state.load_warnings} == {
         "LegacyZScoreFilter",
-        "LinearSoftplusModel",
+        "LinearLagModelModel",
     }
     # Disk artifact must be byte-identical: opening the page is read-only.
     assert seed_path.read_bytes() == seed_bytes_before

@@ -100,7 +100,8 @@ def _seed_viewer_output(sandbox: Path) -> Path:
     master.write_parquet(mirror_path)
 
     # Overlay PNGs — seed ds1 overlays so the viewer can resolve them.
-    overlays = out / "results" / "ds1" / "overlays"
+    (out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = out / "deliverables" / "overlays" / "ds1"
     overlays.mkdir(parents=True, exist_ok=True)
     for image in _DS1_IMAGES:
         stem = Path(image).stem
@@ -452,11 +453,38 @@ def test_filters_button_sticky_after_scroll(page: Page, hub_url: str) -> None:
 
     The button lives in ``.results-viewer-tabbar__actions`` (``position:
     sticky``). Scrolling the page must not scroll it out of the viewport.
+    The zero-height sticky actions strip must also leave the Bootstrap-small
+    button at its natural control height instead of flex-stretching it down.
     """
     _open_viewer(page, hub_url)
 
     filters_button = page.locator("#btn-filters-toggle")
     expect(filters_button).to_be_visible()
+    metrics = filters_button.evaluate(
+        """el => {
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            return {
+                display: style.display,
+                height: rect.height,
+                lineHeight: parseFloat(style.lineHeight),
+                scrollHeight: el.scrollHeight,
+            };
+        }"""
+    )
+    assert metrics["display"] in {"flex", "inline-flex"}
+    assert 30 <= metrics["height"] <= 36, (
+        "Filters button should keep Bootstrap-small control height; "
+        f"got {metrics!r}"
+    )
+    assert metrics["height"] >= metrics["lineHeight"], (
+        "Filters button should not clip its text line-height; "
+        f"got {metrics!r}"
+    )
+    assert metrics["height"] >= metrics["scrollHeight"], (
+        "Filters button should not clip its rendered content; "
+        f"got {metrics!r}"
+    )
 
     # Scroll the tab content well past a viewport height.
     page.mouse.wheel(0, 2000)

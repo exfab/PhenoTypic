@@ -12,7 +12,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phenotypic.analysis._qc_math import tukey_outlier_fraction
+from phenotypic.analysis._helper._qc_math import tukey_outlier_fraction
 from phenotypic.analysis.qc import TukeyOutlierFraction
 
 

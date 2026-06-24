@@ -15,8 +15,8 @@ from phenotypic.sdk_ import (
     DIR_HDF,
     DIR_LOGS,
     DIR_MEASUREMENTS,
-    DIR_OVERLAYS,
     DIR_RESULTS,
+    dataset_overlays_dir,
     DIR_SLURM_SCRIPTS,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
@@ -181,7 +181,7 @@ def _overlay_tasks_for_dataset(
     if not hdf_dir.is_dir():
         return []
 
-    overlay_dir = output_dir / DIR_RESULTS / dataset_name / DIR_OVERLAYS
+    overlay_dir = dataset_overlays_dir(output_dir, dataset_name)
     tasks: list[dict[str, Any]] = []
     for hdf_path in sorted(hdf_dir.glob("*.h5")):
         overlay_path = overlay_dir / f"{hdf_path.stem}.png"

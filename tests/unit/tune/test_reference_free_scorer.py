@@ -197,7 +197,7 @@ def test_round_trips_through_registry(tmp_path):
     assert reloaded.gt_masks_source == gt_dir
     # the path-configured count check rehydrates from disk and still scores
     assert reloaded.count_check is not None
-    assert reloaded.count_check.metadata_source == str(csv)
+    assert reloaded.count_check.metadata == str(csv)
 
 
 def test_round_trips_inside_tuning_spec(tmp_path):

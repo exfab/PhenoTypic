@@ -33,11 +33,11 @@ from phenotypic.sdk_ import (
     DIR_LOGS,
     DIR_HDF,
     DIR_INSPECT,
-    DIR_OVERLAYS,
     DATASET_AGGREGATED_PARQUET,
     EnvVar,
     analysis_csv_path,
     analysis_parquet_path,
+    dataset_overlays_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
@@ -1054,7 +1054,9 @@ class OutputManager:
             (dataset_dir / DIR_MEASUREMENTS).mkdir(exist_ok=True)
             (dataset_dir / DIR_HDF).mkdir(exist_ok=True)
             if self.save_overlays:
-                (dataset_dir / DIR_OVERLAYS).mkdir(exist_ok=True)
+                dataset_overlays_dir(self.base_dir, dataset.name).mkdir(
+                    parents=True, exist_ok=True
+                )
             if self.save_inspects:
                 # Per-measurer subdirs (inspect/<measurer-key>/) are
                 # created lazily by :meth:`save_inspect`; we only
@@ -1080,11 +1082,14 @@ class OutputManager:
         Returns:
             Complete output path for the file
         """
+        # Overlays are a user-facing deliverable, not a per-image result:
+        # route them to <base>/deliverables/overlays/<ds>/<stem>.png.
+        if layer == "overlays":
+            return dataset_overlays_dir(self.base_dir, dataset_name) / f"{image_stem}.png"
+
         # Determine extension
         if layer == "measurements":
             ext = ".parquet"
-        elif layer == "overlays":
-            ext = ".png"
         elif layer == "hdf":
             ext = self.extensions.get("hdf", ".h5")
         else:

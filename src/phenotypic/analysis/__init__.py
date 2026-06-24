@@ -6,18 +6,18 @@ than imaging geometry. Includes edge correction for grid layouts, log-phase grow
 modeling across time courses, and Tukey-style outlier removal for colony metrics.
 """
 
-from ._double_softplus import DoubleSoftplus
-from ._edge_correction import EdgeCorrector
+from ._linear_cap_and_lag_model import LinearCapAndLagModel
+from .edge import EdgeCorrector
 from ._error_cutoffs import ErrorCutoffFinder
-from ._error_report import (
+from ._helper import (
     filter_spec_json,
     filter_spec_query,
     render_error_analysis_html,
     render_error_analysis_report,
 )
-from ._linear_softplus import LinearSoftplus
+from ._linear_lag_model import LinearLagModel
 from ._log_growth_model import LogGrowthModel
-from ._mad_outlier import MADOutlierRemover
+from .filter import MADOutlierRemover, TukeyOutlierRemover
 from .qc import (
     ExpectedVsDetectedCount,
     GridOccupancy,
@@ -27,16 +27,15 @@ from .qc import (
     ReplicateAgreement,
     TukeyOutlierFraction,
 )
-from ._tukey_outlier import TukeyOutlierRemover
 
 __all__ = [
-    "DoubleSoftplus",
+    "LinearCapAndLagModel",
     "EdgeCorrector",
     "ErrorCutoffFinder",
     "ExpectedVsDetectedCount",
     "GridOccupancy",
     "ICC",
-    "LinearSoftplus",
+    "LinearLagModel",
     "LogGrowthModel",
     "MADOutlierRemover",
     "MaxModifiedZScore",

@@ -22,7 +22,18 @@ class INCUBATION_METADATA(IdentityInfo):
     TEMPERATURE = Entry("Temperature", "Incubation temperature in degrees Celsius.")
     TIME = Entry("Time", "Elapsed growth time.")
     TIME_UNIT = Entry("TimeUnit", "Unit for the Time value (e.g. hours, days).")
-    TIMEPOINT = Entry("Timepoint", "Discrete timepoint label in a time series.")
+    TIMEPOINT = Entry(
+        "Timepoint",
+        "Human-readable label for a discrete timepoint in a time series (e.g. "
+        "'24h', 'stationary'); may be non-numeric. For the integer capture "
+        "ordinal, use FrameIndex.",
+    )
+    FRAME_INDEX = Entry(
+        "FrameIndex",
+        "1-based ordinal index of the image within the time-course capture "
+        "sequence; the monotonic-integer companion to the free-form Timepoint "
+        "label.",
+    )
     DAY = Entry("Day", "Day index of the experiment.")
     GENERATION = Entry("Generation", "Generation or passage number.")
     HUMIDITY = Entry("Humidity", "Relative humidity during incubation.")

@@ -126,7 +126,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path.cwd(),
         help=(
             "Path to the CLI output directory containing "
-            "`master_measurements.parquet` and `results/<dataset>/overlays/`. "
+            "`master_measurements.parquet` and `deliverables/overlays/<dataset>/`. "
             "Defaults to the current working directory."
         ),
     )

@@ -556,6 +556,7 @@
     z-index: 1030;
     height: 0;
     display: flex;
+    align-items: flex-start;
     justify-content: flex-end;
     pointer-events: none;
 }
@@ -563,4 +564,17 @@
 .results-viewer-tabbar__actions > * {
     pointer-events: auto;
     margin: 0.25rem 0.5rem 0 0;
+}
+
+#btn-filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 31px;
+    padding: 0.25rem 0.5rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+#filter-toggle-badge {
+    align-self: center;
 }

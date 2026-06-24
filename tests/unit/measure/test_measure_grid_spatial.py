@@ -1,4 +1,4 @@
-"""Tests for MeasureGridSpatial measurement operation."""
+"""Tests for MeasureNeighborDist measurement operation."""
 
 import pytest
 import pandas as pd
@@ -6,9 +6,9 @@ import numpy as np
 
 from phenotypic import GridImage
 from phenotypic.grid import ManualGridFinder
-from phenotypic.measure import MeasureGridSpatial
+from phenotypic.measure import MeasureNeighborDist
 from phenotypic.schema import OBJECT
-from phenotypic.schema import GRID_SPATIAL, GRID
+from phenotypic.schema import NEIGHBOR_DIST, GRID
 
 
 def _circle(objmap: np.ndarray, label: int, rr: int, cc: int, radius: int) -> None:
@@ -50,7 +50,7 @@ def _make_synthetic_grid_image(
 
 
 class TestMeasureGridSpatial:
-    """Tests for MeasureGridSpatial measurement operation."""
+    """Tests for MeasureNeighborDist measurement operation."""
 
     @pytest.fixture
     def sample_image(self, synth_plate):
@@ -63,8 +63,8 @@ class TestMeasureGridSpatial:
 
     @pytest.fixture
     def measurer(self):
-        """Create MeasureGridSpatial instance."""
-        return MeasureGridSpatial()
+        """Create MeasureNeighborDist instance."""
+        return MeasureNeighborDist()
 
     def test_output_has_required_columns(self, sample_image, measurer):
         """Verify all expected columns are present in output."""
@@ -73,16 +73,16 @@ class TestMeasureGridSpatial:
         # First column must be Object_Label
         assert df.columns[0] == OBJECT.LABEL
 
-        # All GRID_SPATIAL columns must be present
+        # All NEIGHBOR_DIST columns must be present
         expected_columns = [
-            GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.LEFT_DISTANCE,
-            GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.RIGHT_DISTANCE,
-            GRID_SPATIAL.ABOVE_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.ABOVE_DISTANCE,
-            GRID_SPATIAL.UNDER_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.UNDER_DISTANCE,
+            NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.LEFT_DISTANCE,
+            NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.RIGHT_DISTANCE,
+            NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.ABOVE_DISTANCE,
+            NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.UNDER_DISTANCE,
         ]
         for col in expected_columns:
             assert col in df.columns, f"Missing column: {col}"
@@ -98,8 +98,8 @@ class TestMeasureGridSpatial:
         df = measurer.measure(sample_image)
         grid_info = sample_image.grid.info(include_metadata=False)
         np.testing.assert_array_equal(
-            df[OBJECT.LABEL].values,
-            grid_info[OBJECT.LABEL].values
+                df[OBJECT.LABEL].values,
+                grid_info[OBJECT.LABEL].values
         )
 
     def test_edge_cells_have_nan_left_neighbors(self, sample_image, measurer):
@@ -112,7 +112,7 @@ class TestMeasureGridSpatial:
 
         for label in col_0_labels:
             row = df[df[OBJECT.LABEL] == label]
-            assert pd.isna(row[GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL].iloc[0]), \
+            assert pd.isna(row[NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL].iloc[0]), \
                 f"Object {label} in col 0 should have NaN left neighbor"
 
     def test_edge_cells_have_nan_above_neighbors(self, sample_image, measurer):
@@ -125,7 +125,7 @@ class TestMeasureGridSpatial:
 
         for label in row_0_labels:
             row = df[df[OBJECT.LABEL] == label]
-            assert pd.isna(row[GRID_SPATIAL.ABOVE_NEIGHBOR_OBJ_LABEL].iloc[0]), \
+            assert pd.isna(row[NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL].iloc[0]), \
                 f"Object {label} in row 0 should have NaN above neighbor"
 
     def test_distance_is_non_negative(self, sample_image, measurer):
@@ -133,10 +133,10 @@ class TestMeasureGridSpatial:
         df = measurer.measure(sample_image)
 
         distance_cols = [
-            GRID_SPATIAL.LEFT_DISTANCE,
-            GRID_SPATIAL.RIGHT_DISTANCE,
-            GRID_SPATIAL.ABOVE_DISTANCE,
-            GRID_SPATIAL.UNDER_DISTANCE,
+            NEIGHBOR_DIST.LEFT_DISTANCE,
+            NEIGHBOR_DIST.RIGHT_DISTANCE,
+            NEIGHBOR_DIST.ABOVE_DISTANCE,
+            NEIGHBOR_DIST.UNDER_DISTANCE,
         ]
 
         for col in distance_cols:
@@ -151,10 +151,10 @@ class TestMeasureGridSpatial:
         all_labels = set(df[OBJECT.LABEL].values)
 
         label_cols = [
-            GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.ABOVE_NEIGHBOR_OBJ_LABEL,
-            GRID_SPATIAL.UNDER_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL,
+            NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL,
         ]
 
         for col in label_cols:
@@ -169,7 +169,7 @@ class TestWindowBbox:
 
     def test_single_bbox_unchanged(self):
         bbox = (10, 20, 30, 40)
-        assert MeasureGridSpatial._window_bbox([bbox]) == bbox
+        assert MeasureNeighborDist._window_bbox([bbox]) == bbox
 
     def test_union_takes_extremes(self):
         bboxes = [
@@ -178,7 +178,7 @@ class TestWindowBbox:
             (8, 18, 28, 45),
         ]
         # min of mins, max of maxs over (min_rr, max_rr, min_cc, max_cc)
-        assert MeasureGridSpatial._window_bbox(bboxes) == (5, 25, 28, 50)
+        assert MeasureNeighborDist._window_bbox(bboxes) == (5, 25, 28, 50)
 
 
 class TestEdtDistance:
@@ -189,16 +189,16 @@ class TestEdtDistance:
         minus the two radii (true pixel-to-pixel)."""
         # 1x2 grid, 100x100 image, one circle per cell at the cell center
         image = _make_synthetic_grid_image(
-            height=100,
-            width=100,
-            row_edges=np.array([0, 100]),
-            col_edges=np.array([0, 50, 100]),
-            circles=[
-                (1, 50, 25, 5),  # left cell, center (50, 25), r=5
-                (2, 50, 75, 5),  # right cell, center (50, 75), r=5
-            ],
+                height=100,
+                width=100,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 50, 100]),
+                circles=[
+                    (1, 50, 25, 5),  # left cell, center (50, 25), r=5
+                    (2, 50, 75, 5),  # right cell, center (50, 75), r=5
+                ],
         )
-        df = MeasureGridSpatial().measure(image)
+        df = MeasureNeighborDist().measure(image)
 
         left = df[df[OBJECT.LABEL] == 1].iloc[0]
         right = df[df[OBJECT.LABEL] == 2].iloc[0]
@@ -206,18 +206,18 @@ class TestEdtDistance:
         # Center-to-center column distance = 50; subtract two radii of 5
         expected = 50.0 - 5 - 5
         # Allow ±1 px slack for rasterization
-        assert abs(left[GRID_SPATIAL.RIGHT_DISTANCE] - expected) <= 1.0
-        assert int(left[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]) == 2
+        assert abs(left[NEIGHBOR_DIST.RIGHT_DISTANCE] - expected) <= 1.0
+        assert int(left[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]) == 2
 
         # Reciprocal
-        assert abs(right[GRID_SPATIAL.LEFT_DISTANCE] - expected) <= 1.0
-        assert int(right[GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL]) == 1
+        assert abs(right[NEIGHBOR_DIST.LEFT_DISTANCE] - expected) <= 1.0
+        assert int(right[NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL]) == 1
 
         # Edge-of-plate NaNs hold
-        assert pd.isna(left[GRID_SPATIAL.LEFT_DISTANCE])
-        assert pd.isna(right[GRID_SPATIAL.RIGHT_DISTANCE])
-        assert pd.isna(left[GRID_SPATIAL.ABOVE_DISTANCE])
-        assert pd.isna(left[GRID_SPATIAL.UNDER_DISTANCE])
+        assert pd.isna(left[NEIGHBOR_DIST.LEFT_DISTANCE])
+        assert pd.isna(right[NEIGHBOR_DIST.RIGHT_DISTANCE])
+        assert pd.isna(left[NEIGHBOR_DIST.ABOVE_DISTANCE])
+        assert pd.isna(left[NEIGHBOR_DIST.UNDER_DISTANCE])
 
     def test_diagonal_circles_match_true_mask_distance(self):
         """For diagonally separated circles, EDT gives the true mask-to-mask
@@ -227,17 +227,17 @@ class TestEdtDistance:
         # bottom region of right cell — diagonal even within the left/right
         # neighbour relation
         image = _make_synthetic_grid_image(
-            height=100,
-            width=100,
-            row_edges=np.array([0, 100]),
-            col_edges=np.array([0, 50, 100]),
-            circles=[
-                (1, 20, 20, 5),
-                (2, 80, 80, 5),
-            ],
+                height=100,
+                width=100,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 50, 100]),
+                circles=[
+                    (1, 20, 20, 5),
+                    (2, 80, 80, 5),
+                ],
         )
-        df = MeasureGridSpatial().measure(image)
-        right_dist = df[df[OBJECT.LABEL] == 1].iloc[0][GRID_SPATIAL.RIGHT_DISTANCE]
+        df = MeasureNeighborDist().measure(image)
+        right_dist = df[df[OBJECT.LABEL] == 1].iloc[0][NEIGHBOR_DIST.RIGHT_DISTANCE]
 
         # True closest-pixel distance ≈ ||(80,80) − (20,20)|| − 2·r
         center_dist = np.sqrt(60 ** 2 + 60 ** 2)
@@ -258,30 +258,30 @@ class TestEdtDistance:
         # The top target's nearest right neighbour should be the top-right;
         # the bottom target's should be the bottom-right.
         image = _make_synthetic_grid_image(
-            height=100,
-            width=100,
-            row_edges=np.array([0, 100]),
-            col_edges=np.array([0, 50, 100]),
-            circles=[
-                (1, 20, 20, 4),  # target top
-                (2, 80, 20, 4),  # target bottom
-                (3, 20, 80, 4),  # neighbour top
-                (4, 80, 80, 4),  # neighbour bottom
-            ],
+                height=100,
+                width=100,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 50, 100]),
+                circles=[
+                    (1, 20, 20, 4),  # target top
+                    (2, 80, 20, 4),  # target bottom
+                    (3, 20, 80, 4),  # neighbour top
+                    (4, 80, 80, 4),  # neighbour bottom
+                ],
         )
-        df = MeasureGridSpatial().measure(image)
+        df = MeasureNeighborDist().measure(image)
 
         top = df[df[OBJECT.LABEL] == 1].iloc[0]
         bot = df[df[OBJECT.LABEL] == 2].iloc[0]
 
         # Each target attributes to the closer neighbour (same vertical level)
-        assert int(top[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]) == 3
-        assert int(bot[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]) == 4
+        assert int(top[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]) == 3
+        assert int(bot[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]) == 4
 
         # Both gaps are along the same row, both ≈ 60 - 4 - 4 = 52
         expected = 60.0 - 4 - 4
-        assert abs(top[GRID_SPATIAL.RIGHT_DISTANCE] - expected) <= 1.0
-        assert abs(bot[GRID_SPATIAL.RIGHT_DISTANCE] - expected) <= 1.0
+        assert abs(top[NEIGHBOR_DIST.RIGHT_DISTANCE] - expected) <= 1.0
+        assert abs(bot[NEIGHBOR_DIST.RIGHT_DISTANCE] - expected) <= 1.0
 
     def test_shielded_target_returns_nan(self):
         """When a second target object sits between the first target and the
@@ -294,57 +294,57 @@ class TestEdtDistance:
         # From any pixel in the right cell, circle 2 is closer than circle 1,
         # so circle 1 has no closest-attribution to right-cell pixels.
         image = _make_synthetic_grid_image(
-            height=100,
-            width=100,
-            row_edges=np.array([0, 100]),
-            col_edges=np.array([0, 50, 100]),
-            circles=[
-                (1, 50, 10, 3),
-                (2, 50, 40, 3),
-                (3, 50, 75, 3),
-            ],
+                height=100,
+                width=100,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 50, 100]),
+                circles=[
+                    (1, 50, 10, 3),
+                    (2, 50, 40, 3),
+                    (3, 50, 75, 3),
+                ],
         )
-        df = MeasureGridSpatial().measure(image)
+        df = MeasureNeighborDist().measure(image)
 
         shielded = df[df[OBJECT.LABEL] == 1].iloc[0]
         front = df[df[OBJECT.LABEL] == 2].iloc[0]
 
         # Circle 1 is shielded by circle 2 from the right neighbour
-        assert pd.isna(shielded[GRID_SPATIAL.RIGHT_DISTANCE])
-        assert pd.isna(shielded[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL])
+        assert pd.isna(shielded[NEIGHBOR_DIST.RIGHT_DISTANCE])
+        assert pd.isna(shielded[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL])
 
         # Circle 2 reports the real gap to circle 3
-        assert int(front[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]) == 3
+        assert int(front[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]) == 3
         expected = (75 - 40) - 3 - 3
-        assert abs(front[GRID_SPATIAL.RIGHT_DISTANCE] - expected) <= 1.0
+        assert abs(front[NEIGHBOR_DIST.RIGHT_DISTANCE] - expected) <= 1.0
 
     def test_empty_neighbor_cell_yields_nan(self):
         """An in-bounds neighbour cell with no detected objects → NaN."""
         # 1x3 grid; only the leftmost and rightmost cells have circles
         image = _make_synthetic_grid_image(
-            height=100,
-            width=180,
-            row_edges=np.array([0, 100]),
-            col_edges=np.array([0, 60, 120, 180]),
-            circles=[
-                (1, 50, 30, 5),   # left cell
-                (2, 50, 150, 5),  # right cell — middle is empty
-            ],
+                height=100,
+                width=180,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 60, 120, 180]),
+                circles=[
+                    (1, 50, 30, 5),  # left cell
+                    (2, 50, 150, 5),  # right cell — middle is empty
+                ],
         )
-        df = MeasureGridSpatial().measure(image)
+        df = MeasureNeighborDist().measure(image)
 
         left = df[df[OBJECT.LABEL] == 1].iloc[0]
         right = df[df[OBJECT.LABEL] == 2].iloc[0]
 
         # Each colony's immediate neighbour cell is empty → NaN
-        assert pd.isna(left[GRID_SPATIAL.RIGHT_DISTANCE])
-        assert pd.isna(left[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL])
-        assert pd.isna(right[GRID_SPATIAL.LEFT_DISTANCE])
-        assert pd.isna(right[GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL])
+        assert pd.isna(left[NEIGHBOR_DIST.RIGHT_DISTANCE])
+        assert pd.isna(left[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL])
+        assert pd.isna(right[NEIGHBOR_DIST.LEFT_DISTANCE])
+        assert pd.isna(right[NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL])
 
 
 class TestMeasureGridSpatialIntegration:
-    """Integration tests for MeasureGridSpatial with real data patterns."""
+    """Integration tests for MeasureNeighborDist with real data patterns."""
 
     @pytest.fixture
     def sample_image(self, synth_plate):
@@ -356,13 +356,13 @@ class TestMeasureGridSpatialIntegration:
         neighbor is A. (Multi-object cells can pick different closest objects
         in each direction, so strict reciprocity only holds for the 1:1
         regime.)"""
-        measurer = MeasureGridSpatial()
+        measurer = MeasureNeighborDist()
         df = measurer.measure(sample_image)
         grid_info = sample_image.grid.info(include_metadata=False)
 
         # Labels in cells that contain exactly one object
         cell_counts = grid_info.groupby(
-            [GRID.ROW_NUM, GRID.COL_NUM], observed=True
+                [GRID.ROW_NUM, GRID.COL_NUM], observed=True
         ).size()
         single_object_cells = set(cell_counts[cell_counts == 1].index)
         label_to_cell = {
@@ -375,7 +375,7 @@ class TestMeasureGridSpatialIntegration:
             obj_label = int(row[OBJECT.LABEL])
             if label_to_cell[obj_label] not in single_object_cells:
                 continue
-            right_neighbor = row[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]
+            right_neighbor = row[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]
             if pd.isna(right_neighbor):
                 continue
             r_label = int(right_neighbor)
@@ -383,7 +383,7 @@ class TestMeasureGridSpatialIntegration:
                 continue
 
             neighbor_row = df[df[OBJECT.LABEL] == r_label].iloc[0]
-            left_of_neighbor = neighbor_row[GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL]
+            left_of_neighbor = neighbor_row[NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL]
             assert pd.notna(left_of_neighbor), \
                 f"Object {r_label} should have a left neighbor (us, {obj_label})"
             assert int(left_of_neighbor) == obj_label, \
@@ -396,20 +396,21 @@ class TestMeasureGridSpatialIntegration:
 
     def test_consistent_distances(self, sample_image):
         """Distance from A to B should equal distance from B to A."""
-        measurer = MeasureGridSpatial()
+        measurer = MeasureNeighborDist()
         df = measurer.measure(sample_image)
 
         for _, row in df.iterrows():
             obj_label = row[OBJECT.LABEL]
-            right_neighbor = row[GRID_SPATIAL.RIGHT_NEIGHBOR_OBJ_LABEL]
-            right_dist = row[GRID_SPATIAL.RIGHT_DISTANCE]
+            right_neighbor = row[NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL]
+            right_dist = row[NEIGHBOR_DIST.RIGHT_DISTANCE]
 
             if pd.notna(right_neighbor) and pd.notna(right_dist):
                 # Find neighbor's left distance back to us
                 neighbor_row = df[df[OBJECT.LABEL] == int(right_neighbor)]
                 if len(neighbor_row) > 0:
-                    left_neighbor = neighbor_row[GRID_SPATIAL.LEFT_NEIGHBOR_OBJ_LABEL].iloc[0]
-                    left_dist = neighbor_row[GRID_SPATIAL.LEFT_DISTANCE].iloc[0]
+                    left_neighbor = \
+                        neighbor_row[NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL].iloc[0]
+                    left_dist = neighbor_row[NEIGHBOR_DIST.LEFT_DISTANCE].iloc[0]
 
                     # If the neighbor's left neighbor is us, distances should match
                     if pd.notna(left_neighbor) and int(left_neighbor) == int(obj_label):

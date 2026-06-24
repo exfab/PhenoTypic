@@ -26,22 +26,22 @@ from phenotypic.schema._measurement_info import _rst_cell_text
 #: Toctree groups (caption -> ordered enum names). Single source of truth; a test
 #: asserts every public schema enum lands in exactly one group.
 _GROUPS: dict[str, tuple[str, ...]] = {
-    "Measurements": (
+    "Measurements"     : (
         "SIZE", "SHAPE", "BBOX", "INTENSITY", "TEXTURE", "ColorLab", "ColorHSV",
         "Colorxy", "ColorXYZ", "ColorComposition", "OBJECT", "GRID",
-        "GRID_SPATIAL", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
+        "NEIGHBOR_DIST", "GRID_LINREG_STATS", "GRID_SPREAD", "SYMMETRIC_ZONES",
         "RADIAL_EXPANSION",
     ),
     "Models & Analysis": (
-        "LOG_GROWTH_MODEL", "LINEAR_SOFTPLUS_MODEL", "DOUBLE_SOFTPLUS_MODEL",
+        "LOG_GROWTH_MODEL", "LINEAR_LAG_MODEL", "LINEAR_CAP_AND_LAG_MODEL",
         "EDGE_CORRECTION", "MODEL_METRICS",
     ),
-    "Quality Control": (
+    "Quality Control"  : (
         "QUALITY_CHECK", "QUALITY_COUNT", "QUALITY_OCCUPANCY", "QUALITY_ICC",
         "QUALITY_MAD", "QUALITY_SE", "QUALITY_TUKEY", "QUALITY_ZMAX",
     ),
     "Curation & Errors": ("CURATION", "ErrorCategory"),
-    "Metadata": (
+    "Metadata"         : (
         "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
         "EXPERIMENT_METADATA", "GENETIC_METADATA", "INCUBATION_METADATA",
         "PLATE_METADATA", "SAMPLE_METADATA",
@@ -49,31 +49,31 @@ _GROUPS: dict[str, tuple[str, ...]] = {
 }
 
 _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
-    "METADATA": (
+    "METADATA"            : (
         "Framework-populated image bookkeeping, including image names, UUIDs, "
         "file formats, image types, bit depth, and file suffixes.",
         "Use when reading provenance emitted by PhenoTypic itself; these are "
         "not the biological metadata columns users normally supply.",
     ),
-    "SAMPLE_METADATA": (
+    "SAMPLE_METADATA"     : (
         "Sample identity and provenance, including sample IDs, replicates, "
         "clones, source plate/well, library IDs, barcodes, and controls.",
         "Use for sample-level biological identity and for linking colonies "
         "back to source materials.",
     ),
-    "PLATE_METADATA": (
+    "PLATE_METADATA"      : (
         "Assay plate and physical layout, including plate IDs, batches, array "
         "density, and incubator position.",
         "Use when grouping measurements by plate, batch, or spatial assay "
         "layout.",
     ),
-    "CONDITION_METADATA": (
+    "CONDITION_METADATA"  : (
         "Media, nutrients, supplements, treatments, compounds, doses, and "
         "stress conditions applied to colonies.",
         "Use when comparing phenotypes across growth environments or "
         "perturbations.",
     ),
-    "INCUBATION_METADATA": (
+    "INCUBATION_METADATA" : (
         "Temperature, elapsed time, time units, timepoints, day indices, "
         "generation, humidity, and atmosphere.",
         "Use for time-course analyses and incubation-condition grouping.",
@@ -83,17 +83,18 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "experimenter, resolution, and exposure time.",
         "Use when tracking imaging batches or diagnosing acquisition effects.",
     ),
-    "GENETIC_METADATA": (
+    "GENETIC_METADATA"    : (
         "Organism and genetic identity, including species, strain, genotype, "
         "background, alleles, plasmids, markers, mating type, and ploidy.",
         "Use when grouping or filtering colonies by genetic background.",
     ),
-    "EXPERIMENT_METADATA": (
+    "EXPERIMENT_METADATA" : (
         "Experiment-level bookkeeping, including experiment IDs, projects, "
         "datasets, protocols, and notes.",
         "Use when organizing outputs across projects, protocols, or datasets.",
     ),
 }
+
 
 def _strip_appended_table(doc: str) -> str:
     """Drop the auto-appended ``MeasurementInfo`` table from a docstring."""
@@ -185,7 +186,7 @@ def _enum_page(info_cls: type[Any]) -> str:
         out.append("")
 
     out.append(
-        info_cls.rst_table(header=("Column label", "Description"), use_headers=True)
+            info_cls.rst_table(header=("Column label", "Description"), use_headers=True)
     )
     out.append("")
     return "\n".join(out)
@@ -318,13 +319,13 @@ def _build_pages(srcdir: str) -> None:
             continue
         slug = _group_slug(caption)
         _write(
-            output_dir / slug / "index.rst",
-            _build_group_index(caption, present, public_infos),
+                output_dir / slug / "index.rst",
+                _build_group_index(caption, present, public_infos),
         )
         for name in present:
             _write(
-                output_dir / slug / f"{_doc_stem(name)}.rst",
-                _enum_page(public_infos[name]),
+                    output_dir / slug / f"{_doc_stem(name)}.rst",
+                    _enum_page(public_infos[name]),
             )
 
 
@@ -337,7 +338,7 @@ def _generate(app):
 def setup(app):
     app.connect("builder-inited", _generate)
     return {
-        "version": "0.3",
-        "parallel_read_safe": True,
+        "version"            : "0.3",
+        "parallel_read_safe" : True,
         "parallel_write_safe": True,
     }

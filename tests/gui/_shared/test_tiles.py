@@ -337,7 +337,8 @@ def output_root(tmp_path: Path) -> OutputRoot:
         }
     )
     write_master(tmp_path, master)
-    overlay_dir = tmp_path / "results" / "d1" / "overlays"
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
         overlay_dir / "img-1.png", format="PNG"
@@ -467,7 +468,8 @@ def output_root_no_bbox(tmp_path: Path) -> OutputRoot:
         }
     )
     write_master(tmp_path, master)
-    overlay_dir = tmp_path / "results" / "d1" / "overlays"
+    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
         overlay_dir / "img-1.png", format="PNG"

@@ -160,6 +160,9 @@ class TestMetadataValidation:
             metadata=str(csv_path), groupby=["Metadata_ImageFile"]
         )
 
+        # ``metadata`` echoes the path verbatim; the resolved frame is on
+        # the private ``_metadata`` slot.
+        assert chk.metadata == str(csv_path)
         assert isinstance(chk._metadata, pd.DataFrame)
         assert len(chk._metadata) == 96
         assert "Metadata_ImageFile" in chk._metadata.columns
@@ -173,6 +176,8 @@ class TestMetadataValidation:
             metadata=csv_path, groupby=["Metadata_ImageFile"]
         )
 
+        # A pathlib.Path is normalized to a plain str for round-tripping.
+        assert chk.metadata == str(csv_path)
         assert isinstance(chk._metadata, pd.DataFrame)
         assert len(chk._metadata) == 96
 

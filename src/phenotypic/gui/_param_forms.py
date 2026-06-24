@@ -125,6 +125,41 @@ def _multi_union_branches(hint: Any) -> list[Any]:
     return [a for a in get_args(hint) if a is not type(None)]
 
 
+def _opaque_str_union(hint: Any) -> bool:
+    """Return ``True`` for an ``<opaque class> | str`` union (e.g. ``DataFrame | str``).
+
+    Such a field can hold a runtime-only object (an in-memory layout frame)
+    *or* a path string, but only the string is typeable in a Dash form — so
+    it should render as a plain text input (collected as ``param-str``)
+    rather than the multi-type tag widget. The match is deliberately narrow:
+    exactly ``str`` plus a single concrete, non-primitive, non-container,
+    non-enum class. Genuine multi-primitive unions (``bool | float | int |
+    str``) and container unions (``Callable | str | list | dict``) keep the
+    tag widget.
+
+    Canonical case: a QC check's ``metadata`` field
+    (:class:`~phenotypic.analysis.ExpectedVsDetectedCount`), which accepts an
+    in-memory ``pandas.DataFrame`` or a ``.csv``/``.parquet`` path string.
+    """
+    origin = get_origin(hint)
+    if origin not in (typing.Union, types.UnionType):
+        return False
+    non_none = [a for a in get_args(hint) if a is not type(None)]
+    if str not in non_none:
+        return False
+    others = [a for a in non_none if a is not str]
+    if len(others) != 1:
+        return False
+    other = others[0]
+    if other in (bool, int, float, str, list, dict, tuple, set, frozenset):
+        return False
+    if get_origin(other) is not None:  # parameterized generic / Literal / ...
+        return False
+    if inspect.isclass(other) and issubclass(other, enum.Enum):
+        return False
+    return inspect.isclass(other)
+
+
 # ---------------------------------------------------------------------------
 # Value conversion helpers
 # ---------------------------------------------------------------------------
@@ -462,7 +497,7 @@ def _multi_union_widget(
     """Render a type-tag dropdown plus an adaptive value input for multi-unions.
 
     Used for parameters whose annotation is a union of 2+ non-None types
-    (e.g. ``LinearSoftplus.s0_prior: bool | float | int | str | None``).
+    (e.g. ``LinearLagModel.s0_prior: bool | float | int | str | None``).
     The dropdown picks the active branch; the input adapts type accordingly.
     A pattern-matching callback fans the (tag, value) pair back into
     :func:`parse_widget_value` which dispatches on the tag.
@@ -568,8 +603,13 @@ def _widget_for_param(
 
     # Multi-type unions (e.g. ``bool | float | int | str | None``) take
     # priority over the inner-type dispatch below since ``_unwrap_optional``
-    # would not collapse them to a single type.
-    if _is_multi_union(p.type_hint):
+    # would not collapse them to a single type. A ``<opaque class> | str``
+    # union (e.g. a QC check's ``metadata: pandas.DataFrame | str``) is the
+    # exception: only the path string is typeable in a form, so it falls
+    # through to the plain text input below (rendered + collected as
+    # ``param-str``) instead of the multi-type tag widget that the modal's
+    # submit callback does not gather.
+    if _is_multi_union(p.type_hint) and not _opaque_str_union(p.type_hint):
         return _multi_union_widget(
             p=p, current_value=current_value, form_id_prefix=form_id_prefix
         )

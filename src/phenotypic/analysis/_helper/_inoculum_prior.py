@@ -1,6 +1,6 @@
 """Gaussian prior on the inoculum size ``s0`` for softplus-family models.
 
-Used internally by :class:`LinearSoftplus` and :class:`DoubleSoftplus` (and
+Used internally by :class:`LinearLagModel` and :class:`LinearCapAndLagModel` (and
 their shared base) to attach a per-group Gaussian prior on the initial size.
 The user-facing dispatch lives on each model class; this module owns the
 internal field shape and the prior-engagement logic.
@@ -34,7 +34,7 @@ class _InoculumPrior:
     - ``groupby`` — coarser grouping for empirical-Bayes ``µ``
       estimation on column-backed priors.
 
-    See :class:`LinearSoftplus` / :class:`DoubleSoftplus` for the
+    See :class:`LinearLagModel` / :class:`LinearCapAndLagModel` for the
     user-facing dispatch tables and usage.
     """
 

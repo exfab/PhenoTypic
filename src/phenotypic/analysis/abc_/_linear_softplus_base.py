@@ -1,10 +1,10 @@
 """Shared base class for linear-softplus growth fitters.
 
 Holds the σ-resolution, inoculum-prior, and aggregation-broadcasting
-machinery used by both :class:`LinearSoftplus` (single softplus, no
-saturation ceiling) and :class:`DoubleSoftplus` (with a softplus
+machinery used by both :class:`LinearLagModel` (single softplus, no
+saturation ceiling) and :class:`LinearCapAndLagModel` (with a softplus
 saturation ceiling). Subclasses provide their own ``model_func``
-geometry, parameter unpacking, and (in DoubleSoftplus) per-group mode
+geometry, parameter unpacking, and (in LinearCapAndLagModel) per-group mode
 dispatch — everything else lives here.
 
 Class-level constants ``_V_UPPER`` and ``_STDERR_FLOOR_QUANTILE`` are
@@ -20,21 +20,21 @@ import numpy as np
 import pandas as pd
 from pydantic import PrivateAttr
 
-from phenotypic.analysis._inoculum_prior import _InoculumPrior
+from phenotypic.analysis._helper._inoculum_prior import _InoculumPrior
 from phenotypic.analysis.abc_._model_fitter import ModelFitter
 
 
 _DEFAULT_BETA = 10.0
 """Module-level default for the saturation transition sharpness ``β``.
 
-Used as the seed for fitted-β optimization in :class:`DoubleSoftplus`
+Used as the seed for fitted-β optimization in :class:`LinearCapAndLagModel`
 and as the fallback when the prediction row carries ``NaN`` for the
 ``beta`` field.
 """
 
 
 class _LinearSoftplusBase(ModelFitter):
-    """Shared infrastructure for :class:`LinearSoftplus` / :class:`DoubleSoftplus`.
+    """Shared infrastructure for :class:`LinearLagModel` / :class:`LinearCapAndLagModel`.
 
     Subclasses must implement ``model_func``, ``_initial_guess``,
     ``_bounds``, ``_unpack_params``, ``_predict_kwargs``, and
@@ -99,7 +99,7 @@ class _LinearSoftplusBase(ModelFitter):
 
     # ------------------------------------------------------------------ #
     # Shared model math — the linear+lag softplus term used by both
-    # subclasses. DoubleSoftplus wraps this with a saturation ceiling
+    # subclasses. LinearCapAndLagModel wraps this with a saturation ceiling
     # in its own ``model_func``.
     # ------------------------------------------------------------------ #
     @staticmethod
@@ -122,7 +122,7 @@ class _LinearSoftplusBase(ModelFitter):
 
     # ------------------------------------------------------------------ #
     # Loss function — handles 4-or-5 param vectors and the s0 prior.
-    # The 5-param case is only used by DoubleSoftplus's fitted_beta mode.
+    # The 5-param case is only used by LinearCapAndLagModel's fitted_beta mode.
     # ------------------------------------------------------------------ #
     def _loss_func(
             self,
@@ -147,10 +147,10 @@ class _LinearSoftplusBase(ModelFitter):
 
         The optimizer vector is 4 or 5 elements depending on the
         per-group mode chosen by the subclass. In the 5-element case
-        (DoubleSoftplus fitted-beta) the 5th entry is ``beta`` and
+        (LinearCapAndLagModel fitted-beta) the 5th entry is ``beta`` and
         overrides the kwarg. In the 4-element case the kwargs carry
         ``smax`` and ``beta``, with ``smax=None`` indicating the
-        no-saturation path used by :class:`LinearSoftplus`.
+        no-saturation path used by :class:`LinearLagModel`.
         """
         if len(params) >= 5:
             v, s0, lam, alpha = (float(params[i]) for i in range(4))
@@ -291,7 +291,7 @@ class _LinearSoftplusBase(ModelFitter):
 
         Base implementation only attaches ``y_stderr`` and the s0 prior
         stats. Subclasses that need ``smax`` / ``beta`` per-group
-        (i.e. :class:`DoubleSoftplus`) must override this and call
+        (i.e. :class:`LinearCapAndLagModel`) must override this and call
         ``super()._extra_loss_kwargs(group)`` to pick up the σ + prior
         entries first.
         """

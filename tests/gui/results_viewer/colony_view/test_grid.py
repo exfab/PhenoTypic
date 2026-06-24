@@ -208,9 +208,9 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
         }
     )
     # Build the directory shell discover() expects, just enough to load
-    # without crashing. Use the minimum: master parquet + an overlays dir
+    # without crashing. Use the minimum: master parquet + a results dir
     # for the "plate1" dataset (we don't need actual PNGs here).
-    (tmp_path / "results" / "plate1" / "overlays").mkdir(parents=True)
+    (tmp_path / "results" / "plate1" / "measurements").mkdir(parents=True, exist_ok=True)
     write_master(tmp_path, master)
     return OutputRoot.discover(tmp_path)
 
@@ -288,7 +288,8 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
             "Grid_ColNum": [1, 1, 2, 2],
         }
     )
-    overlays = tmp_path / "results" / "plate1" / "overlays"
+    (tmp_path / "results" / "plate1" / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = tmp_path / "deliverables" / "overlays" / "plate1"
     overlays.mkdir(parents=True)
     for stem in ("img-001", "img-002"):
         PILImage.new("RGB", (64, 64), (200, 0, 0)).save(overlays / f"{stem}.png")

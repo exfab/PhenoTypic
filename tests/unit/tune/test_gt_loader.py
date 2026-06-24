@@ -1,8 +1,8 @@
 """4.3 — the path-configured ground-truth mask loader (DEFERRED-WORK §1).
 
-``GroundTruthMasks`` mirrors ``ExpectedVsDetectedCount.metadata_source``: a serializable
-``gt_masks_source`` path, an excluded resolved cache, and a ``model_validator`` that
-captures the path. v1 covers **construction / round-trip / modality / abstain only** —
+``GroundTruthMasks`` mirrors ``ExpectedVsDetectedCount``'s unified ``metadata`` path: a
+serializable ``gt_masks_source`` path, an excluded resolved cache, and a ``model_validator``
+that captures the path. v1 covers **construction / round-trip / modality / abstain only** —
 NOT numeric correctness against real annotated plates (that is deferred). Filename match
 is directory + image stem with suffix priority ``[.npy, .tif, .png]``.
 """
@@ -28,7 +28,7 @@ def mask_dir(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# construction + round-trip (mirrors ExpectedVsDetectedCount.metadata_source)
+# construction + round-trip (mirrors ExpectedVsDetectedCount's metadata path)
 # --------------------------------------------------------------------------- #
 def test_constructs_from_path(mask_dir):
     gt = GroundTruthMasks(gt_masks_source=mask_dir)

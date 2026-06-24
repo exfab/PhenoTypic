@@ -4,10 +4,10 @@ from ._measurement_info import Entry
 from ._tiers import DerivedMeasure
 
 
-class DOUBLE_SOFTPLUS_MODEL(DerivedMeasure):
+class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
     @classmethod
     def category(cls) -> str:
-        return "DoubleSoftplus"
+        return "LinearCapAndLagModel"
 
     v = Entry("v", "The post-lag phase growth rate.",
               tier=1, derivation_type="parameterization", derives_from="SIZE")

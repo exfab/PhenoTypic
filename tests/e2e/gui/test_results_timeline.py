@@ -82,7 +82,8 @@ def _seed(sandbox: Path, df: pl.DataFrame) -> Path:
     cli_out = sandbox / "results" / _OUTPUT_NAME
     write_master(cli_out, df)
     write_measurements_mirror(cli_out, df)
-    overlays = cli_out / "results" / _DATASET / "overlays"
+    (cli_out / "results" / _DATASET / "measurements").mkdir(parents=True, exist_ok=True)
+    overlays = cli_out / "deliverables" / "overlays" / _DATASET
     overlays.mkdir(parents=True, exist_ok=True)
     for plate in range(1, _N_PLATES + 1):
         for img_no in range(1, _N_TIMES + 1):

@@ -1,4 +1,4 @@
-"""Unit tests for :class:`phenotypic.analysis.LinearSoftplus`.
+"""Unit tests for :class:`phenotypic.analysis.LinearLagModel`.
 
 Covers the unclamped 4-parameter linear-softplus fitter and the
 shared base-class machinery (σ resolution, s0 prior, aggregation
@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phenotypic.analysis import DoubleSoftplus, LinearSoftplus
+from phenotypic.analysis import LinearCapAndLagModel, LinearLagModel
 from phenotypic.schema import (
-    LINEAR_SOFTPLUS_MODEL,
+    LINEAR_LAG_MODEL,
     MODEL_METRICS,
 )
 
@@ -39,15 +39,15 @@ def _build_group(
     """Build a replicated measurement DataFrame for a single strain.
 
     When ``smax`` is given, generates from the saturating
-    ``DoubleSoftplus.model_func`` for compatibility with ground-truth
+    ``LinearCapAndLagModel.model_func`` for compatibility with ground-truth
     fixtures inherited from the legacy test file. Otherwise generates
-    from the unclamped ``LinearSoftplus.model_func``.
+    from the unclamped ``LinearLagModel.model_func``.
     """
     rng = rng or np.random.default_rng(0)
     if smax is None:
-        y_clean = LinearSoftplus.model_func(t=t, v=v, s0=s0, lam=lam, alpha=alpha)
+        y_clean = LinearLagModel.model_func(t=t, v=v, s0=s0, lam=lam, alpha=alpha)
     else:
-        y_clean = DoubleSoftplus.model_func(
+        y_clean = LinearCapAndLagModel.model_func(
             t=t, v=v, s0=s0, lam=lam, alpha=alpha, smax=smax, beta=beta,
         )
     rows = []
@@ -72,7 +72,7 @@ def clean_fixture():
     """Two-group noise-free fixture for parameter-recovery tests.
 
     Uses ``smax=None`` so the data is purely linear-with-lag — the
-    natural fit target for ``LinearSoftplus``.
+    natural fit target for ``LinearLagModel``.
     """
     t = np.linspace(0, 6, 20)  # truncated before any saturation
     rng = np.random.default_rng(1)
@@ -108,7 +108,7 @@ def noisy_fixture():
 # ---------------------------------------------------------------------- #
 class TestBasics:
     def test_initialization(self):
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
@@ -125,26 +125,26 @@ class TestBasics:
         assert not m.verbose
 
     def test_no_smax_or_beta_attrs(self):
-        """LinearSoftplus has no saturation params (those live on DoubleSoftplus)."""
-        m = LinearSoftplus(on="Shape_Area", groupby=["Metadata_Strain"])
+        """LinearLagModel has no saturation params (those live on LinearCapAndLagModel)."""
+        m = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
         assert not hasattr(m, "smax")
         assert not hasattr(m, "beta")
 
     def test_class_constants_present(self):
         """Power-user knobs are class constants, not instance kwargs."""
-        assert LinearSoftplus._V_UPPER == 50.0
-        assert LinearSoftplus._STDERR_FLOOR_QUANTILE == 0.25
-        assert LinearSoftplus._PRUNE_SLOPE_RATIO == 0.05
-        assert LinearSoftplus._PRUNE_BUFFER == 2
+        assert LinearLagModel._V_UPPER == 50.0
+        assert LinearLagModel._STDERR_FLOOR_QUANTILE == 0.25
+        assert LinearLagModel._PRUNE_SLOPE_RATIO == 0.05
+        assert LinearLagModel._PRUNE_BUFFER == 2
 
     def test_model_func_shape(self):
         t = np.linspace(0, 10, 20)
-        y = LinearSoftplus.model_func(t=t, v=2.0, s0=0.5, lam=2.0, alpha=10.0)
+        y = LinearLagModel.model_func(t=t, v=2.0, s0=0.5, lam=2.0, alpha=10.0)
         assert y.shape == t.shape
         assert y[-1] > y[0]
 
     def test_schema(self, noisy_fixture):
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
@@ -153,10 +153,10 @@ class TestBasics:
         assert not results.empty
 
         expected = [
-            LINEAR_SOFTPLUS_MODEL.v,
-            LINEAR_SOFTPLUS_MODEL.s0,
-            LINEAR_SOFTPLUS_MODEL.lam,
-            LINEAR_SOFTPLUS_MODEL.alpha,
+            LINEAR_LAG_MODEL.v,
+            LINEAR_LAG_MODEL.s0,
+            LINEAR_LAG_MODEL.lam,
+            LINEAR_LAG_MODEL.alpha,
             MODEL_METRICS.MAE,
             MODEL_METRICS.MSE,
             MODEL_METRICS.RMSE,
@@ -168,16 +168,16 @@ class TestBasics:
         for col in expected:
             assert col in results.columns, f"missing column: {col}"
 
-        # Schema *must not* carry smax/beta/mode — those moved to DoubleSoftplus.
+        # Schema *must not* carry smax/beta/mode — those moved to LinearCapAndLagModel.
         for forbidden in ("smax", "beta", "mode"):
             for col in results.columns:
                 assert forbidden not in str(col), (
-                    f"LinearSoftplus output should not contain {forbidden!r}, "
+                    f"LinearLagModel output should not contain {forbidden!r}, "
                     f"got column {col!r}."
                 )
 
     def test_r2_finite_and_bounded(self, noisy_fixture):
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
@@ -194,7 +194,7 @@ class TestBasics:
 # ---------------------------------------------------------------------- #
 class TestParameterRecovery:
     def test_recovers_ground_truth(self, clean_fixture):
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
@@ -203,15 +203,15 @@ class TestParameterRecovery:
 
         # Strain1: v=5, s0=1, lam=2
         row1 = results.loc["Strain1"]
-        assert abs(row1[LINEAR_SOFTPLUS_MODEL.v] - 5.0) < 0.3
-        assert abs(row1[LINEAR_SOFTPLUS_MODEL.s0] - 1.0) < 0.5
-        assert abs(row1[LINEAR_SOFTPLUS_MODEL.lam] - 2.0) < 0.5
+        assert abs(row1[LINEAR_LAG_MODEL.v] - 5.0) < 0.3
+        assert abs(row1[LINEAR_LAG_MODEL.s0] - 1.0) < 0.5
+        assert abs(row1[LINEAR_LAG_MODEL.lam] - 2.0) < 0.5
 
         # Strain2: v=3, s0=2, lam=3
         row2 = results.loc["Strain2"]
-        assert abs(row2[LINEAR_SOFTPLUS_MODEL.v] - 3.0) < 0.3
-        assert abs(row2[LINEAR_SOFTPLUS_MODEL.s0] - 2.0) < 0.5
-        assert abs(row2[LINEAR_SOFTPLUS_MODEL.lam] - 3.0) < 0.5
+        assert abs(row2[LINEAR_LAG_MODEL.v] - 3.0) < 0.3
+        assert abs(row2[LINEAR_LAG_MODEL.s0] - 2.0) < 0.5
+        assert abs(row2[LINEAR_LAG_MODEL.lam] - 3.0) < 0.5
 
 
 # ---------------------------------------------------------------------- #
@@ -233,13 +233,13 @@ class TestWeighting:
         clean["Area_SE"] = np.where(mask, 5.0, 0.1)
         clean["Area_SE_uniform"] = 1.0
 
-        m_weighted = LinearSoftplus(
+        m_weighted = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             stderr_label="Area_SE",
             prune_saturated=False,
         )
-        m_unweighted = LinearSoftplus(
+        m_unweighted = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             stderr_label="Area_SE_uniform",
@@ -249,8 +249,8 @@ class TestWeighting:
         res_w = m_weighted.analyze(clean)
         res_u = m_unweighted.analyze(clean)
 
-        s0_w = float(res_w[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
-        s0_u = float(res_u[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        s0_w = float(res_w[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_u = float(res_u[LINEAR_LAG_MODEL.s0].iloc[0])
         assert abs(s0_w - s0_u) > 1e-3
 
     def test_stderr_label_column_passed_through(self):
@@ -261,15 +261,15 @@ class TestWeighting:
             noise_sigma=0.2, strain="Strain1", rng=rng, n_replicates=2,
         )
         df["Area_SE"] = 1.0
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             stderr_label="Area_SE",
             prune_saturated=False,
         )
         res = m.analyze(df)
-        assert np.isfinite(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
-        assert np.isfinite(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        assert np.isfinite(res[LINEAR_LAG_MODEL.v].iloc[0])
+        assert np.isfinite(res[LINEAR_LAG_MODEL.s0].iloc[0])
 
     def test_singleton_replicate_groups_fall_back_to_unweighted(self):
         """Singleton groups should not blow up — auto-SEM is NaN, fit
@@ -280,15 +280,15 @@ class TestWeighting:
             t, v=4.0, s0=1.0, lam=2.0, alpha=10.0, smax=None,
             noise_sigma=0.3, strain="Strain1", rng=rng, n_replicates=1,
         )
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
         )
         res = m.analyze(df)
-        v_fit = float(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0])
-        s0_fit = float(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
-        lam_fit = float(res[LINEAR_SOFTPLUS_MODEL.lam].iloc[0])
+        v_fit = float(res[LINEAR_LAG_MODEL.v].iloc[0])
+        s0_fit = float(res[LINEAR_LAG_MODEL.s0].iloc[0])
+        lam_fit = float(res[LINEAR_LAG_MODEL.lam].iloc[0])
         assert np.isfinite(v_fit)
         assert np.isfinite(s0_fit)
         assert np.isfinite(lam_fit)
@@ -308,7 +308,7 @@ class TestWeighting:
           is dramatically reduced compared to the unfloored input
           (orders of magnitude on a multi-decade σ fixture).
         """
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Strain"],
         )
@@ -344,7 +344,7 @@ class TestWeighting:
         """Subclassing and setting ``_STDERR_FLOOR_QUANTILE = None``
         recovers raw inverse-variance weighting — sub-quantile σ
         values are not lifted."""
-        class _NoFloor(LinearSoftplus):
+        class _NoFloor(LinearLagModel):
             _STDERR_FLOOR_QUANTILE = None  # type: ignore[assignment]
 
         m = _NoFloor(on="Shape_Area", groupby=["Metadata_Strain"])
@@ -386,7 +386,7 @@ class TestWeighting:
 
         df = pd.concat([df_a, df_b], ignore_index=True)
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
@@ -406,7 +406,7 @@ class TestWeighting:
 
 
 # ---------------------------------------------------------------------- #
-# Saturation pruning (LinearSoftplus only)
+# Saturation pruning (LinearLagModel only)
 # ---------------------------------------------------------------------- #
 class TestSaturationPruning:
     def test_basic_pruning_drops_plateau_and_preserves_growth(self):
@@ -419,7 +419,7 @@ class TestSaturationPruning:
             t_all, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=True,
@@ -446,7 +446,7 @@ class TestSaturationPruning:
             0, 0.3, size=int(lag_mask.sum())
         )
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=True,
@@ -468,7 +468,7 @@ class TestSaturationPruning:
             t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=True,
@@ -486,7 +486,7 @@ class TestSaturationPruning:
             t, v=5.0, s0=1.0, lam=4.0, alpha=10.0, smax=50.0,
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
@@ -511,27 +511,27 @@ class TestInoculumPrior:
         )
         df["Inoc_Size"] = rng.normal(0.5, 0.02, size=len(df))
 
-        m_no_prior = LinearSoftplus(
+        m_no_prior = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
         )
-        m_prior = LinearSoftplus(
+        m_prior = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior="Inoc_Size",
             prune_saturated=False,
         )
 
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
-        s0_yes = float(m_prior.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_yes = float(m_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
 
         group_mean = float(df["Inoc_Size"].mean())
         assert abs(s0_yes - group_mean) < abs(s0_no - group_mean)
 
     def test_no_prior_residual_when_disabled(self):
         """``_loss_func`` residual is N without prior kwargs, N+1 with them."""
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
@@ -560,7 +560,7 @@ class TestInoculumPrior:
         )
         df["Inoc_Size"] = 0.5
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior="Inoc_Size",
@@ -589,7 +589,7 @@ class TestInoculumPrior:
         )
         df["Inoc_Size"] = 10.0
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior="Inoc_Size",
@@ -610,7 +610,7 @@ class TestInoculumPrior:
     def test_default_cv_when_neither_specified(self):
         """If neither ``s0_prior_cv`` nor ``s0_prior_sigma`` is set,
         the helper applies CV=0.05 as a moderately informative default."""
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=10.0,
@@ -623,7 +623,7 @@ class TestInoculumPrior:
     def test_cv_sigma_xor_validation(self):
         """Passing both ``s0_prior_cv`` and ``s0_prior_sigma`` raises."""
         with pytest.raises(ValueError, match="mutually exclusive"):
-            LinearSoftplus(
+            LinearLagModel(
                 on="Shape_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 s0_prior=1.0,
@@ -640,7 +640,7 @@ class TestInoculumPrior:
             noise_sigma=0.2, strain="Strain1", rng=rng, n_replicates=2,
         )
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=0.5,
@@ -653,13 +653,13 @@ class TestInoculumPrior:
         stats = m._inoc_stats(group)
         assert stats == pytest.approx((0.5, 0.05))
 
-        m_no_prior = LinearSoftplus(
+        m_no_prior = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             prune_saturated=False,
         )
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
-        s0_yes = float(m.analyze(df)[LINEAR_SOFTPLUS_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_yes = float(m.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
         assert abs(s0_yes - 0.5) < abs(s0_no - 0.5)
 
     def test_s0_prior_groupby_pools_across_fit_groups(self):
@@ -681,7 +681,7 @@ class TestInoculumPrior:
             rng_inoc.normal(0.9, 0.01, size=len(df)),
         )
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior="Inoc_Size",
@@ -713,7 +713,7 @@ class TestInoculumPrior:
         )
         df["Inoc_Size"] = 0.5
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Strain"],
             s0_prior="Inoc_Size",
@@ -725,7 +725,7 @@ class TestInoculumPrior:
 
     def test_s0_prior_groupby_without_column_raises(self):
         with pytest.raises(ValueError, match="requires a column-backed"):
-            LinearSoftplus(
+            LinearLagModel(
                 on="Shape_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 s0_prior=0.5,
@@ -739,7 +739,7 @@ class TestInoculumPrior:
             t, v=5.0, s0=1.0, lam=2.0, alpha=10.0, smax=None,
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior="Inoc_Size",
@@ -752,7 +752,7 @@ class TestInoculumPrior:
     @pytest.mark.parametrize("bad", [0.0, -1.0, np.inf, np.nan])
     def test_non_positive_factor_raises(self, kwarg, bad):
         with pytest.raises(ValueError, match=kwarg):
-            LinearSoftplus(
+            LinearLagModel(
                 on="Shape_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 s0_prior="Inoc_Size",
@@ -764,7 +764,7 @@ class TestInoculumPrior:
             with pytest.raises(
                 ValueError, match="s0_prior scalar must be a positive"
             ):
-                LinearSoftplus(
+                LinearLagModel(
                     on="Shape_Area",
                     groupby=["Metadata_Dataset", "Metadata_Strain"],
                     s0_prior=bad_mean,
@@ -772,7 +772,7 @@ class TestInoculumPrior:
 
     def test_empty_s0_prior_groupby_raises(self):
         with pytest.raises(ValueError, match="must not be an empty list"):
-            LinearSoftplus(
+            LinearLagModel(
                 on="Shape_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 s0_prior="Inoc_Size",
@@ -788,7 +788,7 @@ class TestInoculumPrior:
             noise_sigma=0.1, strain="Strain1", rng=rng, n_replicates=2,
         )
 
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=True,
@@ -815,7 +815,7 @@ class TestInoculumPrior:
 
     def test_s0_prior_true_not_interpreted_as_numeric(self):
         """Guard against the ``isinstance(True, int)`` gotcha."""
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=True,
@@ -824,12 +824,12 @@ class TestInoculumPrior:
         assert m._prior.direct_mean is None
 
     def test_s0_prior_false_disables_prior(self):
-        m_false = LinearSoftplus(
+        m_false = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=False,
         )
-        m_none = LinearSoftplus(
+        m_none = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             s0_prior=None,
@@ -840,7 +840,7 @@ class TestInoculumPrior:
     def test_s0_prior_invalid_type_raises(self):
         for bad in ([1, 2], {"x": 1}, (0.5,)):
             with pytest.raises(TypeError, match="s0_prior must be"):
-                LinearSoftplus(
+                LinearLagModel(
                     on="Shape_Area",
                     groupby=["Metadata_Dataset", "Metadata_Strain"],
                     s0_prior=bad,  # type: ignore[arg-type]
@@ -866,13 +866,13 @@ class TestDegenerateInput:
                     }
                 )
         df = pd.DataFrame(rows)
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert 0.0 <= float(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0]) <= 50.0
+        assert 0.0 <= float(res[LINEAR_LAG_MODEL.v].iloc[0]) <= 50.0
 
     def test_nan_input_triggers_nan_row(self):
         t = np.linspace(0, 6, 15)
@@ -887,16 +887,16 @@ class TestDegenerateInput:
                 }
             )
         df = pd.DataFrame(rows)
-        m = LinearSoftplus(
+        m = LinearLagModel(
             on="Shape_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.v].iloc[0]))
-        assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.s0].iloc[0]))
-        assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.lam].iloc[0]))
-        assert np.isnan(float(res[LINEAR_SOFTPLUS_MODEL.alpha].iloc[0]))
+        assert np.isnan(float(res[LINEAR_LAG_MODEL.v].iloc[0]))
+        assert np.isnan(float(res[LINEAR_LAG_MODEL.s0].iloc[0]))
+        assert np.isnan(float(res[LINEAR_LAG_MODEL.lam].iloc[0]))
+        assert np.isnan(float(res[LINEAR_LAG_MODEL.alpha].iloc[0]))
 
 
 # ---------------------------------------------------------------------- #
