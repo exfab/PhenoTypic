@@ -104,3 +104,7 @@ docs/source/_static/gui_images/_dataset/
 .code-review-graph/
 # Local knowledge-graph cache produced by /graphify (not for VCS)
 graphify-out/
+
+# Agentic AI & Artifacts
+.mcp.json
+CLAUDE.local.md
