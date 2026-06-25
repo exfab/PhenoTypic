@@ -1,7 +1,0 @@
-phenotypic.sdk\_.slurm\_ module
-===============================
-
-.. automodule:: phenotypic.sdk_.slurm_
-   :members:
-   :show-inheritance:
-   :undoc-members:

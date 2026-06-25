@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1157,7 +1158,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>winner</strong> (<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><em>Trial</em></a><em> | </em><em>None</em>) – The best held-out <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune.Trial"><code class="xref py py-class docutils literal notranslate"><span class="pre">Trial</span></code></a> across both rounds (<code class="docutils literal notranslate"><span class="pre">None</span></code> only
+<li><p><strong>winner</strong> (<a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><em>Trial</em></a><em> | </em><em>None</em>) – The best held-out <a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune.Trial"><code class="xref py py-class docutils literal notranslate"><span class="pre">Trial</span></code></a> across both rounds (<code class="docutils literal notranslate"><span class="pre">None</span></code> only
 if nothing succeeded).</p></li>
 <li><p><strong>frozen</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">{frozen_key:</span> <span class="pre">pinned_value}</span></code> — empty when no freeze occurred.</p></li>
 <li><p><strong>method</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'fanova'</em><em>, </em><em>'rf-permutation'</em><em>]</em>) – The importance method used (fANOVA vs RF-permutation).</p></li>
@@ -1165,7 +1166,7 @@ if nothing succeeded).</p></li>
 <li><p><strong>screened</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether the focused (freeze) round actually ran.</p></li>
 <li><p><strong>freeze_flagged</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – <code class="docutils literal notranslate"><span class="pre">True</span></code> when the focused round underperformed explore on
 held-out and the freeze was flagged as likely-bad (G3).</p></li>
-<li><p><strong>reduced_space</strong> (<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SearchSpace" title="phenotypic.tune._search_space._space.SearchSpace"><em>SearchSpace</em></a><em> | </em><em>None</em>) – The reduced (frozen) space the focused round searched, or
+<li><p><strong>reduced_space</strong> (<a class="reference internal" href="phenotypic.tune.SearchSpace.html#phenotypic.tune.SearchSpace" title="phenotypic.tune._search_space._space.SearchSpace"><em>SearchSpace</em></a><em> | </em><em>None</em>) – The reduced (frozen) space the focused round searched, or
 <code class="docutils literal notranslate"><span class="pre">None</span></code> when no freeze occurred.</p></li>
 <li><p><strong>recommendation</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – A plain-English next step for the operator.</p></li>
 </ul>
@@ -1183,28 +1184,28 @@ held-out and the freeze was flagged as likely-bad (G3).</p></li>
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.freeze_flagged" title="phenotypic.tune.ScreeningResult.freeze_flagged"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze_flagged</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.freeze_flagged" title="phenotypic.tune.ScreeningResult.freeze_flagged"><code class="xref py py-obj docutils literal notranslate"><span class="pre">freeze_flagged</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.interactions_estimated" title="phenotypic.tune.ScreeningResult.interactions_estimated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interactions_estimated</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.interactions_estimated" title="phenotypic.tune.ScreeningResult.interactions_estimated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interactions_estimated</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.method" title="phenotypic.tune.ScreeningResult.method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">method</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.method" title="phenotypic.tune.ScreeningResult.method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">method</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.recommendation" title="phenotypic.tune.ScreeningResult.recommendation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommendation</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.recommendation" title="phenotypic.tune.ScreeningResult.recommendation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommendation</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.reduced_space" title="phenotypic.tune.ScreeningResult.reduced_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reduced_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.reduced_space" title="phenotypic.tune.ScreeningResult.reduced_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reduced_space</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.screened" title="phenotypic.tune.ScreeningResult.screened"><code class="xref py py-obj docutils literal notranslate"><span class="pre">screened</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.screened" title="phenotypic.tune.ScreeningResult.screened"><code class="xref py py-obj docutils literal notranslate"><span class="pre">screened</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.winner" title="phenotypic.tune.ScreeningResult.winner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">winner</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.winner" title="phenotypic.tune.ScreeningResult.winner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">winner</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.ScreeningResult.frozen" title="phenotypic.tune.ScreeningResult.frozen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frozen</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.tune.ScreeningResult.frozen" title="phenotypic.tune.ScreeningResult.frozen"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frozen</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1212,7 +1213,7 @@ held-out and the freeze was flagged as likely-bad (G3).</p></li>
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tune.ScreeningResult.winner">
-<span class="sig-name descname"><span class="pre">winner</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><span class="pre">Trial</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tune.ScreeningResult.winner" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">winner</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><span class="pre">Trial</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.tune.ScreeningResult.winner" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1242,7 +1243,7 @@ held-out and the freeze was flagged as likely-bad (G3).</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.tune.ScreeningResult.reduced_space">
-<span class="sig-name descname"><span class="pre">reduced_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.SearchSpace" title="phenotypic.tune._search_space._space.SearchSpace"><span class="pre">SearchSpace</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenotypic.tune.ScreeningResult.reduced_space" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reduced_space</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.tune.SearchSpace.html#phenotypic.tune.SearchSpace" title="phenotypic.tune._search_space._space.SearchSpace"><span class="pre">SearchSpace</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#phenotypic.tune.ScreeningResult.reduced_space" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">

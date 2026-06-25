@@ -16,27 +16,40 @@ vocabulary, not a validator.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_Media``
      - Growth medium name (e.g. YPD, SC, LB).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_CarbonSource``
      - Primary carbon source (e.g. glucose, galactose).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_NitrogenSource``
      - Primary nitrogen source.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_pH``
      - pH of the growth medium.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Supplement``
      - Medium supplement or additive.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Antibiotic``
      - Antibiotic added to the medium.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Inducer``
      - Inducing agent (e.g. galactose, IPTG, doxycycline).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Treatment``
      - Experimental treatment or perturbation.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Compound``
      - Chemical compound or drug applied.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Concentration``
      - Concentration of the compound or treatment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Dose``
      - Dose applied to the sample.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Stress``
      - Applied stress condition (e.g. heat, osmotic, oxidative).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

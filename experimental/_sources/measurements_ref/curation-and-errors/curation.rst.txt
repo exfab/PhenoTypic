@@ -14,5 +14,7 @@ parquets.
 
    * - Column label
      - Description
+     - Type
    * - ``Curation_Category``
      - Error-category token assigned to a removed/triaged object.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

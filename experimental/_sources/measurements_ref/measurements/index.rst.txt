@@ -20,7 +20,7 @@ DataFrame column labels and descriptions.
    ColorComposition <colorcomposition>
    Object <object>
    Grid <grid>
-   GridSpatial <grid_spatial>
+   GridSpatial <neighbor_dist>
    GridLinReg <grid_linreg_stats>
    GridSpread <grid_spread>
    SymZones <symmetric_zones>

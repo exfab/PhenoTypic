@@ -17,9 +17,13 @@ columns drive curation decisions downstream of the QC pipeline.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_ZMax_Median``
      - Group median of the measurement.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_ZMax_MAD``
      - Median absolute deviation used to scale the modified Z-score.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_ZMax_NumMembers``
      - Members contributing to the statistic.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

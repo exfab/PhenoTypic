@@ -16,11 +16,16 @@ downstream of the QC pipeline.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_SE_Value``
      - Raw SE = stddev / sqrt(n) across replicates.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_Mean``
      - Mean across replicates at this (group, time).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_CV``
      - Coefficient of variation, stddev / \|mean\|.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_SE_NumReplicates``
      - Replicate count contributing to the SE.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

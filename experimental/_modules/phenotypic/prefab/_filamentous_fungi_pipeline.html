@@ -607,7 +607,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.enhance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FlattenIllumination</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._inoculum_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">InoculumDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">MeasureGridSpatial</span><span class="p">,</span>
+    <span class="n">MeasureNeighborDist</span><span class="p">,</span>
     <span class="n">MeasureIntensity</span><span class="p">,</span>
     <span class="n">MeasureShape</span><span class="p">,</span>
     <span class="n">MeasureTexture</span><span class="p">,</span>
@@ -619,7 +619,7 @@
 
 
 <div class="viewcode-block" id="FilamentousFungiPipeline">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.prefab.html#phenotypic.prefab.FilamentousFungiPipeline">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.prefab.FilamentousFungiPipeline.html#phenotypic.prefab.FilamentousFungiPipeline">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FilamentousFungiPipeline</span><span class="p">(</span><span class="n">PrefabPipeline</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ready-to-use pipeline for filamentous fungi detection with DenoiseBlockMatch denoising and spatial measurements.</span>
 
@@ -633,7 +633,7 @@
 <span class="sd">           Dijkstra branch reconnection.</span>
 
 <span class="sd">    Measurements:</span>
-<span class="sd">        - ``MeasureGridSpatial`` -- Grid-level spatial statistics.</span>
+<span class="sd">        - ``MeasureNeighborDist`` -- Grid-level spatial statistics.</span>
 <span class="sd">        - ``MeasureShape`` -- Per-colony shape descriptors.</span>
 <span class="sd">        - ``MeasureIntensity`` -- Per-colony intensity statistics.</span>
 <span class="sd">        - ``MeasureTexture`` -- Haralick texture features.</span>
@@ -776,7 +776,7 @@
         <span class="p">]</span>
 
         <span class="n">meas</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">MeasureGridSpatial</span><span class="p">(),</span>
+            <span class="n">MeasureNeighborDist</span><span class="p">(),</span>
             <span class="n">MeasureShape</span><span class="p">(),</span>
             <span class="n">MeasureIntensity</span><span class="p">(),</span>
             <span class="n">MeasureTexture</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="n">texture_scale</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">texture_warn</span><span class="p">),</span>

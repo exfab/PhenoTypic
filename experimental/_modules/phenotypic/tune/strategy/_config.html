@@ -644,7 +644,7 @@
 
 
 <div class="viewcode-block" id="StrategyConfig">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.StrategyConfig">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.StrategyConfig.html#phenotypic.tune.strategy.StrategyConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">StrategyConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract, serializable config that builds its live ``SearchStrategy``.</span>
 
@@ -660,7 +660,7 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 
 <div class="viewcode-block" id="StrategyConfig.build">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.StrategyConfig.build">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.StrategyConfig.html#phenotypic.tune.strategy.StrategyConfig.build">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -688,7 +688,7 @@
 
 
 <div class="viewcode-block" id="GridConfig">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridConfig">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridConfig.html#phenotypic.tune.strategy.GridConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridConfig</span><span class="p">(</span><span class="n">StrategyConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Builds a ``GridStrategy`` (exhaustive conditional-Cartesian enumeration).</span>
 
@@ -699,7 +699,7 @@
     <span class="n">kind</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;grid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;grid&quot;</span>
 
 <div class="viewcode-block" id="GridConfig.build">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridConfig.build">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridConfig.html#phenotypic.tune.strategy.GridConfig.build">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
@@ -715,7 +715,7 @@
 
 
 <div class="viewcode-block" id="RandomConfig">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomConfig">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomConfig.html#phenotypic.tune.strategy.RandomConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RandomConfig</span><span class="p">(</span><span class="n">StrategyConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Builds a ``RandomStrategy`` (seeded random sampling).</span>
 
@@ -728,7 +728,7 @@
     <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span>
 
 <div class="viewcode-block" id="RandomConfig.build">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomConfig.build">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomConfig.html#phenotypic.tune.strategy.RandomConfig.build">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
@@ -744,7 +744,7 @@
 
 
 <div class="viewcode-block" id="OptunaConfig">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.OptunaConfig">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.OptunaConfig.html#phenotypic.tune.strategy.OptunaConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OptunaConfig</span><span class="p">(</span><span class="n">StrategyConfig</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Builds an ``OptunaStrategy`` (TPE/CMA-ES/GP/NSGA-II + ASHA pruning).</span>
 
@@ -775,7 +775,7 @@
     <span class="n">storage_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="OptunaConfig.build">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.OptunaConfig.build">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.OptunaConfig.html#phenotypic.tune.strategy.OptunaConfig.build">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>

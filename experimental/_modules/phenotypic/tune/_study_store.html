@@ -619,7 +619,7 @@
 
 
 <div class="viewcode-block" id="Trial">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.Trial">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.Trial.html#phenotypic.tune.Trial">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Trial</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;One evaluated candidate: its params, score, per-term scores, and status.</span>
 
@@ -666,7 +666,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">JournalStudyStore</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;An append-only journal of trials with best-tracking + parquet I/O.</span>
 
@@ -678,7 +678,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="JournalStudyStore.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.__init__">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the journal.</span>
 
@@ -689,7 +689,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.append">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.append">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.append">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trial</span><span class="p">:</span> <span class="n">Trial</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Record one completed ``trial``.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span></div>
@@ -704,7 +704,7 @@
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trials</span><span class="p">)</span>
 
 <div class="viewcode-block" id="JournalStudyStore.best">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.best">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.best">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">best</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-failed trial with the lowest cost score, or ``None``.&quot;&quot;&quot;</span>
         <span class="n">valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">]</span>
@@ -714,21 +714,21 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.is_resumable_in_place">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.is_resumable_in_place">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.is_resumable_in_place">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_resumable_in_place</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Always ``False``: the journal resumes by deterministic replay.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="kc">False</span></div>
 
 
 <div class="viewcode-block" id="JournalStudyStore.completed_count">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.completed_count">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.completed_count">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">completed_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The number of completed (non-failed) trials; pruned counts as done.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trials</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">failed</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="JournalStudyStore.param_importances">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.param_importances">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.param_importances">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">param_importances</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Always ``None``: the journal owns no native importance model.</span>
 
@@ -739,7 +739,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.pareto_front">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.pareto_front">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.pareto_front">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">pareto_front</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The non-dominated trials by their ``objectives`` sidecar (plan §0a).</span>
 
@@ -753,7 +753,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.knee_point">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.knee_point">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.knee_point">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">knee_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">front</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Trial</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The ``front`` trial at max perpendicular distance to the chord.</span>
 
@@ -778,7 +778,7 @@
     <span class="p">]</span>
 
 <div class="viewcode-block" id="JournalStudyStore.to_dataframe">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.to_dataframe">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.to_dataframe">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;One row per trial; ``params``/``terms``/``objectives`` as JSON strings.</span>
 
@@ -808,7 +808,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.to_parquet">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.to_parquet">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.to_parquet">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the journal to ``path`` atomically (creating parent dirs).</span>
 
@@ -834,7 +834,7 @@
 
 
 <div class="viewcode-block" id="JournalStudyStore.from_parquet">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.JournalStudyStore.from_parquet">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore.from_parquet">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_parquet</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;JournalStudyStore&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reload a journal previously written by :meth:`to_parquet`.</span>

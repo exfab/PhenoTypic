@@ -1,7 +1,0 @@
-phenotypic.sdk\_.hdf\_ module
-=============================
-
-.. automodule:: phenotypic.sdk_.hdf_
-   :members:
-   :show-inheritance:
-   :undoc-members:

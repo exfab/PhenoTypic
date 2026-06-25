@@ -30,7 +30,7 @@
       MeasureTexture
       MeasureGridSpread
       MeasureGridLinRegStats
-      MeasureGridSpatial
+      MeasureNeighborDist
    
    
 

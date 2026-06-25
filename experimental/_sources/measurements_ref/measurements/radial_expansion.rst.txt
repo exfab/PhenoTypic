@@ -15,28 +15,28 @@ Includes runner detection for identifying anomalously long branches.
 
    * - Column label
      - Description
-     - Use
+     - Type
    * - ``RadialExpansion_RobustMeanRadius``
      - Trimmed mean of branch path lengths, excluding detected runner. Represents the typical radial expansion distance of hyphae from the core boundary, robust to single-runner outliers.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_MeanRadius``
      - Arithmetic mean of all branch path lengths from core boundary to branch tips. Includes runner if present. Reflects overall average colony reach.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_MedianRadius``
      - Median branch path length. Robust to outliers and provides a typical expansion distance.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_NumBranches``
      - Number of skeleton branches extending from the core boundary to peripheral tips. Higher counts indicate denser branching morphology.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_MaxBranchLength``
      - Length of the longest branch path in pixels. When a runner is detected, this equals RunnerLength.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_RunnerLength``
      - Path length of the detected runner branch (the single longest outlier). NaN if no runner detected.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_RunnerDetected``
      - Boolean flag (0 or 1) indicating whether an outlier runner branch was detected for this colony.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``RadialExpansion_CoreRadius``
      - Radius of the dense colony core as determined by PELT changepoint detection on the radial density profile. Pixels within this radius of the intensity-weighted centroid are excluded from skeleton analysis.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`

@@ -1,7 +1,0 @@
-phenotypic.gui.tune package
-===========================
-
-.. automodule:: phenotypic.gui.tune
-   :members:
-   :show-inheritance:
-   :undoc-members:

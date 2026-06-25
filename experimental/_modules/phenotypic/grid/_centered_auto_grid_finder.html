@@ -613,7 +613,7 @@
 
 
 <div class="viewcode-block" id="CenteredAutoGridFinderFallbackWarning">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.CenteredAutoGridFinderFallbackWarning">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.CenteredAutoGridFinderFallbackWarning.html#phenotypic.grid.CenteredAutoGridFinderFallbackWarning">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CenteredAutoGridFinderFallbackWarning</span><span class="p">(</span><span class="ne">UserWarning</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Warning category for fallbacks and bounded-ambiguous fits in</span>
 <span class="sd">    :class:`CenteredAutoGridFinder` (degenerate comb-response, ICP failure,</span>
@@ -627,7 +627,7 @@
 
 
 <div class="viewcode-block" id="CenteredAutoGridFinder">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.CenteredAutoGridFinder">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.CenteredAutoGridFinder.html#phenotypic.grid.CenteredAutoGridFinder">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CenteredAutoGridFinder</span><span class="p">(</span><span class="n">GridFinder</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Center-anchored grid finder for sparse arrayed plates.</span>
 
@@ -873,13 +873,13 @@
 
     <span class="c1"># ---- GridFinder overrides ----</span>
 <div class="viewcode-block" id="CenteredAutoGridFinder.get_row_edges">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.CenteredAutoGridFinder.get_row_edges">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.CenteredAutoGridFinder.html#phenotypic.grid.CenteredAutoGridFinder.get_row_edges">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_grid</span><span class="p">(</span><span class="n">image</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="CenteredAutoGridFinder.get_col_edges">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.CenteredAutoGridFinder.get_col_edges">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.CenteredAutoGridFinder.html#phenotypic.grid.CenteredAutoGridFinder.get_col_edges">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_grid</span><span class="p">(</span><span class="n">image</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span></div>
 

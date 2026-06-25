@@ -18,52 +18,52 @@ Covers the (x, y) chromaticity channels.
 
    * - Column label
      - Description
-     - Use
+     - Type
    * - ``Colorxy_xMin``
      - The minimum chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xQ1``
      - The lower quartile (Q1) chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xMean``
      - The mean chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xMedian``
      - The median chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xQ3``
      - The upper quartile (Q3) chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xMax``
      - The maximum chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xStdDev``
      - The standard deviation of the chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_xCoeffVar``
      - The coefficient of variation of the chromaticity x coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yMin``
      - The minimum chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yQ1``
      - The lower quartile (Q1) chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yMean``
      - The mean chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yMedian``
      - The median chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yQ3``
      - The upper quartile (Q3) chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yMax``
      - The maximum chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yStdDev``
      - The standard deviation of the chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``Colorxy_yCoeffVar``
      - The coefficient of variation of the chromaticity y coordinate of the object
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`

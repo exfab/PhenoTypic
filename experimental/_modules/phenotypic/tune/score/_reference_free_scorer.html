@@ -696,7 +696,7 @@
 
 
 <div class="viewcode-block" id="ReferenceFreeScorer">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.ReferenceFreeScorer">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReferenceFreeScorer</span><span class="p">(</span><span class="n">Scorer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;No-ground-truth proxy objective, gated behind meta-validation.</span>
 
@@ -777,7 +777,7 @@
     <span class="c1"># availability + the meta-validation gate (Task 2)</span>
     <span class="c1"># ----------------------------------------------------------------- #</span>
 <div class="viewcode-block" id="ReferenceFreeScorer.availability">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.ReferenceFreeScorer.availability">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.availability">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the proxy has passed meta-validation (cheap cached read).</span>
 
@@ -794,7 +794,7 @@
 
 
 <div class="viewcode-block" id="ReferenceFreeScorer.meta_validate">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.ReferenceFreeScorer.meta_validate">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.meta_validate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">meta_validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gt_images</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Gate the proxy against ground truth, caching the enable/abstain flag.</span>
 
@@ -837,7 +837,7 @@
 
 
 <div class="viewcode-block" id="ReferenceFreeScorer.is_unattended_safe">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.ReferenceFreeScorer.is_unattended_safe">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.ReferenceFreeScorer.html#phenotypic.tune.score.ReferenceFreeScorer.is_unattended_safe">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_unattended_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the last gate run cleared the *unattended* auto-tuning bar.</span>
 

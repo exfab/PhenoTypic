@@ -1,7 +1,0 @@
-phenotypic.gui.results\_viewer.timeline\_view package
-=====================================================
-
-.. automodule:: phenotypic.gui.results_viewer.timeline_view
-   :members:
-   :show-inheritance:
-   :undoc-members:

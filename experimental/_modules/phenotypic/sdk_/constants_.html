@@ -624,7 +624,7 @@
 
 
 <div class="viewcode-block" id="ConstantLabels">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.ConstantLabels">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.ConstantLabels.html#phenotypic.sdk_.constants_.ConstantLabels">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ConstantLabels</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for constant labels in phenotypic. This class is to distinguish</span>
 <span class="sd">    between ConstantLabels and MeasurementInfo usages.&quot;&quot;&quot;</span></div>
@@ -633,7 +633,7 @@
 
 <span class="c1"># Image format constants</span>
 <div class="viewcode-block" id="IMAGE_MODE">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_MODE">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_MODE.html#phenotypic.sdk_.constants_.IMAGE_MODE">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IMAGE_MODE</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for supported image formats.&quot;&quot;&quot;</span>
 
@@ -653,13 +653,13 @@
     <span class="n">AMBIGUOUS_FORMATS</span> <span class="o">=</span> <span class="p">(</span><span class="n">RGB_OR_BGR</span><span class="p">,</span> <span class="n">RGBA_OR_BGRA</span><span class="p">)</span>
 
 <div class="viewcode-block" id="IMAGE_MODE.is_matrix">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_matrix">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_MODE.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_matrix">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="ow">in</span> <span class="p">{</span><span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">GRAYSCALE</span><span class="p">,</span> <span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">GRAYSCALE_SINGLE_CHANNEL</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="IMAGE_MODE.is_array">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_array">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_MODE.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_array">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="ow">in</span> <span class="p">{</span>
             <span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">RGB</span><span class="p">,</span>
@@ -671,13 +671,13 @@
 
 
 <div class="viewcode-block" id="IMAGE_MODE.is_ambiguous">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_ambiguous">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_MODE.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_ambiguous">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_ambiguous</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="ow">in</span> <span class="p">{</span><span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">RGB_OR_BGR</span><span class="p">,</span> <span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">RGBA_OR_BGRA</span><span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="IMAGE_MODE.is_none">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_none">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_MODE.html#phenotypic.sdk_.constants_.IMAGE_MODE.is_none">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_none</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="n">IMAGE_MODE</span><span class="o">.</span><span class="n">NONE</span></div>
 
@@ -688,12 +688,12 @@
 
 
 <div class="viewcode-block" id="GAMMA_ENCODINGS">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.GAMMA_ENCODINGS">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.GAMMA_ENCODINGS.html#phenotypic.sdk_.constants_.GAMMA_ENCODINGS">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GAMMA_ENCODINGS</span><span class="p">(</span><span class="n">ConstantLabels</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for gamma encoding profiles used in color space conversions.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="GAMMA_ENCODINGS.category">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.category">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.GAMMA_ENCODINGS.html#phenotypic.sdk_.constants_.GAMMA_ENCODINGS.category">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;GammaEncoding&quot;</span></div>
@@ -705,7 +705,7 @@
 
 
 <div class="viewcode-block" id="IO">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IO">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IO.html#phenotypic.sdk_.constants_.IO">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IO</span><span class="p">:</span>
     <span class="n">RAW_FILE_EXTENSIONS</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s2">&quot;.cr2&quot;</span><span class="p">,</span> <span class="s2">&quot;.CR2&quot;</span><span class="p">,</span>
@@ -742,7 +742,7 @@
 <span class="c1"># Feature extraction constants</span>
 <span class="c1"># TODO: Fix this constant access pattern</span>
 <div class="viewcode-block" id="GRID_LINREG_STATS_EXTRACTOR">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.GRID_LINREG_STATS_EXTRACTOR">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.GRID_LINREG_STATS_EXTRACTOR.html#phenotypic.sdk_.constants_.GRID_LINREG_STATS_EXTRACTOR">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GRID_LINREG_STATS_EXTRACTOR</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for grid linear regression statistics extractor.&quot;&quot;&quot;</span>
 
@@ -754,7 +754,7 @@
 
 
 <div class="viewcode-block" id="IMAGE_TYPES">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.IMAGE_TYPES">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.IMAGE_TYPES.html#phenotypic.sdk_.constants_.IMAGE_TYPES">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IMAGE_TYPES</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The string labels for different types of images generated when accessing subimages of a parent image.&quot;&quot;&quot;</span>
 
@@ -770,12 +770,12 @@
 
 
 <div class="viewcode-block" id="PIPE_STATUS">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.PIPE_STATUS">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.PIPE_STATUS.html#phenotypic.sdk_.constants_.PIPE_STATUS">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PIPE_STATUS</span><span class="p">(</span><span class="n">MeasurementInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Constants for image set status.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="PIPE_STATUS.category">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.constants_.html#phenotypic.sdk_.constants_.PIPE_STATUS.category">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.constants_.PIPE_STATUS.html#phenotypic.sdk_.constants_.PIPE_STATUS.category">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s2">&quot;Status&quot;</span></div>

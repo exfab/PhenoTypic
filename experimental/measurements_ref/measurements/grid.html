@@ -62,7 +62,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/measurements/grid.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="GRID_SPATIAL" href="grid_spatial.html" />
+    <link rel="next" title="NEIGHBOR_DIST" href="neighbor_dist.html" />
     <link rel="prev" title="OBJECT" href="object.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -678,32 +678,41 @@
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code></p></td>
 <td><p>The row idx of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowIntervalStart</span></code></p></td>
 <td><p>The start of the row interval of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowIntervalEnd</span></code></p></td>
 <td><p>The end of the row interval of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code></p></td>
 <td><p>The column idx of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColIntervalStart</span></code></p></td>
 <td><p>The start of the column interval of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColIntervalEnd</span></code></p></td>
 <td><p>The end of the column interval of the object</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_RowMajorIdx</span></code></p></td>
 <td><p>The row-major index of the object. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Grid_ColMajorIdx</span></code></p></td>
 <td><p>The col-major index of the object in an array. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
 </table>

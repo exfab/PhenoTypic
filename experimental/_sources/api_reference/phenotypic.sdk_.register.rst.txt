@@ -1,7 +1,0 @@
-phenotypic.sdk\_.register package
-=================================
-
-.. automodule:: phenotypic.sdk_.register
-   :members:
-   :show-inheritance:
-   :undoc-members:

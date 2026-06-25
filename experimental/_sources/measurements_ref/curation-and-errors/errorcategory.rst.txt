@@ -15,15 +15,22 @@ the bare ``~MeasurementInfo.label`` (e.g. ``"debris"``). Use
 
    * - Column label
      - Description
+     - Type
    * - ``ErrorCategory_oversegmented``
      - One colony split into multiple detections.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ErrorCategory_undersegmented``
      - A single colony under-detected — its mask captured too small or only partially covering the colony.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ErrorCategory_merged``
      - Multiple touching colonies detected as one object.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ErrorCategory_background_noise``
      - Not a colony — agar texture, reflection, or vignette.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ErrorCategory_debris``
      - Dust, scratch, bubble, or other plate artifact.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``ErrorCategory_other``
      - Removed without a specified reason (the catch-all bucket).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

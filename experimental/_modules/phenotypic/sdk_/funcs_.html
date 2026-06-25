@@ -617,7 +617,7 @@
 
 
 <div class="viewcode-block" id="is_binary_mask">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.is_binary_mask">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">is_binary_mask</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="kc">True</span>
@@ -628,7 +628,7 @@
 
 
 <div class="viewcode-block" id="timed_execution">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.timed_execution">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.timed_execution.html#phenotypic.sdk_.timed_execution">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">timed_execution</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decorator to measure and print the execution time of a function.</span>
@@ -647,8 +647,6 @@
 
 
 
-<div class="viewcode-block" id="is_static_method">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.is_static_method">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">is_static_method</span><span class="p">(</span><span class="n">owner_cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return True if *method_name* is defined on *owner_cls* (or an</span>
@@ -656,12 +654,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Retrieve attribute without invoking the descriptor protocol</span>
     <span class="n">attr</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getattr_static</span><span class="p">(</span><span class="n">owner_cls</span><span class="p">,</span> <span class="n">method_name</span><span class="p">)</span>  <span class="c1"># Python ≥3.2</span>
-    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">staticmethod</span><span class="p">)</span>  <span class="c1"># True ⇒ @staticmethod</span></div>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="nb">staticmethod</span><span class="p">)</span>  <span class="c1"># True ⇒ @staticmethod</span>
 
 
-
-<div class="viewcode-block" id="murmur3_array_signature">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.murmur3_array_signature">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">murmur3_array_signature</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a 128‑bit MurmurHash3 digest of *arr*.</span>
@@ -672,12 +667,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">arr</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]:</span>
         <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">mmh3</span><span class="o">.</span><span class="n">mmh3_x64_128_digest</span><span class="p">(</span><span class="nb">memoryview</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span></div>
+    <span class="k">return</span> <span class="n">mmh3</span><span class="o">.</span><span class="n">mmh3_x64_128_digest</span><span class="p">(</span><span class="nb">memoryview</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span>
 
 
-
-<div class="viewcode-block" id="validate_operation_integrity">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.validate_operation_integrity">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_operation_integrity</span><span class="p">(</span><span class="o">*</span><span class="n">targets</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decorator to ensure that key NumPy arrays on the &#39;image&#39; argument</span>
@@ -791,12 +783,9 @@
         <span class="n">wrapper</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span>
         <span class="k">return</span> <span class="n">wrapper</span>
 
-    <span class="k">return</span> <span class="n">decorator</span></div>
+    <span class="k">return</span> <span class="n">decorator</span>
 
 
-
-<div class="viewcode-block" id="validate_measure_integrity">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.validate_measure_integrity">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_measure_integrity</span><span class="p">(</span><span class="o">*</span><span class="n">targets</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decorator to ensure that key NumPy arrays on the &#39;image&#39; argument</span>
@@ -872,12 +861,9 @@
         <span class="n">wrapper</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span>
         <span class="k">return</span> <span class="n">wrapper</span>
 
-    <span class="k">return</span> <span class="n">decorator</span></div>
+    <span class="k">return</span> <span class="n">decorator</span>
 
 
-
-<div class="viewcode-block" id="normalize_rgb_bitdepth">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.funcs_.html#phenotypic.sdk_.normalize_rgb_bitdepth">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">normalize_rgb_bitdepth</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Normalize an RGB rgb to [0,1] using bit-depth inference.</span>
@@ -917,8 +903,7 @@
                     <span class="sa">f</span><span class="s2">&quot;Invalid range: min=</span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.02f</span><span class="si">}</span><span class="s2"> max=</span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.02f</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported dtype: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
-
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported dtype: </span><span class="si">{</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 
                 </article>

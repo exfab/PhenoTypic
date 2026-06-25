@@ -16,13 +16,19 @@ validator.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_ImagingDate``
      - Date the image was acquired.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Instrument``
      - Imaging instrument or scanner model.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Experimenter``
      - Person who acquired the image or ran the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Resolution``
      - Image resolution (e.g. DPI or pixels per mm).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ExposureTime``
      - Camera exposure time.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

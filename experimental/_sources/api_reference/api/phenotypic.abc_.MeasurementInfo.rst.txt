@@ -84,6 +84,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.resolved_kind
       ~MeasurementInfo.resolved_tier
       ~MeasurementInfo.use_label
+      ~MeasurementInfo.use_badge
       ~MeasurementInfo.label
       ~MeasurementInfo.desc
       ~MeasurementInfo.bio_desc

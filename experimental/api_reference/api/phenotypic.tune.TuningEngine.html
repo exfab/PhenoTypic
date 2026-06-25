@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1151,19 +1152,19 @@
 <h1>phenotypic.tune.TuningEngine<a class="headerlink" href="#phenotypic-tune-tuningengine" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.tune.TuningEngine">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">TuningEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><span class="pre">TuningSpec</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StudyStore</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.tune.</span></span><span class="sig-name descname"><span class="pre">TuningEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.tune.TuningSpec.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><span class="pre">TuningSpec</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StudyStore</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Runs a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> over a calibration image set, journaling to a store.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningEngine.__init__" title="phenotypic.tune.TuningEngine.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.TuningEngine.__init__" title="phenotypic.tune.TuningEngine.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a></p></td>
 <td><p>Initialize the engine.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningEngine.best_pipeline" title="phenotypic.tune.TuningEngine.best_pipeline"><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_pipeline</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.tune.TuningEngine.best_pipeline" title="phenotypic.tune.TuningEngine.best_pipeline"><code class="xref py py-obj docutils literal notranslate"><span class="pre">best_pipeline</span></code></a></p></td>
 <td><p>Build the winning <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> from the best trial (or <code class="docutils literal notranslate"><span class="pre">None</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningEngine.optimize" title="phenotypic.tune.TuningEngine.optimize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.TuningEngine.optimize" title="phenotypic.tune.TuningEngine.optimize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimize</span></code></a></p></td>
 <td><p>Run the loop; return the best trial.</p></td>
 </tr>
 </tbody>
@@ -1172,7 +1173,7 @@
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningEngine.store" title="phenotypic.tune.TuningEngine.store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">store</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.tune.TuningEngine.store" title="phenotypic.tune.TuningEngine.store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">store</span></code></a></p></td>
 <td><p>The trial store this engine appends to.</p></td>
 </tr>
 </tbody>
@@ -1181,23 +1182,23 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>spec</strong> (<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningSpec" title="phenotypic.tune.TuningSpec"><em>TuningSpec</em></a>)</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="phenotypic.tune.TuningSpec.html#phenotypic.tune.TuningSpec" title="phenotypic.tune.TuningSpec"><em>TuningSpec</em></a>)</p></li>
 <li><p><strong>store</strong> (<em>Optional</em><em>[</em><em>StudyStore</em><em>]</em>)</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.TuningEngine.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><span class="pre">TuningSpec</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StudyStore</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.tune.TuningSpec.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><span class="pre">TuningSpec</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">StudyStore</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Initialize the engine.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>spec</strong> (<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><em>TuningSpec</em></a>) – The tuning recipe (base pipeline + space + scorer + strategy +
+<li><p><strong>spec</strong> (<a class="reference internal" href="phenotypic.tune.TuningSpec.html#phenotypic.tune.TuningSpec" title="phenotypic.tune._spec.TuningSpec"><em>TuningSpec</em></a>) – The tuning recipe (base pipeline + space + scorer + strategy +
 budget).</p></li>
 <li><p><strong>store</strong> (<em>StudyStore</em><em> | </em><em>None</em>) – An optional pre-populated store (resume); any backend
-satisfying the <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.StudyStore" title="phenotypic.tune.StudyStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">StudyStore</span></code></a> Protocol. A fresh
-<a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.JournalStudyStore" title="phenotypic.tune.JournalStudyStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">JournalStudyStore</span></code></a> is created when omitted.</p></li>
+satisfying the <a class="reference internal" href="phenotypic.tune.StudyStore.html#phenotypic.tune.StudyStore" title="phenotypic.tune.StudyStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">StudyStore</span></code></a> Protocol. A fresh
+<a class="reference internal" href="phenotypic.tune.JournalStudyStore.html#phenotypic.tune.JournalStudyStore" title="phenotypic.tune.JournalStudyStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">JournalStudyStore</span></code></a> is created when omitted.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -1214,7 +1215,7 @@ satisfying the <a class="reference internal" href="../phenotypic.tune.html#pheno
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.TuningEngine.best_pipeline">
-<span class="sig-name descname"><span class="pre">best_pipeline</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ImagePipeline</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.best_pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.best_pipeline" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">best_pipeline</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ImagePipeline</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.best_pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.best_pipeline" title="Link to this definition">#</a></dt>
 <dd><p>Build the winning <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> from the best trial (or <code class="docutils literal notranslate"><span class="pre">None</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1225,17 +1226,17 @@ satisfying the <a class="reference internal" href="../phenotypic.tune.html#pheno
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.tune.TuningEngine.optimize">
-<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><span class="pre">Trial</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.optimize" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><span class="pre">Trial</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/tune/_engine.html#TuningEngine.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.tune.TuningEngine.optimize" title="Link to this definition">#</a></dt>
 <dd><p>Run the loop; return the best trial.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>images</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – The calibration images (non-empty).</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The best <a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune.Trial"><code class="xref py py-class docutils literal notranslate"><span class="pre">Trial</span></code></a>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if none succeeded.</p>
+<dd class="field-even"><p>The best <a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune.Trial"><code class="xref py py-class docutils literal notranslate"><span class="pre">Trial</span></code></a>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if none succeeded.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="../phenotypic.tune.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><em>Trial</em></a> | None</p>
+<dd class="field-odd"><p><a class="reference internal" href="phenotypic.tune.Trial.html#phenotypic.tune.Trial" title="phenotypic.tune._study_store.Trial"><em>Trial</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>

@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../measurements/colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../measurements/grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../measurements/neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -685,32 +685,41 @@ as <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Lab
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_UUID</span></code></p></td>
 <td><p>The unique identifier of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code></p></td>
 <td><p>The name of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ParentImageName</span></code></p></td>
 <td><p>The name of the parent image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ParentUUID</span></code></p></td>
 <td><p>The UUID of the parent image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageFormat</span></code></p></td>
 <td><p>The format of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ImageType</span></code></p></td>
 <td><p>The type of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_BitDepth</span></code></p></td>
 <td><p>The bit depth of the image.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_FileSuffix</span></code></p></td>
 <td><p>The file suffix of the original file the image was imported from</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
 </table>

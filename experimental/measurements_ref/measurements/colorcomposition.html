@@ -564,7 +564,7 @@
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -682,57 +682,57 @@ Returns per-colony percentage breakdowns as DataFrame columns.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
-<th class="head"><p>Use</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_BlackPct</span></code></p></td>
 <td><p>Percentage of pixels classified as black (Value &lt; 20)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_WhitePct</span></code></p></td>
 <td><p>Percentage of pixels classified as white (Saturation &lt; 15, Value &gt; 85)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_GrayPct</span></code></p></td>
 <td><p>Percentage of pixels classified as gray (Saturation &lt; 15, Value 20-85)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_PinkPct</span></code></p></td>
 <td><p>Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value &gt; 80)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_BrownPct</span></code></p></td>
 <td><p>Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_RedPct</span></code></p></td>
 <td><p>Percentage of pixels classified as red (Hue 0-15° or 345-360°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_OrangePct</span></code></p></td>
 <td><p>Percentage of pixels classified as orange (Hue 15-45°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_YellowPct</span></code></p></td>
 <td><p>Percentage of pixels classified as yellow (Hue 45-75°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_GreenPct</span></code></p></td>
 <td><p>Percentage of pixels classified as green (Hue 75-150°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_CyanPct</span></code></p></td>
 <td><p>Percentage of pixels classified as cyan (Hue 150-180°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_BluePct</span></code></p></td>
 <td><p>Percentage of pixels classified as blue (Hue 180-250°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorComposition_PurplePct</span></code></p></td>
 <td><p>Percentage of pixels classified as purple/magenta (Hue 250-345°)</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
 </table>

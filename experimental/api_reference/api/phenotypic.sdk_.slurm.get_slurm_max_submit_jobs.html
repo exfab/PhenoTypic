@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1154,7 +1155,7 @@
 <h1>phenotypic.sdk_.slurm.get_slurm_max_submit_jobs<a class="headerlink" href="#phenotypic-sdk-slurm-get-slurm-max-submit-jobs" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.slurm.get_slurm_max_submit_jobs">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.slurm.</span></span><span class="sig-name descname"><span class="pre">get_slurm_max_submit_jobs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../phenotypic.abc_.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/slurm/_config.html#get_slurm_max_submit_jobs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.slurm.get_slurm_max_submit_jobs" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.slurm.</span></span><span class="sig-name descname"><span class="pre">get_slurm_max_submit_jobs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/slurm/_config.html#get_slurm_max_submit_jobs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.slurm.get_slurm_max_submit_jobs" title="Link to this definition">#</a></dt>
 <dd><p>Query SLURM for MaxSubmitJobs limit per user.</p>
 <p>Uses <code class="docutils literal notranslate"><span class="pre">sacctmgr</span></code> to retrieve the maximum number of jobs a user can
 have in the queue simultaneously. This is typically set by QoS

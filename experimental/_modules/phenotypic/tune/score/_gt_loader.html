@@ -600,7 +600,7 @@
 
 <span class="sd">``GroundTruthMasks`` resolves per-image annotation masks from a configurable source,</span>
 <span class="sd">mirroring the path-config round-trip discipline of</span>
-<span class="sd">:class:`phenotypic.analysis.ExpectedVsDetectedCount` (its ``metadata_source`` field): a</span>
+<span class="sd">:class:`phenotypic.analysis.ExpectedVsDetectedCount` (its unified ``metadata`` field): a</span>
 <span class="sd">**serializable** ``gt_masks_source`` path survives ``model_dump`` / ``tuning_spec.json``,</span>
 <span class="sd">while the resolved frames/arrays live in an **excluded** in-memory cache. A loader</span>
 <span class="sd">constructed without a source path cannot resolve anything on reload and honestly reports</span>
@@ -673,12 +673,12 @@
 
 
 <div class="viewcode-block" id="GroundTruthMasks">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.GroundTruthMasks">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.GroundTruthMasks.html#phenotypic.tune.score.GroundTruthMasks">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GroundTruthMasks</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve per-image ground-truth masks from a serializable source path.</span>
 
-<span class="sd">    Mirrors :class:`phenotypic.analysis.ExpectedVsDetectedCount`&#39;s</span>
-<span class="sd">    ``metadata_source`` round-trip: ``gt_masks_source`` is the JSON-serializable</span>
+<span class="sd">    Mirrors :class:`phenotypic.analysis.ExpectedVsDetectedCount`&#39;s unified</span>
+<span class="sd">    ``metadata`` path round-trip: ``gt_masks_source`` is the JSON-serializable</span>
 <span class="sd">    handle (a directory of masks or a count table); the resolved masks are cached</span>
 <span class="sd">    in an **excluded** private attribute, never serialized, and re-resolved on</span>
 <span class="sd">    reload. A loader with ``gt_masks_source=None`` abstains</span>
@@ -747,7 +747,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_capture_source</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize an empty ``gt_masks_source`` to ``None`` (capture step).</span>
 
-<span class="sd">        Mirrors ``ExpectedVsDetectedCount._capture_metadata_source``: the</span>
+<span class="sd">        Mirrors ``ExpectedVsDetectedCount``&#39;s unified ``metadata`` field: the</span>
 <span class="sd">        serializable handle is the source *path*. Pydantic natively coerces a</span>
 <span class="sd">        ``str`` (e.g. from ``tuning_spec.json``) into the ``Path`` field in both</span>
 <span class="sd">        Python and JSON modes, so this validator only canonicalizes an empty</span>
@@ -771,7 +771,7 @@
         <span class="k">return</span> <span class="n">data</span>
 
 <div class="viewcode-block" id="GroundTruthMasks.modality">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.GroundTruthMasks.modality">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.GroundTruthMasks.html#phenotypic.tune.score.GroundTruthMasks.modality">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">modality</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Modality</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Report the ground-truth modality this source provides.</span>
 
@@ -792,7 +792,7 @@
 
 
 <div class="viewcode-block" id="GroundTruthMasks.available_names">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.GroundTruthMasks.available_names">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.GroundTruthMasks.html#phenotypic.tune.score.GroundTruthMasks.available_names">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">available_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The image stems with a resolvable mask in the source directory.</span>
 
@@ -812,7 +812,7 @@
 
 
 <div class="viewcode-block" id="GroundTruthMasks.masks_for">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.GroundTruthMasks.masks_for">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.GroundTruthMasks.html#phenotypic.tune.score.GroundTruthMasks.masks_for">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">masks_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">GTMaskArray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve the ground-truth mask for one image by its stem.</span>
 

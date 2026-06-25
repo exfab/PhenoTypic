@@ -641,14 +641,14 @@
 <h1>The Linear-Softplus and Double-Softplus Growth Models<a class="headerlink" href="#The-Linear-Softplus-and-Double-Softplus-Growth-Models" title="Link to this heading">#</a></h1>
 <p>The phenotypic library ships two complementary kinetic fits for time-course colony sizing on solid media:</p>
 <ul class="simple">
-<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.LinearSoftplus</span></code> — 4 parameters, no saturation ceiling. Use when colonies are still in the linear- growth regime, or when you want the saturation tail discarded as observation noise. Pruning is ON by default.</p></li>
-<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.DoubleSoftplus</span></code> — 4 or 5 parameters, with a softplus saturation ceiling. Use when the data shows a clear carrying-capacity plateau and you want to recover <code class="docutils literal notranslate"><span class="pre">smax</span></code> (and optionally fit β).</p></li>
+<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.LinearLagModel</span></code> — 4 parameters, no saturation ceiling. Use when colonies are still in the linear- growth regime, or when you want the saturation tail discarded as observation noise. Pruning is ON by default.</p></li>
+<li><p>:class:<code class="docutils literal notranslate"><span class="pre">~phenotypic.analysis.LinearCapAndLagModel</span></code> — 4 or 5 parameters, with a softplus saturation ceiling. Use when the data shows a clear carrying-capacity plateau and you want to recover <code class="docutils literal notranslate"><span class="pre">smax</span></code> (and optionally fit β).</p></li>
 </ul>
-<p>Both classes share the same lag-phase math, the same σ-resolution machinery, the same Gaussian-prior-on-<code class="docutils literal notranslate"><span class="pre">s0</span></code> infrastructure, and the same robust-loss handling. <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> adds a softplus ceiling on top of the shared core and a per-group binary mode dispatch (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> vs <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>). This page is a conceptual walkthrough covering:</p>
+<p>Both classes share the same lag-phase math, the same σ-resolution machinery, the same Gaussian-prior-on-<code class="docutils literal notranslate"><span class="pre">s0</span></code> infrastructure, and the same robust-loss handling. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> adds a softplus ceiling on top of the shared core and a per-group binary mode dispatch (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> vs <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>). This page is a conceptual walkthrough covering:</p>
 <ol class="arabic simple">
 <li><p>The model equations and what each parameter means biologically.</p></li>
-<li><p>The two-way mode dispatch on <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> — how the fitter picks between a 4-parameter clamped fit (fixed β) and a 5-parameter fit with saturation sharpness as a free parameter.</p></li>
-<li><p>Every outlier-robustness mitigation wired into the fits: saturation pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> only), robust loss, inverse-variance weighting, the replicate-SEM quantile floor, the <span class="math notranslate nohighlight">\(n=1\)</span> timepoint pooled-std fallback, and the optional Gaussian prior on the inoculum size <span class="math notranslate nohighlight">\(s_0\)</span>.</p></li>
+<li><p>The two-way mode dispatch on <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> — how the fitter picks between a 4-parameter clamped fit (fixed β) and a 5-parameter fit with saturation sharpness as a free parameter.</p></li>
+<li><p>Every outlier-robustness mitigation wired into the fits: saturation pruning (<code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> only), robust loss, inverse-variance weighting, the replicate-SEM quantile floor, the <span class="math notranslate nohighlight">\(n=1\)</span> timepoint pooled-std fallback, and the optional Gaussian prior on the inoculum size <span class="math notranslate nohighlight">\(s_0\)</span>.</p></li>
 </ol>
 <p>The growth-curve literature has pulled in this direction for years — robust M-estimators for outliers (<a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">Huber, 1964</a>), inverse-variance weighting for heteroskedastic timepoints, and weakly-informative priors for ill-posed initial conditions (<a class="reference external" href="https://doi.org/10.1214/08-AOAS191">Gelman et al., 2008</a>). The softplus-lag representation itself and the saturation-clamp form extend the classical 3-phase bacterial-growth framing of <a class="reference external" href="https://doi.org/10.1128/aem.56.6.1875-1881.1990">Zwietering et al.,
 1990</a> with smoothly-differentiable transitions that play nicely with gradient-based optimizers.</p>
@@ -726,9 +726,9 @@ recovered exactly as the pre-lag baseline.</p></li>
 <li><p><strong>:math:`v` and :math:`lambda` are only separately identifiable with enough sub-saturation points.</strong> On a fully-clamped curve, many <span class="math notranslate nohighlight">\((v, \lambda)\)</span> pairs produce the same plateau, and the fit can drift into implausible regions. Section 3 discusses how pruning and priors address this.</p></li>
 </ul>
 </section>
-<section id="3.-DoubleSoftplus:-Per-Group-Mode-Dispatch">
-<h2>3. DoubleSoftplus: Per-Group Mode Dispatch<a class="headerlink" href="#3.-DoubleSoftplus:-Per-Group-Mode-Dispatch" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> is single-mode by construction — it always fits the 4-parameter unclamped form. <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> is the saturating variant, and within it the fitter picks one of two variants per group, recorded in the <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus_mode</span></code> column of the results.</p>
+<section id="3.-LinearCapAndLagModel:-Per-Group-Mode-Dispatch">
+<h2>3. LinearCapAndLagModel: Per-Group Mode Dispatch<a class="headerlink" href="#3.-LinearCapAndLagModel:-Per-Group-Mode-Dispatch" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> is single-mode by construction — it always fits the 4-parameter unclamped form. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> is the saturating variant, and within it the fitter picks one of two variants per group, recorded in the <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_mode</span></code> column of the results.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Mode</p></th>
@@ -748,7 +748,7 @@ recovered exactly as the pre-lag baseline.</p></li>
 </tbody>
 </table>
 </div>
-<p>When a curve has no clear plateau, it likely belongs to <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> instead — using <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> on non-saturating data still produces a fit (with <span class="math notranslate nohighlight">\(\beta\)</span> pinned at the module default and <code class="docutils literal notranslate"><span class="pre">smax</span></code> set to the per-group observed max), but the inferred carrying capacity will be sampling-window-dependent rather than biologically meaningful.</p>
+<p>When a curve has no clear plateau, it likely belongs to <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> instead — using <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> on non-saturating data still produces a fit (with <span class="math notranslate nohighlight">\(\beta\)</span> pinned at the module default and <code class="docutils literal notranslate"><span class="pre">smax</span></code> set to the per-group observed max), but the inferred carrying capacity will be sampling-window-dependent rather than biologically meaningful.</p>
 <section id="Shoulder-detection">
 <h3>Shoulder detection<a class="headerlink" href="#Shoulder-detection" title="Link to this heading">#</a></h3>
 <p>Shoulder detection lives in <code class="docutils literal notranslate"><span class="pre">_has_saturation_shoulder</span></code> and is deliberately conservative:</p>
@@ -759,12 +759,12 @@ recovered exactly as the pre-lag baseline.</p></li>
 </ol>
 <p>If the terminal-slope collapse condition fires, the group has a shoulder; otherwise it does not.</p>
 </section>
-<section id="When-to-pick-LinearSoftplus-vs-DoubleSoftplus">
-<h3>When to pick <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> vs <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code><a class="headerlink" href="#When-to-pick-LinearSoftplus-vs-DoubleSoftplus" title="Link to this heading">#</a></h3>
+<section id="When-to-pick-LinearLagModel-vs-LinearCapAndLagModel">
+<h3>When to pick <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> vs <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code><a class="headerlink" href="#When-to-pick-LinearLagModel-vs-LinearCapAndLagModel" title="Link to this heading">#</a></h3>
 <p>Picking the right class up front is more honest than relying on runtime dispatch to silently switch models. If a fit group has not plateaued within the observed window and you fit a saturated model, pinning <span class="math notranslate nohighlight">\(s_{\max}\)</span> to the observed maximum silently encodes <em>“this is the carrying capacity”</em> — even though the data only supports <em>“growth has not plateaued yet”</em>. Those are very different claims. The split into two classes makes that choice explicit:</p>
 <ul class="simple">
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> when growth is still in the linear regime. <span class="math notranslate nohighlight">\(s_{\max}\)</span> and <span class="math notranslate nohighlight">\(\beta\)</span> never appear in the output.</p></li>
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> when there is a real plateau worth recovering. The mode column records whether <span class="math notranslate nohighlight">\(\beta\)</span> was fit or held at the default.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> when growth is still in the linear regime. <span class="math notranslate nohighlight">\(s_{\max}\)</span> and <span class="math notranslate nohighlight">\(\beta\)</span> never appear in the output.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> when there is a real plateau worth recovering. The mode column records whether <span class="math notranslate nohighlight">\(\beta\)</span> was fit or held at the default.</p></li>
 </ul>
 </section>
 </section>
@@ -777,11 +777,11 @@ recovered exactly as the pre-lag baseline.</p></li>
 <li><p>Replicate coverage that varies timepoint-to-timepoint — some timepoints have many plates, others have only one.</p></li>
 <li><p>An inoculum whose magnitude is known <em>a priori</em> to a few percent but that the optimizer has no access to — so <span class="math notranslate nohighlight">\(s_0\)</span> routinely drifts into biologically implausible regions when the early-lag fit is under-determined.</p></li>
 </ul>
-<p>Both <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> ship the same set of mitigations, with one exception: saturation pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> (in <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> the saturation IS the model — pruning it would defeat the fit). The mitigations are orthogonal axes of the fit, composable, and the library defaults already sit at the robust end of each dial. Several power-user knobs that used to be public <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs (<code class="docutils literal notranslate"><span class="pre">stderr_floor_quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">v_upper</span></code>, the pruning
-slope-ratio and buffer) are now class constants on the shared base — set them by subclass override if you need to deviate.</p>
+<p>Both <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> and <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> ship the same set of mitigations, with one exception: saturation pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> (in <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> the saturation IS the model — pruning it would defeat the fit). The mitigations are orthogonal axes of the fit, composable, and the library defaults already sit at the robust end of each dial. Several power-user knobs that used to be public <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs (<code class="docutils literal notranslate"><span class="pre">stderr_floor_quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">v_upper</span></code>, the
+pruning slope-ratio and buffer) are now class constants on the shared base — set them by subclass override if you need to deviate.</p>
 <section id="4.1-Robust-Loss-(loss,-f_scale)">
 <h3>4.1 Robust Loss (<code class="docutils literal notranslate"><span class="pre">loss</span></code>, <code class="docutils literal notranslate"><span class="pre">f_scale</span></code>)<a class="headerlink" href="#4.1-Robust-Loss-(loss,-f_scale)" title="Link to this heading">#</a></h3>
-<p>:func:<code class="docutils literal notranslate"><span class="pre">scipy.optimize.least_squares</span></code> exposes a family of robust <span class="math notranslate nohighlight">\(\rho\)</span>-functions that down-weight large residuals (<a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">Huber, 1964</a>; the <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html">scipy reference</a> lists the exact forms). Both <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> default to <code class="docutils literal notranslate"><span class="pre">loss=&quot;huber&quot;</span></code> with <code class="docutils literal notranslate"><span class="pre">f_scale=1.0</span></code>.</p>
+<p>:func:<code class="docutils literal notranslate"><span class="pre">scipy.optimize.least_squares</span></code> exposes a family of robust <span class="math notranslate nohighlight">\(\rho\)</span>-functions that down-weight large residuals (<a class="reference external" href="https://doi.org/10.1214/aoms/1177703732">Huber, 1964</a>; the <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html">scipy reference</a> lists the exact forms). Both <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> and <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> default to <code class="docutils literal notranslate"><span class="pre">loss=&quot;huber&quot;</span></code> with <code class="docutils literal notranslate"><span class="pre">f_scale=1.0</span></code>.</p>
 <p>The optimizer minimises <span class="math notranslate nohighlight">\(\tfrac{1}{2}\,\mathrm{cost}\)</span> where</p>
 <div class="math notranslate nohighlight">
 \[\mathrm{cost}(x) \;=\; \sum_i \rho\!\Bigl(r_i(x)^2 / f_{\mathrm{scale}}^2\Bigr) ,\]</div>
@@ -826,7 +826,7 @@ slope-ratio and buffer) are now class constants on the shared base — set them 
 <p>The ratio between the stiffest and softest point in a group is therefore capped at <span class="math notranslate nohighlight">\(\sigma_{\max} / \sigma_q\)</span>, which at <span class="math notranslate nohighlight">\(q = 0.25\)</span> is at most a factor of about <span class="math notranslate nohighlight">\(16\)</span> under typical empirical <span class="math notranslate nohighlight">\(\sigma\)</span> distributions. That is large enough to preserve legitimate heteroskedasticity (orders-of-magnitude differences across time) but small enough that a coincidentally-agreeing replicate cannot dominate the fit.</p>
 <p>Two notes:</p>
 <ul class="simple">
-<li><p><strong>Disabling.</strong> Subclass <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> (or <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code>) and set <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span> <span class="pre">=</span> <span class="pre">None</span></code> to recover raw inverse- variance weighting. This is appropriate when the <code class="docutils literal notranslate"><span class="pre">stderr_label</span></code> column is trusted across its full range, or when you are deliberately probing the effect of the floor.</p></li>
+<li><p><strong>Disabling.</strong> Subclass <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> (or <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code>) and set <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span> <span class="pre">=</span> <span class="pre">None</span></code> to recover raw inverse- variance weighting. This is appropriate when the <code class="docutils literal notranslate"><span class="pre">stderr_label</span></code> column is trusted across its full range, or when you are deliberately probing the effect of the floor.</p></li>
 <li><p><strong>All-zero / all-NaN fallback.</strong> When a fit group has <em>no</em> finite positive <span class="math notranslate nohighlight">\(\sigma\)</span> at all (every timepoint has <span class="math notranslate nohighlight">\(n=1\)</span>, or noise-free synthetic replicates that all coincide), the model bypasses the weighted pathway entirely and falls back to unweighted residuals. The floor is inapplicable in that case by construction.</p></li>
 </ul>
 <p>The floor applies uniformly to both user-supplied <code class="docutils literal notranslate"><span class="pre">stderr_label</span></code> columns and the auto-derived replicate-SEM column, so the same calibration works across both paths.</p>
@@ -854,9 +854,9 @@ slope-ratio and buffer) are now class constants on the shared base — set them 
 <li><p><strong>Quantile floor interaction.</strong> Pool-filled entries are <em>not</em> included in the set used to compute the floor quantile — the floor is derived from finite, positive, non-filled <span class="math notranslate nohighlight">\(\sigma\)</span> values only — but they <em>are</em> subsequently lifted to the floor via the final <code class="docutils literal notranslate"><span class="pre">np.maximum</span></code>. So pool-filled rows inherit both the pool baseline and any floor that is larger than the pool.</p></li>
 </ul>
 </section>
-<section id="4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)">
-<h3>4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus.prune_saturated</span></code>)<a class="headerlink" href="#4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)" title="Link to this heading">#</a></h3>
-<p>Pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> — <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> models the saturation explicitly and trimming the plateau would defeat the fit.</p>
+<section id="4.5-Saturation-Pruning-(LinearLagModel.prune_saturated)">
+<h3>4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearLagModel.prune_saturated</span></code>)<a class="headerlink" href="#4.5-Saturation-Pruning-(LinearLagModel.prune_saturated)" title="Link to this heading">#</a></h3>
+<p>Pruning lives only on <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> — <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> models the saturation explicitly and trimming the plateau would defeat the fit.</p>
 <p>Post-saturation points cause two problems for a non-saturating model. First, they are often where contamination overruns a colony or where segmentation confuses neighbour-colony merges, pulling the late-time values upward or downward in biologically meaningless ways. Second, even perfectly clean plateau points are <strong>uninformative</strong> about the lag-phase parameters <span class="math notranslate nohighlight">\((\lambda, \alpha, s_0)\)</span> — yet they contribute an equal share of residuals unless something trims them off.</p>
 <p><code class="docutils literal notranslate"><span class="pre">_prepare_group</span></code> implements a hybrid heuristic. A point is flagged as saturated when <strong>both</strong> of the following are true:</p>
 <ol class="arabic simple">
@@ -874,7 +874,7 @@ slope-ratio and buffer) are now class constants on the shared base — set them 
 <li><p><strong>Tail-growth short-circuit.</strong> If the mean of the tail-window smoothed slope is <em>still</em> above the threshold, pruning returns the group unchanged. Curves that never plateau within the observation window are not trimmed.</p></li>
 <li><p><strong>Degenerate-input guard.</strong> If the smoothed peak slope is non-finite or non-positive (all-NaN <span class="math notranslate nohighlight">\(y\)</span>, or a constant series), pruning returns the group unchanged.</p></li>
 </ul>
-<p>Set <code class="docutils literal notranslate"><span class="pre">prune_saturated=False</span></code> to disable pruning entirely. Subclass <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> and override <code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span></code> / <code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code> for tuning; these are class constants, not <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">prune_saturated=False</span></code> to disable pruning entirely. Subclass <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> and override <code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span></code> / <code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code> for tuning; these are class constants, not <code class="docutils literal notranslate"><span class="pre">__init__</span></code> kwargs.</p>
 </section>
 <section id="4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)">
 <h3>4.6 Gaussian Prior on <span class="math notranslate nohighlight">\(s_0\)</span> (<code class="docutils literal notranslate"><span class="pre">s0_prior</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code>)<a class="headerlink" href="#4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)" title="Link to this heading">#</a></h3>
@@ -989,7 +989,7 @@ that one <span class="math notranslate nohighlight">\(\mu\)</span> to every stra
 <td><p>Knee of the robust loss</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">prune_saturated</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
 <td><p>Uninformative plateau points, tail contamination</p></td>
 </tr>
@@ -1019,17 +1019,17 @@ that one <span class="math notranslate nohighlight">\(\mu\)</span> to every stra
 <td><p>Empirical-Bayes pooling (opt-in)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">smax</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (per-group max)</p></td>
 <td><p>Carrying capacity</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code> (mode dispatch)</p></td>
 <td><p>Saturation transition sharpness</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shoulder_slope_ratio</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
 <td><p>Shoulder-detection threshold for fitted_beta vs fixed_beta</p></td>
 </tr>
@@ -1055,16 +1055,16 @@ that one <span class="math notranslate nohighlight">\(\mu\)</span> to every stra
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_PRUNE_SLOPE_RATIO</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_PRUNE_BUFFER</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">2</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code></p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>The per-group mode dispatch on <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code> (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> / <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>) runs on top of these and needs no configuration in the common case — <span class="math notranslate nohighlight">\(\beta\)</span> is fit when a shoulder is present, held at the default when no shoulder is detected.</p>
+<p>The per-group mode dispatch on <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> (<code class="docutils literal notranslate"><span class="pre">fitted_beta</span></code> / <code class="docutils literal notranslate"><span class="pre">fixed_beta</span></code>) runs on top of these and needs no configuration in the common case — <span class="math notranslate nohighlight">\(\beta\)</span> is fit when a shoulder is present, held at the default when no shoulder is detected.</p>
 </section>
 <section id="References">
 <h2>References<a class="headerlink" href="#References" title="Link to this heading">#</a></h2>
@@ -1106,9 +1106,9 @@ that one <span class="math notranslate nohighlight">\(\mu\)</span> to every stra
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#2.-Parameter-Cheat-Sheet">2. Parameter Cheat-Sheet</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-DoubleSoftplus:-Per-Group-Mode-Dispatch">3. DoubleSoftplus: Per-Group Mode Dispatch</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#3.-LinearCapAndLagModel:-Per-Group-Mode-Dispatch">3. LinearCapAndLagModel: Per-Group Mode Dispatch</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Shoulder-detection">Shoulder detection</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#When-to-pick-LinearSoftplus-vs-DoubleSoftplus">When to pick <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code> vs <code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#When-to-pick-LinearLagModel-vs-LinearCapAndLagModel">When to pick <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> vs <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#4.-Outlier-Mitigations">4. Outlier Mitigations</a><ul class="visible nav section-nav flex-column">
@@ -1116,7 +1116,7 @@ that one <span class="math notranslate nohighlight">\(\mu\)</span> to every stra
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.2-Inverse-Variance-Weighting-(stderr_label)">4.2 Inverse-Variance Weighting (<code class="docutils literal notranslate"><span class="pre">stderr_label</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.3-Replicate-SEM-Quantile-Floor-(class-constant-_STDERR_FLOOR_QUANTILE)">4.3 Replicate-SEM Quantile Floor (class constant <code class="docutils literal notranslate"><span class="pre">_STDERR_FLOOR_QUANTILE</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.4-Pooled-Point-Level-Std-for-n=1-Timepoints">4.4 Pooled Point-Level Std for <span class="math notranslate nohighlight">\(n=1\)</span> Timepoints</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.5-Saturation-Pruning-(LinearSoftplus.prune_saturated)">4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearSoftplus.prune_saturated</span></code>)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.5-Saturation-Pruning-(LinearLagModel.prune_saturated)">4.5 Saturation Pruning (<code class="docutils literal notranslate"><span class="pre">LinearLagModel.prune_saturated</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#4.6-Gaussian-Prior-on-s_0-(s0_prior,-s0_prior_cv,-s0_prior_sigma)">4.6 Gaussian Prior on <span class="math notranslate nohighlight">\(s_0\)</span> (<code class="docutils literal notranslate"><span class="pre">s0_prior</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_cv</span></code>, <code class="docutils literal notranslate"><span class="pre">s0_prior_sigma</span></code>)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Implementation-as-a-virtual-residual">Implementation as a virtual residual</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#s0_prior-dispatch-(by-type)"><code class="docutils literal notranslate"><span class="pre">s0_prior</span></code> dispatch (by type)</a></li>

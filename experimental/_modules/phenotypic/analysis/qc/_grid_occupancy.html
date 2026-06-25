@@ -618,18 +618,18 @@
 
 
 <div class="viewcode-block" id="GridOccupancy">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridOccupancy</span><span class="p">(</span><span class="n">ExpectedVsDetectedCount</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag groups whose grid occupancy (filled cells / expected) is low.</span>
 
 <span class="sd">    Inherits the entire metadata-form surface of</span>
-<span class="sd">    :class:`ExpectedVsDetectedCount` — the ``metadata`` (DataFrame or</span>
-<span class="sd">    ``.csv``/``.parquet`` path) and ``metadata_source`` fields, their</span>
-<span class="sd">    path-or-frame coercion, the ``pipeline.json`` serialization round-trip</span>
-<span class="sd">    (the *source path* persists and the frame re-reads on load), and the</span>
-<span class="sd">    per-key expected-count precompute. The expected cell count for a group</span>
-<span class="sd">    is the number of metadata rows for that ``groupby`` key (one row per</span>
-<span class="sd">    expected pin position).</span>
+<span class="sd">    :class:`ExpectedVsDetectedCount` — the single ``metadata`` field</span>
+<span class="sd">    (an in-memory DataFrame *or* a ``.csv``/``.parquet`` path), its</span>
+<span class="sd">    store-verbatim coercion, the ``pipeline.json`` serialization round-trip</span>
+<span class="sd">    (the *source path* persists under the ``metadata`` key and the frame</span>
+<span class="sd">    re-reads on load), and the per-key expected-count precompute. The</span>
+<span class="sd">    expected cell count for a group is the number of metadata rows for that</span>
+<span class="sd">    ``groupby`` key (one row per expected pin position).</span>
 
 <span class="sd">    Where the parent counts ``len(group)`` (raw detections, doublets</span>
 <span class="sd">    included), this check counts ``group[cell_label].nunique()`` distinct</span>
@@ -657,11 +657,11 @@
 <span class="sd">    a genuinely empty plate.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        metadata: Layout frame (or path) whose row count per ``groupby``</span>
-<span class="sd">            key is the expected cell count. Same semantics, coercion, and</span>
-<span class="sd">            serialization as :class:`ExpectedVsDetectedCount`.</span>
-<span class="sd">        metadata_source: JSON-serializable path handle to the layout,</span>
-<span class="sd">            captured automatically when ``metadata`` is given as a path.</span>
+<span class="sd">        metadata: Layout (in-memory DataFrame or ``.csv``/``.parquet``</span>
+<span class="sd">            path) whose row count per ``groupby`` key is the expected cell</span>
+<span class="sd">            count. Same semantics, coercion, and serialization as</span>
+<span class="sd">            :class:`ExpectedVsDetectedCount` (the path form round-trips</span>
+<span class="sd">            through JSON).</span>
 <span class="sd">        groupby: Columns that define one plate. Usually</span>
 <span class="sd">            ``[&quot;Metadata_ImageFile&quot;]``. Must be present in both the</span>
 <span class="sd">            metadata frame and the measurement frame.</span>
@@ -679,11 +679,11 @@
 <span class="sd">        KeyError: If ``cell_label`` is absent from the measurement frame, or</span>
 <span class="sd">            (inherited) if any ``groupby`` column is absent from the</span>
 <span class="sd">            metadata frame.</span>
-<span class="sd">        FileNotFoundError: (inherited) If ``metadata``/``metadata_source``</span>
-<span class="sd">            is a path that does not exist.</span>
+<span class="sd">        FileNotFoundError: (inherited) If ``metadata`` is a path that does</span>
+<span class="sd">            not exist.</span>
 <span class="sd">        ValueError: (inherited) If ``metadata`` is a path with an</span>
-<span class="sd">            unsupported suffix, or if neither ``metadata`` nor</span>
-<span class="sd">            ``metadata_source`` is supplied.</span>
+<span class="sd">            unsupported suffix, or if it is ``None`` (a check serialized</span>
+<span class="sd">            from an in-memory frame, which cannot round-trip).</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Basic — 96-cell metadata vs. a measurement frame with 92 colonies</span>
@@ -721,7 +721,7 @@
     <span class="n">cell_label</span><span class="p">:</span> <span class="n">ColumnRef</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span>
 
 <div class="viewcode-block" id="GridOccupancy.analyze">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy.analyze">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.analyze">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Guard the cell-id column, then run the inherited ``analyze``.</span>
 
@@ -782,7 +782,7 @@
         <span class="k">return</span> <span class="n">out</span>
 
 <div class="viewcode-block" id="GridOccupancy.dash">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.GridOccupancy.dash">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.dash">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Render a horizontal bar of per-group occupancy, colored by status.</span>
 

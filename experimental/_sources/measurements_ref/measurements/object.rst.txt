@@ -17,5 +17,7 @@ joined on this column.
 
    * - Column label
      - Description
+     - Type
    * - ``Object_Label``
      - Integer label uniquely identifying each detected object (colony) within its source image. Acts as the per-image primary key shared by every measurement table, letting all per-colony measurements be joined together and traced back to a single colony on the agar plate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

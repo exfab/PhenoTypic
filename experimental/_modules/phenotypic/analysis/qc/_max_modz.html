@@ -620,14 +620,14 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._qc_math</span><span class="w"> </span><span class="kn">import</span> <span class="n">median_abs_deviation</span><span class="p">,</span> <span class="n">modified_z_scores</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis._helper._qc_math</span><span class="w"> </span><span class="kn">import</span> <span class="n">median_abs_deviation</span><span class="p">,</span> <span class="n">modified_z_scores</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.analysis.abc_._quality_check</span><span class="w"> </span><span class="kn">import</span> <span class="n">QualityCheck</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">QUALITY_ZMAX</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span>
 
 
 <div class="viewcode-block" id="MaxModifiedZScore">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.analysis.qc.html#phenotypic.analysis.MaxModifiedZScore">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.MaxModifiedZScore.html#phenotypic.analysis.MaxModifiedZScore">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MaxModifiedZScore</span><span class="p">(</span><span class="n">QualityCheck</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Flag ``(group, time)`` bins whose worst member is a robust outlier.</span>
 
@@ -656,7 +656,7 @@
 <span class="sd">       zero is reported as ``metric = NaN`` (perfect agreement is not an</span>
 <span class="sd">       outlier and should never gate curation), matching the</span>
 <span class="sd">       &quot;no outliers&quot; semantics of</span>
-<span class="sd">       :func:`~phenotypic.analysis._qc_math.modified_z_scores`.</span>
+<span class="sd">       :func:`~phenotypic.analysis._helper._qc_math.modified_z_scores`.</span>
 
 <span class="sd">    When ``self.time_label`` is absent from the input data, the entire</span>
 <span class="sd">    group is treated as a single timepoint bin so the check remains</span>

@@ -623,7 +623,7 @@
 
 
 <div class="viewcode-block" id="ColorCorrector">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorCorrector</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply root-polynomial color correction using a fitted ColorCheckerProfile.</span>
 
@@ -696,7 +696,7 @@
         <span class="k">return</span> <span class="n">profile</span>
 
 <div class="viewcode-block" id="ColorCorrector.model_post_init">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.model_post_init">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.model_post_init">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Materialise the float64 correction matrix after construction.</span>
 
@@ -728,7 +728,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ColorCorrector.apply">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.apply">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.apply">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply the correction, first checking capture-metadata compatibility.</span>
 
@@ -844,7 +844,7 @@
         <span class="k">return</span> <span class="n">image</span>
 
 <div class="viewcode-block" id="ColorCorrector.dashboard">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCorrector.dashboard">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCorrector.html#phenotypic.correction.ColorCorrector.dashboard">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 

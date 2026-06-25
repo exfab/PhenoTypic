@@ -9,7 +9,7 @@ DataFrame column labels and descriptions.
    :caption: Models & Analysis
 
    LogGrowthModel <log_growth_model>
-   LinearSoftplus <linear_softplus_model>
-   DoubleSoftplus <double_softplus_model>
+   LinearLagModel <linear_lag_model>
+   LinearCapAndLagModel <linear_cap_and_lag_model>
    EdgeCorrection <edge_correction>
    ModelMetrics <model_metrics>

@@ -17,11 +17,16 @@ columns drive curation decisions downstream of the QC pipeline.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_Tukey_LowerFence``
      - Lower Tukey fence, Q1 - k*IQR.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Tukey_UpperFence``
      - Upper Tukey fence, Q3 + k*IQR.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Tukey_NumOutliers``
      - Members falling outside the fences.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Tukey_NumMembers``
      - Members contributing to the statistic.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

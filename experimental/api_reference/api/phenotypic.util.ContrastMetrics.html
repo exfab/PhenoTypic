@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1160,37 +1161,37 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.clear" title="phenotypic.util.ContrastMetrics.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.clear" title="phenotypic.util.ContrastMetrics.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a></p></td>
 <td><p>D.clear() -&gt; None.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.copy" title="phenotypic.util.ContrastMetrics.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.copy" title="phenotypic.util.ContrastMetrics.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a></p></td>
 <td><p>D.copy() -&gt; a shallow copy of D</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.fromkeys" title="phenotypic.util.ContrastMetrics.fromkeys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fromkeys</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.fromkeys" title="phenotypic.util.ContrastMetrics.fromkeys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fromkeys</span></code></a></p></td>
 <td><p>Create a new dictionary with keys from iterable and values set to value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.get" title="phenotypic.util.ContrastMetrics.get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.get" title="phenotypic.util.ContrastMetrics.get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get</span></code></a></p></td>
 <td><p>Return the value for key if key is in the dictionary, else default.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.items" title="phenotypic.util.ContrastMetrics.items"><code class="xref py py-obj docutils literal notranslate"><span class="pre">items</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.items" title="phenotypic.util.ContrastMetrics.items"><code class="xref py py-obj docutils literal notranslate"><span class="pre">items</span></code></a></p></td>
 <td><p>D.items() -&gt; a set-like object providing a view on D's items</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.keys" title="phenotypic.util.ContrastMetrics.keys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">keys</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.keys" title="phenotypic.util.ContrastMetrics.keys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">keys</span></code></a></p></td>
 <td><p>D.keys() -&gt; a set-like object providing a view on D's keys</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.pop" title="phenotypic.util.ContrastMetrics.pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pop</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.pop" title="phenotypic.util.ContrastMetrics.pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pop</span></code></a></p></td>
 <td><p>D.pop(k[,d]) -&gt; v, remove specified key and return the corresponding value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.popitem" title="phenotypic.util.ContrastMetrics.popitem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">popitem</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.popitem" title="phenotypic.util.ContrastMetrics.popitem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">popitem</span></code></a></p></td>
 <td><p>Remove and return a (key, value) pair as a 2-tuple.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.setdefault" title="phenotypic.util.ContrastMetrics.setdefault"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setdefault</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.setdefault" title="phenotypic.util.ContrastMetrics.setdefault"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setdefault</span></code></a></p></td>
 <td><p>Insert key with a value of default if key is not in the dictionary.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.update" title="phenotypic.util.ContrastMetrics.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.update" title="phenotypic.util.ContrastMetrics.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
 <td><p>D.update([E, ]**F) -&gt; None.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.values" title="phenotypic.util.ContrastMetrics.values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">values</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.values" title="phenotypic.util.ContrastMetrics.values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">values</span></code></a></p></td>
 <td><p>D.values() -&gt; an object providing a view on D's values</p></td>
 </tr>
 </tbody>
@@ -1199,19 +1200,19 @@
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.rms_contrast" title="phenotypic.util.ContrastMetrics.rms_contrast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rms_contrast</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.rms_contrast" title="phenotypic.util.ContrastMetrics.rms_contrast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rms_contrast</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.michelson" title="phenotypic.util.ContrastMetrics.michelson"><code class="xref py py-obj docutils literal notranslate"><span class="pre">michelson</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.michelson" title="phenotypic.util.ContrastMetrics.michelson"><code class="xref py py-obj docutils literal notranslate"><span class="pre">michelson</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.dynamic_range" title="phenotypic.util.ContrastMetrics.dynamic_range"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_range</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.dynamic_range" title="phenotypic.util.ContrastMetrics.dynamic_range"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dynamic_range</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.p1" title="phenotypic.util.ContrastMetrics.p1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">p1</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.p1" title="phenotypic.util.ContrastMetrics.p1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">p1</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.util.html#phenotypic.util.ContrastMetrics.p99" title="phenotypic.util.ContrastMetrics.p99"><code class="xref py py-obj docutils literal notranslate"><span class="pre">p99</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.util.ContrastMetrics.p99" title="phenotypic.util.ContrastMetrics.p99"><code class="xref py py-obj docutils literal notranslate"><span class="pre">p99</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>

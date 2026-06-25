@@ -628,7 +628,7 @@
 
 
 <div class="viewcode-block" id="ImportanceReport">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.ImportanceReport">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.ImportanceReport.html#phenotypic.tune.ImportanceReport">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImportanceReport</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A ranked importance estimate plus its method + interaction honesty flag.</span>
 
@@ -654,7 +654,7 @@
 
 
 <div class="viewcode-block" id="compute_param_importance">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.compute_param_importance">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.compute_param_importance.html#phenotypic.tune.compute_param_importance">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_param_importance</span><span class="p">(</span>
     <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
@@ -685,7 +685,7 @@
 
 
 <div class="viewcode-block" id="compute_param_importance_report">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.compute_param_importance_report">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.compute_param_importance_report.html#phenotypic.tune.compute_param_importance_report">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_param_importance_report</span><span class="p">(</span>
     <span class="n">store</span><span class="p">:</span> <span class="n">StudyStore</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImportanceReport</span><span class="p">:</span>

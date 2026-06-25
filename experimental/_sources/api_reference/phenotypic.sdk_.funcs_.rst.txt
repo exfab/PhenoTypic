@@ -1,7 +1,0 @@
-phenotypic.sdk\_.funcs\_ module
-===============================
-
-.. automodule:: phenotypic.sdk_.funcs_
-   :members:
-   :show-inheritance:
-   :undoc-members:

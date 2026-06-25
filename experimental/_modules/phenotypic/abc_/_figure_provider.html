@@ -655,7 +655,7 @@
 
 
 <div class="viewcode-block" id="Control">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.Control">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.Control.html#phenotypic.abc_.Control">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Control</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Renderer-neutral input bound to a figure method&#39;s keyword argument.</span>
@@ -728,7 +728,7 @@
 
 
 <div class="viewcode-block" id="FigureSpec">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureSpec">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureSpec.html#phenotypic.abc_.FigureSpec">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FigureSpec</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Introspectable metadata attached to a ``@figure`` method.</span>
@@ -766,7 +766,7 @@
 
 
 <div class="viewcode-block" id="figure">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.figure">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.figure.html#phenotypic.abc_.figure">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">figure</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -853,7 +853,7 @@
 
 
 <div class="viewcode-block" id="BoundFigures">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BoundFigures">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BoundFigures.html#phenotypic.abc_.BoundFigures">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BoundFigures</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A subject bound to a provider&#39;s figures — the transient renderable the GUI</span>
 <span class="sd">    Dash adapter consumes.</span>
@@ -873,14 +873,14 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subject</span>
 
 <div class="viewcode-block" id="BoundFigures.specs">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BoundFigures.specs">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BoundFigures.html#phenotypic.abc_.BoundFigures.specs">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">specs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FigureSpec</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The provider&#39;s figures, sorted by definition order.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_provider</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="BoundFigures.render">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BoundFigures.render">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BoundFigures.html#phenotypic.abc_.BoundFigures.render">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">FigureSpec</span><span class="p">,</span> <span class="o">**</span><span class="n">control_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Render ``spec`` with the given control values, caching by (name, values).</span>
 
@@ -902,7 +902,7 @@
 
 
 <div class="viewcode-block" id="FigureProvider">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureProvider">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureProvider.html#phenotypic.abc_.FigureProvider">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FigureProvider</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Mixin turning ``@figure`` methods into ``.inspect()`` / ``.dash()`` / a</span>
 <span class="sd">    dashboard.</span>
@@ -939,7 +939,7 @@
     <span class="c1"># -- introspection ------------------------------------------------------</span>
 
 <div class="viewcode-block" id="FigureProvider.iter_figures">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureProvider.iter_figures">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureProvider.html#phenotypic.abc_.FigureProvider.iter_figures">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">iter_figures</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FigureSpec</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;All ``@figure`` specs on this instance&#39;s class, in definition order.</span>
 
@@ -1014,7 +1014,7 @@
         <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="o">**</span><span class="n">control_values</span><span class="p">)</span>
 
 <div class="viewcode-block" id="FigureProvider.inspect">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureProvider.inspect">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureProvider.html#phenotypic.abc_.FigureProvider.inspect">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
@@ -1055,7 +1055,7 @@
 
 
 <div class="viewcode-block" id="FigureProvider.dash">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureProvider.dash">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureProvider.html#phenotypic.abc_.FigureProvider.dash">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The interactive view.</span>
 
@@ -1084,7 +1084,7 @@
 
 
 <div class="viewcode-block" id="FigureProvider.figures">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.FigureProvider.figures">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.FigureProvider.html#phenotypic.abc_.FigureProvider.figures">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">figures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BoundFigures</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Bind ``subject`` → a transient :class:`BoundFigures` the Dash adapter</span>
 <span class="sd">        consumes. The per-render cache lives on the returned object, not here.&quot;&quot;&quot;</span>

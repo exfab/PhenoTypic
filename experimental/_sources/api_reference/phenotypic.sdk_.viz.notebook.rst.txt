@@ -1,7 +1,0 @@
-phenotypic.sdk\_.viz.notebook package
-=====================================
-
-.. automodule:: phenotypic.sdk_.viz.notebook
-   :members:
-   :show-inheritance:
-   :undoc-members:

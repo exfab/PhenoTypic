@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -682,38 +682,49 @@ grid alignment assessment, and neighbor-distance calculations.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_CenterRR</span></code></p></td>
 <td><p>The row coordinate of the center of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MinRR</span></code></p></td>
 <td><p>The smallest row coordinate of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MaxRR</span></code></p></td>
 <td><p>The largest row coordinate of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_CenterCC</span></code></p></td>
 <td><p>The column coordinate of the center of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MinCC</span></code></p></td>
 <td><p>The smallest column coordinate of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_MaxCC</span></code></p></td>
 <td><p>The largest column coordinate of the bounding box.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_IntensityWeightedCenterRR</span></code></p></td>
 <td><p>The intensity-weighted center row coordinate of the object (skimage <code class="docutils literal notranslate"><span class="pre">centroid_weighted</span></code>).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_IntensityWeightedCenterCC</span></code></p></td>
 <td><p>The intensity-weighted center column coordinate of the object (skimage <code class="docutils literal notranslate"><span class="pre">centroid_weighted</span></code>).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_DistWeightedCenterRR</span></code></p></td>
 <td><p>Row coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Bbox_DistWeightedCenterCC</span></code></p></td>
 <td><p>Column coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
 </tbody>
 </table>

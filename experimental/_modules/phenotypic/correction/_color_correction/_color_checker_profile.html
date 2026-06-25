@@ -824,7 +824,7 @@
 
 
 <div class="viewcode-block" id="ColorCheckerProfile">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ColorCheckerProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Profile fitted from a colour checker card for root-polynomial correction.</span>
 
@@ -978,7 +978,7 @@
     <span class="c1"># -- serialisation ------------------------------------------------------</span>
 
 <div class="viewcode-block" id="ColorCheckerProfile.to_json">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.to_json">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.to_json">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize this profile to JSON.</span>
 
@@ -1017,7 +1017,7 @@
 
 
 <div class="viewcode-block" id="ColorCheckerProfile.from_json">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.from_json">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.from_json">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">json_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct a profile from JSON written by :meth:`to_json`.</span>
@@ -1039,7 +1039,7 @@
     <span class="c1"># -- high-level fitting -------------------------------------------------</span>
 
 <div class="viewcode-block" id="ColorCheckerProfile.fit">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.fit">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.fit">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the profile from checker-card ROIs stored at initialisation.</span>
 
@@ -1532,7 +1532,7 @@
     <span class="c1"># -- dashboard ---------------------------------------------------------</span>
 
 <div class="viewcode-block" id="ColorCheckerProfile.dashboard">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.correction.html#phenotypic.correction.ColorCheckerProfile.dashboard">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.dashboard">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the Plotly color-correction diagnostic report.</span>
 

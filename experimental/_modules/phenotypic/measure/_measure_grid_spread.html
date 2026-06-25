@@ -611,7 +611,7 @@
 
 
 <div class="viewcode-block" id="MeasureGridSpread">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.measure.html#phenotypic.measure.MeasureGridSpread">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureGridSpread.html#phenotypic.measure.MeasureGridSpread">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasureGridSpread</span><span class="p">(</span><span class="n">GridMeasureFeatures</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Quantify within-well colony dispersion using pairwise centroid distances.</span>
 
@@ -637,7 +637,7 @@
 <span class="sd">          review or exclusion from downstream analysis.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureGridSpatial` for between-well neighbor</span>
+<span class="sd">        - :class:`MeasureNeighborDist` for between-well neighbor</span>
 <span class="sd">          distances rather than within-well dispersion.</span>
 <span class="sd">        - :class:`MeasureGridLinRegStats` for positional accuracy</span>
 <span class="sd">          metrics based on linear regression.</span>
@@ -653,7 +653,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="n">gs_table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
         <span class="n">gs_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-            <span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
+                <span class="n">gs_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span>
 
         <span class="n">obj_spread</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">gs_bindex</span> <span class="ow">in</span> <span class="n">gs_counts</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>

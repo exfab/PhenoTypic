@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1155,106 +1156,106 @@ Exceptions are organized by module and functionality.</p>
 <p class="rubric">Exceptions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError" title="phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError.html#phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError" title="phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ArrayKeyValueShapeMismatchError</span></code></a>()</p></td>
 <td><p>Exception raised when the shape of the other_image doesn't match the key's section.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.DataIntegrityError" title="phenotypic.sdk_.exceptions_.DataIntegrityError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataIntegrityError</span></code></a>(component, operation[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.DataIntegrityError.html#phenotypic.sdk_.exceptions_.DataIntegrityError" title="phenotypic.sdk_.exceptions_.DataIntegrityError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataIntegrityError</span></code></a>(component, operation[, ...])</p></td>
 <td><p>Exception raised when data integrity is compromised.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.EmptyImageError" title="phenotypic.sdk_.exceptions_.EmptyImageError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EmptyImageError</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.EmptyImageError.html#phenotypic.sdk_.exceptions_.EmptyImageError" title="phenotypic.sdk_.exceptions_.EmptyImageError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EmptyImageError</span></code></a>()</p></td>
 <td><p>Exception raised when no image data is loaded.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError" title="phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError</span></code></a>(value)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError.html#phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError" title="phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GrayscaleOutOfRangeError</span></code></a>(value)</p></td>
 <td><p>Exception raised when grayscale is out of range.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.GridImageInputError" title="phenotypic.sdk_.exceptions_.GridImageInputError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridImageInputError</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.GridImageInputError.html#phenotypic.sdk_.exceptions_.GridImageInputError" title="phenotypic.sdk_.exceptions_.GridImageInputError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridImageInputError</span></code></a>()</p></td>
 <td><p>Exception raised when a non-GriddedImage object is provided as arr.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.IllegalAssignmentError" title="phenotypic.sdk_.exceptions_.IllegalAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IllegalAssignmentError</span></code></a>(attr)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.IllegalAssignmentError.html#phenotypic.sdk_.exceptions_.IllegalAssignmentError" title="phenotypic.sdk_.exceptions_.IllegalAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IllegalAssignmentError</span></code></a>(attr)</p></td>
 <td><p>Exception raised when trying to directly assign a new object to a protected attribute.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.IllegalElementAssignmentError" title="phenotypic.sdk_.exceptions_.IllegalElementAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IllegalElementAssignmentError</span></code></a>(component_name)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.IllegalElementAssignmentError.html#phenotypic.sdk_.exceptions_.IllegalElementAssignmentError" title="phenotypic.sdk_.exceptions_.IllegalElementAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IllegalElementAssignmentError</span></code></a>(component_name)</p></td>
 <td><p>Exception raised when trying to change rgb/gray elements directly.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImageOperationError" title="phenotypic.sdk_.exceptions_.ImageOperationError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.ImageOperationError.html#phenotypic.sdk_.exceptions_.ImageOperationError" title="phenotypic.sdk_.exceptions_.ImageOperationError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a></p></td>
 <td><p>Base exception for image operation errors.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImmutableComponentError" title="phenotypic.sdk_.exceptions_.ImmutableComponentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.ImmutableComponentError.html#phenotypic.sdk_.exceptions_.ImmutableComponentError" title="phenotypic.sdk_.exceptions_.ImmutableComponentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a></p></td>
 <td><p>Base exception for immutable component errors.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InputShapeMismatchError" title="phenotypic.sdk_.exceptions_.InputShapeMismatchError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InputShapeMismatchError</span></code></a>(param_name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InputShapeMismatchError.html#phenotypic.sdk_.exceptions_.InputShapeMismatchError" title="phenotypic.sdk_.exceptions_.InputShapeMismatchError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InputShapeMismatchError</span></code></a>(param_name)</p></td>
 <td><p>Exception raised when arr shape doesn't match the image gray.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InterfaceError" title="phenotypic.sdk_.exceptions_.InterfaceError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InterfaceError</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InterfaceError.html#phenotypic.sdk_.exceptions_.InterfaceError" title="phenotypic.sdk_.exceptions_.InterfaceError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InterfaceError</span></code></a>()</p></td>
 <td><p>Exception raised when an <code class="docutils literal notranslate"><span class="pre">abc_</span></code> method is called when it's not supposed to be.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidHsvSchemaError" title="phenotypic.sdk_.exceptions_.InvalidHsvSchemaError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidHsvSchemaError</span></code></a>(imformat)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidHsvSchemaError.html#phenotypic.sdk_.exceptions_.InvalidHsvSchemaError" title="phenotypic.sdk_.exceptions_.InvalidHsvSchemaError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidHsvSchemaError</span></code></a>(imformat)</p></td>
 <td><p>Exception raised when trying to convert to HSV from a non-RGB imformat.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMapValueError" title="phenotypic.sdk_.exceptions_.InvalidMapValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMapValueError</span></code></a>(value_type)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMapValueError.html#phenotypic.sdk_.exceptions_.InvalidMapValueError" title="phenotypic.sdk_.exceptions_.InvalidMapValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMapValueError</span></code></a>(value_type)</p></td>
 <td><p>Exception raised when trying to set object map with invalid other_image type.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError" title="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html#phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError" title="phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMaskScalarValueError</span></code></a>()</p></td>
 <td><p>Exception raised when trying to set mask with invalid scalar other_image.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMaskValueError" title="phenotypic.sdk_.exceptions_.InvalidMaskValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMaskValueError</span></code></a>(value_type)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidMaskValueError.html#phenotypic.sdk_.exceptions_.InvalidMaskValueError" title="phenotypic.sdk_.exceptions_.InvalidMaskValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidMaskValueError</span></code></a>(value_type)</p></td>
 <td><p>Exception raised when trying to set mask with invalid other_image type.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidShapeError" title="phenotypic.sdk_.exceptions_.InvalidShapeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidShapeError</span></code></a>(component)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.InvalidShapeError.html#phenotypic.sdk_.exceptions_.InvalidShapeError" title="phenotypic.sdk_.exceptions_.InvalidShapeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvalidShapeError</span></code></a>(component)</p></td>
 <td><p>Exception raised when a shape mismatch occurs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataKeySpacesError" title="phenotypic.sdk_.exceptions_.MetadataKeySpacesError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataKeySpacesError</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html#phenotypic.sdk_.exceptions_.MetadataKeySpacesError" title="phenotypic.sdk_.exceptions_.MetadataKeySpacesError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataKeySpacesError</span></code></a>()</p></td>
 <td><p>Exception raised when metadata key contains spaces.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataKeyValueError" title="phenotypic.sdk_.exceptions_.MetadataKeyValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataKeyValueError</span></code></a>(type_received)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataKeyValueError.html#phenotypic.sdk_.exceptions_.MetadataKeyValueError" title="phenotypic.sdk_.exceptions_.MetadataKeyValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataKeyValueError</span></code></a>(type_received)</p></td>
 <td><p>Exception raised when metadata key is not a string.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataValueNonScalarError" title="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataValueNonScalarError</span></code></a>(type_value)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html#phenotypic.sdk_.exceptions_.MetadataValueNonScalarError" title="phenotypic.sdk_.exceptions_.MetadataValueNonScalarError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MetadataValueNonScalarError</span></code></a>(type_value)</p></td>
 <td><p>Exception raised when metadata other_image is not scalar.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoArrayError" title="phenotypic.sdk_.exceptions_.NoArrayError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoArrayError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.NoArrayError.html#phenotypic.sdk_.exceptions_.NoArrayError" title="phenotypic.sdk_.exceptions_.NoArrayError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoArrayError</span></code></a>()</p></td>
 <td><p>Exception raised when no array is found.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoComponentError" title="phenotypic.sdk_.exceptions_.NoComponentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoComponentError</span></code></a>(component)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.NoComponentError.html#phenotypic.sdk_.exceptions_.NoComponentError" title="phenotypic.sdk_.exceptions_.NoComponentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoComponentError</span></code></a>(component)</p></td>
 <td><p>Exception raised when a required object is missing.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoImageDataError" title="phenotypic.sdk_.exceptions_.NoImageDataError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoImageDataError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.NoImageDataError.html#phenotypic.sdk_.exceptions_.NoImageDataError" title="phenotypic.sdk_.exceptions_.NoImageDataError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoImageDataError</span></code></a>()</p></td>
 <td><p>Exception raised when no image data is loaded.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoObjectsError" title="phenotypic.sdk_.exceptions_.NoObjectsError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoObjectsError</span></code></a>([image_name])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.NoObjectsError.html#phenotypic.sdk_.exceptions_.NoObjectsError" title="phenotypic.sdk_.exceptions_.NoObjectsError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoObjectsError</span></code></a>([image_name])</p></td>
 <td><p>Exception raised when no objects are found in an image.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoOutputError" title="phenotypic.sdk_.exceptions_.NoOutputError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoOutputError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.NoOutputError.html#phenotypic.sdk_.exceptions_.NoOutputError" title="phenotypic.sdk_.exceptions_.NoOutputError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NoOutputError</span></code></a>()</p></td>
 <td><p>Exception raised when no output was returned in an operation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ObjectNotFoundError" title="phenotypic.sdk_.exceptions_.ObjectNotFoundError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObjectNotFoundError</span></code></a>(label)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.ObjectNotFoundError.html#phenotypic.sdk_.exceptions_.ObjectNotFoundError" title="phenotypic.sdk_.exceptions_.ObjectNotFoundError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ObjectNotFoundError</span></code></a>(label)</p></td>
 <td><p>Exception raised when an object with a specified label is not found.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperationFailedError</span></code></a>(operation, image_name, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.OperationFailedError.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperationFailedError</span></code></a>(operation, image_name, ...)</p></td>
 <td><p>Exception raised when an operation fails.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationIntegrityError" title="phenotypic.sdk_.exceptions_.OperationIntegrityError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code></a>(opname, component[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.OperationIntegrityError.html#phenotypic.sdk_.exceptions_.OperationIntegrityError" title="phenotypic.sdk_.exceptions_.OperationIntegrityError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code></a>(opname, component[, ...])</p></td>
 <td><p>Exception raised when an operation attempts to change a component it shouldn't.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OutputValueError" title="phenotypic.sdk_.exceptions_.OutputValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OutputValueError</span></code></a>(expected_type)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.OutputValueError.html#phenotypic.sdk_.exceptions_.OutputValueError" title="phenotypic.sdk_.exceptions_.OutputValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OutputValueError</span></code></a>(expected_type)</p></td>
 <td><p>Exception raised when output is not of the expected type.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p></td>
 <td><p>Base exception class for all PhenoTypic errors.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UUIDReassignmentError" title="phenotypic.sdk_.exceptions_.UUIDReassignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UUIDReassignmentError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.UUIDReassignmentError.html#phenotypic.sdk_.exceptions_.UUIDReassignmentError" title="phenotypic.sdk_.exceptions_.UUIDReassignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UUIDReassignmentError</span></code></a>()</p></td>
 <td><p>Exception raised when trying to change the UUID metadata.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnknownError" title="phenotypic.sdk_.exceptions_.UnknownError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnknownError</span></code></a>([message])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.UnknownError.html#phenotypic.sdk_.exceptions_.UnknownError" title="phenotypic.sdk_.exceptions_.UnknownError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnknownError</span></code></a>([message])</p></td>
 <td><p>Exception raised when an unknown error occurs.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnsupportedFileTypeError" title="phenotypic.sdk_.exceptions_.UnsupportedFileTypeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnsupportedFileTypeError</span></code></a>(suffix)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.UnsupportedFileTypeError.html#phenotypic.sdk_.exceptions_.UnsupportedFileTypeError" title="phenotypic.sdk_.exceptions_.UnsupportedFileTypeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnsupportedFileTypeError</span></code></a>(suffix)</p></td>
 <td><p>Exception raised when trying to read an unsupported file type.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnsupportedImageFormat" title="phenotypic.sdk_.exceptions_.UnsupportedImageFormat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnsupportedImageFormat</span></code></a>(imformat)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.UnsupportedImageFormat.html#phenotypic.sdk_.exceptions_.UnsupportedImageFormat" title="phenotypic.sdk_.exceptions_.UnsupportedImageFormat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UnsupportedImageFormat</span></code></a>(imformat)</p></td>
 <td><p>Represents an error when an unsupported imformat format is detected.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UuidAssignmentError" title="phenotypic.sdk_.exceptions_.UuidAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UuidAssignmentError</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.UuidAssignmentError.html#phenotypic.sdk_.exceptions_.UuidAssignmentError" title="phenotypic.sdk_.exceptions_.UuidAssignmentError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UuidAssignmentError</span></code></a>()</p></td>
 <td><p>Exception raised when trying to change the UUID of an image.</p></td>
 </tr>
 </tbody>
@@ -1365,7 +1366,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">GrayscaleOutOfRangeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#GrayscaleOutOfRangeError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when grayscale is out of range.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1443,7 +1444,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">IllegalElementAssignmentError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#IllegalElementAssignmentError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImmutableComponentError" title="phenotypic.sdk_.exceptions_.ImmutableComponentError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.ImmutableComponentError.html#phenotypic.sdk_.exceptions_.ImmutableComponentError" title="phenotypic.sdk_.exceptions_.ImmutableComponentError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImmutableComponentError</span></code></a></p>
 <p>Exception raised when trying to change rgb/gray elements directly.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1481,7 +1482,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">ImageOperationError</span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#ImageOperationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Base exception for image operation errors.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1571,7 +1572,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">InterfaceError</span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#InterfaceError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when an <code class="docutils literal notranslate"><span class="pre">abc_</span></code> method is called when it’s not supposed to be.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -1969,7 +1970,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">NoOutputError</span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#NoOutputError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when no output was returned in an operation.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -2033,7 +2034,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OperationFailedError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">operation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#OperationFailedError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImageOperationError" title="phenotypic.sdk_.exceptions_.ImageOperationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.ImageOperationError.html#phenotypic.sdk_.exceptions_.ImageOperationError" title="phenotypic.sdk_.exceptions_.ImageOperationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImageOperationError</span></code></a></p>
 <p>Exception raised when an operation fails.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -2105,7 +2106,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">OutputValueError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expected_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#OutputValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when output is not of the expected type.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -2195,7 +2196,7 @@ set self.__traceback__ to tb and return self.</p>
 <dl class="py exception">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.exceptions_.</span></span><span class="sig-name descname"><span class="pre">UnknownError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'An</span> <span class="pre">unknown</span> <span class="pre">error</span> <span class="pre">occurred.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/exceptions_.html#UnknownError"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Bases: <a class="reference internal" href="../phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError" title="phenotypic.sdk_.exceptions_.PhenoTypicError"><code class="xref py py-class docutils literal notranslate"><span class="pre">PhenoTypicError</span></code></a></p>
 <p>Exception raised when an unknown error occurs.</p>
 <dl class="py method">
 <dt class="sig sig-object py">

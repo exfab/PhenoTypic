@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -684,73 +684,73 @@ estimates.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
-<th class="head"><p>Use</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMin</span></code></p></td>
 <td><p>The minimum chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xQ1</span></code></p></td>
 <td><p>The lower quartile (Q1) chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMean</span></code></p></td>
 <td><p>The mean chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMedian</span></code></p></td>
 <td><p>The median chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xQ3</span></code></p></td>
 <td><p>The upper quartile (Q3) chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xMax</span></code></p></td>
 <td><p>The maximum chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xStdDev</span></code></p></td>
 <td><p>The standard deviation of the chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_xCoeffVar</span></code></p></td>
 <td><p>The coefficient of variation of the chromaticity x coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMin</span></code></p></td>
 <td><p>The minimum chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yQ1</span></code></p></td>
 <td><p>The lower quartile (Q1) chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMean</span></code></p></td>
 <td><p>The mean chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMedian</span></code></p></td>
 <td><p>The median chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yQ3</span></code></p></td>
 <td><p>The upper quartile (Q3) chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yMax</span></code></p></td>
 <td><p>The maximum chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yStdDev</span></code></p></td>
 <td><p>The standard deviation of the chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Colorxy_yCoeffVar</span></code></p></td>
 <td><p>The coefficient of variation of the chromaticity y coordinate of the object</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
 </table>

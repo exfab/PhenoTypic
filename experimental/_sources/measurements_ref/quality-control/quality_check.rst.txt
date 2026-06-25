@@ -18,9 +18,13 @@ docstring documents its real emitted columns.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_Flag``
      - True when the metric crosses fail_threshold in the bad direction; eligible for curation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Metric``
      - Headline metric in the check's own units; the bad direction is set by the check's _HIGHER_IS_BAD flag. Drives Status.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Status``
      - Categorical: pass \| warn \| fail.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

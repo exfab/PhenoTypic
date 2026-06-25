@@ -674,7 +674,7 @@
 
 
 <div class="viewcode-block" id="ErrorCutoffFinder">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.ErrorCutoffFinder">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.analysis.ErrorCutoffFinder.html#phenotypic.analysis.ErrorCutoffFinder">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ErrorCutoffFinder</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rank measurements by good-vs-error separability with suggested cutoffs.</span>
 
@@ -709,7 +709,7 @@
         <span class="k">return</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="ErrorCutoffFinder.measurement_columns">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.ErrorCutoffFinder.measurement_columns">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.analysis.ErrorCutoffFinder.html#phenotypic.analysis.ErrorCutoffFinder.measurement_columns">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">measurement_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the numeric measurement columns of ``df`` in column order.</span>
 
@@ -731,7 +731,7 @@
 
 
 <div class="viewcode-block" id="ErrorCutoffFinder.enough_data">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.ErrorCutoffFinder.enough_data">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.analysis.ErrorCutoffFinder.html#phenotypic.analysis.ErrorCutoffFinder.enough_data">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">enough_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">good</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether both classes meet their minimum sample sizes.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">good</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_good_n</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_error_n</span></div>
@@ -756,7 +756,7 @@
         <span class="k">return</span> <span class="n">series</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
 <div class="viewcode-block" id="ErrorCutoffFinder.analyze">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.analysis.html#phenotypic.analysis.ErrorCutoffFinder.analyze">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.analysis.ErrorCutoffFinder.html#phenotypic.analysis.ErrorCutoffFinder.analyze">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">good</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Screen every measurement for good-vs-error separation.</span>
 

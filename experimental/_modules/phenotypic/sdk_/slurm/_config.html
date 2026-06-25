@@ -612,7 +612,7 @@
 
 
 <div class="viewcode-block" id="get_slurm_array_limit">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.slurm.html#phenotypic.sdk_.slurm.get_slurm_array_limit">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.get_slurm_array_limit.html#phenotypic.sdk_.slurm.get_slurm_array_limit">[docs]</a>
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_slurm_array_limit</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Query SLURM for MaxArraySize configuration.</span>
@@ -659,7 +659,7 @@
 
 
 <div class="viewcode-block" id="get_slurm_max_submit_jobs">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.slurm.html#phenotypic.sdk_.slurm.get_slurm_max_submit_jobs">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.get_slurm_max_submit_jobs.html#phenotypic.sdk_.slurm.get_slurm_max_submit_jobs">[docs]</a>
 <span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_slurm_max_submit_jobs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Query SLURM for MaxSubmitJobs limit per user.</span>
@@ -715,7 +715,7 @@
 
 
 <div class="viewcode-block" id="estimate_concurrent_capacity">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.slurm.html#phenotypic.sdk_.slurm.estimate_concurrent_capacity">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.estimate_concurrent_capacity.html#phenotypic.sdk_.slurm.estimate_concurrent_capacity">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">estimate_concurrent_capacity</span><span class="p">(</span>
     <span class="n">partition</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">cpus_per_task</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
@@ -784,7 +784,7 @@
 
 
 <div class="viewcode-block" id="calculate_optimal_array_chunks">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.slurm.html#phenotypic.sdk_.slurm.calculate_optimal_array_chunks">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html#phenotypic.sdk_.slurm.calculate_optimal_array_chunks">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">calculate_optimal_array_chunks</span><span class="p">(</span>
     <span class="n">num_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">array_limit</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
@@ -840,7 +840,7 @@
 
 
 <div class="viewcode-block" id="validate_array_chunk">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.sdk_.slurm.html#phenotypic.sdk_.slurm.validate_array_chunk">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.validate_array_chunk.html#phenotypic.sdk_.slurm.validate_array_chunk">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_array_chunk</span><span class="p">(</span>
     <span class="n">chunk</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">num_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">array_limit</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>

@@ -17,9 +17,13 @@ imaging artifacts rather than real biology.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_MAD_Median``
      - Group median of the measurement.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_MAD_MAD``
      - Median absolute deviation (raw, before normalization).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_MAD_NumMembers``
      - Members contributing to the statistic.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

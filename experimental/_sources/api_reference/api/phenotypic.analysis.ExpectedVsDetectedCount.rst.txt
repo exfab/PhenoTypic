@@ -70,7 +70,6 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.on
       ~ExpectedVsDetectedCount.agg_func
       ~ExpectedVsDetectedCount.metadata
-      ~ExpectedVsDetectedCount.metadata_source
       ~ExpectedVsDetectedCount.unmatched_groups
       ~ExpectedVsDetectedCount.groupby
       ~ExpectedVsDetectedCount.n_jobs

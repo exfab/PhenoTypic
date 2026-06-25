@@ -1,7 +1,0 @@
-phenotypic.gui.browse package
-=============================
-
-.. automodule:: phenotypic.gui.browse
-   :members:
-   :show-inheritance:
-   :undoc-members:

@@ -84,6 +84,7 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.resolved_kind
       ~ConstantLabels.resolved_tier
       ~ConstantLabels.use_label
+      ~ConstantLabels.use_badge
       ~ConstantLabels.label
       ~ConstantLabels.desc
       ~ConstantLabels.bio_desc

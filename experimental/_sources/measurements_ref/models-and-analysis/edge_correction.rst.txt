@@ -13,7 +13,10 @@ organizing corrected colony measurements under the "EdgeCorrection" category.
 
    * - Column label
      - Description
+     - Type
    * - ``EdgeCorrection_Cap``
      - The carrying capacity for the target measurement
+     - :bdg-ref-info:`Derived <measurement-classification>`
    * - ``EdgeCorrection_NewVal``
      - The new value of the target measurement
+     - :bdg-ref-info:`Derived <measurement-classification>`

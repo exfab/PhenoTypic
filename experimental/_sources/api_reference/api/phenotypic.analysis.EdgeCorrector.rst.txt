@@ -58,11 +58,11 @@ phenotypic.analysis.EdgeCorrector
       ~EdgeCorrector.model_extra
       ~EdgeCorrector.model_fields
       ~EdgeCorrector.model_fields_set
+      ~EdgeCorrector.top_n
+      ~EdgeCorrector.pvalue
       ~EdgeCorrector.time_label
       ~EdgeCorrector.nrows
       ~EdgeCorrector.ncols
-      ~EdgeCorrector.top_n
-      ~EdgeCorrector.pvalue
       ~EdgeCorrector.connectivity
       ~EdgeCorrector.on
       ~EdgeCorrector.groupby

@@ -616,7 +616,7 @@
 
 
 <div class="viewcode-block" id="RandomStrategy">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomStrategy">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomStrategy.html#phenotypic.tune.strategy.RandomStrategy">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">RandomStrategy</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Samples ``n_trials`` random configurations under a fixed seed.</span>
 
@@ -655,7 +655,7 @@
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported domain </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RandomStrategy.suggest">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomStrategy.suggest">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomStrategy.html#phenotypic.tune.strategy.RandomStrategy.suggest">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">PruningChannel</span><span class="p">]:</span>
         <span class="n">chosen</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="c1"># Sample knobs in order; a conditional knob is sampled only if active.</span>
@@ -668,7 +668,7 @@
 
 
 <div class="viewcode-block" id="RandomStrategy.register_result">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomStrategy.register_result">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomStrategy.html#phenotypic.tune.strategy.RandomStrategy.register_result">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">register_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pruned</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -676,7 +676,7 @@
 
 
 <div class="viewcode-block" id="RandomStrategy.is_exhausted">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.RandomStrategy.is_exhausted">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.RandomStrategy.html#phenotypic.tune.strategy.RandomStrategy.is_exhausted">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_exhausted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n</span></div>
 </div>

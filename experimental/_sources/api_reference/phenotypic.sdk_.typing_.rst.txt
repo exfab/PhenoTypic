@@ -1,7 +1,0 @@
-phenotypic.sdk\_.typing\_ module
-================================
-
-.. automodule:: phenotypic.sdk_.typing_
-   :members:
-   :show-inheritance:
-   :undoc-members:

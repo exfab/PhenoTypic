@@ -608,7 +608,7 @@
 
 
 <div class="viewcode-block" id="GridStrategy">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridStrategy">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridStrategy.html#phenotypic.tune.strategy.GridStrategy">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridStrategy</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Walks the full conditional Cartesian product of the SearchSpace.</span>
 
@@ -625,7 +625,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cursor</span> <span class="o">=</span> <span class="mi">0</span>
 
 <div class="viewcode-block" id="GridStrategy.suggest">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridStrategy.suggest">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridStrategy.html#phenotypic.tune.strategy.GridStrategy.suggest">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">PruningChannel</span><span class="p">]:</span>
         <span class="c1"># defensive copy: callers must not mutate the stored combo</span>
         <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_combos</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_cursor</span><span class="p">])</span>
@@ -634,7 +634,7 @@
 
 
 <div class="viewcode-block" id="GridStrategy.register_result">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridStrategy.register_result">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridStrategy.html#phenotypic.tune.strategy.GridStrategy.register_result">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">register_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pruned</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -642,7 +642,7 @@
 
 
 <div class="viewcode-block" id="GridStrategy.is_exhausted">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.GridStrategy.is_exhausted">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.GridStrategy.html#phenotypic.tune.strategy.GridStrategy.is_exhausted">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_exhausted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cursor</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_combos</span><span class="p">)</span></div>
 </div>

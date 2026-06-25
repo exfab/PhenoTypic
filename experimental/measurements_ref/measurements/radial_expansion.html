@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -682,41 +682,41 @@ Includes runner detection for identifying anomalously long branches.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
-<th class="head"><p>Use</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_RobustMeanRadius</span></code></p></td>
 <td><p>Trimmed mean of branch path lengths, excluding detected runner. Represents the typical radial expansion distance of hyphae from the core boundary, robust to single-runner outliers.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_MeanRadius</span></code></p></td>
 <td><p>Arithmetic mean of all branch path lengths from core boundary to branch tips. Includes runner if present. Reflects overall average colony reach.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_MedianRadius</span></code></p></td>
 <td><p>Median branch path length. Robust to outliers and provides a typical expansion distance.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_NumBranches</span></code></p></td>
 <td><p>Number of skeleton branches extending from the core boundary to peripheral tips. Higher counts indicate denser branching morphology.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_MaxBranchLength</span></code></p></td>
 <td><p>Length of the longest branch path in pixels. When a runner is detected, this equals RunnerLength.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_RunnerLength</span></code></p></td>
 <td><p>Path length of the detected runner branch (the single longest outlier). NaN if no runner detected.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_RunnerDetected</span></code></p></td>
 <td><p>Boolean flag (0 or 1) indicating whether an outlier runner branch was detected for this colony.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RadialExpansion_CoreRadius</span></code></p></td>
 <td><p>Radius of the dense colony core as determined by PELT changepoint detection on the radial density profile. Pixels within this radius of the intensity-weighted centroid are excluded from skeleton analysis.</p></td>
-<td><p>Descriptive trait (Tier 2)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 </tbody>
 </table>

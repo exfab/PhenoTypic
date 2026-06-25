@@ -612,7 +612,7 @@
 
 
 <div class="viewcode-block" id="DetectionMode">
-<a class="viewcode-back" href="../../../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.DetectionMode">[docs]</a>
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.abc_.DetectionMode.html#phenotypic.abc_.DetectionMode">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DetectionMode</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for detection matrix source modes.</span>
 
@@ -631,7 +631,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether this mode needs RGB data to compute.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="DetectionMode.compute">
-<a class="viewcode-back" href="../../../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.DetectionMode.compute">[docs]</a>
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.abc_.DetectionMode.html#phenotypic.abc_.DetectionMode.compute">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a fresh detection matrix from *image*.</span>
@@ -647,7 +647,7 @@
 
 
 <div class="viewcode-block" id="register_detection_mode">
-<a class="viewcode-back" href="../../../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.register_detection_mode">[docs]</a>
+<a class="viewcode-back" href="../../../../../api_reference/api/phenotypic.abc_.register_detection_mode.html#phenotypic.abc_.register_detection_mode">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">register_detection_mode</span><span class="p">(</span><span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">DetectionMode</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">DetectionMode</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Class decorator that instantiates *cls* and registers it by name.</span>
 

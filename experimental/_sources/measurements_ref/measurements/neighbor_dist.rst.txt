@@ -1,0 +1,45 @@
+NEIGHBOR_DIST
+=============
+
+Python object: ``phenotypic.schema._neighbor_dist.NEIGHBOR_DIST``
+
+Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
+
+For each detected colony, identify the nearest object in the left,
+right, above, and below grid cells and report the minimum Euclidean
+distance between their pixel masks. Distances are computed via a
+per-section distance transform over a local window covering the target
+cell and its immediate neighbors, so round colonies are not
+over-estimated by their bounding boxes. Edge and corner colonies report
+``NaN`` for directions beyond the plate boundary.
+
+.. list-table:: Category: **GridSpatial**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+   * - ``GridSpatial_LeftNeighborObjLabel``
+     - The object label of the left neighbor colony
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_LeftDistance``
+     - The minimum pixel-to-pixel distance to the left neighbor colony, computed via a Euclidean distance transform of object pixel masks
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_RightNeighborObjLabel``
+     - The object label of the right neighbor colony
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_RightDistance``
+     - The minimum pixel-to-pixel distance to the right neighbor colony, computed via a Euclidean distance transform of object pixel masks
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_AboveNeighborObjLabel``
+     - The object label of the above neighbor colony
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_AboveDistance``
+     - The minimum pixel-to-pixel distance to the above neighbor colony, computed via a Euclidean distance transform of object pixel masks
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_UnderNeighborObjLabel``
+     - The object label of the under neighbor colony
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``GridSpatial_UnderDistance``
+     - The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

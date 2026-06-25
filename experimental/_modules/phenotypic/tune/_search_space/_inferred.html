@@ -641,7 +641,7 @@
 
 
 <div class="viewcode-block" id="Excluded">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.Excluded">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.Excluded.html#phenotypic.tune.Excluded">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Excluded</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A field inference could not (or should not) turn into a knob.</span>
 
@@ -661,7 +661,7 @@
 
 
 <div class="viewcode-block" id="InferredSearchSpace">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.InferredSearchSpace">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.InferredSearchSpace.html#phenotypic.tune.InferredSearchSpace">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InferredSearchSpace</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A generous, reviewable proposal of tunable domains.</span>
 
@@ -710,7 +710,7 @@
         <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">reason</span> <span class="ow">in</span> <span class="n">_BLIND_REASONS</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">excluded</span><span class="p">)</span>
 
 <div class="viewcode-block" id="InferredSearchSpace.to_search_space">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.html#phenotypic.tune.InferredSearchSpace.to_search_space">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.InferredSearchSpace.html#phenotypic.tune.InferredSearchSpace.to_search_space">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_search_space</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Collapse to the clean, optimizer-facing ``SearchSpace``.</span>
 

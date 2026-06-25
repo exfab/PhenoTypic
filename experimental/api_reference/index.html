@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1248,43 +1249,43 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="../index.html#module-phenotypic" title="phenotypic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic</span></code></a></p></td>
 <td><p>A library for processing and analyzing images of microbe colonies on solid media agar.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.abc_.html#module-phenotypic.abc_" title="phenotypic.abc_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.abc_</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.abc_</span></code></p></td>
 <td><p>Abstract interfaces for fungal colony image operations.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.analysis.html#module-phenotypic.analysis" title="phenotypic.analysis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.analysis</span></code></p></td>
 <td><p>Analytics for quantified fungal colony plates.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.correction.html#module-phenotypic.correction" title="phenotypic.correction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.correction</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.correction</span></code></p></td>
 <td><p>Image/grid correction for agar plate captures.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.html#module-phenotypic.data" title="phenotypic.data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.data</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.data</span></code></p></td>
 <td><p>Sample and synthetic agar plate images for fungal colony testing.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.detect.html#module-phenotypic.detect" title="phenotypic.detect"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.detect</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.detect</span></code></p></td>
 <td><p>Colony/object detectors for agar plate images.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.enhance.html#module-phenotypic.enhance" title="phenotypic.enhance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.enhance</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.enhance</span></code></p></td>
 <td><p>Image enhancers to boost fungal colonies on agar backgrounds.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.grid.html#module-phenotypic.grid" title="phenotypic.grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.grid</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.grid</span></code></p></td>
 <td><p>Grid discovery for plated fungal colonies.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.measure.html#module-phenotypic.measure" title="phenotypic.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.measure</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.measure</span></code></p></td>
 <td><p>Feature extraction from detected fungal colonies.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.prefab.html#module-phenotypic.prefab" title="phenotypic.prefab"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.prefab</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.prefab</span></code></p></td>
 <td><p>Prefab pipelines for fungal colony plate processing.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.refine.html#module-phenotypic.refine" title="phenotypic.refine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.refine</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.refine</span></code></p></td>
 <td><p>Mask refinement for detected fungal colonies.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.html#module-phenotypic.sdk_" title="phenotypic.sdk_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code></p></td>
 <td><p>Developer tools shared across fungal colony plate workflows.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.tune.html#module-phenotypic.tune" title="phenotypic.tune"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.tune</span></code></a></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.tune</span></code></p></td>
 <td><p>Parameter-tuning engine — public API (in progress).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.util.html#module-phenotypic.util" title="phenotypic.util"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.util</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic.util</span></code></p></td>
 <td><p>A module for useful utility operations and functions that don't fit into a specific category.</p></td>
 </tr>
 </tbody>

@@ -606,7 +606,7 @@
 
 <span class="c1"># Base exception class for all PhenoTypic exceptions</span>
 <div class="viewcode-block" id="PhenoTypicError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.PhenoTypicError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.PhenoTypicError.html#phenotypic.sdk_.exceptions_.PhenoTypicError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PhenoTypicError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception class for all PhenoTypic errors.&quot;&quot;&quot;</span>
 
@@ -616,7 +616,7 @@
 
 <span class="c1"># General exceptions</span>
 <div class="viewcode-block" id="UnknownError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnknownError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.UnknownError.html#phenotypic.sdk_.exceptions_.UnknownError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UnknownError</span><span class="p">(</span><span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an unknown error occurs.&quot;&quot;&quot;</span>
 
@@ -626,7 +626,7 @@
 
 
 <div class="viewcode-block" id="InterfaceError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InterfaceError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InterfaceError.html#phenotypic.sdk_.exceptions_.InterfaceError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InterfaceError</span><span class="p">(</span><span class="ne">NotImplementedError</span><span class="p">,</span> <span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an ``abc_`` method is called when it&#39;s not supposed to be.&quot;&quot;&quot;</span>
 
@@ -638,7 +638,7 @@
 
 
 <div class="viewcode-block" id="NoOutputError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoOutputError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.NoOutputError.html#phenotypic.sdk_.exceptions_.NoOutputError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoOutputError</span><span class="p">(</span><span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no output was returned in an operation.&quot;&quot;&quot;</span>
 
@@ -648,7 +648,7 @@
 
 
 <div class="viewcode-block" id="OutputValueError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OutputValueError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.OutputValueError.html#phenotypic.sdk_.exceptions_.OutputValueError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OutputValueError</span><span class="p">(</span><span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when output is not of the expected type.&quot;&quot;&quot;</span>
 
@@ -660,7 +660,7 @@
 
 
 <div class="viewcode-block" id="GrayscaleOutOfRangeError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError.html#phenotypic.sdk_.exceptions_.GrayscaleOutOfRangeError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GrayscaleOutOfRangeError</span><span class="p">(</span><span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when grayscale is out of range.&quot;&quot;&quot;</span>
 
@@ -673,7 +673,7 @@
 
 
 <div class="viewcode-block" id="UnsupportedImageFormat">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnsupportedImageFormat">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.UnsupportedImageFormat.html#phenotypic.sdk_.exceptions_.UnsupportedImageFormat">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UnsupportedImageFormat</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an error when an unsupported imformat format is detected.</span>
 
@@ -691,7 +691,7 @@
 
 <span class="c1"># Image-related exceptions</span>
 <div class="viewcode-block" id="NoImageDataError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoImageDataError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.NoImageDataError.html#phenotypic.sdk_.exceptions_.NoImageDataError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoImageDataError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no image data is loaded.&quot;&quot;&quot;</span>
 
@@ -703,7 +703,7 @@
 
 
 <div class="viewcode-block" id="InvalidShapeError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidShapeError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InvalidShapeError.html#phenotypic.sdk_.exceptions_.InvalidShapeError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidShapeError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a shape mismatch occurs.&quot;&quot;&quot;</span>
 
@@ -715,7 +715,7 @@
 
 
 <div class="viewcode-block" id="DataIntegrityError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.DataIntegrityError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.DataIntegrityError.html#phenotypic.sdk_.exceptions_.DataIntegrityError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DataIntegrityError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when data integrity is compromised.&quot;&quot;&quot;</span>
 
@@ -728,7 +728,7 @@
 
 
 <div class="viewcode-block" id="NoComponentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoComponentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.NoComponentError.html#phenotypic.sdk_.exceptions_.NoComponentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoComponentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a required object is missing.&quot;&quot;&quot;</span>
 
@@ -739,7 +739,7 @@
 
 <span class="c1"># Image Operation exceptions</span>
 <div class="viewcode-block" id="ImageOperationError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImageOperationError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.ImageOperationError.html#phenotypic.sdk_.exceptions_.ImageOperationError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageOperationError</span><span class="p">(</span><span class="n">PhenoTypicError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for image operation errors.&quot;&quot;&quot;</span>
 
@@ -748,7 +748,7 @@
 
 
 <div class="viewcode-block" id="OperationIntegrityError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationIntegrityError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.OperationIntegrityError.html#phenotypic.sdk_.exceptions_.OperationIntegrityError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OperationIntegrityError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an operation attempts to change a component it shouldn&#39;t.&quot;&quot;&quot;</span>
 
@@ -761,7 +761,7 @@
 
 
 <div class="viewcode-block" id="OperationFailedError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.OperationFailedError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.OperationFailedError.html#phenotypic.sdk_.exceptions_.OperationFailedError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OperationFailedError</span><span class="p">(</span><span class="n">ImageOperationError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an operation fails.&quot;&quot;&quot;</span>
 
@@ -774,7 +774,7 @@
 
 <span class="c1"># Image Handler exceptions</span>
 <div class="viewcode-block" id="IllegalAssignmentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.IllegalAssignmentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.IllegalAssignmentError.html#phenotypic.sdk_.exceptions_.IllegalAssignmentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IllegalAssignmentError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to directly assign a new object to a protected attribute.&quot;&quot;&quot;</span>
 
@@ -786,7 +786,7 @@
 
 
 <div class="viewcode-block" id="UuidAssignmentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UuidAssignmentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.UuidAssignmentError.html#phenotypic.sdk_.exceptions_.UuidAssignmentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UuidAssignmentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change the UUID of an image.&quot;&quot;&quot;</span>
 
@@ -798,7 +798,7 @@
 
 
 <div class="viewcode-block" id="NoArrayError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoArrayError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.NoArrayError.html#phenotypic.sdk_.exceptions_.NoArrayError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoArrayError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no array is found.&quot;&quot;&quot;</span>
 
@@ -810,7 +810,7 @@
 
 
 <div class="viewcode-block" id="NoObjectsError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.NoObjectsError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.NoObjectsError.html#phenotypic.sdk_.exceptions_.NoObjectsError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoObjectsError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no objects are found in an image.&quot;&quot;&quot;</span>
 
@@ -823,7 +823,7 @@
 
 
 <div class="viewcode-block" id="EmptyImageError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.EmptyImageError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.EmptyImageError.html#phenotypic.sdk_.exceptions_.EmptyImageError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EmptyImageError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when no image data is loaded.&quot;&quot;&quot;</span>
 
@@ -835,7 +835,7 @@
 
 
 <div class="viewcode-block" id="UnsupportedFileTypeError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UnsupportedFileTypeError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.UnsupportedFileTypeError.html#phenotypic.sdk_.exceptions_.UnsupportedFileTypeError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UnsupportedFileTypeError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to read an unsupported file type.&quot;&quot;&quot;</span>
 
@@ -846,7 +846,7 @@
 
 <span class="c1"># Component exceptions</span>
 <div class="viewcode-block" id="ImmutableComponentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ImmutableComponentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.ImmutableComponentError.html#phenotypic.sdk_.exceptions_.ImmutableComponentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImmutableComponentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base exception for immutable component errors.&quot;&quot;&quot;</span>
 
@@ -855,7 +855,7 @@
 
 
 <div class="viewcode-block" id="IllegalElementAssignmentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.IllegalElementAssignmentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.IllegalElementAssignmentError.html#phenotypic.sdk_.exceptions_.IllegalElementAssignmentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IllegalElementAssignmentError</span><span class="p">(</span><span class="n">ImmutableComponentError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change rgb/gray elements directly.&quot;&quot;&quot;</span>
 
@@ -867,7 +867,7 @@
 
 
 <div class="viewcode-block" id="InvalidHsvSchemaError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidHsvSchemaError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InvalidHsvSchemaError.html#phenotypic.sdk_.exceptions_.InvalidHsvSchemaError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidHsvSchemaError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to convert to HSV from a non-RGB imformat.&quot;&quot;&quot;</span>
 
@@ -880,7 +880,7 @@
 
 <span class="c1"># Mutable component exceptions</span>
 <div class="viewcode-block" id="ArrayKeyValueShapeMismatchError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError.html#phenotypic.sdk_.exceptions_.ArrayKeyValueShapeMismatchError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ArrayKeyValueShapeMismatchError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when the shape of the other_image doesn&#39;t match the key&#39;s section.&quot;&quot;&quot;</span>
 
@@ -892,7 +892,7 @@
 
 
 <div class="viewcode-block" id="InputShapeMismatchError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InputShapeMismatchError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InputShapeMismatchError.html#phenotypic.sdk_.exceptions_.InputShapeMismatchError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InputShapeMismatchError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when arr shape doesn&#39;t match the image gray.&quot;&quot;&quot;</span>
 
@@ -905,7 +905,7 @@
 
 <span class="c1"># Mask exceptions</span>
 <div class="viewcode-block" id="InvalidMaskValueError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMaskValueError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InvalidMaskValueError.html#phenotypic.sdk_.exceptions_.InvalidMaskValueError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidMaskValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set mask with invalid other_image type.&quot;&quot;&quot;</span>
 
@@ -917,7 +917,7 @@
 
 
 <div class="viewcode-block" id="InvalidMaskScalarValueError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError.html#phenotypic.sdk_.exceptions_.InvalidMaskScalarValueError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidMaskScalarValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set mask with invalid scalar other_image.&quot;&quot;&quot;</span>
 
@@ -930,7 +930,7 @@
 
 <span class="c1"># Object map exceptions</span>
 <div class="viewcode-block" id="InvalidMapValueError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.InvalidMapValueError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.InvalidMapValueError.html#phenotypic.sdk_.exceptions_.InvalidMapValueError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InvalidMapValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to set object map with invalid other_image type.&quot;&quot;&quot;</span>
 
@@ -943,7 +943,7 @@
 
 <span class="c1"># Metadata exceptions</span>
 <div class="viewcode-block" id="UUIDReassignmentError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.UUIDReassignmentError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.UUIDReassignmentError.html#phenotypic.sdk_.exceptions_.UUIDReassignmentError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UUIDReassignmentError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when trying to change the UUID metadata.&quot;&quot;&quot;</span>
 
@@ -955,7 +955,7 @@
 
 
 <div class="viewcode-block" id="MetadataKeyValueError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataKeyValueError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.MetadataKeyValueError.html#phenotypic.sdk_.exceptions_.MetadataKeyValueError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MetadataKeyValueError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata key is not a string.&quot;&quot;&quot;</span>
 
@@ -967,7 +967,7 @@
 
 
 <div class="viewcode-block" id="MetadataKeySpacesError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataKeySpacesError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.MetadataKeySpacesError.html#phenotypic.sdk_.exceptions_.MetadataKeySpacesError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MetadataKeySpacesError</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata key contains spaces.&quot;&quot;&quot;</span>
 
@@ -977,7 +977,7 @@
 
 
 <div class="viewcode-block" id="MetadataValueNonScalarError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.MetadataValueNonScalarError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.MetadataValueNonScalarError.html#phenotypic.sdk_.exceptions_.MetadataValueNonScalarError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MetadataValueNonScalarError</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when metadata other_image is not scalar.&quot;&quot;&quot;</span>
 
@@ -990,7 +990,7 @@
 
 <span class="c1"># Object-related exceptions</span>
 <div class="viewcode-block" id="ObjectNotFoundError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.ObjectNotFoundError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.ObjectNotFoundError.html#phenotypic.sdk_.exceptions_.ObjectNotFoundError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ObjectNotFoundError</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when an object with a specified label is not found.&quot;&quot;&quot;</span>
 
@@ -1003,7 +1003,7 @@
 
 <span class="c1"># Grid exceptions</span>
 <div class="viewcode-block" id="GridImageInputError">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.exceptions_.html#phenotypic.sdk_.exceptions_.GridImageInputError">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.exceptions_.GridImageInputError.html#phenotypic.sdk_.exceptions_.GridImageInputError">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">GridImageInputError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Exception raised when a non-GriddedImage object is provided as arr.&quot;&quot;&quot;</span>
 

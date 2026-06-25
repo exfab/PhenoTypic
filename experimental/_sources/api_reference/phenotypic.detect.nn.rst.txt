@@ -1,7 +1,0 @@
-phenotypic.detect.nn package
-============================
-
-.. automodule:: phenotypic.detect.nn
-   :members:
-   :show-inheritance:
-   :undoc-members:

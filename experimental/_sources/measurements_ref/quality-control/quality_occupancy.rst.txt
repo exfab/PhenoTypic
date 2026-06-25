@@ -17,9 +17,13 @@ dropouts) independent of any over-detection elsewhere on the plate.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_Occupancy_Filled``
      - Distinct grid cells holding at least one colony (doublets count once).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Occupancy_Expected``
      - Expected grid-cell count from the metadata frame (rows per group).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Occupancy_Vacant``
      - Expected - Filled; empty/missing grid cells in the group.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

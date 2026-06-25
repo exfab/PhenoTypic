@@ -1,7 +1,0 @@
-phenotypic.analysis.qc package
-==============================
-
-.. automodule:: phenotypic.analysis.qc
-   :members:
-   :show-inheritance:
-   :undoc-members:

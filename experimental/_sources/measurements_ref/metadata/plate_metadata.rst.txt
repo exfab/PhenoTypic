@@ -15,11 +15,16 @@ experimental-tag enums. Recommended vocabulary, not a validator.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_PlateID``
      - Identifier of the assay/imaging plate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Batch``
      - Experimental batch grouping.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ArrayDensity``
      - Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_IncubatorPosition``
      - Physical position of the plate within the incubator.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

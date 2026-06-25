@@ -915,8 +915,6 @@
     <span class="k">return</span> <span class="n">_RequireValue</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="polymorphic_field">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.typing_.html#phenotypic.tune.polymorphic_field">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">polymorphic_field</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="s2">&quot;type | Callable[[], type]&quot;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">marker</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A pydantic field for a polymorphic model subtree.</span>
 
@@ -946,8 +944,7 @@
     <span class="k">if</span> <span class="n">marker</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">core</span>
     <span class="c1"># Annotated flattens a nested Annotated (PEP 593): the marker joins the chain.</span>
-    <span class="k">return</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">core</span><span class="p">,</span> <span class="n">marker</span><span class="p">]</span></div>
-
+    <span class="k">return</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">core</span><span class="p">,</span> <span class="n">marker</span><span class="p">]</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">_OperationFieldMarker</span><span class="p">:</span>
@@ -1008,7 +1005,7 @@
 
 
 <div class="viewcode-block" id="TuneSpec">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.tune.html#phenotypic.tune.TuneSpec">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.tune.TuneSpec.html#phenotypic.tune.TuneSpec">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TuneSpec</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-field tuning-search metadata (Tier-1 inference override).</span>
 

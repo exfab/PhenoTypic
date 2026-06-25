@@ -666,7 +666,7 @@
 
 
 <div class="viewcode-block" id="Scorer">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Scorer</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for tuning objectives (no-GT, supervised, reference-free, …).</span>
 
@@ -742,7 +742,7 @@
         <span class="k">return</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="Scorer.score_image">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer.score_image">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer.score_image">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">score_image</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
@@ -769,7 +769,7 @@
 
 
 <div class="viewcode-block" id="Scorer.availability">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer.availability">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer.availability">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether this scorer can run as configured (default: yes).</span>
 
@@ -781,7 +781,7 @@
 
 
 <div class="viewcode-block" id="Scorer.finalize">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer.finalize">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer.finalize">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Combine robust-aggregated per-term scores into the optimizer objective.</span>
 

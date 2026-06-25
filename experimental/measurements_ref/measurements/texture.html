@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -676,12 +676,19 @@
 <p>All features assume normalized GLCMs computed at one or more pixel offsets and averaged
 across directions unless otherwise noted. Values depend on quantization, window size,
 and scale; interpret ranges comparatively within the same imaging setup.</p>
+<p>Textures are calculated along the 0, 45, 90, and 135 degree axes across the surface
+of an object. This is denoted by the axis placeholder. The texture is also computed
+along different scales in the image, and this scale can be converted to real
+distance measurements using the px-per-mm conversion. If your image’s are from ExFAB
+BioFoundry we provide this for you, otherwise it can be found using ImageJ. As an
+example, a scale of 10 with 40 px-per-mm means that the measurement is the texture
+measured across every 0.25 mm on the surface of an object.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
 <caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
-<th class="head"><p>Use</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
@@ -693,7 +700,7 @@ sporulation zones). Reflects colony surface regularity rather than brightness.</
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Contrast</span></code></p></td>
 <td><dl class="simple">
@@ -703,7 +710,7 @@ and zonation amplitude.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Correlation</span></code></p></td>
 <td><dl class="simple">
@@ -713,7 +720,7 @@ illumination gradients and directional GLCM computation.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_HaralickVariance</span></code></p></td>
 <td><dl class="simple">
@@ -723,7 +730,7 @@ surfaces.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InverseDifferenceMoment</span></code></p></td>
 <td><dl class="simple">
@@ -732,7 +739,7 @@ surfaces.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumAverage</span></code></p></td>
 <td><dl class="simple">
@@ -742,7 +749,7 @@ intensity metric.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumVariance</span></code></p></td>
 <td><dl class="simple">
@@ -751,7 +758,7 @@ tone across the colony. Often correlated with Contrast; use comparatively within
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_SumEntropy</span></code></p></td>
 <td><dl class="simple">
@@ -760,7 +767,7 @@ spaced rings). Indicates spatial unpredictability of summed intensities.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_Entropy</span></code></p></td>
 <td><dl class="simple">
@@ -770,7 +777,7 @@ gray-level quantization and image dynamic range.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_DiffVariance</span></code></p></td>
 <td><dl class="simple">
@@ -779,7 +786,7 @@ Highlights heterogeneity in edge magnitude across the colony.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_DiffEntropy</span></code></p></td>
 <td><dl class="simple">
@@ -789,7 +796,7 @@ rather than its magnitude.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InfoCorrelation1</span></code></p></td>
 <td><dl class="simple">
@@ -799,7 +806,7 @@ Direction of sign varies with implementation.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Texture_InfoCorrelation2</span></code></p></td>
 <td><dl class="simple">
@@ -809,7 +816,7 @@ organization missed by linear correlation.</p>
 </dd>
 </dl>
 </td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
 </table>

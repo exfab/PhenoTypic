@@ -40,6 +40,7 @@
       dataset_measurements_dir
       dataset_overlays_dir
       dataset_results_dir
+      overlays_dir
       curation_labels_parquet_path
       custom_categories_json_path
       default_output_dir_name

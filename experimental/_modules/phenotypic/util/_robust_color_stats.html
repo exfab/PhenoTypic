@@ -614,7 +614,7 @@
 
 
 <div class="viewcode-block" id="robust_color_center">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.robust_color_center">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.robust_color_center.html#phenotypic.util.robust_color_center">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">robust_color_center</span><span class="p">(</span>
     <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -648,7 +648,7 @@
 
 
 <div class="viewcode-block" id="medoid_ciede2000">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.medoid_ciede2000">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.medoid_ciede2000.html#phenotypic.util.medoid_ciede2000">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">medoid_ciede2000</span><span class="p">(</span>
     <span class="n">lab_points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">max_pixels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
@@ -709,7 +709,7 @@
 
 
 <div class="viewcode-block" id="delta_e2000_spread">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.delta_e2000_spread">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.delta_e2000_spread.html#phenotypic.util.delta_e2000_spread">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">delta_e2000_spread</span><span class="p">(</span><span class="n">deltas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (median, mean, P95) of a ΔE2000 distance array; NaNs if empty.&quot;&quot;&quot;</span>
     <span class="n">deltas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">deltas</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -724,7 +724,7 @@
 
 
 <div class="viewcode-block" id="hsv_to_cone">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.hsv_to_cone">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">hsv_to_cone</span><span class="p">(</span><span class="n">hsv</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Embed HSV (H,S,V in [0,1]) into Cartesian cone coords (S*V*cosθ, S*V*sinθ, V).&quot;&quot;&quot;</span>
     <span class="n">hsv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -738,7 +738,7 @@
 
 
 <div class="viewcode-block" id="cone_to_hsv">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.cone_to_hsv">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.cone_to_hsv.html#phenotypic.util.cone_to_hsv">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">cone_to_hsv</span><span class="p">(</span><span class="n">cone</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverse of :func:`hsv_to_cone`; returns H,S,V in [0,1].&quot;&quot;&quot;</span>
     <span class="n">cone</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cone</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -752,7 +752,7 @@
 
 
 <div class="viewcode-block" id="lab_to_srgb_hex">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.util.html#phenotypic.util.lab_to_srgb_hex">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.lab_to_srgb_hex.html#phenotypic.util.lab_to_srgb_hex">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">lab_to_srgb_hex</span><span class="p">(</span><span class="n">lab</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a single CIE L*a*b* (D65) color to an sRGB ``#RRGGBB`` string.</span>
 

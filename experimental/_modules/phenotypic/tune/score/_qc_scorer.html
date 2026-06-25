@@ -681,15 +681,16 @@
 
 
 <div class="viewcode-block" id="QCScorer">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.QCScorer">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.QCScorer.html#phenotypic.tune.score.QCScorer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">QCScorer</span><span class="p">(</span><span class="n">Scorer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Count-only quality objective backed by ``ExpectedVsDetectedCount``.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        check: A configured count check. **Configure it from a metadata path**</span>
-<span class="sd">            (``metadata=&quot;layout.csv&quot;``) so ``metadata_source`` persists and the</span>
-<span class="sd">            scorer round-trips through ``tuning_spec.json``; a check built from</span>
-<span class="sd">            an in-memory frame cannot be rebuilt from JSON.</span>
+<span class="sd">            (``metadata=&quot;layout.csv&quot;``) so the layout path persists under the</span>
+<span class="sd">            check&#39;s ``metadata`` field and the scorer round-trips through</span>
+<span class="sd">            ``tuning_spec.json``; a check built from an in-memory frame cannot</span>
+<span class="sd">            be rebuilt from JSON.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        &gt;&gt;&gt; import pandas as pd</span>
@@ -719,10 +720,14 @@
     <span class="n">check</span><span class="p">:</span> <span class="n">ExpectedVsDetectedCount</span>
 
 <div class="viewcode-block" id="QCScorer.availability">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.QCScorer.availability">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.score.QCScorer.html#phenotypic.tune.score.QCScorer.availability">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">availability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;``True`` when the check resolved a non-empty layout frame.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">empty</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``True`` when the check resolved a non-empty layout frame.</span>
+
+<span class="sd">        Reads the check&#39;s *resolved* layout frame (``_metadata``) rather</span>
+<span class="sd">        than the raw ``metadata`` field, which may hold a path string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check</span><span class="o">.</span><span class="n">_metadata</span><span class="o">.</span><span class="n">empty</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_score_terms</span><span class="p">(</span>

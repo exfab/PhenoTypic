@@ -15,37 +15,37 @@ from the medoid.
 
    * - Column label
      - Description
-     - Use
+     - Type
    * - ``ColorLab_L*GeoMedian``
      - L* of the ΔE76 (Euclidean) geometric-median center color of the object
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_a*GeoMedian``
      - a* of the ΔE76 (Euclidean) geometric-median center color of the object
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_b*GeoMedian``
      - b* of the ΔE76 (Euclidean) geometric-median center color of the object
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_L*Medoid``
      - L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_a*Medoid``
      - a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_b*Medoid``
      - b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_DeltaE2000MedianFromMedoid``
      - Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_DeltaE2000MeanFromMedoid``
      - Mean ΔE2000 of object pixels from the ΔE2000 medoid center (color-uniformity standard)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_DeltaE2000P95FromMedoid``
      - 95th-percentile ΔE2000 of object pixels from the ΔE2000 medoid center (worst-case / sectoring flag)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_LabTotalVariance``
      - Trace of the 3x3 L*a*b* covariance (var L* + var a* + var b*); mean-squared ΔE76 spread about the arithmetic mean (NOT about the reported GeoMedian/Medoid center)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_MedoidColorHex``
      - sRGB hex string of the ΔE2000 medoid color; for plot visualization only (not a numeric measurement)
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`

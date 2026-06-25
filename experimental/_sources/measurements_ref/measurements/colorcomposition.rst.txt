@@ -15,40 +15,40 @@ Returns per-colony percentage breakdowns as DataFrame columns.
 
    * - Column label
      - Description
-     - Use
+     - Type
    * - ``ColorComposition_BlackPct``
      - Percentage of pixels classified as black (Value < 20)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_WhitePct``
      - Percentage of pixels classified as white (Saturation < 15, Value > 85)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_GrayPct``
      - Percentage of pixels classified as gray (Saturation < 15, Value 20-85)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_PinkPct``
      - Percentage of pixels classified as pink (Red/Magenta hue, Saturation 20-60, Value > 80)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_BrownPct``
      - Percentage of pixels classified as brown (Red/Orange hue, Value 20-60)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_RedPct``
      - Percentage of pixels classified as red (Hue 0-15° or 345-360°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_OrangePct``
      - Percentage of pixels classified as orange (Hue 15-45°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_YellowPct``
      - Percentage of pixels classified as yellow (Hue 45-75°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_GreenPct``
      - Percentage of pixels classified as green (Hue 75-150°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_CyanPct``
      - Percentage of pixels classified as cyan (Hue 150-180°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_BluePct``
      - Percentage of pixels classified as blue (Hue 180-250°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`
    * - ``ColorComposition_PurplePct``
      - Percentage of pixels classified as purple/magenta (Hue 250-345°)
-     - Discriminative feature (Tier 3)
+     - :bdg-ref-warning:`Tier 3 · Discriminative feature <measurement-tiers>`

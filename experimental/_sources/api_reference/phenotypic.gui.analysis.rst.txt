@@ -1,7 +1,0 @@
-phenotypic.gui.analysis package
-===============================
-
-.. automodule:: phenotypic.gui.analysis
-   :members:
-   :show-inheritance:
-   :undoc-members:

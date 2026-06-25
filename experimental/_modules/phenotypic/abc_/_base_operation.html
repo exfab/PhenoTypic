@@ -628,7 +628,7 @@
 
 
 <div class="viewcode-block" id="BaseOperation">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseOperation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Root abstract base class for all operations in PhenoTypic.</span>
 
@@ -782,7 +782,7 @@
     <span class="n">_tracemalloc_started</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BaseOperation.__pydantic_init_subclass__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.__pydantic_init_subclass__">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation.__pydantic_init_subclass__">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">__pydantic_init_subclass__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Populate field descriptions from the subclass docstring.</span>
@@ -801,7 +801,7 @@
 
 
 <div class="viewcode-block" id="BaseOperation.model_post_init">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.model_post_init">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation.model_post_init">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize logging and memory tracking after model construction.</span>
 
@@ -826,7 +826,7 @@
 
 
 <div class="viewcode-block" id="BaseOperation.to_json">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.to_json">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation.to_json">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize this operation to JSON.</span>
 
@@ -871,7 +871,7 @@
 
 
 <div class="viewcode-block" id="BaseOperation.from_json">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.from_json">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation.from_json">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">json_data</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BaseOperation&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct an operation from JSON written by :meth:`to_json`.</span>
@@ -982,7 +982,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">log_msg</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BaseOperation.__del__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.BaseOperation.__del__">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.BaseOperation.html#phenotypic.abc_.BaseOperation.__del__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Automatically stop tracemalloc when the object is deleted.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_tracemalloc_started&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tracemalloc_started</span><span class="p">:</span>

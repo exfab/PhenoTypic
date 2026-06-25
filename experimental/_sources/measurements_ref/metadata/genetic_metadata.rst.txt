@@ -17,21 +17,31 @@ arbitrary metadata columns are still accepted.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_Organism``
      - Species or organism name (e.g. Saccharomyces cerevisiae).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Strain``
      - Strain name or identifier (e.g. BY4741).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Genotype``
      - Genotype description of the strain.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Background``
      - Genetic background or parent strain.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Allele``
      - Specific allele or mutation under study.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Plasmid``
      - Plasmid carried by the sample.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_SelectionMarker``
      - Selectable marker gene (e.g. URA3, KanMX).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_MatingType``
      - Mating type for yeast (e.g. MATa, MATalpha).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Ploidy``
      - Ploidy of the organism (e.g. haploid, diploid).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

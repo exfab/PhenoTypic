@@ -1,7 +1,0 @@
-phenotypic.enhance package
-==========================
-
-.. automodule:: phenotypic.enhance
-   :members:
-   :show-inheritance:
-   :undoc-members:

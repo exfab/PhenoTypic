@@ -1,7 +1,0 @@
-phenotypic.tune.strategy package
-================================
-
-.. automodule:: phenotypic.tune.strategy
-   :members:
-   :show-inheritance:
-   :undoc-members:

@@ -611,7 +611,7 @@
 
 
 <div class="viewcode-block" id="ImageEnhancer">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageEnhancer</span><span class="p">(</span><span class="n">FootprintMixin</span><span class="p">,</span> <span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for preprocessing operations that improve colony detection through detection matrix.</span>
 
@@ -942,14 +942,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ImageEnhancer.apply">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer.apply">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer.apply">[docs]</a>
     <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ImageEnhancer._operate">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageEnhancer._operate">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageEnhancer.html#phenotypic.abc_.ImageEnhancer._operate">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">image</span></div>

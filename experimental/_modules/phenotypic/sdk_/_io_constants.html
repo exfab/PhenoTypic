@@ -713,7 +713,7 @@
 
 
 <div class="viewcode-block" id="has_config_suffix">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.has_config_suffix">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.has_config_suffix.html#phenotypic.sdk_.has_config_suffix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">has_config_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``path`` ends with any configured suffix.</span>
 
@@ -726,7 +726,7 @@
 
 
 <div class="viewcode-block" id="matches_any_suffix">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.matches_any_suffix">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.matches_any_suffix.html#phenotypic.sdk_.matches_any_suffix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">matches_any_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``path`` ends with any suffix in ``suffixes``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">has_config_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">suffixes</span><span class="p">)</span></div>
@@ -734,7 +734,7 @@
 
 
 <div class="viewcode-block" id="ensure_typed_json_suffix">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.ensure_typed_json_suffix">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ensure_typed_json_suffix.html#phenotypic.sdk_.ensure_typed_json_suffix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">ensure_typed_json_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``path`` with the canonical typed JSON suffix appended.</span>
 
@@ -932,7 +932,8 @@
 <span class="c1">#: SLURM checkpoint chunk state (which per-image files have been chunked).</span>
 <span class="n">CHUNK_STATE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunk_state.json&quot;</span>
 
-<span class="c1">#: Manifest of overlay PNGs (one entry per per-image overlay).</span>
+<span class="c1">#: Manifest of overlay PNGs (one entry per per-image overlay). Lives alongside</span>
+<span class="c1">#: the overlays under ``&lt;output&gt;/deliverables/overlays/``.</span>
 <span class="n">OVERLAY_MANIFEST_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlay_manifest.json&quot;</span>
 
 <span class="c1">#: Top-level dashboard manifest read by the dashboard HTML JS shim.</span>
@@ -1004,7 +1005,7 @@
 <span class="c1">#: HDF5 image-state subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/hdf/``.</span>
 <span class="n">DIR_HDF</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hdf&quot;</span>
 
-<span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/overlays/``.</span>
+<span class="c1">#: Overlay PNG subdirectory: ``&lt;output&gt;/deliverables/overlays/&lt;ds&gt;/``.</span>
 <span class="n">DIR_OVERLAYS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;overlays&quot;</span>
 
 <span class="c1">#: Inspect-figure PNG subdirectory:</span>
@@ -1125,7 +1126,7 @@
 
 
 <div class="viewcode-block" id="task_status_filename">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.task_status_filename">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.task_status_filename.html#phenotypic.sdk_.task_status_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a per-task SLURM-recompile status JSON.</span>
 
@@ -1143,7 +1144,7 @@
 
 
 <div class="viewcode-block" id="shard_parquet_filename">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.shard_parquet_filename">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.shard_parquet_filename.html#phenotypic.sdk_.shard_parquet_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">shard_parquet_filename</span><span class="p">(</span><span class="n">shard_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a per-shard Parquet inside the recompile worker.</span>
 
@@ -1161,7 +1162,7 @@
 
 
 <div class="viewcode-block" id="chunk_parquet_filename">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunk_parquet_filename">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_parquet_filename.html#phenotypic.sdk_.chunk_parquet_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_parquet_filename</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of a dashboard chunk Parquet (zero-padded chunk id).</span>
 
@@ -1180,7 +1181,7 @@
 
 
 <div class="viewcode-block" id="default_output_dir_name">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.default_output_dir_name">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.default_output_dir_name.html#phenotypic.sdk_.default_output_dir_name">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">default_output_dir_name</span><span class="p">(</span><span class="n">now</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Default name for an auto-generated output directory.</span>
 
@@ -1203,7 +1204,7 @@
 
 
 <div class="viewcode-block" id="checkpoint_lock_filename">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.checkpoint_lock_filename">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.checkpoint_lock_filename.html#phenotypic.sdk_.checkpoint_lock_filename">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_filename</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Filename of the SLURM-sentinel exclusive lock for a checkpoint task.</span>
 
@@ -1225,7 +1226,7 @@
 
 
 <div class="viewcode-block" id="phenotypic_cache_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.phenotypic_cache_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.phenotypic_cache_dir.html#phenotypic.sdk_.phenotypic_cache_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/`` — the hidden machine-state root.</span>
 
@@ -1236,7 +1237,7 @@
 
 
 <div class="viewcode-block" id="progress_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.progress_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.progress_dir.html#phenotypic.sdk_.progress_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/``.</span>
 
@@ -1248,7 +1249,7 @@
 
 
 <div class="viewcode-block" id="results_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.results_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.results_dir.html#phenotypic.sdk_.results_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span></div>
@@ -1256,7 +1257,7 @@
 
 
 <div class="viewcode-block" id="deliverables_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.deliverables_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.deliverables_dir.html#phenotypic.sdk_.deliverables_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/`` — the user-facing-output folder.</span>
 
@@ -1276,7 +1277,7 @@
 
 
 <div class="viewcode-block" id="event_log_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.event_log_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.event_log_path.html#phenotypic.sdk_.event_log_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">event_log_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/processing_events.log``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PROCESSING_EVENTS_LOG</span></div>
@@ -1284,7 +1285,7 @@
 
 
 <div class="viewcode-block" id="processing_state_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.processing_state_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.processing_state_path.html#phenotypic.sdk_.processing_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/processing_state.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PROCESSING_STATE_JSON</span></div>
@@ -1302,7 +1303,7 @@
 
 
 <div class="viewcode-block" id="resolve_progress_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_progress_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_progress_dir.html#phenotypic.sdk_.resolve_progress_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the progress dir that exists, preferring ``.phenotypic/``.</span>
 
@@ -1321,7 +1322,7 @@
 
 
 <div class="viewcode-block" id="resolve_processing_state_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_processing_state_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_processing_state_path.html#phenotypic.sdk_.resolve_processing_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the processing-state file that exists, preferring ``.phenotypic/``.&quot;&quot;&quot;</span>
     <span class="n">new</span> <span class="o">=</span> <span class="n">processing_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
@@ -1335,7 +1336,7 @@
 
 
 <div class="viewcode-block" id="resolve_manifest_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_manifest_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_manifest_json_path.html#phenotypic.sdk_.resolve_manifest_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/manifest.json`` resolving the progress dir for legacy runs.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">resolve_progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_JSON</span></div>
@@ -1343,7 +1344,7 @@
 
 
 <div class="viewcode-block" id="resolve_event_log_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_event_log_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_event_log_path.html#phenotypic.sdk_.resolve_event_log_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_event_log_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the event log sibling of the resolved progress dir.</span>
 
@@ -1356,7 +1357,7 @@
 
 
 <div class="viewcode-block" id="migrate_legacy_machine_state">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.migrate_legacy_machine_state">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migrate_legacy_machine_state.html#phenotypic.sdk_.migrate_legacy_machine_state">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">migrate_legacy_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Move a pre-migration run&#39;s machine-state into ``.phenotypic/``.</span>
 
@@ -1404,7 +1405,7 @@
 
 
 <div class="viewcode-block" id="clear_machine_state">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.clear_machine_state">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">clear_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove **all** of a run&#39;s machine-state for a clean ``--restart``.</span>
 
@@ -1445,7 +1446,7 @@
 
 
 <div class="viewcode-block" id="master_measurements_csv_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.master_measurements_csv_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.master_measurements_csv_path.html#phenotypic.sdk_.master_measurements_csv_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">master_measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/master_measurements.csv``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_CSV</span></div>
@@ -1453,7 +1454,7 @@
 
 
 <div class="viewcode-block" id="master_measurements_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.master_measurements_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.master_measurements_parquet_path.html#phenotypic.sdk_.master_measurements_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">master_measurements_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/master_measurements.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span></div>
@@ -1461,7 +1462,7 @@
 
 
 <div class="viewcode-block" id="measurements_csv_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.measurements_csv_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.measurements_csv_path.html#phenotypic.sdk_.measurements_csv_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements.csv`` (post-applied mirror).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MEASUREMENTS_CSV</span></div>
@@ -1469,7 +1470,7 @@
 
 
 <div class="viewcode-block" id="measurements_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.measurements_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.measurements_parquet_path.html#phenotypic.sdk_.measurements_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">measurements_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements.parquet`` (post-applied mirror).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MEASUREMENTS_PARQUET</span></div>
@@ -1477,7 +1478,7 @@
 
 
 <div class="viewcode-block" id="metadata_csv_deliverable_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.metadata_csv_deliverable_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_csv_deliverable_path.html#phenotypic.sdk_.metadata_csv_deliverable_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_csv_deliverable_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/metadata.csv`` (co-located ``--metadata`` copy).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DELIVERABLES_METADATA_CSV</span></div>
@@ -1485,7 +1486,7 @@
 
 
 <div class="viewcode-block" id="pipeline_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.pipeline_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pipeline_json_path.html#phenotypic.sdk_.pipeline_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed pipeline config path under ``deliverables/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
@@ -1498,7 +1499,7 @@
 
 
 <div class="viewcode-block" id="resolve_pipeline_config_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_pipeline_config_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_pipeline_config_path.html#phenotypic.sdk_.resolve_pipeline_config_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_pipeline_config_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing pipeline config path for ``output_dir``.</span>
 
@@ -1517,7 +1518,7 @@
 
 
 <div class="viewcode-block" id="tuning_spec_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tuning_spec_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tuning_spec_path.html#phenotypic.sdk_.tuning_spec_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed tuning spec path under ``deliverables/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">TUNING_SPEC_JSON</span></div>
@@ -1530,7 +1531,7 @@
 
 
 <div class="viewcode-block" id="resolve_tuning_spec_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_tuning_spec_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_tuning_spec_path.html#phenotypic.sdk_.resolve_tuning_spec_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing tuning spec path for ``output_dir``.&quot;&quot;&quot;</span>
     <span class="n">canonical</span> <span class="o">=</span> <span class="n">tuning_spec_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
@@ -1544,7 +1545,7 @@
 
 
 <div class="viewcode-block" id="best_pipeline_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.best_pipeline_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.best_pipeline_path.html#phenotypic.sdk_.best_pipeline_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed tuned-winner pipeline path.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PIPELINE_JSON</span></div>
@@ -1557,7 +1558,7 @@
 
 
 <div class="viewcode-block" id="resolve_best_pipeline_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_best_pipeline_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_best_pipeline_path.html#phenotypic.sdk_.resolve_best_pipeline_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing tuned-winner pipeline path for ``output_dir``.&quot;&quot;&quot;</span>
     <span class="n">canonical</span> <span class="o">=</span> <span class="n">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
@@ -1571,7 +1572,7 @@
 
 
 <div class="viewcode-block" id="param_importance_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.param_importance_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.param_importance_path.html#phenotypic.sdk_.param_importance_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">param_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/param_importance.json`` (the report).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PARAM_IMPORTANCE_JSON</span></div>
@@ -1579,7 +1580,7 @@
 
 
 <div class="viewcode-block" id="best_params_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.best_params_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.best_params_path.html#phenotypic.sdk_.best_params_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">best_params_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/best_params.json`` (winner params sidecar).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PARAMS_JSON</span></div>
@@ -1587,7 +1588,7 @@
 
 
 <div class="viewcode-block" id="trials_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.trials_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.trials_parquet_path.html#phenotypic.sdk_.trials_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">trials_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/trials.parquet`` (the trial journal; output-dir root).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">TRIALS_PARQUET</span></div>
@@ -1595,7 +1596,7 @@
 
 
 <div class="viewcode-block" id="tune_cache_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tune_cache_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_dir.html#phenotypic.sdk_.tune_cache_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/`` — the tune run&#39;s machine-state root.</span>
 
@@ -1613,7 +1614,7 @@
 
 
 <div class="viewcode-block" id="tune_cache_run_marker_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tune_cache_run_marker_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_run_marker_path.html#phenotypic.sdk_.tune_cache_run_marker_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_run_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/run.json`` — the tune-run marker.</span>
 
@@ -1631,7 +1632,7 @@
 
 
 <div class="viewcode-block" id="tune_cache_study_db_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tune_cache_study_db_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_study_db_path.html#phenotypic.sdk_.tune_cache_study_db_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/study.db`` (the Optuna study DB).</span>
 
@@ -1651,7 +1652,7 @@
 
 
 <div class="viewcode-block" id="tune_cache_splits_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tune_cache_splits_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_splits_dir.html#phenotypic.sdk_.tune_cache_splits_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_splits_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/splits/`` — the held-out split folder.</span>
 
@@ -1670,7 +1671,7 @@
 
 
 <div class="viewcode-block" id="tune_cache_split_assignment_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.tune_cache_split_assignment_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.tune_cache_split_assignment_path.html#phenotypic.sdk_.tune_cache_split_assignment_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tune_cache_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.pht-tune-cache/splits/split.json`` — the held-out split.</span>
 
@@ -1701,7 +1702,7 @@
 
 
 <div class="viewcode-block" id="resolve_study_db_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_study_db_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_study_db_path.html#phenotypic.sdk_.resolve_study_db_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_study_db_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the study DB that exists, preferring ``.pht-tune-cache/``.</span>
 
@@ -1727,7 +1728,7 @@
 
 
 <div class="viewcode-block" id="resolve_split_assignment_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_split_assignment_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_split_assignment_path.html#phenotypic.sdk_.resolve_split_assignment_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_split_assignment_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the split assignment that exists, preferring ``.pht-tune-cache/``.</span>
 
@@ -1755,7 +1756,7 @@
 
 
 <div class="viewcode-block" id="generalization_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.generalization_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.generalization_path.html#phenotypic.sdk_.generalization_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">generalization_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/generalization.json`` — the held-out report.</span>
 
@@ -1774,7 +1775,7 @@
 
 
 <div class="viewcode-block" id="pareto_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.pareto_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pareto_dir.html#phenotypic.sdk_.pareto_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pareto/`` — the multi-objective sub-folder.</span>
 
@@ -1786,7 +1787,7 @@
 
 
 <div class="viewcode-block" id="pareto_front_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.pareto_front_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pareto_front_parquet_path.html#phenotypic.sdk_.pareto_front_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pareto_front_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/pareto/pareto_front.parquet`` (the front).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">pareto_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PARETO_FRONT_PARQUET</span></div>
@@ -1794,7 +1795,7 @@
 
 
 <div class="viewcode-block" id="pareto_best_pipeline_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.pareto_best_pipeline_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pareto_best_pipeline_path.html#phenotypic.sdk_.pareto_best_pipeline_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pareto_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``deliverables/pareto/best_&lt;objective&gt;.json`` (a per-axis winner).</span>
 
@@ -1816,7 +1817,7 @@
 
 
 <div class="viewcode-block" id="pareto_importance_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.pareto_importance_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.pareto_importance_path.html#phenotypic.sdk_.pareto_importance_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">pareto_importance_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``deliverables/pareto/param_importance_&lt;objective&gt;.json``.</span>
 
@@ -1839,7 +1840,7 @@
 
 
 <div class="viewcode-block" id="phenotypic_cache_pipeline_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.phenotypic_cache_pipeline_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.phenotypic_cache_pipeline_json_path.html#phenotypic.sdk_.phenotypic_cache_pipeline_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cache_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/pipeline.json`` — the process-only run&#39;s</span>
 <span class="sd">    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots</span>
@@ -1849,7 +1850,7 @@
 
 
 <div class="viewcode-block" id="analysis_csv_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.analysis_csv_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_csv_path.html#phenotypic.sdk_.analysis_csv_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.csv``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_CSV</span></div>
@@ -1857,7 +1858,7 @@
 
 
 <div class="viewcode-block" id="analysis_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.analysis_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_parquet_path.html#phenotypic.sdk_.analysis_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_PARQUET</span></div>
@@ -1865,7 +1866,7 @@
 
 
 <div class="viewcode-block" id="dashboard_html_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.dashboard_html_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dashboard_html_path.html#phenotypic.sdk_.dashboard_html_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dashboard_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/dashboard.html``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DASHBOARD_HTML</span></div>
@@ -1873,7 +1874,7 @@
 
 
 <div class="viewcode-block" id="dataset_results_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.dataset_results_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_results_dir.html#phenotypic.sdk_.dataset_results_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">dataset</span></div>
@@ -1881,7 +1882,7 @@
 
 
 <div class="viewcode-block" id="dataset_measurements_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.dataset_measurements_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_measurements_dir.html#phenotypic.sdk_.dataset_measurements_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dataset_measurements_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/measurements/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS</span></div>
@@ -1889,23 +1890,31 @@
 
 
 <div class="viewcode-block" id="dataset_hdf_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.dataset_hdf_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_hdf_dir.html#phenotypic.sdk_.dataset_hdf_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dataset_hdf_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/hdf/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_HDF</span></div>
 
 
 
+<div class="viewcode-block" id="overlays_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.overlays_dir.html#phenotypic.sdk_.overlays_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/overlays/`` — the overlay package root.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_OVERLAYS</span></div>
+
+
+
 <div class="viewcode-block" id="dataset_overlays_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.dataset_overlays_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.dataset_overlays_dir.html#phenotypic.sdk_.dataset_overlays_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dataset_overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/results/&lt;dataset&gt;/overlays/``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">dataset_results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_OVERLAYS</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/overlays/&lt;dataset&gt;/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">dataset</span></div>
 
 
 
 <div class="viewcode-block" id="measurements_by_feature_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.measurements_by_feature_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.measurements_by_feature_dir.html#phenotypic.sdk_.measurements_by_feature_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">measurements_by_feature_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/measurements_by_feature/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span></div>
@@ -1913,7 +1922,7 @@
 
 
 <div class="viewcode-block" id="logs_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.logs_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.logs_dir.html#phenotypic.sdk_.logs_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">logs_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/logs/`` (SLURM stdout/stderr + sbatch scripts).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_LOGS</span></div>
@@ -1921,7 +1930,7 @@
 
 
 <div class="viewcode-block" id="chunks_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunks_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunks_dir.html#phenotypic.sdk_.chunks_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunks_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/chunks/`` for the dashboard chunk parquets.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">DIR_CHUNKS</span></div>
@@ -1929,7 +1938,7 @@
 
 
 <div class="viewcode-block" id="recompile_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.recompile_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.recompile_dir.html#phenotypic.sdk_.recompile_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">recompile_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE</span></div>
@@ -1937,7 +1946,7 @@
 
 
 <div class="viewcode-block" id="recompile_status_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.recompile_status_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.recompile_status_dir.html#phenotypic.sdk_.recompile_status_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">recompile_status_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/status/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">recompile_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_RECOMPILE_STATUS</span></div>
@@ -1945,7 +1954,7 @@
 
 
 <div class="viewcode-block" id="task_status_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.task_status_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.task_status_path.html#phenotypic.sdk_.task_status_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">task_status_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/recompile/status/task_&lt;idx&gt;.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">recompile_status_dir</span><span class="p">(</span><span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span> <span class="o">/</span> <span class="n">task_status_filename</span><span class="p">(</span><span class="n">task_index</span><span class="p">)</span></div>
@@ -1953,7 +1962,7 @@
 
 
 <div class="viewcode-block" id="chunk_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunk_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_parquet_path.html#phenotypic.sdk_.chunk_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_parquet_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">chunk_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/chunks/chunk_&lt;id:03d&gt;.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">chunks_dir</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">)</span> <span class="o">/</span> <span class="n">chunk_parquet_filename</span><span class="p">(</span><span class="n">chunk_id</span><span class="p">)</span></div>
@@ -1961,7 +1970,7 @@
 
 
 <div class="viewcode-block" id="checkpoint_lock_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.checkpoint_lock_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.checkpoint_lock_path.html#phenotypic.sdk_.checkpoint_lock_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_lock_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">checkpoint_type</span><span class="p">:</span> <span class="n">CheckpointType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/.{checkpoint_type}_lock``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">checkpoint_lock_filename</span><span class="p">(</span><span class="n">checkpoint_type</span><span class="p">)</span></div>
@@ -1969,7 +1978,7 @@
 
 
 <div class="viewcode-block" id="job_metadata_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.job_metadata_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.job_metadata_path.html#phenotypic.sdk_.job_metadata_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">job_metadata_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/job_metadata.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">JOB_METADATA_JSON</span></div>
@@ -1977,7 +1986,7 @@
 
 
 <div class="viewcode-block" id="failures_jsonl_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.failures_jsonl_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.failures_jsonl_path.html#phenotypic.sdk_.failures_jsonl_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">failures_jsonl_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/failures.jsonl``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">FAILURES_JSONL</span></div>
@@ -1985,7 +1994,7 @@
 
 
 <div class="viewcode-block" id="manifest_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.manifest_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.manifest_json_path.html#phenotypic.sdk_.manifest_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">manifest_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_JSON</span></div>
@@ -1993,7 +2002,7 @@
 
 
 <div class="viewcode-block" id="chunk_manifest_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunk_manifest_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_manifest_path.html#phenotypic.sdk_.chunk_manifest_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_MANIFEST_JSON</span></div>
@@ -2001,7 +2010,7 @@
 
 
 <div class="viewcode-block" id="chunk_state_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunk_state_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_state_path.html#phenotypic.sdk_.chunk_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CHUNK_STATE_JSON</span></div>
@@ -2009,15 +2018,15 @@
 
 
 <div class="viewcode-block" id="overlay_manifest_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.overlay_manifest_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.overlay_manifest_path.html#phenotypic.sdk_.overlay_manifest_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">overlay_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/progress/overlay_manifest.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">OVERLAY_MANIFEST_JSON</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/overlays/overlay_manifest.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">overlays_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">OVERLAY_MANIFEST_JSON</span></div>
 
 
 
 <div class="viewcode-block" id="analysis_html_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.analysis_html_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_html_path.html#phenotypic.sdk_.analysis_html_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/analysis.html``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ANALYSIS_HTML</span></div>
@@ -2025,7 +2034,7 @@
 
 
 <div class="viewcode-block" id="processing_report_html_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.processing_report_html_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.processing_report_html_path.html#phenotypic.sdk_.processing_report_html_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">processing_report_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/processing_report.html``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PROCESSING_REPORT_HTML</span></div>
@@ -2033,7 +2042,7 @@
 
 
 <div class="viewcode-block" id="readme_md_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.readme_md_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.readme_md_path.html#phenotypic.sdk_.readme_md_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">readme_md_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/README.md``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">README_MD</span></div>
@@ -2041,7 +2050,7 @@
 
 
 <div class="viewcode-block" id="analysis_full_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.analysis_full_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_full_parquet_path.html#phenotypic.sdk_.analysis_full_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_full_parquet_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_full.parquet`` (incremental combined frame).</span>
 
@@ -2054,7 +2063,7 @@
 
 
 <div class="viewcode-block" id="analysis_scatter_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.analysis_scatter_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.analysis_scatter_json_path.html#phenotypic.sdk_.analysis_scatter_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">analysis_scatter_json_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/analysis_scatter.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">ANALYSIS_SCATTER_JSON</span></div>
@@ -2062,7 +2071,7 @@
 
 
 <div class="viewcode-block" id="sentinel_resubmitted_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.sentinel_resubmitted_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.sentinel_resubmitted_path.html#phenotypic.sdk_.sentinel_resubmitted_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">sentinel_resubmitted_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/sentinel_resubmitted`` marker file path.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">SENTINEL_RESUBMITTED_MARKER</span></div>
@@ -2070,7 +2079,7 @@
 
 
 <div class="viewcode-block" id="chunk_lock_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.chunk_lock_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.chunk_lock_path.html#phenotypic.sdk_.chunk_lock_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">chunk_lock_path</span><span class="p">(</span><span class="n">progress_dir_</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/.chunk_lock``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir_</span> <span class="o">/</span> <span class="n">CHUNK_LOCK</span></div>
@@ -2078,7 +2087,7 @@
 
 
 <div class="viewcode-block" id="slurm_scripts_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.slurm_scripts_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.slurm_scripts_dir.html#phenotypic.sdk_.slurm_scripts_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/slurm_scripts/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_SLURM_SCRIPTS</span></div>
@@ -2086,7 +2095,7 @@
 
 
 <div class="viewcode-block" id="qc_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.qc_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_dir.html#phenotypic.sdk_.qc_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/``.</span>
 
@@ -2098,7 +2107,7 @@
 
 
 <div class="viewcode-block" id="qc_summary_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.qc_summary_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_summary_parquet_path.html#phenotypic.sdk_.qc_summary_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_summary_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_summary.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_SUMMARY_PARQUET</span></div>
@@ -2106,7 +2115,7 @@
 
 
 <div class="viewcode-block" id="qc_members_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.qc_members_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_members_parquet_path.html#phenotypic.sdk_.qc_members_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_members_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_members.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_MEMBERS_PARQUET</span></div>
@@ -2114,7 +2123,7 @@
 
 
 <div class="viewcode-block" id="qc_config_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.qc_config_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_config_json_path.html#phenotypic.sdk_.qc_config_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_config_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_config.json``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_CONFIG_JSON</span></div>
@@ -2122,7 +2131,7 @@
 
 
 <div class="viewcode-block" id="qc_review_state_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.qc_review_state_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_review_state_path.html#phenotypic.sdk_.qc_review_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_review_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/review_state.json`` (GUI-owned review progress).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_REVIEW_STATE_JSON</span></div>
@@ -2130,7 +2139,7 @@
 
 
 <div class="viewcode-block" id="errors_dir">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.errors_dir">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.errors_dir.html#phenotypic.sdk_.errors_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">errors_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/errors/`` (per-category error parquets).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_ERRORS</span></div>
@@ -2138,7 +2147,7 @@
 
 
 <div class="viewcode-block" id="error_category_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.error_category_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.error_category_parquet_path.html#phenotypic.sdk_.error_category_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">error_category_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/errors/&lt;category&gt;.parquet``.</span>
 
@@ -2152,7 +2161,7 @@
 
 
 <div class="viewcode-block" id="error_analysis_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.error_analysis_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.error_analysis_parquet_path.html#phenotypic.sdk_.error_analysis_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.parquet``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_PARQUET</span></div>
@@ -2160,7 +2169,7 @@
 
 
 <div class="viewcode-block" id="error_analysis_csv_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.error_analysis_csv_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.error_analysis_csv_path.html#phenotypic.sdk_.error_analysis_csv_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.csv``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_CSV</span></div>
@@ -2168,7 +2177,7 @@
 
 
 <div class="viewcode-block" id="error_analysis_html_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.error_analysis_html_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.error_analysis_html_path.html#phenotypic.sdk_.error_analysis_html_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_html_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/error_analysis.html``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_HTML</span></div>
@@ -2176,7 +2185,7 @@
 
 
 <div class="viewcode-block" id="verified_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.verified_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.verified_parquet_path.html#phenotypic.sdk_.verified_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">verified_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/verified.parquet`` (GUI-written, §9).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">VERIFIED_PARQUET</span></div>
@@ -2184,7 +2193,7 @@
 
 
 <div class="viewcode-block" id="curation_labels_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.curation_labels_parquet_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.curation_labels_parquet_path.html#phenotypic.sdk_.curation_labels_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">curation_labels_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/curation_labels.parquet`` (durable labels store).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CURATION_LABELS_PARQUET</span></div>
@@ -2192,7 +2201,7 @@
 
 
 <div class="viewcode-block" id="custom_categories_json_path">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.custom_categories_json_path">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.custom_categories_json_path.html#phenotypic.sdk_.custom_categories_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">custom_categories_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/custom_categories.json`` (custom-category registry).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CUSTOM_CATEGORIES_JSON</span></div>
@@ -2205,7 +2214,7 @@
 
 
 <div class="viewcode-block" id="read_run_manifest">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.read_run_manifest">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.read_run_manifest.html#phenotypic.sdk_.read_run_manifest">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">read_run_manifest</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read the run manifest if present, resolving legacy layouts.</span>
 
@@ -2233,7 +2242,7 @@
 
 
 <div class="viewcode-block" id="load_master_measurements">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.load_master_measurements">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.load_master_measurements.html#phenotypic.sdk_.load_master_measurements">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_master_measurements</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``&lt;output&gt;/master_measurements.csv`` into a polars DataFrame.</span>
 
@@ -2253,7 +2262,7 @@
 
 
 <div class="viewcode-block" id="resolve_execution_mode">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.resolve_execution_mode">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_execution_mode.html#phenotypic.sdk_.resolve_execution_mode">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_execution_mode</span><span class="p">(</span><span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ExecutionMode</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract :data:`ExecutionMode` from job metadata, defaulting to ``&quot;local&quot;``.</span>
 
@@ -2290,7 +2299,7 @@
 
 
 <div class="viewcode-block" id="JobMetadataKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.JobMetadataKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.JobMetadataKey.html#phenotypic.sdk_.JobMetadataKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">JobMetadataKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/job_metadata.json``.</span>
 
@@ -2318,7 +2327,7 @@
 
 
 <div class="viewcode-block" id="DashboardManifestKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.DashboardManifestKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.DashboardManifestKey.html#phenotypic.sdk_.DashboardManifestKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DashboardManifestKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/manifest.json`` (dashboard manifest).</span>
 
@@ -2348,7 +2357,7 @@
 
 
 <div class="viewcode-block" id="DashboardManifestSlurmInfoKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.DashboardManifestSlurmInfoKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.DashboardManifestSlurmInfoKey.html#phenotypic.sdk_.DashboardManifestSlurmInfoKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DashboardManifestSlurmInfoKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside the ``slurm_info`` sub-dict of the dashboard manifest.</span>
 
@@ -2366,7 +2375,7 @@
 
 
 <div class="viewcode-block" id="ChunkStateKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.ChunkStateKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ChunkStateKey.html#phenotypic.sdk_.ChunkStateKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChunkStateKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_state.json``.&quot;&quot;&quot;</span>
 
@@ -2376,7 +2385,7 @@
 
 
 <div class="viewcode-block" id="ProcessingStateKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.ProcessingStateKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ProcessingStateKey.html#phenotypic.sdk_.ProcessingStateKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProcessingStateKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/processing_state.json`` (resume-state file).</span>
 
@@ -2408,7 +2417,7 @@
 
 
 <div class="viewcode-block" id="ChunkManifestKey">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.ChunkManifestKey">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ChunkManifestKey.html#phenotypic.sdk_.ChunkManifestKey">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChunkManifestKey</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Keys inside ``&lt;output&gt;/progress/chunk_manifest.json``.&quot;&quot;&quot;</span>
 
@@ -2421,7 +2430,7 @@
 
 
 <div class="viewcode-block" id="HdfAttr">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.HdfAttr">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HdfAttr.html#phenotypic.sdk_.HdfAttr">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HdfAttr</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Top-level attribute keys on per-image HDF5 files.&quot;&quot;&quot;</span>
 
@@ -2435,7 +2444,7 @@
 
 
 <div class="viewcode-block" id="ModulePath">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.ModulePath">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.ModulePath.html#phenotypic.sdk_.ModulePath">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ModulePath</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Importable module paths used in dynamic ``importlib.import_module`` dispatch.</span>
 
@@ -2455,7 +2464,7 @@
 
 
 <div class="viewcode-block" id="EnvVar">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.EnvVar">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.EnvVar.html#phenotypic.sdk_.EnvVar">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EnvVar</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Environment variable names read or set by the CLI.</span>
 
@@ -2480,7 +2489,7 @@
 
 
 <div class="viewcode-block" id="load_image_from_hdf">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.html#phenotypic.sdk_.load_image_from_hdf">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.load_image_from_hdf.html#phenotypic.sdk_.load_image_from_hdf">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_image_from_hdf</span><span class="p">(</span>
     <span class="n">hdf_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>

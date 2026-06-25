@@ -645,7 +645,7 @@
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
 <div class="viewcode-block" id="MeasureFeatures">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasureFeatures</span><span class="p">(</span><span class="n">BaseOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract quantitative measurements from detected colony objects in images.</span>
 
@@ -931,7 +931,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="MeasureFeatures.measure">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.MeasureFeatures.measure">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures.measure">[docs]</a>
     <span class="nd">@validate_measure_integrity</span><span class="p">()</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">measure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">include_meta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute the measurement operation on a detected-object image.</span>

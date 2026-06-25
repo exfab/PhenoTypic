@@ -17,19 +17,31 @@ validator.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_Temperature``
      - Incubation temperature in degrees Celsius.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Time``
      - Elapsed growth time.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_TimeUnit``
      - Unit for the Time value (e.g. hours, days).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Timepoint``
-     - Discrete timepoint label in a time series.
+     - Human-readable label for a discrete timepoint in a time series (e.g. '24h', 'stationary'); may be non-numeric. For the integer capture ordinal, use FrameIndex.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
+   * - ``Metadata_FrameIndex``
+     - 1-based ordinal index of the image within the time-course capture sequence; the monotonic-integer companion to the free-form Timepoint label.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Day``
      - Day index of the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Generation``
      - Generation or passage number.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Humidity``
      - Relative humidity during incubation.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Atmosphere``
      - Atmospheric condition (e.g. aerobic, anaerobic).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

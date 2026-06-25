@@ -608,36 +608,36 @@
 
 
 <div class="viewcode-block" id="PruningChannel">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.PruningChannel">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.PruningChannel.html#phenotypic.tune.strategy.PruningChannel">[docs]</a>
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PruningChannel</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reports interim values and answers whether the trial should early-stop.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="PruningChannel.report">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.PruningChannel.report">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.PruningChannel.html#phenotypic.tune.strategy.PruningChannel.report">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span></div>
 
 
 <div class="viewcode-block" id="PruningChannel.should_prune">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.PruningChannel.should_prune">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.PruningChannel.html#phenotypic.tune.strategy.PruningChannel.should_prune">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">should_prune</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span></div>
 </div>
 
 
 
 <div class="viewcode-block" id="NoOpChannel">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.NoOpChannel">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.NoOpChannel.html#phenotypic.tune.strategy.NoOpChannel">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NoOpChannel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Never prunes; ``report`` is a no-op. Used by Grid/Random strategies.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="NoOpChannel.report">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.NoOpChannel.report">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.NoOpChannel.html#phenotypic.tune.strategy.NoOpChannel.report">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span></div>
 
 
 <div class="viewcode-block" id="NoOpChannel.should_prune">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.NoOpChannel.should_prune">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.NoOpChannel.html#phenotypic.tune.strategy.NoOpChannel.should_prune">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">should_prune</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">False</span></div>
 </div>

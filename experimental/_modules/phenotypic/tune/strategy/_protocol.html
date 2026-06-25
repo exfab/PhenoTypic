@@ -606,7 +606,7 @@
 
 
 <div class="viewcode-block" id="SearchStrategy">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.SearchStrategy">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.SearchStrategy.html#phenotypic.tune.strategy.SearchStrategy">[docs]</a>
 <span class="nd">@runtime_checkable</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">SearchStrategy</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The swappable optimizer seam: ask for params, tell results, stop on exhaustion.</span>
@@ -617,19 +617,19 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="SearchStrategy.suggest">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.SearchStrategy.suggest">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.SearchStrategy.html#phenotypic.tune.strategy.SearchStrategy.suggest">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">PruningChannel</span><span class="p">]:</span> <span class="o">...</span></div>
 
 
 <div class="viewcode-block" id="SearchStrategy.register_result">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.SearchStrategy.register_result">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.SearchStrategy.html#phenotypic.tune.strategy.SearchStrategy.register_result">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">register_result</span><span class="p">(</span></div>
 
         <span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pruned</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="SearchStrategy.is_exhausted">
-<a class="viewcode-back" href="../../../../api_reference/phenotypic.tune.strategy.html#phenotypic.tune.strategy.SearchStrategy.is_exhausted">[docs]</a>
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.tune.strategy.SearchStrategy.html#phenotypic.tune.strategy.SearchStrategy.is_exhausted">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_exhausted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span></div>
 </div>
 

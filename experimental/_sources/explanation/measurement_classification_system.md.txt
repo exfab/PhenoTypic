@@ -1,3 +1,5 @@
+(measurement-classification)=
+
 # Measurement Classification: Phenotypes vs. Features
 
 PhenoTypic measures many columns per colony. This page explains *how to apply*
@@ -25,6 +27,8 @@ Every column is first one of four **kinds**:
   *how* they were derived.
 
 Primary measurements fall on a three-tier spectrum:
+
+(measurement-tiers)=
 
 | Tier | Name | What it is | How to apply it |
 |---|---|---|---|

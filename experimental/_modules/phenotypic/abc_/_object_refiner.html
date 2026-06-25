@@ -610,7 +610,7 @@
 
 <span class="c1"># &lt;&lt;Interface&gt;&gt;</span>
 <div class="viewcode-block" id="ObjectRefiner">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ObjectRefiner.html#phenotypic.abc_.ObjectRefiner">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ObjectRefiner</span><span class="p">(</span><span class="n">ImageOperation</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for post-detection refinement operations that modify object masks and maps.</span>
 
@@ -1206,14 +1206,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
 
 <div class="viewcode-block" id="ObjectRefiner.apply">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner.apply">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ObjectRefiner.html#phenotypic.abc_.ObjectRefiner.apply">[docs]</a>
     <span class="nd">@validate_operation_integrity</span><span class="p">(</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="ObjectRefiner._operate">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ObjectRefiner._operate">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ObjectRefiner.html#phenotypic.abc_.ObjectRefiner._operate">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">image</span></div>

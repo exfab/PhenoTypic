@@ -1,7 +1,0 @@
-phenotypic.tune.targets package
-===============================
-
-.. automodule:: phenotypic.tune.targets
-   :members:
-   :show-inheritance:
-   :undoc-members:

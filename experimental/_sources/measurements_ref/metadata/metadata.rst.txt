@@ -19,19 +19,28 @@ For the standardized *biological/experimental* vocabulary users supply via the
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_UUID``
      - The unique identifier of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ImageName``
      - The name of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ParentImageName``
      - The name of the parent image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ParentUUID``
      - The UUID of the parent image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ImageFormat``
      - The format of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_ImageType``
      - The type of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_BitDepth``
      - The bit depth of the image.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_FileSuffix``
      - The file suffix of the original file the image was imported from
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

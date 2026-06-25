@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../measurements/colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../measurements/grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../measurements/neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../measurements/symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -682,26 +682,33 @@ the bare <code class="docutils literal notranslate"><span class="pre">~Measureme
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_oversegmented</span></code></p></td>
 <td><p>One colony split into multiple detections.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_undersegmented</span></code></p></td>
 <td><p>A single colony under-detected — its mask captured too small or only partially covering the colony.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_merged</span></code></p></td>
 <td><p>Multiple touching colonies detected as one object.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_background_noise</span></code></p></td>
 <td><p>Not a colony — agar texture, reflection, or vignette.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_debris</span></code></p></td>
 <td><p>Dust, scratch, bubble, or other plate artifact.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ErrorCategory_other</span></code></p></td>
 <td><p>Removed without a specified reason (the catch-all bucket).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>
 </table>

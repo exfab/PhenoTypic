@@ -1,0 +1,79 @@
+phenotypic.analysis.LinearCapAndLagModel
+========================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: LinearCapAndLagModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LinearCapAndLagModel.__init__
+      ~LinearCapAndLagModel.analyze
+      ~LinearCapAndLagModel.construct
+      ~LinearCapAndLagModel.copy
+      ~LinearCapAndLagModel.dash
+      ~LinearCapAndLagModel.dict
+      ~LinearCapAndLagModel.from_orm
+      ~LinearCapAndLagModel.json
+      ~LinearCapAndLagModel.model_construct
+      ~LinearCapAndLagModel.model_copy
+      ~LinearCapAndLagModel.model_dump
+      ~LinearCapAndLagModel.model_dump_json
+      ~LinearCapAndLagModel.model_func
+      ~LinearCapAndLagModel.model_json_schema
+      ~LinearCapAndLagModel.model_parametrized_name
+      ~LinearCapAndLagModel.model_post_init
+      ~LinearCapAndLagModel.model_rebuild
+      ~LinearCapAndLagModel.model_validate
+      ~LinearCapAndLagModel.model_validate_json
+      ~LinearCapAndLagModel.model_validate_strings
+      ~LinearCapAndLagModel.parse_file
+      ~LinearCapAndLagModel.parse_obj
+      ~LinearCapAndLagModel.parse_raw
+      ~LinearCapAndLagModel.results
+      ~LinearCapAndLagModel.schema
+      ~LinearCapAndLagModel.schema_json
+      ~LinearCapAndLagModel.show
+      ~LinearCapAndLagModel.update_forward_refs
+      ~LinearCapAndLagModel.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LinearCapAndLagModel.model_computed_fields
+      ~LinearCapAndLagModel.model_config
+      ~LinearCapAndLagModel.model_extra
+      ~LinearCapAndLagModel.model_fields
+      ~LinearCapAndLagModel.model_fields_set
+      ~LinearCapAndLagModel.smax
+      ~LinearCapAndLagModel.beta
+      ~LinearCapAndLagModel.shoulder_slope_ratio
+      ~LinearCapAndLagModel.stderr_label
+      ~LinearCapAndLagModel.s0_prior
+      ~LinearCapAndLagModel.s0_prior_cv
+      ~LinearCapAndLagModel.s0_prior_sigma
+      ~LinearCapAndLagModel.s0_prior_groupby
+      ~LinearCapAndLagModel.time_label
+      ~LinearCapAndLagModel.loss
+      ~LinearCapAndLagModel.f_scale
+      ~LinearCapAndLagModel.verbose
+      ~LinearCapAndLagModel.on
+      ~LinearCapAndLagModel.groupby
+      ~LinearCapAndLagModel.agg_func
+      ~LinearCapAndLagModel.n_jobs
+   
+   

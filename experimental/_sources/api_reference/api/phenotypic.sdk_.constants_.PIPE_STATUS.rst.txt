@@ -84,6 +84,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.resolved_kind
       ~PIPE_STATUS.resolved_tier
       ~PIPE_STATUS.use_label
+      ~PIPE_STATUS.use_badge
       ~PIPE_STATUS.PROCESSED
       ~PIPE_STATUS.MEASURED
       ~PIPE_STATUS.label

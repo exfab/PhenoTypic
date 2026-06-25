@@ -71,7 +71,6 @@ phenotypic.analysis.GridOccupancy
       ~GridOccupancy.on
       ~GridOccupancy.agg_func
       ~GridOccupancy.metadata
-      ~GridOccupancy.metadata_source
       ~GridOccupancy.unmatched_groups
       ~GridOccupancy.groupby
       ~GridOccupancy.n_jobs

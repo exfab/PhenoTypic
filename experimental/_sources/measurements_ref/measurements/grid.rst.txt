@@ -10,19 +10,28 @@ Constants for grid structure in the PhenoTypic module.
 
    * - Column label
      - Description
+     - Type
    * - ``Grid_RowNum``
      - The row idx of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_RowIntervalStart``
      - The start of the row interval of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_RowIntervalEnd``
      - The end of the row interval of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColNum``
      - The column idx of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColIntervalStart``
      - The start of the column interval of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColIntervalEnd``
      - The end of the column interval of the object
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_RowMajorIdx``
      - The row-major index of the object. Row major is the standard in most programming and data science array libraries. Used for indexing into 2D arrays.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Grid_ColMajorIdx``
      - The col-major index of the object in an array. Lab automation logic uses column-major (column-wise) indexing for well plate operations because 96-well plates are physically arranged with 8 rows (labeled A-H) and 12 columns (numbered 1-12), and this layout maps directly to how multichannel pipettes operate.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

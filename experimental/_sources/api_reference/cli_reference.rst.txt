@@ -24,7 +24,7 @@ Path Options
    discover prior outputs from the output root.
 
 ``-o, --output OUTPUT_DIR``
-   Directory where results (overlays, measurements, checkpoints) are saved.
+   Directory where results (measurements, overlays under ``deliverables/overlays/<dataset>/``, checkpoints) are saved.
    Required for every mode.
 
 Image Options

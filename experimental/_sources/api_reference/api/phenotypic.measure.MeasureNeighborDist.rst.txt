@@ -1,0 +1,61 @@
+phenotypic.measure.MeasureNeighborDist
+======================================
+
+.. currentmodule:: phenotypic.measure
+
+.. autoclass:: MeasureNeighborDist
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeasureNeighborDist.__init__
+      ~MeasureNeighborDist.construct
+      ~MeasureNeighborDist.copy
+      ~MeasureNeighborDist.dict
+      ~MeasureNeighborDist.from_json
+      ~MeasureNeighborDist.from_orm
+      ~MeasureNeighborDist.json
+      ~MeasureNeighborDist.measure
+      ~MeasureNeighborDist.model_construct
+      ~MeasureNeighborDist.model_copy
+      ~MeasureNeighborDist.model_dump
+      ~MeasureNeighborDist.model_dump_json
+      ~MeasureNeighborDist.model_json_schema
+      ~MeasureNeighborDist.model_parametrized_name
+      ~MeasureNeighborDist.model_post_init
+      ~MeasureNeighborDist.model_rebuild
+      ~MeasureNeighborDist.model_validate
+      ~MeasureNeighborDist.model_validate_json
+      ~MeasureNeighborDist.model_validate_strings
+      ~MeasureNeighborDist.parse_file
+      ~MeasureNeighborDist.parse_obj
+      ~MeasureNeighborDist.parse_raw
+      ~MeasureNeighborDist.schema
+      ~MeasureNeighborDist.schema_json
+      ~MeasureNeighborDist.to_json
+      ~MeasureNeighborDist.update_forward_refs
+      ~MeasureNeighborDist.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureNeighborDist.model_computed_fields
+      ~MeasureNeighborDist.model_config
+      ~MeasureNeighborDist.model_extra
+      ~MeasureNeighborDist.model_fields
+      ~MeasureNeighborDist.model_fields_set
+   
+   

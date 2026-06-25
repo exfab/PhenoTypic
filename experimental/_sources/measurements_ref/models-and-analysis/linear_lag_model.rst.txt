@@ -1,0 +1,28 @@
+LINEAR_LAG_MODEL
+================
+
+Python object: ``phenotypic.schema._linear_lag_model.LINEAR_LAG_MODEL``
+
+.. list-table:: Category: **LinearLagModel**
+   :header-rows: 1
+
+   * - Column label
+     - Description
+     - Type
+     - Biology
+   * - ``LinearLagModel_v``
+     - The post-lag phase growth rate.
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - The post-lag phase growth rate using the target metric (usually radius)
+   * - ``LinearLagModel_s0``
+     - The initial value of the target metric
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - The initial size
+   * - ``LinearLagModel_lambda``
+     - The duration of the lag phase
+     - :bdg-ref-success:`Tier 1 · Direct phenotype <measurement-tiers>`
+     - 
+   * - ``LinearLagModel_alpha``
+     - lag phase transition sharpness
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
+     - 

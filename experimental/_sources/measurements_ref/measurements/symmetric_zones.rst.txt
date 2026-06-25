@@ -21,34 +21,34 @@ symmetry of that expansion, not individual hyphae.
 
    * - Column label
      - Description
-     - Use
+     - Type
    * - ``SymZones_CoreRadius``
      - Radius of the dense inoculum core, determined by PELT changepoint detection on the radial mask-density profile centered on the inoculum. Growth measurements are reported relative to this boundary.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SymmetricRadius``
      - Radial distance from the inoculum centroid at which colony growth ceases to be angularly uniform. Computed as the first radius past the core where the smoothed per-annulus circular mean resultant length of mask-boundary pixels exceeds the symmetry threshold. Equals the colony outer envelope when growth remains symmetric throughout.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_MeanExpansion``
      - Mean distance of mask-boundary pixels from the inoculum centroid, measured from the core boundary outward. Captures the typical radial extent of growth past the inoculum, averaged over all angular directions.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_MaxExpansion``
      - Maximum distance of any mask pixel from the inoculum centroid, measured from the core boundary outward. Captures the farthest extent of growth past the inoculum.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_CoreEndRadius``
      - Mean radius of the inoculum core boundary derived from the per-angle bright/background ratio walk. Each of 360 1° angular sectors finds the outer edge of the contiguous core run (bright fraction >= tau_core); the reported value is the mean across sectors. Compare with CoreRadius (the global PELT changepoint) — close agreement indicates a well-formed core.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_DenseEndRadius``
      - Mean outer radius of the dense branching zone, where mask-bright pixels dominate (bright fraction >= tau_sparse). Per-angle radii are capped at the SymmetricRadius and angularly median-smoothed before averaging.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SparseEndRadius``
      - Mean outer radius of the sparse branching zone (= colony envelope inside the symmetric growth front). Equals min(objmask outer envelope, SymmetricRadius) per angle, averaged across 360 sectors.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_CoreArea``
      - Pixel^2 area of the inoculum core zone, integrated across the 360-sector polar polygon defined by the per-angle core radii.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_DenseArea``
      - Pixel^2 area of the dense branching zone, the annular region between the per-angle core boundary and dense-branching boundary.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SparseArea``
      - Pixel^2 area of the sparse branching zone, the annular region between the per-angle dense boundary and the symmetric-envelope outer boundary.
-     - Descriptive trait (Tier 2)
+     - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`

@@ -611,6 +611,10 @@
 <span class="c1"># Not used by _classify; consumed by the Task 10 coverage-gate test.</span>
 <span class="n">_VALID_KINDS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="s2">&quot;quality&quot;</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">,</span> <span class="s2">&quot;derived&quot;</span><span class="p">})</span>
 
+<span class="c1"># NOTE: keep the tier rows here in sync with :data:`_BADGE_SPECS` below — both</span>
+<span class="c1"># encode the same (tier, kind) → Tier-1/2/3 taxonomy (this one as plain text for</span>
+<span class="c1"># the frozen ``use_label`` contract, the other as rendered badges). Adding a tier</span>
+<span class="c1"># means editing both.</span>
 <span class="n">_USE_LABELS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
     <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">):</span> <span class="s2">&quot;Direct phenotype (Tier 1)&quot;</span><span class="p">,</span>
     <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">):</span> <span class="s2">&quot;Descriptive trait (Tier 2)&quot;</span><span class="p">,</span>
@@ -622,9 +626,35 @@
     <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;derived&quot;</span><span class="p">):</span> <span class="s2">&quot;Descriptive trait (Tier 2)&quot;</span><span class="p">,</span>
 <span class="p">}</span>
 
+<span class="c1">#: MyST ``(label)=`` anchors in ``explanation/measurement_classification_system``.</span>
+<span class="c1">#: Tier badges deep-link to the trust-contract table; kind-only badges (Quality /</span>
+<span class="c1">#: Identity / normalization-Derived) link to the page top.</span>
+<span class="n">_ANCHOR_TIERS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="s2">&quot;measurement-tiers&quot;</span>
+<span class="n">_ANCHOR_PAGE</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="s2">&quot;measurement-classification&quot;</span>
 
-<div class="viewcode-block" id="Entry">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.Entry">[docs]</a>
+<span class="c1">#: Visual-badge spec per ``(tier, kind)``: ``(text, sphinx-design color, ref anchor)``.</span>
+<span class="c1">#: Keyed identically to :data:`_USE_LABELS` (tier first); keep the tier rows in the</span>
+<span class="c1">#: two dicts in sync. The colours encode the</span>
+<span class="c1">#: single-value-trust gradient — green (report alone) → blue (interpret</span>
+<span class="c1">#: directionally) → amber (use only in aggregate) — with greys for the</span>
+<span class="c1">#: non-outcome Identity/Quality columns. Rendered as ``:bdg-ref-{color}:`` xref</span>
+<span class="c1">#: badges (sphinx-design) so each pill links to the explanation page.</span>
+<span class="n">_BADGE_SPECS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Tier 1 · Direct phenotype&quot;</span><span class="p">,</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_TIERS</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Tier 2 · Descriptive trait&quot;</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_TIERS</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Tier 3 · Discriminative feature&quot;</span><span class="p">,</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_TIERS</span><span class="p">),</span>
+    <span class="c1"># Parameterization-derived members inherit their input&#39;s trust contract, so</span>
+    <span class="c1"># they reuse the Tier-1/Tier-2 pills verbatim.</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;derived&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Tier 1 · Direct phenotype&quot;</span><span class="p">,</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_TIERS</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;derived&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Tier 2 · Descriptive trait&quot;</span><span class="p">,</span> <span class="s2">&quot;primary&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_TIERS</span><span class="p">),</span>
+    <span class="c1"># Non-tiered kinds: de-emphasised greys for design/quality columns, cyan for</span>
+    <span class="c1"># normalization-derived outputs (tier inherited at runtime, not declared here).</span>
+    <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;quality&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Quality&quot;</span><span class="p">,</span> <span class="s2">&quot;secondary&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_PAGE</span><span class="p">),</span>
+    <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Identity / design&quot;</span><span class="p">,</span> <span class="s2">&quot;muted&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_PAGE</span><span class="p">),</span>
+    <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;derived&quot;</span><span class="p">):</span> <span class="p">(</span><span class="s2">&quot;Derived&quot;</span><span class="p">,</span> <span class="s2">&quot;info&quot;</span><span class="p">,</span> <span class="n">_ANCHOR_PAGE</span><span class="p">),</span>
+<span class="p">}</span>
+
+
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Entry</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Declarative value for a :class:`MeasurementInfo` member.</span>
@@ -665,8 +695,7 @@
                 <span class="sa">f</span><span class="s2">&quot;Entry.derivation_type must be one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_DERIVATION_TYPES</span><span class="p">)</span><span class="si">}</span><span class="s2"> or None&quot;</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">derives_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">derives_from</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Entry.derives_from must be a string token or None&quot;</span><span class="p">)</span></div>
-
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Entry.derives_from must be a string token or None&quot;</span><span class="p">)</span>
 
 
 <span class="c1">#: Source-root-absolute URL prefix for measurement asset images. Root-absolute so</span>
@@ -706,11 +735,12 @@
     <span class="n">name_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Name&quot;</span><span class="p">,</span>
     <span class="n">desc_header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Description&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render a list-table; Use/Biology/Image columns appear only when populated.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render a list-table; Type/Biology/Image columns appear only when populated.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, use_label)``</span>
-<span class="sd">            per member.</span>
+<span class="sd">        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge)``</span>
+<span class="sd">            per member. ``type_badge`` is raw RST (a sphinx-design ``:bdg-ref:``</span>
+<span class="sd">            role) inserted unescaped, so the pill renders as a link.</span>
 <span class="sd">        title: Bold table caption (rendered ``Category: **{title}**``).</span>
 <span class="sd">        name_header: Header for the first (name) column.</span>
 <span class="sd">        desc_header: Header for the description column.</span>
@@ -727,7 +757,7 @@
         <span class="sa">f</span><span class="s2">&quot;     - </span><span class="si">{</span><span class="n">desc_header</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
     <span class="p">]</span>
     <span class="k">if</span> <span class="n">has_use</span><span class="p">:</span>
-        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;     - Use&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;     - Type&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">has_bio</span><span class="p">:</span>
         <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;     - Biology&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">has_img</span><span class="p">:</span>
@@ -793,7 +823,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasurementInfo</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for creating standardized measurement information enumerations.</span>
 
@@ -901,7 +931,7 @@
     <span class="n">derives_from</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="MeasurementInfo.category">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.category">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.category">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">category</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the category name for this measurement enumeration.</span>
@@ -922,7 +952,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo.kind">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.kind">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.kind">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">kind</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Coarse classification kind, or None until assigned by a base class.&quot;&quot;&quot;</span>
@@ -930,7 +960,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo.tier">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.tier">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.tier">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">tier</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Trust tier (1/2/3) for primary measurements, or None.&quot;&quot;&quot;</span>
@@ -977,7 +1007,7 @@
         <span class="k">return</span> <span class="n">obj</span>
 
 <div class="viewcode-block" id="MeasurementInfo.__str__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.__str__">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.__str__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the string representation of this measurement as the prefixed name.</span>
 
@@ -1010,8 +1040,29 @@
             <span class="k">return</span> <span class="s2">&quot;&quot;</span>
         <span class="k">return</span> <span class="n">_USE_LABELS</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">tier</span><span class="p">,</span> <span class="n">kind</span><span class="p">),</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">use_badge</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;RST sphinx-design xref badge for this member&#39;s classification.</span>
+
+<span class="sd">        A coloured ``:bdg-ref-{color}:`` pill linking to the measurement-</span>
+<span class="sd">        classification explanation page (tier badges deep-link to the trust-</span>
+<span class="sd">        contract table). Unlike :attr:`use_label`, this covers *every* kind —</span>
+<span class="sd">        Identity, Quality and normalization-Derived included — so the rendered</span>
+<span class="sd">        reference table classifies every column. Returns ``&quot;&quot;`` for members that</span>
+<span class="sd">        do not classify (e.g. enums that subclass ``MeasurementInfo`` directly).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">kind</span><span class="p">,</span> <span class="n">tier</span> <span class="o">=</span> <span class="n">_classify</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">_BADGE_SPECS</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">tier</span><span class="p">,</span> <span class="n">kind</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">text</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">anchor</span> <span class="o">=</span> <span class="n">spec</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;:bdg-ref-</span><span class="si">{</span><span class="n">color</span><span class="si">}</span><span class="s2">:`</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2"> &lt;</span><span class="si">{</span><span class="n">anchor</span><span class="si">}</span><span class="s2">&gt;`&quot;</span>
+
 <div class="viewcode-block" id="MeasurementInfo.get_labels">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.get_labels">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.get_labels">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_labels</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all measurement labels without category prefix.</span>
@@ -1030,7 +1081,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo.get_headers">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.get_headers">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.get_headers">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_headers</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get all measurement headers with category prefix.</span>
@@ -1049,7 +1100,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo.rst_table">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.rst_table">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.rst_table">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">rst_table</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
@@ -1077,7 +1128,7 @@
                 <span class="n">m</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span>
                 <span class="n">m</span><span class="o">.</span><span class="n">bio_desc</span><span class="p">,</span>
                 <span class="n">m</span><span class="o">.</span><span class="n">image</span><span class="p">,</span>
-                <span class="n">m</span><span class="o">.</span><span class="n">use_label</span><span class="p">,</span>
+                <span class="n">m</span><span class="o">.</span><span class="n">use_badge</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">cls</span>
         <span class="p">]</span>
@@ -1087,7 +1138,7 @@
 
 
 <div class="viewcode-block" id="MeasurementInfo.append_rst_to_doc">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.schema.html#phenotypic.abc_.MeasurementInfo.append_rst_to_doc">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.MeasurementInfo.html#phenotypic.abc_.MeasurementInfo.append_rst_to_doc">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">append_rst_to_doc</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Append the measurement documentation table to a module or class docstring.</span>

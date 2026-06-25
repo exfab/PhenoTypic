@@ -16,9 +16,13 @@ spurious detections (e.g. fragmentation, artifacts).
 
    * - Column label
      - Description
+     - Type
    * - ``QC_Count_Detected``
      - Detected colony count in the group.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Count_Expected``
      - Expected colony count from the metadata frame.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_Count_Delta``
      - Detected − Expected (signed; negative = missing).
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

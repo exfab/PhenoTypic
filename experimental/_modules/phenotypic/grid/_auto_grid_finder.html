@@ -638,7 +638,7 @@
 
 
 <div class="viewcode-block" id="AutoGridFinder">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AutoGridFinder</span><span class="p">(</span><span class="n">GridFinder</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Automatically determines grid row and column edges from detected object</span>
@@ -735,7 +735,7 @@
     <span class="n">max_iter</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="AutoGridFinder.model_post_init">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.model_post_init">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.model_post_init">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Warn on deprecated ``tol`` / ``max_iter`` parameters.</span>
 
@@ -1680,7 +1680,7 @@
     <span class="c1"># ------------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="AutoGridFinder.get_row_edges">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.get_row_edges">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.get_row_edges">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_row_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return row edge coordinates for *image*.</span>
 
@@ -1707,7 +1707,7 @@
 
 
 <div class="viewcode-block" id="AutoGridFinder.get_col_edges">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.get_col_edges">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.get_col_edges">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_col_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return column edge coordinates for *image*.</span>
 
@@ -1917,7 +1917,7 @@
         <span class="p">}</span>
 
 <div class="viewcode-block" id="AutoGridFinder.dashboard">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.grid.html#phenotypic.grid.AutoGridFinder.dashboard">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.grid.AutoGridFinder.html#phenotypic.grid.AutoGridFinder.dashboard">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">show_progress</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Notebook Plotly diagnostic dashboard for grid fitting.</span>
 

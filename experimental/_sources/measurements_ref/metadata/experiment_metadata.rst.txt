@@ -16,13 +16,19 @@ other experimental-tag enums. Recommended vocabulary, not a validator.
 
    * - Column label
      - Description
+     - Type
    * - ``Metadata_ExperimentID``
      - Unique identifier for the experiment.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Project``
      - Project name or identifier.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Dataset``
      - Dataset name (matches the CLI-emitted Metadata_Dataset column).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Protocol``
      - Protocol name or version followed.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_Notes``
      - Free-text notes or comments.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

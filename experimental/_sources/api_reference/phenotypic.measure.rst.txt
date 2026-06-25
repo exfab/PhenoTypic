@@ -1,7 +1,0 @@
-phenotypic.measure package
-==========================
-
-.. automodule:: phenotypic.measure
-   :members:
-   :show-inheritance:
-   :undoc-members:

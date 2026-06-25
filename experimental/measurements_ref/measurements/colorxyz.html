@@ -564,7 +564,7 @@
 <li class="toctree-l2"><a class="reference internal" href="colorcomposition.html">ColorComposition</a></li>
 <li class="toctree-l2"><a class="reference internal" href="object.html">Object</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid.html">Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="grid_spatial.html">GridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="neighbor_dist.html">GridSpatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_linreg_stats.html">GridLinReg</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_spread.html">GridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="symmetric_zones.html">SymZones</a></li>
@@ -573,8 +573,8 @@
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../models-and-analysis/index.html">Models &amp; Analysis</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/log_growth_model.html">LogGrowthModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_softplus_model.html">LinearSoftplus</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/double_softplus_model.html">DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_lag_model.html">LinearLagModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/linear_cap_and_lag_model.html">LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/edge_correction.html">EdgeCorrection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../models-and-analysis/model_metrics.html">ModelMetrics</a></li>
 </ul>
@@ -684,105 +684,105 @@ estimates.</p>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
-<th class="head"><p>Use</p></th>
+<th class="head"><p>Type</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMin</span></code></p></td>
 <td><p>The minimum X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXQ1</span></code></p></td>
 <td><p>The lower quartile (Q1) X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMean</span></code></p></td>
 <td><p>The mean X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMedian</span></code></p></td>
 <td><p>The median X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXQ3</span></code></p></td>
 <td><p>The upper quartile (Q3) X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXMax</span></code></p></td>
 <td><p>The maximum X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXStdDev</span></code></p></td>
 <td><p>The standard deviation of the X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieXCoeffVar</span></code></p></td>
 <td><p>The coefficient of variation of the X value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMin</span></code></p></td>
 <td><p>The minimum Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYQ1</span></code></p></td>
 <td><p>The lower quartile (Q1) Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMean</span></code></p></td>
 <td><p>The mean Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMedian</span></code></p></td>
 <td><p>The median Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYQ3</span></code></p></td>
 <td><p>The upper quartile (Q3) Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYMax</span></code></p></td>
 <td><p>The maximum Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYStdDev</span></code></p></td>
 <td><p>The standard deviation of the Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieYCoeffVar</span></code></p></td>
 <td><p>The coefficient of variation of the Y value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMin</span></code></p></td>
 <td><p>The minimum Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZQ1</span></code></p></td>
 <td><p>The lower quartile (Q1) Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMean</span></code></p></td>
 <td><p>The mean Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMedian</span></code></p></td>
 <td><p>The median Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZQ3</span></code></p></td>
 <td><p>The upper quartile (Q3) Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZMax</span></code></p></td>
 <td><p>The maximum Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZStdDev</span></code></p></td>
 <td><p>The standard deviation of the Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorXYZ_CieZCoeffVar</span></code></p></td>
 <td><p>The coefficient of variation of the Z value of the object in CIE XYZ color space</p></td>
-<td><p>Discriminative feature (Tier 3)</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 3 · Discriminative feature</span></a></p></td>
 </tr>
 </tbody>
 </table>

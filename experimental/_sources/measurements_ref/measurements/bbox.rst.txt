@@ -15,23 +15,34 @@ grid alignment assessment, and neighbor-distance calculations.
 
    * - Column label
      - Description
+     - Type
    * - ``Bbox_CenterRR``
      - The row coordinate of the center of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_MinRR``
      - The smallest row coordinate of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_MaxRR``
      - The largest row coordinate of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_CenterCC``
      -  The column coordinate of the center of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_MinCC``
      -  The smallest column coordinate of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_MaxCC``
      -  The largest column coordinate of the bounding box.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_IntensityWeightedCenterRR``
      - The intensity-weighted center row coordinate of the object (skimage ``centroid_weighted``).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_IntensityWeightedCenterCC``
      - The intensity-weighted center column coordinate of the object (skimage ``centroid_weighted``).
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_DistWeightedCenterRR``
      - Row coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Bbox_DistWeightedCenterCC``
      - Column coordinate of the per-object Euclidean-distance-transform maximum (deepest interior point of the object mask). Robust to thin filamentous extensions that pull intensity-weighted centroids off-body.
+     - :bdg-ref-muted:`Identity / design <measurement-classification>`

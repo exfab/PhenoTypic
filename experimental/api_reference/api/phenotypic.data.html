@@ -642,13 +642,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.filter_spec_query.html">phenotypic.analysis.filter_spec_query</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_html.html">phenotypic.analysis.render_error_analysis_html</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.render_error_analysis_report.html">phenotypic.analysis.render_error_analysis_report</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.DoubleSoftplus.html">phenotypic.analysis.DoubleSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearCapAndLagModel.html">phenotypic.analysis.LinearCapAndLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.EdgeCorrector.html">phenotypic.analysis.EdgeCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ErrorCutoffFinder.html">phenotypic.analysis.ErrorCutoffFinder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ExpectedVsDetectedCount.html">phenotypic.analysis.ExpectedVsDetectedCount</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.GridOccupancy.html">phenotypic.analysis.GridOccupancy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.ICC.html">phenotypic.analysis.ICC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearSoftplus.html">phenotypic.analysis.LinearSoftplus</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LinearLagModel.html">phenotypic.analysis.LinearLagModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.LogGrowthModel.html">phenotypic.analysis.LogGrowthModel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MADOutlierRemover.html">phenotypic.analysis.MADOutlierRemover</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.analysis.MaxModifiedZScore.html">phenotypic.analysis.MaxModifiedZScore</a></li>
@@ -762,7 +762,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureTexture.html">phenotypic.measure.MeasureTexture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html">phenotypic.measure.MeasureGridSpread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridLinRegStats.html">phenotypic.measure.MeasureGridLinRegStats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureGridSpatial.html">phenotypic.measure.MeasureGridSpatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.measure.MeasureNeighborDist.html">phenotypic.measure.MeasureNeighborDist</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.prefab.html">phenotypic.prefab</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -830,6 +830,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_measurements_dir.html">phenotypic.sdk_.dataset_measurements_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_overlays_dir.html">phenotypic.sdk_.dataset_overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.dataset_results_dir.html">phenotypic.sdk_.dataset_results_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1154,43 +1155,43 @@ return arrays or ready-to-use <cite>Image</cite>/<cite>GridImage</cite> objects 
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_synth_yeast_plate" title="phenotypic.data.load_synth_yeast_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_synth_yeast_plate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_synth_yeast_plate.html#phenotypic.data.load_synth_yeast_plate" title="phenotypic.data.load_synth_yeast_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_synth_yeast_plate</span></code></a></p></td>
 <td><p>Returns a phenotypic.GridImage of a synthetic plate with the colonies detected</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.make_synthetic_colony" title="phenotypic.data.make_synthetic_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_colony</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.make_synthetic_colony.html#phenotypic.data.make_synthetic_colony" title="phenotypic.data.make_synthetic_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_colony</span></code></a></p></td>
 <td><p>Generate a single bright fungal colony on solid-media agar.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.make_synthetic_plate" title="phenotypic.data.make_synthetic_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_plate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.make_synthetic_plate.html#phenotypic.data.make_synthetic_plate" title="phenotypic.data.make_synthetic_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_plate</span></code></a></p></td>
 <td><p>Generate a synthetic array plate with multiple circular colonies.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.make_synthetic_filamentous_plate" title="phenotypic.data.make_synthetic_filamentous_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_filamentous_plate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.make_synthetic_filamentous_plate.html#phenotypic.data.make_synthetic_filamentous_plate" title="phenotypic.data.make_synthetic_filamentous_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_synthetic_filamentous_plate</span></code></a></p></td>
 <td><p>Generate a synthetic plate with filamentous (hairy/branching) colonies.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_plate_12hr" title="phenotypic.data.load_plate_12hr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_plate_12hr</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_plate_12hr.html#phenotypic.data.load_plate_12hr" title="phenotypic.data.load_plate_12hr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_plate_12hr</span></code></a></p></td>
 <td><p>Returns a plate image of a K.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_plate_72hr" title="phenotypic.data.load_plate_72hr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_plate_72hr</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_plate_72hr.html#phenotypic.data.load_plate_72hr" title="phenotypic.data.load_plate_72hr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_plate_72hr</span></code></a></p></td>
 <td><p>Return a image of a k.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_early_colony" title="phenotypic.data.load_early_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_early_colony</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_early_colony.html#phenotypic.data.load_early_colony" title="phenotypic.data.load_early_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_early_colony</span></code></a></p></td>
 <td><p>Returns a colony image array of K.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_faint_early_colony" title="phenotypic.data.load_faint_early_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_faint_early_colony</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_faint_early_colony.html#phenotypic.data.load_faint_early_colony" title="phenotypic.data.load_faint_early_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_faint_early_colony</span></code></a></p></td>
 <td><p>Returns a faint colony image array of K.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_colony" title="phenotypic.data.load_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_colony</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_colony.html#phenotypic.data.load_colony" title="phenotypic.data.load_colony"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_colony</span></code></a></p></td>
 <td><p>Returns a colony image array of K.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_yeast_plate" title="phenotypic.data.load_yeast_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_yeast_plate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_yeast_plate.html#phenotypic.data.load_yeast_plate" title="phenotypic.data.load_yeast_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_yeast_plate</span></code></a></p></td>
 <td><p>Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_fungi_plate" title="phenotypic.data.load_fungi_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_fungi_plate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_fungi_plate.html#phenotypic.data.load_fungi_plate" title="phenotypic.data.load_fungi_plate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_fungi_plate</span></code></a></p></td>
 <td><p>Load an image Neurospora filamentous fungi 96-well plate image cropped to the center.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_yeast_plate_full" title="phenotypic.data.load_yeast_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_yeast_plate_full</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.data.load_yeast_plate_full.html#phenotypic.data.load_yeast_plate_full" title="phenotypic.data.load_yeast_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_yeast_plate_full</span></code></a></p></td>
 <td><p>Load a full (uncropped) Rhodotorula yeast plate image with color checker.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="../phenotypic.data.html#phenotypic.data.load_fungi_plate_full" title="phenotypic.data.load_fungi_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_fungi_plate_full</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.data.load_fungi_plate_full.html#phenotypic.data.load_fungi_plate_full" title="phenotypic.data.load_fungi_plate_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_fungi_plate_full</span></code></a></p></td>
 <td><p>Load a full (uncropped) Neurospora filamentous fungi plate image with color checker.</p></td>
 </tr>
 </tbody>

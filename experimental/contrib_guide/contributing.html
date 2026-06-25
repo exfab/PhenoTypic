@@ -634,7 +634,7 @@
 </section>
 <section id="adding-a-tuning-objective-scorer">
 <h2>Adding a tuning objective (Scorer)<a class="headerlink" href="#adding-a-tuning-objective-scorer" title="Link to this heading">#</a></h2>
-<p>A tuning <em>objective</em> is a <a class="reference internal" href="../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer" title="phenotypic.tune.score.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a>. Every value the
+<p>A tuning <em>objective</em> is a <a class="reference internal" href="../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer" title="phenotypic.tune.score.Scorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scorer</span></code></a>. Every value the
 tuner optimizes is a bounded <strong>cost</strong> in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code> (<code class="docutils literal notranslate"><span class="pre">0</span></code> = perfect, <code class="docutils literal notranslate"><span class="pre">1</span></code> =
 worst) and the optimizer <strong>minimizes</strong> it. You emit your metric’s <em>natural</em>
 value and declare its <em>sense</em>; the framework orients, aggregates, and combines.</p>
@@ -684,10 +684,10 @@ is already <code class="docutils literal notranslate"><span class="pre">[0,</spa
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Solidity&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Shape_Solidity&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">())}</span>
 </pre></div>
 </div>
-<p>The base <a class="reference internal" href="../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.Scorer.score_image" title="phenotypic.tune.score.Scorer.score_image"><code class="xref py py-meth docutils literal notranslate"><span class="pre">score_image()</span></code></a> template method then turns
+<p>The base <a class="reference internal" href="../api_reference/api/phenotypic.tune.score.Scorer.html#phenotypic.tune.score.Scorer.score_image" title="phenotypic.tune.score.Scorer.score_image"><code class="xref py py-meth docutils literal notranslate"><span class="pre">score_image()</span></code></a> template method then turns
 each natural term into cost via <code class="docutils literal notranslate"><span class="pre">to_cost</span></code>; the <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code> robust-aggregates
 (<code class="docutils literal notranslate"><span class="pre">median</span> <span class="pre">+</span> <span class="pre">λ·IQR</span></code>, clamped) and the optimizer minimizes. A
-<a class="reference internal" href="../api_reference/phenotypic.tune.score.html#phenotypic.tune.score.CompositeScorer" title="phenotypic.tune.score.CompositeScorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CompositeScorer</span></code></a> combines several scorers’ per-child
+<a class="reference internal" href="../api_reference/api/phenotypic.tune.score.CompositeScorer.html#phenotypic.tune.score.CompositeScorer" title="phenotypic.tune.score.CompositeScorer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CompositeScorer</span></code></a> combines several scorers’ per-child
 cost with an <strong>augmented Tchebycheff</strong> scalarization (worst-axis-dominant by
 default) — see the explainer
 <code class="docutils literal notranslate"><span class="pre">docs/superpowers/explain/tune-with-optuna.md</span></code> for the math.</p>

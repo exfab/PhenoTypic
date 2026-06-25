@@ -1,7 +1,0 @@
-phenotypic.sdk\_.submitit\_ module
-==================================
-
-.. automodule:: phenotypic.sdk_.submitit_
-   :members:
-   :show-inheritance:
-   :undoc-members:

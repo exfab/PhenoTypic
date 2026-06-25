@@ -691,13 +691,13 @@ that post edits change per-image measurement and require a CLI re-run
 <li><p><strong>Author the filter chain</strong>: pick a class from the “Add filter…”
 dropdown (<code class="docutils literal notranslate"><span class="pre">EdgeCorrector</span></code>, <code class="docutils literal notranslate"><span class="pre">TukeyOutlierRemover</span></code>). Filters reshape the
 aggregate measurements during analysis — they don’t touch the master.</p></li>
-<li><p><strong>Pick the endpoint model</strong>: <code class="docutils literal notranslate"><span class="pre">LogGrowthModel</span></code>, <code class="docutils literal notranslate"><span class="pre">LinearSoftplus</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">DoubleSoftplus</span></code>. Only one model can be configured at a time;
+<li><p><strong>Pick the endpoint model</strong>: <code class="docutils literal notranslate"><span class="pre">LogGrowthModel</span></code>, <code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code>. Only one model can be configured at a time;
 selecting <code class="docutils literal notranslate"><span class="pre">(no</span> <span class="pre">model)</span></code> clears it and disables the run button.</p></li>
 <li><p><strong>Tune params inline</strong>: every section card hosts an editable form
 generated from the analyzer’s constructor signature. Bools become
 switches, numerics become number inputs, <code class="docutils literal notranslate"><span class="pre">Literal[...]</span></code> becomes a
-dropdown, and multi-type unions (e.g. <code class="docutils literal notranslate"><span class="pre">LinearSoftplus.s0_prior</span></code>)
+dropdown, and multi-type unions (e.g. <code class="docutils literal notranslate"><span class="pre">LinearLagModel.s0_prior</span></code>)
 render as a small type-tag dropdown plus an adaptive value input.
 Edits save to <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/pipeline.json</span></code> automatically.</p></li>
 <li><p><strong>Run analysis</strong>: click <code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">analysis</span></code>. The sub-app reads

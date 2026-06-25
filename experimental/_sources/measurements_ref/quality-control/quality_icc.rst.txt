@@ -18,9 +18,13 @@ downstream of the QC pipeline.
 
    * - Column label
      - Description
+     - Type
    * - ``QC_ICC_NumSubjects``
      - Distinct subjects (e.g. timepoints) in the two-way model.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_ICC_NumRaters``
      - Replicates per subject in the two-way model.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``QC_ICC_NumMembers``
      - Total measurements contributing to the ICC.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`

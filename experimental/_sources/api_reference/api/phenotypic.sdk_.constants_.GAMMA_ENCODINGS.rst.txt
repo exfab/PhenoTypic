@@ -84,6 +84,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.resolved_kind
       ~GAMMA_ENCODINGS.resolved_tier
       ~GAMMA_ENCODINGS.use_label
+      ~GAMMA_ENCODINGS.use_badge
       ~GAMMA_ENCODINGS.SRGB
       ~GAMMA_ENCODINGS.LINEAR
       ~GAMMA_ENCODINGS.label

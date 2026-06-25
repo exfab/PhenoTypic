@@ -32,13 +32,13 @@
       :template: class.rst
       :nosignatures:
    
-      DoubleSoftplus
+      LinearCapAndLagModel
       EdgeCorrector
       ErrorCutoffFinder
       ExpectedVsDetectedCount
       GridOccupancy
       ICC
-      LinearSoftplus
+      LinearLagModel
       LogGrowthModel
       MADOutlierRemover
       MaxModifiedZScore

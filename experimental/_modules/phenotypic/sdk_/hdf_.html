@@ -614,7 +614,7 @@
 
 
 <div class="viewcode-block" id="HDF">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HDF</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents an interface to manage HDF5 files with support for single or set image modes,</span>
@@ -662,7 +662,7 @@
     <span class="n">EXT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;.h5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf&quot;</span><span class="p">,</span> <span class="s2">&quot;.he5&quot;</span><span class="p">}</span>
 
 <div class="viewcode-block" id="HDF.__init__">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.__init__">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.__init__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;single&quot;</span><span class="p">,</span> <span class="s2">&quot;set&quot;</span><span class="p">]):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initializes a class instance to manage HDF5 file structures for single or set image</span>
@@ -715,7 +715,7 @@
 
 
 <div class="viewcode-block" id="HDF.safe_writer">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.safe_writer">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.safe_writer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">safe_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a writer object that provides safe and controlled write access to an</span>
@@ -811,7 +811,7 @@
 
 
 <div class="viewcode-block" id="HDF.swmr_writer">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.swmr_writer">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.swmr_writer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">swmr_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns a writer object that provides safe SWMR-compatible write access to an</span>
@@ -923,7 +923,7 @@
 
 
 <div class="viewcode-block" id="HDF.strict_writer">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.strict_writer">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.strict_writer">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">strict_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Provides access to an HDF5 file in read/write mode using the `h5py` library. This</span>
@@ -947,19 +947,19 @@
 
 
 <div class="viewcode-block" id="HDF.swmr_reader">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.swmr_reader">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.swmr_reader">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">swmr_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span> <span class="n">swmr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="HDF.reader">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.reader">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.reader">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reader</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span> <span class="n">swmr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="HDF.get_group">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_group">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_group">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_group</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">posix</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1028,7 +1028,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_home">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_home">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_home">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_home</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retrieves a specific group from an HDF file corresponding to single image data.</span>
@@ -1052,13 +1052,13 @@
 
 
 <div class="viewcode-block" id="HDF.get_root_group">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_root_group">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_root_group">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_root_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span> <span class="n">posix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="HDF.get_data_group">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_data_group">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_data_group">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_data_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;This method is only available for image sets&quot;</span><span class="p">)</span>
@@ -1066,7 +1066,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_image_group">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_image_group">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_image_group">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_image_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;single&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_home</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
@@ -1079,7 +1079,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_image_measurement_subgroup">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_image_measurement_subgroup">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_image_measurement_subgroup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_image_measurement_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
             <span class="n">handle</span><span class="p">,</span>
@@ -1090,7 +1090,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_status_subgroup">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_status_subgroup">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_status_subgroup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_status_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
             <span class="n">handle</span><span class="p">,</span>
@@ -1101,7 +1101,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_protected_metadata_subgroup">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_protected_metadata_subgroup">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_protected_metadata_subgroup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_protected_metadata_subgroup</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
@@ -1114,7 +1114,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_public_metadata_subgroup">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_public_metadata_subgroup">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_public_metadata_subgroup">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_public_metadata_subgroup</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
@@ -1127,7 +1127,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_array2hdf5">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_array2hdf5">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_array2hdf5">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_array2hdf5</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1162,7 +1162,7 @@
     <span class="c1"># =================== PANDAS2HDF FUNCTIONALITY ===================</span>
 
 <div class="viewcode-block" id="HDF.assert_swmr_on">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.assert_swmr_on">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.assert_swmr_on">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">assert_swmr_on</span><span class="p">(</span><span class="n">g</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Assert that SWMR mode is enabled on the group&#39;s file.</span>
@@ -1180,7 +1180,7 @@
 
 
 <div class="viewcode-block" id="HDF.get_uncompressed_sizes_for_group">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.get_uncompressed_sizes_for_group">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_uncompressed_sizes_for_group">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_uncompressed_sizes_for_group</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -1721,7 +1721,7 @@
     <span class="c1"># =================== MAIN PANDAS2HDF FUNCTIONS ===================</span>
 
 <div class="viewcode-block" id="HDF.preallocate_series_layout">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.preallocate_series_layout">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.preallocate_series_layout">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">preallocate_series_layout</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -1883,7 +1883,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_series_new">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_series_new">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_series_new">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_series_new</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -1977,7 +1977,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_series_update">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_series_update">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_series_update">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_series_update</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2113,7 +2113,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_series_append">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_series_append">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_series_append">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_series_append</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2154,7 +2154,7 @@
 
 
 <div class="viewcode-block" id="HDF.load_series">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.load_series">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.load_series">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">load_series</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2231,7 +2231,7 @@
         <span class="k">return</span> <span class="n">df</span>
 
 <div class="viewcode-block" id="HDF.preallocate_frame_layout">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.preallocate_frame_layout">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.preallocate_frame_layout">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">preallocate_frame_layout</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2332,7 +2332,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_frame_new">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_frame_new">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_frame_new">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_frame_new</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2399,7 +2399,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_frame_update">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_frame_update">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_frame_update">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_frame_update</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2485,7 +2485,7 @@
 
 
 <div class="viewcode-block" id="HDF.save_frame_append">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.save_frame_append">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_frame_append">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_frame_append</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2517,7 +2517,7 @@
 
 
 <div class="viewcode-block" id="HDF.load_frame">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.load_frame">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.load_frame">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">load_frame</span><span class="p">(</span>
         <span class="n">group</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
@@ -2576,7 +2576,7 @@
 
 
 <div class="viewcode-block" id="HDF.close_handle">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.sdk_.hdf_.html#phenotypic.sdk_.HDF.close_handle">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.close_handle">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">close_handle</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span> <span class="o">|</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">handle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

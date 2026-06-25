@@ -614,7 +614,7 @@
 
 
 <div class="viewcode-block" id="ImageOperation">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageOperation">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageOperation.html#phenotypic.abc_.ImageOperation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageOperation</span><span class="p">(</span><span class="n">BaseOperation</span><span class="p">,</span> <span class="n">LazyWidgetMixin</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Core abstract base class for all single-image transformation operations in PhenoTypic.</span>
 
@@ -998,7 +998,7 @@
         <span class="o">...</span>
 
 <div class="viewcode-block" id="ImageOperation.apply">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageOperation.apply">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageOperation.html#phenotypic.abc_.ImageOperation.apply">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Applies the operation to an image, either in-place or on a copy.</span>
@@ -1029,7 +1029,7 @@
 
 
 <div class="viewcode-block" id="ImageOperation._operate">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageOperation._operate">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageOperation.html#phenotypic.abc_.ImageOperation._operate">[docs]</a>
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -1048,7 +1048,7 @@
 
 
 <div class="viewcode-block" id="ImageOperation._apply_to_single_image">
-<a class="viewcode-back" href="../../../api_reference/phenotypic.abc_.html#phenotypic.abc_.ImageOperation._apply_to_single_image">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.ImageOperation.html#phenotypic.abc_.ImageOperation._apply_to_single_image">[docs]</a>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_to_single_image</span><span class="p">(</span><span class="n">cls_name</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">operation</span><span class="p">,</span> <span class="n">inplace</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>

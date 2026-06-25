@@ -1,7 +1,0 @@
-phenotypic.analysis.abc\_ package
-=================================
-
-.. automodule:: phenotypic.analysis.abc_
-   :members:
-   :show-inheritance:
-   :undoc-members:
