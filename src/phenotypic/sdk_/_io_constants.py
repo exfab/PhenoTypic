@@ -750,6 +750,32 @@ def migrate_legacy_machine_state(output_dir: Path) -> bool:
     return moved
 
 
+def migrate_legacy_qc(output_dir: Path) -> bool:
+    """Move a pre-relocation run's ``<output>/qc/`` into ``deliverables/qc/``.
+
+    Hard cutover (MOVE, no duplication), mirroring
+    :func:`migrate_legacy_machine_state`. A no-op when there is no legacy ``qc/``
+    or when the canonical ``deliverables/qc/`` already exists (the move is
+    whole-directory; we never merge a half-written canonical with legacy).
+
+    Returns:
+        ``True`` if this call moved the directory, else ``False``.
+    """
+    import shutil
+
+    legacy = _legacy_qc_dir(output_dir)
+    canonical = qc_dir(output_dir)
+    if not legacy.is_dir() or canonical.exists():
+        return False
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.move(str(legacy), str(canonical))
+    except (FileNotFoundError, shutil.Error):
+        # Lost a race with a concurrent migrator; safe to skip.
+        return False
+    return True
+
+
 def clear_machine_state(output_dir: Path) -> bool:
     """Remove **all** of a run's machine-state for a clean ``--restart``.
 

@@ -1344,3 +1344,41 @@ def test_bundle_layout_qc_dir_resolves_legacy(tmp_path: Path) -> None:
     (out / "qc").mkdir()  # legacy root qc, no deliverables/qc yet
     layout = BundleLayout.detect(out)
     assert layout.qc_dir == out / "qc"
+
+
+# ---------------------------------------------------------------------------
+# migrate_legacy_qc
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_legacy_qc_moves_once(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import migrate_legacy_qc, qc_dir
+
+    legacy = tmp_path / "qc"
+    legacy.mkdir()
+    (legacy / "curation_labels.parquet").write_bytes(b"x")
+    (tmp_path / "deliverables").mkdir()
+
+    assert migrate_legacy_qc(tmp_path) is True
+    assert (qc_dir(tmp_path) / "curation_labels.parquet").is_file()
+    assert not legacy.exists()
+    # Idempotent: second call is a no-op.
+    assert migrate_legacy_qc(tmp_path) is False
+
+
+def test_migrate_legacy_qc_noop_when_no_legacy(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import migrate_legacy_qc
+
+    (tmp_path / "deliverables").mkdir()
+    assert migrate_legacy_qc(tmp_path) is False
+
+
+def test_migrate_legacy_qc_noop_when_canonical_exists(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import migrate_legacy_qc, qc_dir
+
+    (tmp_path / "qc").mkdir()
+    (tmp_path / "qc" / "a.parquet").write_bytes(b"x")
+    qc_dir(tmp_path).mkdir(parents=True)  # canonical already present
+    assert migrate_legacy_qc(tmp_path) is False
+    # Legacy is left untouched (no merge); resolver will still prefer canonical.
+    assert (tmp_path / "qc" / "a.parquet").is_file()

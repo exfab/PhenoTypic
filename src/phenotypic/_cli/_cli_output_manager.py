@@ -588,6 +588,10 @@ def finalize_post_master_outputs(
         than the clean master. Equal to *master_df* when no post ops
         are configured and no metadata CSV is supplied.
     """
+    from phenotypic.sdk_ import migrate_legacy_qc
+
+    migrate_legacy_qc(output_dir)
+
     # Metadata join runs first so PostMeasurement ops can reference joined
     # columns (e.g. ``EdgeCorrector(groupby="Metadata_Strain")``). The
     # master archive on disk is already written by the caller and stays
