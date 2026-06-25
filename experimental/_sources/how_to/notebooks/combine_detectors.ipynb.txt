@@ -50,8 +50,8 @@
    "outputs": [],
    "source": [
     "composite = CompositeDetector(\n",
-    "    detectors=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
-    "    mode=\"union\",\n",
+    "        ops=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
+    "        mode=\"union\",\n",
     ")\n",
     "result = composite.apply(plate.copy())\n",
     "print(f\"Union: {result.num_objects} colonies\")\n",
@@ -74,8 +74,8 @@
    "outputs": [],
    "source": [
     "composite_intersect = CompositeDetector(\n",
-    "    detectors=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
-    "    mode=\"intersection\",\n",
+    "        ops=[OtsuDetector(), HysteresisDetector(low=\"mean\", high=\"otsu\")],\n",
+    "        mode=\"intersection\",\n",
     ")\n",
     "result2 = composite_intersect.apply(plate.copy())\n",
     "print(f\"Intersection: {result2.num_objects} colonies\")\n",

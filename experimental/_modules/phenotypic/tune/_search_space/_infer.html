@@ -1160,8 +1160,8 @@
 <span class="sd">    ``_infer_field`` always builds keys as ``&quot;&lt;position&gt;.&lt;field&gt;&quot;`` with the</span>
 <span class="sd">    position it is handed. When recursing, we infer each nested leaf field at a</span>
 <span class="sd">    throwaway position ``0`` and then splice the real nested prefix</span>
-<span class="sd">    (``&quot;1.detectors[0]&quot;``) in front of the leaf name — so the canonical nested</span>
-<span class="sd">    key becomes ``&quot;1.detectors[0].&lt;leaf&gt;&quot;``.</span>
+<span class="sd">    (``&quot;1.ops[0]&quot;``) in front of the leaf name — so the canonical nested</span>
+<span class="sd">    key becomes ``&quot;1.ops[0].&lt;leaf&gt;&quot;``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">leaf</span> <span class="o">=</span> <span class="n">child_key</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">leaf</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -1185,7 +1185,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        leaf_op: The nested operation instance to recurse into.</span>
 <span class="sd">        prefix: The root-relative path of the nested slot (e.g.</span>
-<span class="sd">            ``&quot;1.detectors[0]&quot;``).</span>
+<span class="sd">            ``&quot;1.ops[0]&quot;``).</span>
 <span class="sd">        factor: Multiplicative half-window for the unbounded heuristic.</span>
 <span class="sd">        conditional_on: Parent-presence gate to stamp on each nested knob (a</span>
 <span class="sd">            ``((key, value),)`` tuple), or ``None`` when the parent is not</span>

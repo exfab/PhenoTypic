@@ -615,7 +615,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 
-<span class="c1">#: Matches a nested list-index segment ``name[i]`` (e.g. ``detectors[0]``) and</span>
+<span class="c1">#: Matches a nested list-index segment ``name[i]`` (e.g. ``ops[0]``) and</span>
 <span class="c1">#: captures the field name and the integer index. The depth cap is 1: a key may</span>
 <span class="c1">#: carry **exactly one** such segment (a second ``[i]`` is a depth error).</span>
 <span class="n">_NESTED_SEGMENT_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^(?P&lt;field&gt;[^\[\]]+)\[(?P&lt;index&gt;\d+)\]$&quot;</span><span class="p">)</span>
@@ -684,7 +684,7 @@
 <span class="sd">    a segment matching ``name[i]`` switches the key into the nested grammar.</span>
 
 <span class="sd">    Disambiguation and limits:</span>
-<span class="sd">        * A segment matching ``name[i]`` (e.g. ``detectors[0]``) marks a nested</span>
+<span class="sd">        * A segment matching ``name[i]`` (e.g. ``ops[0]``) marks a nested</span>
 <span class="sd">          key; the **depth cap is 1** — a second ``[i]`` segment raises a</span>
 <span class="sd">          &quot;depth&quot; ``ValueError``.</span>
 <span class="sd">        * A malformed bracket segment (``name[x]``, ``name[]``) or a nested key</span>
@@ -732,7 +732,7 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
         <span class="c1"># Guard against a malformed bracket that escaped the nested regex</span>
-        <span class="c1"># (e.g. ``&quot;0.detectors[x]&quot;``): an unmatched ``[`` is never a flat field.</span>
+        <span class="c1"># (e.g. ``&quot;0.ops[x]&quot;``): an unmatched ``[`` is never a flat field.</span>
         <span class="k">if</span> <span class="n">_BRACKET_SEGMENT_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;combo key </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> has a malformed nested segment </span><span class="si">{</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> &quot;</span>
@@ -919,7 +919,7 @@
 <span class="sd">    Args:</span>
 <span class="sd">        parent: The parent operation instance owning the list field.</span>
 <span class="sd">        position: The parent&#39;s position in the pipeline (for key tagging).</span>
-<span class="sd">        field: The parent&#39;s operation-list field name (e.g. ``&quot;detectors&quot;``).</span>
+<span class="sd">        field: The parent&#39;s operation-list field name (e.g. ``&quot;ops&quot;``).</span>
 <span class="sd">        slot_overrides: ``{index: {leaf_field: value}}`` for this field.</span>
 
 <span class="sd">    Returns:</span>

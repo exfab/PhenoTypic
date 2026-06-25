@@ -23,8 +23,8 @@ validator: arbitrary metadata columns are still accepted.
    * - ``Metadata_BioReplicate``
      - Biological replicate identifier. Biological replicates are parallel measurements of biologically distinct samples that capture random biological variation.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ExpReplicate``
-     - Experimental replicate identifier. An example of an experimental replicate would be a pinned colony of the same strain on another plate being subjected to the same conditions.
+   * - ``Metadata_CondReplicate``
+     - Experimental Conditional replicate identifier. An example  of an experimental replicate would be a pinned colony of  the same strain on another plate being subjected to the same conditions.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``Metadata_TechReplicate``
      - Technical replicate identifier.

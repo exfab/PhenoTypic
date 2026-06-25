@@ -642,7 +642,7 @@
 <span class="sd">          strategies.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or</span>
+<span class="sd">        ops: List of :class:`~phenotypic.abc_.ObjectDetector` or</span>
 <span class="sd">            :class:`~phenotypic.ImagePipeline` instances to combine.</span>
 <span class="sd">            Pipelines allow preprocessing steps before detection. Defaults</span>
 <span class="sd">            to ``[OtsuDetector(), RoundPeaksDetector()]`` when not</span>
@@ -664,7 +664,7 @@
 <span class="sd">        colony mask and ``objmap`` derived from the merged mask.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``detectors`` is empty or ``mode`` is not one of</span>
+<span class="sd">        ValueError: If ``ops`` is empty or ``mode`` is not one of</span>
 <span class="sd">            ``&#39;union&#39;``, ``&#39;intersection&#39;``, or ``&#39;overlap&#39;``.</span>
 
 <span class="sd">    See Also:</span>
@@ -683,18 +683,18 @@
     <span class="c1"># ``| None`` permits an empty list slot: the GUI builder marks an</span>
     <span class="c1"># unfilled detector slot in an in-progress pipeline with ``None``</span>
     <span class="c1"># (pre-migration the un-validated list accepted these implicitly).</span>
-    <span class="n">detectors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">OperationField</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+    <span class="n">ops</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">OperationField</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">OtsuDetector</span><span class="p">(),</span> <span class="n">RoundPeaksDetector</span><span class="p">()]</span>
     <span class="p">)</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;union&#39;</span><span class="p">,</span> <span class="s1">&#39;intersection&#39;</span><span class="p">,</span> <span class="s1">&#39;overlap&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;overlap&#39;</span>
     <span class="n">min_overlap_ratio</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
 
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;detectors&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ops&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_default_detectors</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_default_ops</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Map an explicit ``None`` onto the default detector pair.</span>
 
-<span class="sd">        The pre-migration ``__init__`` accepted ``detectors=None`` as the</span>
+<span class="sd">        The pre-migration ``__init__`` accepted ``ops=None`` as the</span>
 <span class="sd">        &quot;unset&quot; sentinel and substituted ``[OtsuDetector(),</span>
 <span class="sd">        RoundPeaksDetector()]``. The ``default_factory`` covers the</span>
 <span class="sd">        omitted-argument case; this validator preserves the legacy</span>
@@ -707,7 +707,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply all detectors/pipelines and combine their objmask outputs.&quot;&quot;&quot;</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ops</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s2">&quot;At least one detector must be provided to CompositeDetector&quot;</span><span class="p">)</span>
 
@@ -723,7 +723,7 @@
         <span class="c1"># Apply all detectors/pipelines and collect masks</span>
         <span class="n">objmaps</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ops</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># An unfilled list slot (the GUI builder marks an empty</span>
                 <span class="c1"># detector slot with None); nothing to apply — skip it.</span>

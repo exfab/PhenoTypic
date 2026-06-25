@@ -58,7 +58,7 @@ phenotypic.detect.CompositeDetector
       ~CompositeDetector.model_extra
       ~CompositeDetector.model_fields
       ~CompositeDetector.model_fields_set
-      ~CompositeDetector.detectors
+      ~CompositeDetector.ops
       ~CompositeDetector.mode
       ~CompositeDetector.min_overlap_ratio
    
