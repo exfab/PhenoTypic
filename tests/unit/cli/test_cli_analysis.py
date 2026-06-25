@@ -135,6 +135,35 @@ class TestEmitAnalysisOutputs:
         assert loaded.height <= master["Metadata_Strain"].n_unique()
         assert loaded.height > 0
 
+    def test_deliverables_base_override_writes_into_bundle(
+        self, tmp_path: Path
+    ) -> None:
+        """A ``deliverables_base`` override writes ``analysis.*`` there directly,
+        bypassing ``deliverables_dir(output_dir)`` — the standalone-bundle path
+        used by the analysis sub-app so ``deliverables/`` is never double-joined.
+        """
+        master = _synthetic_growth_master()
+        pipeline = ImagePipeline(
+            model=LogGrowthModel(
+                on="Shape_Area",
+                groupby=["Metadata_Strain"],
+                time_label="Metadata_Time",
+                n_jobs=1,
+            ),
+        )
+        bundle = tmp_path / "my_export"  # renamed standalone deliverables folder
+        bundle.mkdir()
+        result = _emit_analysis_outputs(
+            tmp_path, master, pipeline, deliverables_base=bundle
+        )
+        assert result is not None
+        path, _ = result
+        # Written into the bundle directly, NOT under deliverables_dir(tmp_path).
+        assert path == bundle / "analysis.parquet"
+        assert (bundle / "analysis.csv").exists()
+        assert (bundle / "analysis.parquet").exists()
+        assert not analysis_parquet_path(tmp_path).exists()
+
     def test_analysis_failure_is_non_fatal(self, tmp_path: Path) -> None:
         # Master frame missing the column the model needs.
         master = pl.DataFrame({"Metadata_Strain": ["A"], "Object_Label": [1]})

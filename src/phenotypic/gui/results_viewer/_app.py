@@ -262,7 +262,9 @@ def _load_qc_pipeline(output_root: OutputRoot):
     Resolves the config through :attr:`OutputRoot.layout`: for a full run it
     reuses ``resolve_pipeline_config_path`` (legacy ``.json`` fallback); for a
     standalone bundle (``output_root is None``) it reads
-    ``layout.pipeline_config_path`` directly so it never double-joins
+    ``layout.pipeline_config_path`` directly — falling back to a legacy plain
+    ``pipeline.json`` inside the bundle when the canonical typed config is
+    absent (mirroring ``QcRecipe.from_layout``) — so it never double-joins
     ``deliverables/``.
 
     Args:
@@ -281,6 +283,12 @@ def _load_qc_pipeline(output_root: OutputRoot):
         pipeline_path = resolve_pipeline_config_path(layout.output_root)
     else:
         pipeline_path = layout.pipeline_config_path
+        if not pipeline_path.exists():
+            from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
+
+            legacy = layout.deliverables_base / _LEGACY_PIPELINE_JSON
+            if legacy.exists():
+                pipeline_path = legacy
     if not pipeline_path.exists():
         return None
     try:

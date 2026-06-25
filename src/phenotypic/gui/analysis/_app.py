@@ -108,8 +108,12 @@ def create_app(
         )
         return configure_url_prefix_routing(app, url_prefix)
 
-    recipe = RecipeState.load(Path(output_root.root))
-    schema = MeasurementSchema(output_root=Path(output_root.root))
+    # Route path resolution through the resolved BundleLayout, never
+    # ``output_root.root``: for a standalone deliverables bundle ``root`` IS the
+    # deliverables folder, so any helper that internally joins ``deliverables/``
+    # would double-join. ``from_layout`` anchors on ``layout.deliverables_base``.
+    recipe = RecipeState.from_layout(output_root.layout)
+    schema = MeasurementSchema.from_layout(output_root.layout)
     app.server.config[CFG_OUTPUT_ROOT] = output_root
     app.server.config[CFG_RECIPE_STATE] = recipe
     app.server.config[CFG_MEASUREMENT_SCHEMA] = schema
