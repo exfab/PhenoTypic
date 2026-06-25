@@ -66,7 +66,9 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
             return _json_error("invalid dataset or stem", 404)
 
-        if not (output_root.results_dir / dataset).is_dir():
+        if output_root.results_dir is None or not (
+            output_root.results_dir / dataset
+        ).is_dir():
             return _json_error(
                 f"unknown dataset: {dataset!r}", 404
             )

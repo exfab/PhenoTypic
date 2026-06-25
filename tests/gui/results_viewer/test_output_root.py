@@ -136,23 +136,28 @@ def test_discover_missing_master_raises(tmp_path: Path) -> None:
     assert "python -m phenotypic" in msg
 
 
-def test_discover_missing_results_dir_raises(tmp_path: Path) -> None:
-    """A directory without ``results/`` raises ``FileNotFoundError`` with layout hint."""
+def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
+    """A deliverables-only bundle (no ``results/``) now discovers successfully.
+
+    Task 4: ``BundleLayout``-backed discovery boots from a deliverables bundle
+    alone — datasets are recovered from the master frame's ``Metadata_Dataset``
+    column. ``results/``-backed capabilities (``has_results``/``hdf_path``)
+    simply report unavailable.
+    """
 
     df = pl.DataFrame(
         {"Metadata_Dataset": ["d1"], "Metadata_ImageFile": ["a"]}
     )
     _write_master_parquet(tmp_path, df)
 
-    with pytest.raises(FileNotFoundError) as excinfo:
-        OutputRoot.discover(tmp_path)
-    msg = str(excinfo.value)
-    assert "results" in msg
-    assert "overlays" in msg
+    out = OutputRoot.discover(tmp_path)
+    assert out.has_results is False
+    assert out.hdf_path("d1", "a") is None
+    assert "d1" in out.master_df["Metadata_Dataset"].to_list()
 
 
-def test_discover_results_with_no_datasets_raises(tmp_path: Path) -> None:
-    """An empty ``results/`` directory raises ``FileNotFoundError``."""
+def test_discover_dataset_from_master_with_empty_results(tmp_path: Path) -> None:
+    """Datasets are data-driven: a master's ``Metadata_Dataset`` wins over an empty ``results/``."""
 
     (tmp_path / "results").mkdir()
     df = pl.DataFrame(
@@ -160,9 +165,8 @@ def test_discover_results_with_no_datasets_raises(tmp_path: Path) -> None:
     )
     _write_master_parquet(tmp_path, df)
 
-    with pytest.raises(FileNotFoundError) as excinfo:
-        OutputRoot.discover(tmp_path)
-    assert "dataset" in str(excinfo.value).lower()
+    out = OutputRoot.discover(tmp_path)
+    assert out.image_pairs(out.master_df) == [("d1", "a")]
 
 
 def test_discover_results_with_no_overlays_succeeds(
