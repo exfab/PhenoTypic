@@ -1,5 +1,14 @@
 # CLAUDE.md
 
+## Agentic AI File Rules
+
+- **Design Specifications** go in @docs/superpowers/docs/ under their own dated folder
+  with the topic name
+- **Mult-doc design plans** go in @docs/superpowers/plans/ under their own dated folder
+  with the topic name
+- **html artifacts** go in @docs/superpowers/artifacts/ under their own dated folder
+  with the topic name
+
 ## Quick Start
 
 **`uv` is the sole package manager and runner.** Never use bare `python` or `pip`.
@@ -308,10 +317,15 @@ the gate:
   `deliverables/README.md`, `deliverables/pipeline.json`, and
   `deliverables/overlays/<ds>/<stem>.png` (detection overlay PNGs). The
   **per-image** parquets in `results/<ds>/measurements/` (and the rest
-  of `results/`, `qc/`, `progress/`, `processing_state.json`) stay at the
-  output-dir **root**. Resolve these paths via the `phenotypic.sdk_`
-  helpers (`deliverables_dir`, `master_measurements_parquet_path`, etc.),
-  not by hand-joining names.
+  of `results/`, `progress/`, `processing_state.json`) stay at the
+  output-dir **root**. The durable **QC + curation state** relocated under
+  `deliverables/qc/` (`qc_summary.parquet`, `qc_members.parquet`,
+  `review_state.json`, `curation_labels.parquet`, `custom_categories.json`)
+  so a `deliverables/` bundle is self-contained — the GUI can open such a
+  bundle standalone; `resolve_qc_dir` / `migrate_legacy_qc` still read/move a
+  pre-relocation root `qc/`. Resolve these paths via the `phenotypic.sdk_`
+  helpers (`deliverables_dir`, `master_measurements_parquet_path`, `qc_dir`,
+  etc.), not by hand-joining names.
 - **Master vs. mirror outputs:** `deliverables/master_measurements.{csv,parquet}`
   is a **clean, pre-post, metadata-free archive** of what per-image runs
   measured; `deliverables/measurements.{csv,parquet}` is the
