@@ -424,10 +424,13 @@ DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 #: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
-#: QC artifact subdirectory: ``<output>/qc/``. Holds
+#: QC artifact subdirectory: ``<output>/deliverables/qc/``. Holds
 #: :data:`QC_SUMMARY_PARQUET`, :data:`QC_MEMBERS_PARQUET`,
 #: :data:`QC_CONFIG_JSON` (written by ``run_qc``), and
-#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab).
+#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated
+#: under ``deliverables/`` so a bundle is self-contained;
+#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy
+#: pre-relocation root ``<output>/qc/``.
 DIR_QC: Final[str] = "qc"
 
 #: ``<output>/deliverables/`` — all user-facing run outputs collected in one
@@ -448,12 +451,13 @@ DIR_DELIVERABLES: Final[str] = "deliverables"
 #: via ``reemit_error_deliverables`` — so headless == live.
 DIR_ERRORS: Final[str] = "errors"
 
-#: Durable curation-labels store: ``<output>/qc/curation_labels.parquet``.
+#: Durable curation-labels store: ``<output>/deliverables/qc/curation_labels.parquet``.
 #: The source of truth for categorized removals; the CLI re-keys but never
 #: wipes it (contrast :data:`QC_REVIEW_STATE_JSON`).
 CURATION_LABELS_PARQUET: Final[str] = "curation_labels.parquet"
 
-#: Ordered custom-category registry sidecar: ``<output>/qc/custom_categories.json``.
+#: Ordered custom-category registry sidecar:
+#: ``<output>/deliverables/qc/custom_categories.json``.
 CUSTOM_CATEGORIES_JSON: Final[str] = "custom_categories.json"
 
 #: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;
