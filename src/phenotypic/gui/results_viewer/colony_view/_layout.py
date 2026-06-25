@@ -19,7 +19,7 @@ background canvas token for the page background.
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import Any, cast, get_args
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from dash import dcc, html
@@ -34,7 +34,7 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
 )
-from phenotypic.gui._shared.tiles import LayerName
+from phenotypic.gui._shared.tiles import DEFAULT_LAYER, LayerName
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -54,10 +54,6 @@ _BG = COLOR_BG
 # Pixel-layer toggle (gated on per-image ``results/`` availability)
 # ---------------------------------------------------------------------------
 
-#: Default pixel layer the colony crops source. The finished RGB plate is the
-#: most legible default; the other layers are opt-in via the toggle.
-_DEFAULT_LAYER: LayerName = "rgb"
-
 #: Segmented-control options for :func:`build_layer_toggle`. Values are the
 #: :data:`phenotypic.gui._shared.tiles.LayerName` members; the human labels map
 #: ``detect_mat`` → "Enhanced" and ``objmap`` → "Labels" so the control reads in
@@ -67,6 +63,10 @@ _LAYER_OPTIONS: list[dict[str, str]] = [
     {"label": "Enhanced", "value": "detect_mat"},
     {"label": "Labels", "value": "objmap"},
 ]
+
+# Guard against silent drift: the toggle's option values must cover exactly the
+# ``tiles.LayerName`` members (so a new layer can't ship a toggle that omits it).
+assert {opt["value"] for opt in _LAYER_OPTIONS} == set(get_args(LayerName))
 
 
 def build_layer_toggle(output_root: OutputRoot) -> Component | None:
@@ -97,7 +97,7 @@ def build_layer_toggle(output_root: OutputRoot) -> Component | None:
         dbc.RadioItems(
             id=ids.LAYER_TOGGLE,
             options=_LAYER_OPTIONS,
-            value=_DEFAULT_LAYER,
+            value=DEFAULT_LAYER,
             inline=True,
             class_name="btn-group",
             input_class_name="btn-check",
@@ -483,7 +483,7 @@ def layout(output_root: OutputRoot) -> Component:
     # ``rgb``; in a bundle the layer is ignored by the overlay fallback anyway.
     active_layer_store = dcc.Store(
         id=ids.STORE_ACTIVE_LAYER,
-        data=_DEFAULT_LAYER,
+        data=DEFAULT_LAYER,
         storage_type="memory",
     )
 

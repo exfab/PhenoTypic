@@ -138,23 +138,16 @@ class RecipeState:
         Returns:
             A :class:`RecipeState` ready for in-place mutation + :meth:`save`.
         """
-        from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
-
-        pipeline_path = layout.pipeline_config_path
-        legacy = layout.deliverables_base / _LEGACY_PIPELINE_JSON
-        if pipeline_path.exists():
-            read_path = pipeline_path
-        elif legacy.exists():
-            read_path = legacy
-        else:
-            read_path = pipeline_path
         name_root = (
             layout.output_root
             if layout.output_root is not None
             else layout.deliverables_base
         )
         return cls._load_from_paths(
-            read_path, pipeline_path, name_hint=name_root.name, layout=layout
+            layout.resolved_pipeline_config_path,
+            layout.pipeline_config_path,
+            name_hint=name_root.name,
+            layout=layout,
         )
 
     @classmethod

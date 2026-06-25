@@ -275,6 +275,12 @@ def _crop_pil_source(
 #: One of the displayable HDF layer names a crop can source.
 LayerName = Literal["rgb", "detect_mat", "objmap"]
 
+#: Default layer every crop/tile surface sources when none is requested. The
+#: finished RGB plate is the most legible default; the other layers are opt-in.
+#: Single-sourced here so the colony-view toggle, its store seed, and the crop
+#: route default can never drift apart.
+DEFAULT_LAYER: LayerName = "rgb"
+
 #: Number of decoded full-res HDF layers to keep in memory. Full-res layers
 #: are heavier than overlay PNGs (a single plate's rgb layer can be hundreds of
 #: MB), so this cache is deliberately smaller than ``_OVERLAY_CACHE_SIZE``.
@@ -608,7 +614,7 @@ def register_crop_route(
         # pre-baked RGB). Validate against ``LayerName`` at the boundary so an
         # unknown layer 404s here rather than surfacing later as a ``KeyError``
         # (missing HDF dataset) → 500 inside ``crop_colony``.
-        layer_raw = request.args.get("layer", type=str, default="rgb")
+        layer_raw = request.args.get("layer", type=str, default=cast(str, DEFAULT_LAYER))
         if layer_raw not in get_args(LayerName):
             return (f"not found: unsupported layer {layer_raw!r}", 404)
         layer = cast(LayerName, layer_raw)
@@ -1020,6 +1026,7 @@ def expand_range(
 
 __all__ = [
     "LayerName",
+    "DEFAULT_LAYER",
     "crop_overlay",
     "crop_hdf_rgb",
     "crop_colony",

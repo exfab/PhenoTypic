@@ -68,6 +68,40 @@ def test_hdf_path_returns_path_when_h5_exists(tmp_path):
     assert layout.hdf_path("plate1", "missing") is None
 
 
+def test_resolved_pipeline_config_path_prefers_canonical(tmp_path):
+    """Canonical typed config present -> returned over a legacy sibling."""
+    out = tmp_path / "run"
+    base = out / "deliverables"
+    _seed_deliverables(base)
+    canonical = base / "pipeline.json.pht-pipe"
+    legacy = base / "pipeline.json"
+    canonical.write_text("{}", encoding="utf-8")
+    legacy.write_text("{}", encoding="utf-8")
+    layout = BundleLayout.detect(out)
+    assert layout.resolved_pipeline_config_path == canonical
+
+
+def test_resolved_pipeline_config_path_falls_back_to_legacy(tmp_path):
+    """Only the legacy plain ``pipeline.json`` exists -> it is returned."""
+    out = tmp_path / "run"
+    base = out / "deliverables"
+    _seed_deliverables(base)
+    legacy = base / "pipeline.json"
+    legacy.write_text("{}", encoding="utf-8")
+    layout = BundleLayout.detect(out)
+    assert layout.resolved_pipeline_config_path == legacy
+
+
+def test_resolved_pipeline_config_path_defaults_to_canonical_when_neither(tmp_path):
+    """Neither config present -> the canonical typed path (for fresh writes)."""
+    out = tmp_path / "run"
+    base = out / "deliverables"
+    _seed_deliverables(base)
+    layout = BundleLayout.detect(out)
+    assert layout.resolved_pipeline_config_path == layout.pipeline_config_path
+    assert not layout.resolved_pipeline_config_path.exists()
+
+
 def test_deliverables_accessors_anchor_on_base(tmp_path):
     out = tmp_path / "run"
     _seed_deliverables(out / "deliverables")

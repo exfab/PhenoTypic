@@ -259,13 +259,11 @@ def _load_qc_pipeline(output_root: OutputRoot):
     ``None`` when the file is absent or unreadable — recompute then no-ops
     rather than raising.
 
-    Resolves the config through :attr:`OutputRoot.layout`: for a full run it
-    reuses ``resolve_pipeline_config_path`` (legacy ``.json`` fallback); for a
-    standalone bundle (``output_root is None``) it reads
-    ``layout.pipeline_config_path`` directly — falling back to a legacy plain
-    ``pipeline.json`` inside the bundle when the canonical typed config is
-    absent (mirroring ``QcRecipe.from_layout``) — so it never double-joins
-    ``deliverables/``.
+    Resolves the config through :attr:`OutputRoot.layout` via
+    ``layout.resolved_pipeline_config_path``: the canonical typed config, else
+    the legacy plain ``pipeline.json`` inside the bundle, anchored on the
+    deliverables base so a standalone bundle (``output_root is None``) never
+    double-joins ``deliverables/`` (mirroring ``QcRecipe.from_layout``).
 
     Args:
         output_root: The results-viewer output root handle.
@@ -276,19 +274,7 @@ def _load_qc_pipeline(output_root: OutputRoot):
     """
     from phenotypic._core._image_pipeline import ImagePipeline
 
-    layout = output_root.layout
-    if layout.output_root is not None:
-        from phenotypic.sdk_ import resolve_pipeline_config_path
-
-        pipeline_path = resolve_pipeline_config_path(layout.output_root)
-    else:
-        pipeline_path = layout.pipeline_config_path
-        if not pipeline_path.exists():
-            from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
-
-            legacy = layout.deliverables_base / _LEGACY_PIPELINE_JSON
-            if legacy.exists():
-                pipeline_path = legacy
+    pipeline_path = output_root.layout.resolved_pipeline_config_path
     if not pipeline_path.exists():
         return None
     try:

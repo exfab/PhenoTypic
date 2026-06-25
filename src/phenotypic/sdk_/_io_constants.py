@@ -1795,6 +1795,25 @@ class BundleLayout:
         return self.deliverables_base / PIPELINE_JSON
 
     @property
+    def resolved_pipeline_config_path(self) -> Path:
+        """Return the best existing pipeline config path inside the bundle.
+
+        Mirrors :func:`resolve_pipeline_config_path`'s precedence but anchored
+        on :attr:`deliverables_base` (so a standalone bundle resolves *inside
+        itself* without double-joining ``deliverables/``): the canonical typed
+        config when present, else the legacy plain ``pipeline.json`` when
+        present, else the canonical path (so writers naturally create typed
+        config files).
+        """
+        canonical = self.pipeline_config_path
+        if canonical.exists():
+            return canonical
+        legacy = self.deliverables_base / _LEGACY_PIPELINE_JSON
+        if legacy.exists():
+            return legacy
+        return canonical
+
+    @property
     def qc_dir(self) -> Path:
         """Return the QC directory, resolving legacy ``<output>/qc/`` layouts.
 

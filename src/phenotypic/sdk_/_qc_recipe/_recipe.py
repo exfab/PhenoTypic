@@ -348,17 +348,9 @@ class QcRecipe:
         Returns:
             A :class:`QcRecipe` ready for in-place mutation.
         """
-        from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
-
-        pipeline_path = layout.pipeline_config_path
-        legacy = layout.deliverables_base / _LEGACY_PIPELINE_JSON
-        if pipeline_path.exists():
-            read_path = pipeline_path
-        elif legacy.exists():
-            read_path = legacy
-        else:
-            read_path = pipeline_path
-        return cls._load_from_paths(read_path, pipeline_path)
+        return cls._load_from_paths(
+            layout.resolved_pipeline_config_path, layout.pipeline_config_path
+        )
 
     @classmethod
     def _load_from_paths(cls, read_path: Path, pipeline_path: Path) -> "QcRecipe":

@@ -177,30 +177,40 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         cache_dir = _dzi_cache_dir_for(output_root.cache_dir, dataset, stem, layer)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            if layer == _OVERLAY_LAYER:
-                if not output_root.has_overlay(dataset, stem):
-                    return _json_error(
-                        f"no overlay for {dataset!r}/{stem!r}", 404
+        # Skip-if-exists: a per-(image, layer) pyramid already on disk is
+        # served directly. This guards the expensive HDF branch, whose
+        # unconditional ``_load_hdf_layer_rgb(...).save(source_png)`` bumps the
+        # source PNG mtime on every request and so defeats ``_dzi_tiler.tile``'s
+        # own freshness check (re-tiling each load). It matches the overlay
+        # branch's idempotency; mtime-staleness is intentionally ignored,
+        # exactly as the overlay path already does.
+        if not (cache_dir / f"{stem}.dzi").exists():
+            try:
+                if layer == _OVERLAY_LAYER:
+                    if not output_root.has_overlay(dataset, stem):
+                        return _json_error(
+                            f"no overlay for {dataset!r}/{stem!r}", 404
+                        )
+                    _dzi_tiler.tile(
+                        output_root.overlay_path(dataset, stem), cache_dir
                     )
-                _dzi_tiler.tile(output_root.overlay_path(dataset, stem), cache_dir)
-            else:
-                # ``_resolve_dzi_layer`` collapses every layer to the overlay
-                # sentinel when no HDF is available, so ``h5`` is non-None here.
-                assert h5 is not None
-                source_png = cache_dir / f"{stem}.png"
-                _load_hdf_layer_rgb(
-                    str(h5), os.stat(h5).st_mtime_ns, cast(LayerName, layer)
-                ).save(source_png)
-                _dzi_tiler.tile(source_png, cache_dir)
-        except Exception:
-            logger.exception(
-                "DZI tile generation failed: dataset=%s stem=%s layer=%s",
-                dataset,
-                stem,
-                layer,
-            )
-            return _json_error("tile generation failed", 500)
+                else:
+                    # ``_resolve_dzi_layer`` collapses every layer to the overlay
+                    # sentinel when no HDF is available, so ``h5`` is non-None here.
+                    assert h5 is not None
+                    source_png = cache_dir / f"{stem}.png"
+                    _load_hdf_layer_rgb(
+                        str(h5), os.stat(h5).st_mtime_ns, cast(LayerName, layer)
+                    ).save(source_png)
+                    _dzi_tiler.tile(source_png, cache_dir)
+            except Exception:
+                logger.exception(
+                    "DZI tile generation failed: dataset=%s stem=%s layer=%s",
+                    dataset,
+                    stem,
+                    layer,
+                )
+                return _json_error("tile generation failed", 500)
 
         return send_from_directory(
             cache_dir,

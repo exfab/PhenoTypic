@@ -41,7 +41,7 @@ from phenotypic.gui._config import (
     stepped_alpha_from_trigger,
 )
 from phenotypic.gui._shared._radial import build_radial_body
-from phenotypic.gui._shared.tiles import LayerName
+from phenotypic.gui._shared.tiles import DEFAULT_LAYER, LayerName
 from phenotypic.gui._shared._triage_callbacks import (
     apply_wedge_mark,
     bulk_mark,
@@ -77,9 +77,6 @@ logger = logging.getLogger(__name__)
 # post-bulk-action emission. Module-level so all three sites agree.
 _EMPTY_SELECTION: dict[str, Any] = {"anchor": None, "selected": []}
 
-#: Fallback pixel layer when the store/toggle value is missing or invalid.
-_DEFAULT_LAYER: LayerName = "rgb"
-
 
 def _normalize_layer_value(value: Any) -> LayerName:
     """Coerce a raw layer-toggle / store value to a valid :data:`LayerName`.
@@ -100,7 +97,7 @@ def _normalize_layer_value(value: Any) -> LayerName:
     """
     if value in get_args(LayerName):
         return value  # type: ignore[return-value]  # narrowed by the membership test
-    return _DEFAULT_LAYER
+    return DEFAULT_LAYER
 
 
 # These pure helpers now live in the shared triage module so the colony and
