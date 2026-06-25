@@ -43,3 +43,32 @@ def test_table_spec_describes_roles():
     assert spec.time_col == "Metadata_Time"   # ZMax declares a time_label field
     assert spec.higher_is_bad is True
     assert "QC_ZMax_Median" in spec.extra_cols
+
+
+def test_grid_occupancy_is_group_level_and_diagnostic_only():
+    import pandas as pd
+
+    from phenotypic.analysis.qc import GridOccupancy
+
+    metadata = pd.DataFrame(
+        {"Metadata_ImageFile": ["a.png"] * 4, "cell_label": [1, 2, 3, 4]}
+    )
+    measured = pd.DataFrame(
+        {
+            "Metadata_ImageFile": ["a.png", "a.png"],
+            "Object_Label": [1, 2],
+            "cell_label": [1, 2],
+        }
+    )
+    # cell_label defaults to "Grid_RowMajorIdx"; point it at this frame's column.
+    chk = GridOccupancy(
+        metadata=metadata, groupby=["Metadata_ImageFile"], cell_label="cell_label"
+    )
+    chk.analyze(measured)
+    spec = chk.table_spec("qc-Occupancy-cafef00d")
+    assert spec.supports_object_curation is False
+
+    table = chk.to_table()
+    # Group-level: one row per group (here one image), not per colony.
+    assert len(table) == 1
+    assert {"QC_Occupancy_Filled", "QC_Occupancy_Expected"} <= set(table.columns)
