@@ -22,6 +22,16 @@
 
 ---
 
+## Review Revisions (independent plan review, 2026-06-25)
+
+An independent reviewer verified the load-bearing assumptions against the live venv and found that **`OutputRoot.root` set to `deliverables_base` in standalone mode causes a `deliverables/` double-join** in three external consumers that internally call `deliverables_dir(...)`: `QcRecipe.load` (`_recipe.py:327`), `MeasurementSchema` (`schema/_schema_cache.py:95`), and `run_qc` (`_runner.py:149`). The governing rule for this plan, applied throughout Task 5:
+
+> **NEVER pass `output_root.root` into a helper that internally joins `deliverables/`/`qc/`.** Route through `OutputRoot.layout` accessors, or give the consumer a `BundleLayout`-aware entry point. After Task 4, `output_root.root` is the *deliverables folder* in standalone mode, so any `deliverables_dir(output_root.root)` / `qc_dir(output_root.root)` call double-joins.
+
+Incorporated fixes (folded into the tasks below): `from_layout` constructors on `QcRecipe`/`MeasurementSchema` (C1); a `qc_output_dir` param on `run_qc` (C2); `CurationLabels.load`/`ReviewState.load` take a `BundleLayout` and the CLI caller `_cli_error_outputs.py:59` is updated (C3); the hand-joined dead paths at `_qc_tab/_callbacks.py:1018-1020` are removed/routed (C4); viewer-cache read-only fallback + a `viewer_cache_dir` property (C5); the `results_dir is None` guard lands in Task 4 to avoid a crash window (W2); Task 6 reads only `/layers/<name>` via `h5py` instead of a full `Image` load (W5, satisfies the memory-discipline constraint); a full `output_root.root` audit step (Q1). Note: `migrate_legacy_qc`'s `shutil.move` of `qc/` is an atomic `os.rename` when source and destination share a filesystem (always true here — both under the output root), so the whole-directory move has no partial-resume hazard on the common path; only a cross-filesystem move degrades to copy+delete, accepted under the documented no-concurrent-GUI+CLI assumption (W1).
+
+---
+
 ## File Structure
 
 **Created:**
@@ -38,6 +48,10 @@
   `_qc_tab/review/_data.py`, `_qc_tab/review/_review_state.py`, `_qc_tab/review/_callbacks.py`,
   `_qc_tab/_callbacks.py`, `_error_tab/_data.py`, `_error_tab/_callbacks.py`,
   `_app.py`, `_layout.py` — route path resolution through `OutputRoot.layout`.
+- `src/phenotypic/sdk_/_qc_recipe/_recipe.py` — add `QcRecipe.from_layout(layout)` (C1).
+- `src/phenotypic/sdk_/_qc_recipe/_runner.py` — add `run_qc(..., qc_output_dir=None)` (C2).
+- `src/phenotypic/schema/_schema_cache.py` — add `MeasurementSchema.from_layout(layout)` (C1).
+- `src/phenotypic/_cli/_cli_error_outputs.py` — update `CurationLabels.load` call to a `BundleLayout` (C3).
 
 **Modified — Phase 3 (pixel tiering):**
 - `src/phenotypic/gui/_shared/tiles.py` — `crop_hdf_rgb`, `crop_colony`, layer cache.
@@ -575,6 +589,8 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
 
 Export from `sdk_/__init__.py`.
 
+> **Atomicity (review W1):** `shutil.move` of a directory uses `os.rename` when source and destination share a filesystem — which they always do here (`<output>/qc/` → `<output>/deliverables/qc/` are both under the output root). `os.rename` is atomic, so there is no partial-state window on the common path; the whole-directory move (vs the per-artifact move in `migrate_legacy_machine_state`) is therefore safe. Only a cross-filesystem output dir degrades to copy+delete, accepted under the documented no-concurrent-GUI+CLI assumption.
+
 - [ ] **Step 4: Wire into `finalize_post_master_outputs`**
 
 In `src/phenotypic/_cli/_cli_output_manager.py`, near the top of `finalize_post_master_outputs(output_dir, master_df, pipeline, ...)`, before it writes any qc/deliverables artefact, add:
@@ -706,9 +722,19 @@ In `_output_root.py`:
         ]
         column_value_sets = _build_column_value_sets(master_df)
 
+        # Cache root: the output root for full runs, else inside the bundle.
+        # Read-only-mount fallback (spec Section 2 / review C5): if the chosen
+        # location is not writable, use a per-session temp dir keyed by bundle path.
         cache_root = layout.output_root if layout.output_root is not None else layout.deliverables_base
         cache_dir = cache_root / _CACHE_RELATIVE
-        cache_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            import hashlib
+            import tempfile
+            key = hashlib.sha1(str(layout.deliverables_base).encode()).hexdigest()[:12]
+            cache_dir = Path(tempfile.gettempdir()) / f"phenotypic-viewer-{key}" / _CACHE_RELATIVE
+            cache_dir.mkdir(parents=True, exist_ok=True)
 
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
@@ -738,8 +764,17 @@ In `_output_root.py`:
     def results_dir(self):
         # None for a standalone bundle; callers must guard.
         return self.layout.results_dir
+
+    @property
+    def viewer_cache_dir(self) -> Path:
+        # The cache *root* (parent of the dzi/ subdir held by cache_dir). Thumb
+        # routes and any non-DZI cache write under here so the standalone path
+        # stays inside the bundle. (review Q2 — distinct from cache_dir = .../dzi)
+        return self.cache_dir.parent
 ```
 Replace `overlay_path` body to `return self.layout.overlay_path(dataset, stem)`.
+
+> **Guard `results_dir` now (review W2):** because `results_dir` becomes `Path | None`, immediately update its one existing consumer `_tile_routes.py:69` in THIS task (not Task 7) to avoid a `None`-division crash window between commits: change `if not (output_root.results_dir / dataset).is_dir():` to `if output_root.results_dir is None or not (output_root.results_dir / dataset).is_dir():`. Task 7 then replaces this gate entirely with the capability check.
 
 5. Add module-level `_discover_datasets`:
 ```python
@@ -799,15 +834,20 @@ git commit -m "feat(gui): BundleLayout-backed discovery; boot from deliverables/
 **Why:** ~30 call sites pass `output_root.root` into `output_dir`-based helpers. In a standalone bundle `root` IS the deliverables folder, so `deliverables_dir(root)` would double-join. Route every deliverables/qc path through `layout`.
 
 **Files (modify):**
-- `_curation_labels.py`, `_filtered_state.py`, `_qc_tab/review/_data.py`,
+- GUI: `_curation_labels.py`, `_filtered_state.py`, `_qc_tab/review/_data.py`,
   `_qc_tab/review/_review_state.py`, `_qc_tab/review/_callbacks.py`, `_qc_tab/_callbacks.py`,
   `_error_tab/_data.py`, `_error_tab/_callbacks.py`, `_app.py`, `_layout.py`,
   `_tile_routes.py`, `timeline_view/_thumb_routes.py`
+- sdk_/CLI (review C1/C2/C3): `sdk_/_qc_recipe/_recipe.py` (`QcRecipe.from_layout`),
+  `sdk_/_qc_recipe/_runner.py` (`run_qc(..., qc_output_dir=None)`),
+  `schema/_schema_cache.py` (`MeasurementSchema.from_layout`),
+  `_cli/_cli_error_outputs.py` (update `CurationLabels.load` caller)
 - Test: `tests/unit/gui/results_viewer/test_curation_labels.py` (extend — standalone write target)
 
 **Interfaces:**
-- Consumes: `OutputRoot.layout` accessors (Task 1/2). `CurationLabels.load` and `ReviewState.load` change to accept the `OutputRoot` (or its `layout`) instead of a raw `root` path.
-- Produces: all curation/qc/error writes land under `layout.qc_dir` / `layout.errors_dir`, correct for both full-run and standalone roots.
+- Consumes: `OutputRoot.layout` accessors (Task 1/2).
+- Produces: `CurationLabels.load(layout: BundleLayout, master_df)` and `ReviewState.load(layout: BundleLayout)` (both take a `BundleLayout`, not a raw root). All curation/qc/error writes land under `layout.qc_dir` / `layout.errors_dir`, correct for both full-run and standalone roots.
+- **Governing rule (review):** never pass `output_root.root` into a helper that internally joins `deliverables/`/`qc/` — in standalone mode `root` is the deliverables folder and the call double-joins. Route through `layout`, or give the consumer a `from_layout`/`qc_output_dir` entry point.
 
 - [ ] **Step 1: Write the failing test (standalone curation persistence)**
 
@@ -827,7 +867,7 @@ def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path):
     df.write_parquet(base / "measurements.parquet")
 
     root = OutputRoot.discover(base)
-    labels = CurationLabels.load(root, root.master_df)  # NEW: takes OutputRoot
+    labels = CurationLabels.load(root.layout, root.master_df)  # NEW: takes BundleLayout
     labels.mark("img001", "1", "debris")
 
     # Durable store must live INSIDE the bundle, not at base.parent/qc.
@@ -843,7 +883,7 @@ Expected: FAIL — `CurationLabels.load` takes a path, writes to `base/deliverab
 - [ ] **Step 3: Apply the routing edits**
 
 Change `CurationLabels` to hold a `BundleLayout` instead of `root`:
-- `load(cls, output_root, master_df)` — accept the `OutputRoot`; store `self._layout = output_root.layout`.
+- `load(cls, layout: BundleLayout, master_df)` — accept a `BundleLayout`; store `self._layout = layout`. (GUI passes `output_root.layout`; the CLI passes `BundleLayout.detect(output_dir)` — see the CLI-caller sub-step below for C3.)
 - Replace internal path properties (`_curation_labels.py:198,202,206,210,267,277,292,316,671,692`):
   | Line | Before | After |
   |---|---|---|
@@ -859,7 +899,7 @@ Change `CurationLabels` to hold a `BundleLayout` instead of `root`:
   | 692 | `error_category_parquet_path(self.root, token)` | `self._layout.error_category_parquet(token)` |
   (Thread `layout = output_root.layout` through the `load`/`_read_*` classmethods that currently take `root`.)
 
-Change `ReviewState.load(output_root_path)` → `ReviewState.load(output_root)` storing `layout`, and `_review_state.py:143` `qc_review_state_path(Path(output_root_path))` → `output_root.layout.qc_review_state_path`. Update both call sites: `_error_tab/_data.py:135` `ReviewState.load(output_root.root)` → `ReviewState.load(output_root)`; `_qc_tab/review/_callbacks.py:650` likewise.
+Change `ReviewState.load(output_root_path)` → `ReviewState.load(layout: BundleLayout)` storing `layout`, and `_review_state.py:143` `qc_review_state_path(Path(output_root_path))` → `layout.qc_review_state_path`. Update both call sites: `_error_tab/_data.py:135` `ReviewState.load(output_root.root)` → `ReviewState.load(output_root.layout)`; `_qc_tab/review/_callbacks.py:650` likewise.
 
 QC review data (`_qc_tab/review/_data.py`):
 - `96` `qc_summary_parquet_path(Path(output_root.root))` → `output_root.layout.qc_summary_parquet`
@@ -872,30 +912,42 @@ Error callbacks (`_error_tab/_callbacks.py:293,294,306,613`): route through new 
 - `306` `verified_parquet_path(Path(output_root.root))` → `output_root.layout.verified_parquet`
 - `613` `error_analysis_html_path(Path(output_root.root))` → `output_root.layout.error_analysis_html`
 
-`_filtered_state.py:240` `measurements_parquet_path(root)`: this module is now a utility/constants module (per gui/CLAUDE.md). If still invoked with a raw root, pass `output_root.layout.mirror_parquet` from the caller instead; confirm the one caller and route it.
+`_filtered_state.py:240` `measurements_parquet_path(root)`: this module is now a utility/constants module (per gui/CLAUDE.md). Confirm the single caller with `grep -rn "_filtered_state\|measurements_parquet_path" src/phenotypic/gui/results_viewer` and route it through `output_root.layout.mirror_parquet`.
 
-`_app.py` / `_layout.py`: `CurationLabels.load(output_root.root, ...)` → `CurationLabels.load(output_root, ...)`; `_load_qc_pipeline(Path(output_root.root))` and `resolve_pipeline_config_path(output_root_path)` → use `output_root.layout.pipeline_config_path`. `MeasurementSchema(output_root=Path(output_root.root))` and `QcRecipe.load(Path(output_root.root))`: these consume the *run* dir — when standalone, pass `output_root.layout.deliverables_base` (they read deliverables/qc artefacts via the same helpers; confirm `QcRecipe`/`MeasurementSchema` resolve qc via `qc_dir`, which now points into deliverables, so passing `deliverables_base.parent`-equivalent is wrong — pass the value such that `qc_dir(x)` lands on `layout.qc_dir`). Simplest correct rule: pass `output_root.root` (already the output root for full runs); for standalone where `root == deliverables_base`, add a `QcRecipe.load`/`MeasurementSchema` overload that accepts a `BundleLayout`. **Confirm these two classes' path expectations** with `grep -n "qc_dir\|deliverables_dir\|output_root" src/phenotypic/sdk_/_qc_recipe/_recipe.py src/phenotypic/schema/*.py` before editing; if they call `qc_dir(output_root)` internally they must receive the *output dir*, so give them `layout.deliverables_base.parent` only when `output_root` is None is unsafe — instead thread `layout` in. Keep this sub-edit isolated and test it.
+**C1 — `QcRecipe`/`MeasurementSchema` double-join (CRITICAL).** Both internally call `deliverables_dir(output_root)` (`_recipe.py:327` `pipeline_json_path`, `_schema_cache.py:95`). Passing `output_root.root` works for full runs but in standalone `root == deliverables_base`, so `deliverables_dir(deliverables_base)` → `deliverables_base/deliverables/...` (verified double-join → silent empty recipe / empty columns dropdown). Fix by adding `BundleLayout`-aware entry points that read from `deliverables_base` directly:
+- In `_qc_recipe/_recipe.py`: add `@classmethod def from_layout(cls, layout: BundleLayout) -> "QcRecipe"` that reads `layout.pipeline_config_path` (already `deliverables_base/pipeline.json`) instead of `pipeline_json_path(output_root)`. Also add a `from_layout`-style path for `migrate_from_sidecar` (review W6, `_recipe.py:714`) reading `layout.deliverables_base / VIEWER_CACHE_DIRNAME / QC_RECIPE_FILENAME` — or skip the sidecar migration entirely when `layout.output_root is None` (standalone bundles never have a legacy sidecar).
+- In `schema/_schema_cache.py`: add `@classmethod def from_layout(cls, layout: BundleLayout)` (or accept `deliverables_base` directly) that resolves measurements from `layout.mirror_parquet`/`layout.master_parquet` rather than `deliverables_dir(self.output_root)`.
+- `_app.py:237,238,239` and `_layout.py:399,418`: replace `QcRecipe.migrate_from_sidecar(Path(output_root.root))` / `QcRecipe.load(Path(output_root.root))` / `_load_qc_pipeline(Path(output_root.root))` / `MeasurementSchema(output_root=Path(output_root.root))` / `QcRecipe.load(Path(output_root.root))` with the `*.from_layout(output_root.layout)` variants. `_load_qc_pipeline` itself should read `output_root.layout.pipeline_config_path`.
+- `CurationLabels.load(output_root.root, ...)` (`_app.py:198`) → `CurationLabels.load(output_root.layout, ...)`.
 
-`_tile_routes.py:69` `output_root.results_dir / dataset` — guard for `None`: the DZI route's `results_dir` existence gate must become "overlay exists OR hdf exists", not "results_dir/<dataset> exists". Replace with `if not output_root.has_overlay-or-hdf(...)`. Detailed in Task 7.
+**C2 — `run_qc` writes wrong dir (CRITICAL).** `_qc_tab/review/_callbacks.py:717` `run_qc(frame, pipeline, Path(output_root.root))`; `run_qc` (`_runner.py:149`) calls `qc_summary_parquet_path(output_dir)` etc. In standalone this double-joins and the broad `except` swallows the failure. Fix: add an optional `qc_output_dir: Path | None = None` param to `run_qc`; when provided, write `qc_output_dir / QC_SUMMARY_PARQUET` (and members/config) directly instead of via `qc_*_parquet_path(output_dir)`. The GUI call becomes `run_qc(frame, pipeline, Path(output_root.root), qc_output_dir=output_root.layout.qc_dir)`. The CLI caller passes nothing (unchanged behaviour). Also fix `_qc_tab/_callbacks.py:1018` `frame` write path if it reuses `qc_summary_parquet_path` (verify).
 
-`timeline_view/_thumb_routes.py:72,77` and `_tile_routes.py:140` use `output_root.root / VIEWER_CACHE_DIRNAME` — replace with `output_root.cache_dir.parent` (which is the resolved cache root) or a new `output_root.viewer_cache_dir` property to keep the standalone cache path correct.
+**C3 — CLI caller of `CurationLabels.load` (CRITICAL).** After the signature change, `_cli/_cli_error_outputs.py:59` `CurationLabels.load(output_dir, master_df)` breaks (it passes a `Path`). Update it to `CurationLabels.load(BundleLayout.detect(output_dir), master_df)` (the CLI always has a real output root → `detect` resolves case 2). Add `_cli_error_outputs.py` to this task's commit.
+
+**C4 — hand-joined dead paths (CRITICAL).** `_qc_tab/_callbacks.py:1018-1020` hand-joins `root / "qc.parquet"` and `root / "qc_summary.json"` — not through any helper, and (per review) not read anywhere downstream. Investigate with `grep -rn "qc.parquet\|qc_summary.json" src/phenotypic/gui`; if unused, delete the block; if used, route through `output_root.layout.qc_dir`. Do not leave a raw `output_root.root` join here.
+
+`_tile_routes.py:69` `output_root.results_dir / dataset` — the `None` guard is added in Task 4 (review W2); Task 7 then replaces this gate with the capability check ("overlay exists OR hdf exists").
+
+`timeline_view/_thumb_routes.py:72,77` and `_tile_routes.py:140` use `output_root.root / VIEWER_CACHE_DIRNAME` — replace with `output_root.viewer_cache_dir` (added in Task 4) so the standalone cache path stays inside the bundle. `_layout.py:172` displays `str(output_root.root)` as the header subtitle — this is now the deliverables path in standalone mode; acceptable (informative), no change required, but note it in the commit body.
 
 - [ ] **Step 4: Run the targeted + full viewer suites**
 
 Run: `uv run pytest tests/unit/gui/results_viewer -q`
-Expected: PASS. Fix any remaining site that still passes `output_root.root` into a deliverables/qc helper (grep to confirm none remain):
-`grep -rn "output_root.root\|self.root" src/phenotypic/gui/results_viewer | grep -iE "qc_|curation|measurements_parquet|master_measurements|error_|verified|deliverables|pipeline_config"` — expected: empty.
+Expected: PASS. Then **audit EVERY `output_root.root` / `.root` use** (review Q1 — the path-helper grep alone misses sites like `QcRecipe.load`/`MeasurementSchema`/`run_qc`/`migrate_from_sidecar` that take a root and join internally):
+- `grep -rn "output_root\.root\|\.root\b" src/phenotypic/gui/results_viewer` — for each hit, confirm it either (a) is a display/log string, or (b) routes through `output_root.layout` / a `from_layout`/`qc_output_dir` entry point. NO surviving call may pass `output_root.root` into a function that internally calls `deliverables_dir(...)` / `qc_dir(...)` / `qc_*_parquet_path(...)` / `pipeline_json_path(...)`.
+- `grep -rn "deliverables_dir\|qc_dir\|qc_summary_parquet_path\|qc_members_parquet_path\|pipeline_json_path" src/phenotypic/gui src/phenotypic/sdk_/_qc_recipe src/phenotypic/schema` — confirm GUI-reached call sites receive a real output root (full run) or a `BundleLayout`-aware entry point (standalone), never `deliverables_base`.
 
-- [ ] **Step 5: Type-check**
+- [ ] **Step 5: Type-check + CLI regression (C3 caller)**
 
-Run: `uv run mypy src/phenotypic/gui/results_viewer`
-Expected: no new errors.
+Run: `uv run mypy src/phenotypic/gui/results_viewer src/phenotypic/sdk_/_qc_recipe src/phenotypic/schema`
+Run: `uv run pytest tests/unit/_cli -k "error or curation or reemit" -q` (catches the `_cli_error_outputs.py` `CurationLabels.load` signature change)
+Expected: no new errors / PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/gui/results_viewer tests/unit/gui/results_viewer/test_curation_labels.py
-git commit -m "refactor(gui): route deliverables/qc paths through OutputRoot.layout"
+git add src/phenotypic/gui/results_viewer src/phenotypic/sdk_/_qc_recipe src/phenotypic/schema/_schema_cache.py src/phenotypic/_cli/_cli_error_outputs.py tests/unit/gui/results_viewer/test_curation_labels.py
+git commit -m "refactor(gui): route deliverables/qc paths through BundleLayout; from_layout entry points"
 ```
 
 ---
@@ -909,7 +961,7 @@ git commit -m "refactor(gui): route deliverables/qc paths through OutputRoot.lay
 - Test: `tests/unit/gui/_shared/test_tiles.py` (extend)
 
 **Interfaces:**
-- Consumes: `phenotypic.sdk_.load_image_from_hdf`; renderer helpers `_read_channel`, `_normalize_to_uint8`, `_label_map_to_rgb` (from `gui/builder/_image_renderer.py`).
+- Consumes: `h5py` (direct single-layer read of `/layers/<name>`); renderer helpers `_normalize_to_uint8`, `_label_map_to_rgb` (from `gui/builder/_image_renderer.py`). Does NOT use `load_image_from_hdf` (would load all layers — review W5).
 - Produces:
   ```python
   LayerName = Literal["rgb", "detect_mat", "objmap"]
@@ -964,22 +1016,33 @@ def _load_hdf_layer_rgb(path: str, mtime_ns: int, layer: str) -> PILImage.Image:
     """Decode one HDF layer to an RGB PIL image and cache it.
 
     rgb -> raw uint8; detect_mat -> contrast-normalised greyscale promoted to RGB;
-    objmap -> label2rgb colourisation. Reads only the requested layer.
+    objmap -> label2rgb colourisation.
+
+    Memory discipline (review W5 / spec Section 4): read ONLY the requested
+    ``/layers/<name>`` dataset via h5py — do NOT call ``load_image_from_hdf``,
+    which eagerly materialises every layer (rgb+gray+detect_mat+objmap, hundreds
+    of MB) just to discard all but one.
     """
     del mtime_ns  # cache-key only
-    from phenotypic.sdk_ import load_image_from_hdf
+    import h5py
+
     from phenotypic.gui.builder._image_renderer import (
-        _read_channel, _normalize_to_uint8, _label_map_to_rgb,
+        _normalize_to_uint8, _label_map_to_rgb,
     )
 
-    image = load_image_from_hdf(Path(path))
-    arr = _read_channel(image, layer)
+    with h5py.File(path, "r") as fh:
+        # Modern layout is /layers/<name>; legacy flat layout is /<name>.
+        grp = fh["layers"] if "layers" in fh else fh
+        if layer not in grp:
+            raise KeyError(f"HDF {path} has no layer {layer!r}")
+        arr = np.asarray(grp[layer][:])
+
     if layer == "rgb":
-        rgb = np.asarray(arr, dtype=np.uint8)
+        rgb = arr.astype(np.uint8)
     elif layer == "objmap":
-        rgb = _label_map_to_rgb(np.asarray(arr))
-    else:  # detect_mat / gray-like
-        gray = _normalize_to_uint8(np.asarray(arr))
+        rgb = _label_map_to_rgb(arr)
+    else:  # detect_mat / gray-like float layer
+        gray = _normalize_to_uint8(arr)
         rgb = np.stack([gray] * 3, axis=-1)
     return PILImage.fromarray(rgb, mode="RGB")
 
@@ -1340,4 +1403,6 @@ git commit -m "docs+test(gui): standalone deliverables bundle e2e + qc-relocatio
 
 **Type consistency:** `BundleLayout` accessor names are used identically across Tasks 1/2/4/5 (`qc_summary_parquet`, `curation_labels_parquet`, `mirror_parquet`, `master_parquet`, `error_category_parquet(token)`, `overlay_path`, `hdf_path`). `crop_colony`/`crop_hdf_rgb` signatures match across Tasks 6/7/9. `has_results`/`hdf_path` consistent across Tasks 1/4/7/8/10.
 
-**Known follow-ups (not blockers):** the `error_analysis_*`/`verified`/`analysis_*` `BundleLayout` accessors are introduced in Task 5 (the error-tab task) rather than Task 1 to keep Task 1's surface to the tested set; the `_filtered_state.py` caller and `QcRecipe`/`MeasurementSchema` path expectations need a one-line grep confirmation before editing (flagged in Task 5, Step 3).
+**Known follow-ups (not blockers):** the `error_analysis_*`/`verified`/`analysis_*` `BundleLayout` accessors are introduced in Task 5 (the error-tab task) rather than Task 1 to keep Task 1's surface to the tested set.
+
+**Independent-review fixes incorporated (see "Review Revisions" near the top):** C1 (`QcRecipe`/`MeasurementSchema` double-join → `from_layout` entry points, Task 5); C2 (`run_qc` double-join → `qc_output_dir` param, Task 5); C3 (CLI `CurationLabels.load` caller updated, Task 5); C4 (hand-joined dead paths `_qc_tab/_callbacks.py:1018-1020`, Task 5); C5 (viewer-cache read-only fallback + `viewer_cache_dir`, Task 4); W2 (`results_dir` `None` guard moved into Task 4); W5 (single-layer h5py read, Task 6); W1 (atomic-rename note, Task 3); W6/Q1 (`migrate_from_sidecar` + full `.root` audit, Task 5). The verdict was GO-WITH-CHANGES; all CRITICAL findings are now addressed in the plan text.
