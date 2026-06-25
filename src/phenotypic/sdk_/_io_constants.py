@@ -1323,22 +1323,22 @@ def resolve_qc_dir(output_dir: Path) -> Path:
 
 
 def qc_summary_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_summary.parquet``."""
+    """Return ``<output>/deliverables/qc/qc_summary.parquet``."""
     return qc_dir(output_dir) / QC_SUMMARY_PARQUET
 
 
 def qc_members_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_members.parquet``."""
+    """Return ``<output>/deliverables/qc/qc_members.parquet``."""
     return qc_dir(output_dir) / QC_MEMBERS_PARQUET
 
 
 def qc_config_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_config.json``."""
+    """Return ``<output>/deliverables/qc/qc_config.json``."""
     return qc_dir(output_dir) / QC_CONFIG_JSON
 
 
 def qc_review_state_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/review_state.json`` (GUI-owned review progress)."""
+    """Return ``<output>/deliverables/qc/review_state.json`` (GUI-owned review progress)."""
     return qc_dir(output_dir) / QC_REVIEW_STATE_JSON
 
 
@@ -1379,12 +1379,12 @@ def verified_parquet_path(output_dir: Path) -> Path:
 
 
 def curation_labels_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/curation_labels.parquet`` (durable labels store)."""
+    """Return ``<output>/deliverables/qc/curation_labels.parquet`` (durable labels store)."""
     return qc_dir(output_dir) / CURATION_LABELS_PARQUET
 
 
 def custom_categories_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/custom_categories.json`` (custom-category registry)."""
+    """Return ``<output>/deliverables/qc/custom_categories.json`` (custom-category registry)."""
     return qc_dir(output_dir) / CUSTOM_CATEGORIES_JSON
 
 
@@ -1810,32 +1810,32 @@ class BundleLayout:
 
     @property
     def qc_summary_parquet(self) -> Path:
-        """Return path to ``qc/qc_summary.parquet``."""
+        """Return path to ``deliverables/qc/qc_summary.parquet`` (legacy root resolved)."""
         return self.qc_dir / QC_SUMMARY_PARQUET
 
     @property
     def qc_members_parquet(self) -> Path:
-        """Return path to ``qc/qc_members.parquet``."""
+        """Return path to ``deliverables/qc/qc_members.parquet`` (legacy root resolved)."""
         return self.qc_dir / QC_MEMBERS_PARQUET
 
     @property
     def qc_config_json(self) -> Path:
-        """Return path to ``qc/qc_config.json``."""
+        """Return path to ``deliverables/qc/qc_config.json`` (legacy root resolved)."""
         return self.qc_dir / QC_CONFIG_JSON
 
     @property
     def qc_review_state_path(self) -> Path:
-        """Return path to ``qc/review_state.json`` (GUI-owned review progress)."""
+        """Return path to ``deliverables/qc/review_state.json`` (GUI-owned review progress)."""
         return self.qc_dir / QC_REVIEW_STATE_JSON
 
     @property
     def curation_labels_parquet(self) -> Path:
-        """Return path to ``qc/curation_labels.parquet`` (durable labels store)."""
+        """Return path to ``deliverables/qc/curation_labels.parquet`` (durable labels store)."""
         return self.qc_dir / CURATION_LABELS_PARQUET
 
     @property
     def custom_categories_json(self) -> Path:
-        """Return path to ``qc/custom_categories.json`` (custom-category registry)."""
+        """Return path to ``deliverables/qc/custom_categories.json`` (custom-category registry)."""
         return self.qc_dir / CUSTOM_CATEGORIES_JSON
 
     @property

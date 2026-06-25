@@ -190,10 +190,18 @@ paths. The user-facing run artifacts (`master_measurements.*`,
 `master_measurements_parquet_path(output)`, …) so the subfolder stays
 single-sourced. Detection overlay PNGs now live under
 `deliverables/overlays/<dataset>/` (also accessed via the `phenotypic.sdk_`
-path helpers). The root-level directories `RESULTS_DIRNAME` (`results/`,
-per-image hdf/measurements), `PROGRESS_DIRNAME` (`progress/`),
-`QC_DIRNAME` (`qc/`), and `processing_state.json` are **not** deliverables
-and stay at the output-dir root.
+path helpers). The durable **QC + curation state** (`qc_summary.parquet`,
+`qc_members.parquet`, `review_state.json`, `curation_labels.parquet`,
+`custom_categories.json`) now lives under `deliverables/qc/` (`DIR_QC` joined
+on `deliverables_dir(output)`; resolve via `qc_dir(output)` /
+`qc_summary_parquet_path(output)` / … — never hand-join `qc/`). It moved
+*into* `deliverables/` so a deliverables bundle is self-contained and portable;
+`resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
+output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
+legacy `qc/` into `deliverables/qc/` on discovery. The root-level directories
+`RESULTS_DIRNAME` (`results/`, per-image hdf/measurements),
+`PROGRESS_DIRNAME` (`progress/`), and `processing_state.json` are **not**
+deliverables and stay at the output-dir root.
 
 ---
 
@@ -370,6 +378,27 @@ travels with the field annotation.
   raise. Wrap the return in a 1-tuple: `return (payload,)`. Same rule for
   wildcard (`MATCH`) outputs returning a single component (e.g. the radial
   popover body) — wrap it: `return (body,)`.
+- **Standalone deliverables bundle** — the results viewer boots from a full
+  `python -m phenotypic` run **or** a portable, deliverables-only bundle
+  (`deliverables/master_measurements.parquet` + mirror + overlays + `qc/`, no
+  per-image `results/`). `BundleLayout.detect(root)` resolves which:
+  `layout.output_root is None` (and `OutputRoot.has_results` is `False`) for a
+  bundle, where the viewer `root` IS the `deliverables/` folder. Every
+  deliverables/qc/error path resolves through `layout` (never re-join `root`,
+  or you double-join `deliverables/`). The header **mode badge**
+  (`build_mode_badge`, `HEADER_MODE_BADGE_ID`) reads `has_results` to show
+  "Full run" vs "Standalone bundle"; the sidebar classifier's
+  `Capabilities.is_deliverables_bundle` (deliverables/master, no `results/`)
+  drives a distinct `bundle` badge so such a directory is recognizable as
+  viewer-openable.
+- **Pixel-layer toggle is gated on `results/`** — `build_layer_toggle`
+  (colony view) returns `None` for a standalone bundle (`has_results is
+  False`) because the RGB/Enhanced/Labels layers source per-image
+  `results/<ds>/.../<stem>.h5` HDFs that a bundle does not ship. Curation, QC
+  review, overlays, and DZI deep-zoom (overlay-tiled) all still work; only the
+  per-image full-res layer switch is absent. The `STORE_ACTIVE_LAYER` store
+  stays mounted regardless so the colony render callback's Input is resolvable
+  even when the control is hidden.
 
 ---
 
