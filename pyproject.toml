@@ -72,6 +72,7 @@ dependencies = [
     "pydantic>=2.12.5",
     "python-lucide>=0.2.24",
     "polars[rtcompat]>=1.41.2",
+    "duckdb>=1.5.4",
 ]
 
 [project.urls]
