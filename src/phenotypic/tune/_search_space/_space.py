@@ -30,7 +30,7 @@ class Knob(BaseModel):
     Args:
         target: The structured ``KnobTarget`` identifying the parameter — a
             ``Param`` / ``Presence`` / ``Nested`` whose ``.key`` renders the
-            canonical position-index path (e.g. ``"1.detectors[0].ignore_zeros"``,
+            canonical position-index path (e.g. ``"1.ops[0].ignore_zeros"``,
             where the ``N.`` prefix is the operation's pipeline position). A
             legacy string ``key="0.sigma"`` is still accepted and coerced to a
             target (string-preserving round-trip), so older call sites and frozen

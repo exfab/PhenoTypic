@@ -548,7 +548,7 @@ class TestPreMigrationBackwardCompat:
                     "params": {
                         "mode"             : "union",
                         "min_overlap_ratio": 0.0,
-                        "detectors"        : {
+                        "ops"        : {
                             "__type__": "operation_list",
                             "items"   : [
                                 {
@@ -571,11 +571,11 @@ class TestPreMigrationBackwardCompat:
         composite = loaded._ops["CompositeDetector"]
         assert isinstance(composite, CompositeDetector)
         assert composite.mode == "union"
-        assert len(composite.detectors) == 2
-        assert type(composite.detectors[0]).__name__ == "OtsuDetector"
-        assert composite.detectors[0].ignore_zeros is True
-        assert type(composite.detectors[1]).__name__ == "CannyDetector"
-        assert composite.detectors[1].sigma == 2
+        assert len(composite.ops) == 2
+        assert type(composite.ops[0]).__name__ == "OtsuDetector"
+        assert composite.ops[0].ignore_zeros is True
+        assert type(composite.ops[1]).__name__ == "CannyDetector"
+        assert composite.ops[1].sigma == 2
 
 
 class TestErrorHandling:

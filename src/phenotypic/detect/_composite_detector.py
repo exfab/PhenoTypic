@@ -42,7 +42,7 @@ class CompositeDetector(ObjectDetector):
           strategies.
 
     Args:
-        detectors: List of :class:`~phenotypic.abc_.ObjectDetector` or
+        ops: List of :class:`~phenotypic.abc_.ObjectDetector` or
             :class:`~phenotypic.ImagePipeline` instances to combine.
             Pipelines allow preprocessing steps before detection. Defaults
             to ``[OtsuDetector(), RoundPeaksDetector()]`` when not
@@ -64,7 +64,7 @@ class CompositeDetector(ObjectDetector):
         colony mask and ``objmap`` derived from the merged mask.
 
     Raises:
-        ValueError: If ``detectors`` is empty or ``mode`` is not one of
+        ValueError: If ``ops`` is empty or ``mode`` is not one of
             ``'union'``, ``'intersection'``, or ``'overlap'``.
 
     See Also:
@@ -83,18 +83,18 @@ class CompositeDetector(ObjectDetector):
     # ``| None`` permits an empty list slot: the GUI builder marks an
     # unfilled detector slot in an in-progress pipeline with ``None``
     # (pre-migration the un-validated list accepted these implicitly).
-    detectors: List[OperationField | None] = Field(
+    ops: List[OperationField | None] = Field(
         default_factory=lambda: [OtsuDetector(), RoundPeaksDetector()]
     )
     mode: Literal['union', 'intersection', 'overlap'] = 'overlap'
     min_overlap_ratio: Annotated[float, TuneSpec(0.0, 0.5)] = Field(0.0, ge=0.0, le=1.0)
 
-    @field_validator("detectors", mode="before")
+    @field_validator("ops", mode="before")
     @classmethod
-    def _default_detectors(cls, value: Any) -> Any:
+    def _default_ops(cls, value: Any) -> Any:
         """Map an explicit ``None`` onto the default detector pair.
 
-        The pre-migration ``__init__`` accepted ``detectors=None`` as the
+        The pre-migration ``__init__`` accepted ``ops=None`` as the
         "unset" sentinel and substituted ``[OtsuDetector(),
         RoundPeaksDetector()]``. The ``default_factory`` covers the
         omitted-argument case; this validator preserves the legacy
@@ -107,7 +107,7 @@ class CompositeDetector(ObjectDetector):
     def _operate(self, image: Image) -> Image:
         """Apply all detectors/pipelines and combine their objmask outputs."""
 
-        if not self.detectors:
+        if not self.ops:
             raise ValueError(
                     "At least one detector must be provided to CompositeDetector")
 
@@ -123,7 +123,7 @@ class CompositeDetector(ObjectDetector):
         # Apply all detectors/pipelines and collect masks
         objmaps = []
 
-        for detector in self.detectors:
+        for detector in self.ops:
             if detector is None:
                 # An unfilled list slot (the GUI builder marks an empty
                 # detector slot with None); nothing to apply — skip it.

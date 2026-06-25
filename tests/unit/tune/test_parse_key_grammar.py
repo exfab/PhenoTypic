@@ -65,16 +65,16 @@ def test_classed_presence_class_mismatch_raises():
 # nested
 # --------------------------------------------------------------------------- #
 def test_nested_key_parses_to_nestedkey():
-    parsed = _parse_key("0.detectors[0].ignore_zeros", _composite_base())
+    parsed = _parse_key("0.ops[0].ignore_zeros", _composite_base())
     assert isinstance(parsed, NestedKey)
     assert parsed.position == 0
-    assert parsed.field == "detectors"
+    assert parsed.field == "ops"
     assert parsed.index == 0
     assert parsed.leaf == "ignore_zeros"
 
 
 def test_nested_key_high_index_parses():
-    parsed = _parse_key("0.detectors[1].thresh_method", _composite_base())
+    parsed = _parse_key("0.ops[1].thresh_method", _composite_base())
     assert isinstance(parsed, NestedKey)
     assert parsed.index == 1
     assert parsed.leaf == "thresh_method"
@@ -85,7 +85,7 @@ def test_nested_key_high_index_parses():
 # --------------------------------------------------------------------------- #
 def test_second_index_segment_rejected_as_depth_error():
     with pytest.raises(ValueError, match="depth"):
-        _parse_key("0.detectors[0].sub[1].x", _composite_base())
+        _parse_key("0.ops[0].sub[1].x", _composite_base())
 
 
 # --------------------------------------------------------------------------- #
@@ -93,12 +93,12 @@ def test_second_index_segment_rejected_as_depth_error():
 # --------------------------------------------------------------------------- #
 def test_malformed_bracket_raises():
     with pytest.raises(ValueError):
-        _parse_key("0.detectors[x].ignore_zeros", _composite_base())
+        _parse_key("0.ops[x].ignore_zeros", _composite_base())
 
 
 def test_nested_missing_leaf_raises():
     with pytest.raises(ValueError):
-        _parse_key("0.detectors[0]", _composite_base())
+        _parse_key("0.ops[0]", _composite_base())
 
 
 # --------------------------------------------------------------------------- #

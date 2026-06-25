@@ -192,7 +192,7 @@ def test_wire_create_rejects_type_incompatible_class(app_ctx: Any) -> None:
 def test_wire_create_grows_slot_list_for_list_typed(app_ctx: Any) -> None:
     """For list-typed ports, wiring at an unallocated slot extends the list.
 
-    ``CompositeDetector.detectors`` is list-typed; wiring at slot 2 on
+    ``CompositeDetector.ops`` is list-typed; wiring at slot 2 on
     an empty consumer must pad slots 0 and 1 with ``None`` placeholders
     so the resulting list has length 3 with only slot 2 occupied.
     """
@@ -203,14 +203,14 @@ def test_wire_create_grows_slot_list_for_list_typed(app_ctx: Any) -> None:
         "wire_create",
         {
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 2,
             "class_name": "OtsuDetector",
         },
     )
 
     composite = out["root"]["nodes"][0]
-    slots = composite["aux_ports"]["detectors"]
+    slots = composite["aux_ports"]["ops"]
     assert len(slots) == 3
     assert slots[0] is None
     assert slots[1] is None
@@ -275,7 +275,7 @@ def test_wire_delete_other_slot_preserves_focus(app_ctx: Any) -> None:
         "wire_create",
         {
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 0,
             "class_name": "OtsuDetector",
         },
@@ -286,7 +286,7 @@ def test_wire_delete_other_slot_preserves_focus(app_ctx: Any) -> None:
         "wire_create",
         {
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 1,
             "class_name": "RoundPeaksDetector",
         },
@@ -299,7 +299,7 @@ def test_wire_delete_other_slot_preserves_focus(app_ctx: Any) -> None:
         {
             "focus": "aux",
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 0,
         },
     )
@@ -310,20 +310,20 @@ def test_wire_delete_other_slot_preserves_focus(app_ctx: Any) -> None:
         "wire_delete",
         {
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 1,
         },
     )
 
     composite = out["root"]["nodes"][0]
-    slots = composite["aux_ports"]["detectors"]
+    slots = composite["aux_ports"]["ops"]
     # Slot 0 still wired; slot 1 cleared.
     assert isinstance(slots[0], dict)
     assert slots[1] is None
     # Focus on slot 0 preserved.
     assert out["inspector_focus_aux"] == {
         "target_node_id": "composite",
-        "param": "detectors",
+        "param": "ops",
         "slot": 0,
     }
 
@@ -344,17 +344,17 @@ def test_port_slot_add_appends_none(app_ctx: Any) -> None:
     out = _dispatch(
         state,
         "port_slot_add",
-        {"node_id": "composite", "param": "detectors"},
+        {"node_id": "composite", "param": "ops"},
     )
-    assert out["root"]["nodes"][0]["aux_ports"]["detectors"] == [None]
+    assert out["root"]["nodes"][0]["aux_ports"]["ops"] == [None]
 
     # Adding twice grows to two placeholders.
     out = _dispatch(
         out,
         "port_slot_add",
-        {"node_id": "composite", "param": "detectors"},
+        {"node_id": "composite", "param": "ops"},
     )
-    assert out["root"]["nodes"][0]["aux_ports"]["detectors"] == [None, None]
+    assert out["root"]["nodes"][0]["aux_ports"]["ops"] == [None, None]
 
 
 def test_port_slot_remove_pops(app_ctx: Any) -> None:
@@ -373,22 +373,22 @@ def test_port_slot_remove_pops(app_ctx: Any) -> None:
             "wire_create",
             {
                 "target_node_id": "composite",
-                "param": "detectors",
+                "param": "ops",
                 "slot": slot,
                 "class_name": "OtsuDetector",
             },
         )
-    pre_slots = state["root"]["nodes"][0]["aux_ports"]["detectors"]
+    pre_slots = state["root"]["nodes"][0]["aux_ports"]["ops"]
     slot0_id = pre_slots[0]["node_id"]
     slot2_id = pre_slots[2]["node_id"]
 
     out = _dispatch(
         state,
         "port_slot_remove",
-        {"node_id": "composite", "param": "detectors", "slot": 1},
+        {"node_id": "composite", "param": "ops", "slot": 1},
     )
 
-    remaining = out["root"]["nodes"][0]["aux_ports"]["detectors"]
+    remaining = out["root"]["nodes"][0]["aux_ports"]["ops"]
     assert len(remaining) == 2
     assert remaining[0]["node_id"] == slot0_id
     assert remaining[1]["node_id"] == slot2_id
@@ -552,9 +552,9 @@ def test_set_inspector_focus_aux_rejects_empty_slot(app_ctx: Any) -> None:
     state = _dispatch(
         state,
         "port_slot_add",
-        {"node_id": "composite", "param": "detectors"},
+        {"node_id": "composite", "param": "ops"},
     )
-    assert state["root"]["nodes"][0]["aux_ports"]["detectors"] == [None]
+    assert state["root"]["nodes"][0]["aux_ports"]["ops"] == [None]
     # Stash a sentinel focus value so we can prove it survives the
     # rejected dispatch.
     state["inspector_focus_aux"] = {"sentinel": True}
@@ -565,7 +565,7 @@ def test_set_inspector_focus_aux_rejects_empty_slot(app_ctx: Any) -> None:
         {
             "focus": "aux",
             "target_node_id": "composite",
-            "param": "detectors",
+            "param": "ops",
             "slot": 0,
         },
     )

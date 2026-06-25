@@ -84,8 +84,8 @@ def linear_registry(empty_registry, monkeypatch):
                     "detector": _make_param(
                         "detector", has_default=False, is_operation=True
                     ),
-                    "detectors": _make_param(
-                        "detectors",
+                    "ops": _make_param(
+                        "ops",
                         has_default=True,
                         is_operation=True,
                         is_list=True,
@@ -566,19 +566,19 @@ def test_linear_palette_add_replaces_list_slot_without_gaps(linear_registry):
     old_source = _block_dict("OtherOp")
     keep_source = _block_dict("SourceOp")
     state["root"]["blocks"].extend([old_source, keep_source])
-    consumer["list_slot_counts"]["detectors"] = 2
+    consumer["list_slot_counts"]["ops"] = 2
     state["root"]["edges"].extend(
         [
             _aux_edge_dict(
                 old_source["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=0,
             ),
             _aux_edge_dict(
                 keep_source["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=1,
             ),
         ]
@@ -587,7 +587,7 @@ def test_linear_palette_add_replaces_list_slot_without_gaps(linear_registry):
         ROOT_SCOPE_KEY: _target(
             "parameter_slot",
             block_id=consumer["block_id"],
-            param="detectors",
+            param="ops",
             slot=0,
         )
     }
@@ -605,7 +605,7 @@ def test_linear_palette_add_replaces_list_slot_without_gaps(linear_registry):
         edge
         for edge in _edges(out, kind="aux")
         if edge["target_block_id"] == consumer["block_id"]
-        and edge["target_port"] == "detectors"
+        and edge["target_port"] == "ops"
     ]
     assert sorted(edge["target_slot"] for edge in list_edges) == [0, 1]
 
@@ -728,19 +728,19 @@ def test_linear_clear_list_param_deletes_aux_subtree_and_compacts(linear_registr
     source_b = _block_dict("OtherOp")
     nested_dep = _block_dict("SourceOp")
     state["root"]["blocks"].extend([source_a, source_b, nested_dep])
-    consumer["list_slot_counts"]["detectors"] = 2
+    consumer["list_slot_counts"]["ops"] = 2
     state["root"]["edges"].extend(
         [
             _aux_edge_dict(
                 source_a["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=0,
             ),
             _aux_edge_dict(
                 source_b["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=1,
             ),
             _aux_edge_dict(nested_dep["block_id"], source_b["block_id"], "detector"),
@@ -754,7 +754,7 @@ def test_linear_clear_list_param_deletes_aux_subtree_and_compacts(linear_registr
             "target": _target(
                 "parameter_slot",
                 block_id=consumer["block_id"],
-                param="detectors",
+                param="ops",
                 slot=1,
             )
         },
@@ -767,10 +767,10 @@ def test_linear_clear_list_param_deletes_aux_subtree_and_compacts(linear_registr
         edge
         for edge in _edges(out, kind="aux")
         if edge["target_block_id"] == consumer["block_id"]
-        and edge["target_port"] == "detectors"
+        and edge["target_port"] == "ops"
     ]
     assert [edge["target_slot"] for edge in remaining] == [0]
-    assert _block_by_class(out, "ConsumerOp")["list_slot_counts"]["detectors"] == 1
+    assert _block_by_class(out, "ConsumerOp")["list_slot_counts"]["ops"] == 1
 
 
 def test_linear_clear_malformed_list_slot_is_noop(linear_registry):
@@ -779,19 +779,19 @@ def test_linear_clear_malformed_list_slot_is_noop(linear_registry):
     source_a = _block_dict("SourceOp")
     source_b = _block_dict("OtherOp")
     state["root"]["blocks"].extend([source_a, source_b])
-    consumer["list_slot_counts"]["detectors"] = 2
+    consumer["list_slot_counts"]["ops"] = 2
     state["root"]["edges"].extend(
         [
             _aux_edge_dict(
                 source_a["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=0,
             ),
             _aux_edge_dict(
                 source_b["block_id"],
                 consumer["block_id"],
-                "detectors",
+                "ops",
                 slot=1,
             ),
         ]
@@ -805,7 +805,7 @@ def test_linear_clear_malformed_list_slot_is_noop(linear_registry):
                 "kind": "parameter_slot",
                 "scope_path": [],
                 "block_id": consumer["block_id"],
-                "param": "detectors",
+                "param": "ops",
             }
         },
     )

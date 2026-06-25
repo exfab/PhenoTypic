@@ -36,22 +36,22 @@ def _branches() -> list[_SetPlane]:
 class TestCombinationModes:
     def test_max_is_default(self):
         image, *_ = _three_branch_image()
-        result = CompositeEnhance(enhancers=_branches()).apply(image)
+        result = CompositeEnhance(ops=_branches()).apply(image)
         assert np.allclose(result.detect_mat[:], 0.6)
 
     def test_min(self):
         image, *_ = _three_branch_image()
-        result = CompositeEnhance(enhancers=_branches(), mode="min").apply(image)
+        result = CompositeEnhance(ops=_branches(), mode="min").apply(image)
         assert np.allclose(result.detect_mat[:], 0.2)
 
     def test_mean(self):
         image, *_ = _three_branch_image()
-        result = CompositeEnhance(enhancers=_branches(), mode="mean").apply(image)
+        result = CompositeEnhance(ops=_branches(), mode="mean").apply(image)
         assert np.allclose(result.detect_mat[:], (0.2 + 0.6 + 0.4) / 3)
 
     def test_median(self):
         image, *_ = _three_branch_image()
-        result = CompositeEnhance(enhancers=_branches(), mode="median").apply(image)
+        result = CompositeEnhance(ops=_branches(), mode="median").apply(image)
         assert np.allclose(result.detect_mat[:], 0.4)
 
 
@@ -59,14 +59,14 @@ class TestClipping:
     def test_clip_off_by_default_allows_out_of_range(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         result = CompositeEnhance(
-            enhancers=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
+            ops=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
         ).apply(image)
         assert result.detect_mat[:].max() > 1.0
 
     def test_clip_clamps_to_unit_interval(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         result = CompositeEnhance(
-            enhancers=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
+            ops=[_SetPlane(value=1.5), _SetPlane(value=-0.3)],
             mode="min",
             clip=True,
         ).apply(image)
@@ -79,26 +79,26 @@ class TestBranchTypes:
         image, *_ = _three_branch_image()
         pipe = ImagePipeline(pipe_cfgs=[_SetPlane(value=0.6)])
         result = CompositeEnhance(
-            enhancers=[_SetPlane(value=0.2), pipe],
+            ops=[_SetPlane(value=0.2), pipe],
         ).apply(image)
         assert np.allclose(result.detect_mat[:], 0.6)
 
     def test_none_slot_is_skipped(self):
         image, *_ = _three_branch_image()
         result = CompositeEnhance(
-            enhancers=[_SetPlane(value=0.2), None, _SetPlane(value=0.6)],
+            ops=[_SetPlane(value=0.2), None, _SetPlane(value=0.6)],
         ).apply(image)
         assert np.allclose(result.detect_mat[:], 0.6)
 
     def test_empty_enhancers_raises(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         with pytest.raises(Exception, match="At least one enhancer"):
-            CompositeEnhance(enhancers=[]).apply(image)
+            CompositeEnhance(ops=[]).apply(image)
 
     def test_all_none_enhancers_raises(self):
         image = Image(arr=np.zeros((8, 8), dtype=float))
         with pytest.raises(Exception, match="At least one enhancer"):
-            CompositeEnhance(enhancers=[None, None]).apply(image)
+            CompositeEnhance(ops=[None, None]).apply(image)
 
 
 class TestIntegrityAndDefaults:
@@ -109,7 +109,7 @@ class TestIntegrityAndDefaults:
         rgb_before = image.rgb[:].copy()
         gray_before = image.gray[:].copy()
         result = CompositeEnhance(
-            enhancers=[GaussianBlur(sigma=1.0), MedianFilter()],
+            ops=[GaussianBlur(sigma=1.0), MedianFilter()],
         ).apply(image)
         assert np.array_equal(result.rgb[:], rgb_before)
         assert np.array_equal(result.gray[:], gray_before)
@@ -118,20 +118,20 @@ class TestIntegrityAndDefaults:
         op = CompositeEnhance()
         assert op.mode == "max"
         assert op.clip is False
-        assert len(op.enhancers) == 2
-        assert isinstance(op.enhancers[0], GaussianBlur)
-        assert isinstance(op.enhancers[1], MedianFilter)
+        assert len(op.ops) == 2
+        assert isinstance(op.ops[0], GaussianBlur)
+        assert isinstance(op.ops[1], MedianFilter)
 
     def test_explicit_none_enhancers_maps_to_default(self):
-        op = CompositeEnhance(enhancers=None)
-        assert isinstance(op.enhancers[0], GaussianBlur)
-        assert isinstance(op.enhancers[1], MedianFilter)
+        op = CompositeEnhance(ops=None)
+        assert isinstance(op.ops[0], GaussianBlur)
+        assert isinstance(op.ops[1], MedianFilter)
 
 
 class TestSerialization:
     def test_roundtrip_preserves_branch_subclasses_and_mode(self):
         op = CompositeEnhance(
-            enhancers=[GaussianBlur(sigma=1.5), MedianFilter()],
+            ops=[GaussianBlur(sigma=1.5), MedianFilter()],
             mode="mean",
             clip=True,
         )
@@ -139,6 +139,6 @@ class TestSerialization:
         assert isinstance(restored, CompositeEnhance)
         assert restored.mode == "mean"
         assert restored.clip is True
-        assert isinstance(restored.enhancers[0], GaussianBlur)
-        assert restored.enhancers[0].sigma == 1.5
-        assert isinstance(restored.enhancers[1], MedianFilter)
+        assert isinstance(restored.ops[0], GaussianBlur)
+        assert restored.ops[0].sigma == 1.5
+        assert isinstance(restored.ops[1], MedianFilter)

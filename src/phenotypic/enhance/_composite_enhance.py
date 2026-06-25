@@ -48,7 +48,7 @@ class CompositeEnhance(ImageEnhancer):
           applied *in sequence* rather than combined in parallel.
 
     Args:
-        enhancers: List of :class:`~phenotypic.abc_.ImageEnhancer` or
+        ops: List of :class:`~phenotypic.abc_.ImageEnhancer` or
             :class:`~phenotypic.ImagePipeline` instances to combine. Pipelines
             allow per-branch preprocessing before the response is collected.
             Defaults to ``[GaussianBlur(), MedianFilter()]`` when not
@@ -70,7 +70,7 @@ class CompositeEnhance(ImageEnhancer):
         map. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
-        ValueError: If ``enhancers`` is empty or contains only ``None`` slots.
+        ValueError: If ``ops`` is empty or contains only ``None`` slots.
 
     Examples:
         Combine two enhancers, keeping the strongest response per pixel:
@@ -83,7 +83,7 @@ class CompositeEnhance(ImageEnhancer):
         ... )
         >>> image = load_synth_yeast_plate()
         >>> combiner = CompositeEnhance(
-        ...     enhancers=[GaussianBlur(sigma=1.5), SubtractRollingBall()],
+        ...     ops=[GaussianBlur(sigma=1.5), SubtractRollingBall()],
         ...     mode="max",
         ... )
         >>> enhanced = combiner.apply(image)
@@ -94,7 +94,7 @@ class CompositeEnhance(ImageEnhancer):
 
         >>> from phenotypic.enhance import MedianFilter, EnhanceLocalContrast
         >>> combiner = CompositeEnhance(
-        ...     enhancers=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],
+        ...     ops=[GaussianBlur(), MedianFilter(), EnhanceLocalContrast()],
         ...     mode="mean",
         ...     clip=True,
         ... )
@@ -108,20 +108,20 @@ class CompositeEnhance(ImageEnhancer):
     # round-trip (a bare ``model_dump`` of the union would lose the subclass).
     # ``| None`` permits an empty list slot that the GUI builder uses to mark
     # an unfilled enhancer slot in an in-progress pipeline.
-    enhancers: List[OperationField | None] = Field(
+    ops: List[OperationField | None] = Field(
         default_factory=lambda: [GaussianBlur(), MedianFilter()]
     )
     mode: CombineMode = "max"
     clip: bool = False
 
-    @field_validator("enhancers", mode="before")
+    @field_validator("ops", mode="before")
     @classmethod
-    def _default_enhancers(cls, value: Any) -> Any:
+    def _default_ops(cls, value: Any) -> Any:
         """Map an explicit ``None`` onto the default enhancer pair.
 
         Mirrors :class:`CompositeDetector`: the ``default_factory`` covers the
         omitted-argument case, and this validator preserves an explicit
-        ``enhancers=None`` call by substituting the default pair.
+        ``ops=None`` call by substituting the default pair.
         """
         if value is None:
             return [GaussianBlur(), MedianFilter()]
@@ -134,7 +134,7 @@ class CompositeEnhance(ImageEnhancer):
         from phenotypic import ImagePipeline
 
         response_maps: list[np.ndarray] = []
-        for enhancer in self.enhancers:
+        for enhancer in self.ops:
             if enhancer is None:
                 # An unfilled GUI-builder slot; nothing to apply -- skip it.
                 continue

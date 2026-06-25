@@ -106,7 +106,7 @@ def _publish_edge_event(page: Page, payload: dict) -> None:
 def _has_consumer_with_list_aux(page: Page) -> bool:
     """Return True iff the registry exposes a consumer with a list-aux param.
 
-    Spec §8.3.3 exercises ``CompositeDetector.detectors`` which is
+    Spec §8.3.3 exercises ``CompositeDetector.ops`` which is
     declared with ``List[Detector]``.  The class is registered in the
     fake-sandbox registry only when ``CompositeDetector`` is bundled in
     the build — if not, list-aux fan-in tests skip.
@@ -131,7 +131,7 @@ def _has_consumer_with_list_aux(page: Page) -> bool:
 
 
 def test_list_aux_fan_in_appends_to_next_slot(page: Page, hub_url: str) -> None:
-    """Wire 3 detectors into ``CompositeDetector.detectors``; slots = 1/2/3.
+    """Wire 3 detectors into ``CompositeDetector.ops``; slots = 1/2/3.
 
     The server-side dispatcher resolves slots from
     ``block.list_slot_counts`` — the client never emits a slot index

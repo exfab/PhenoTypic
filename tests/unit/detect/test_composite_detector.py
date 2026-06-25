@@ -32,7 +32,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                ops=[OtsuDetector(), CannyDetector(sigma=2)],
                 mode='union'
         )
         result = composite.apply(image)
@@ -50,7 +50,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                ops=[OtsuDetector(), CannyDetector(sigma=2)],
                 mode='intersection'
         )
         result = composite.apply(image)
@@ -67,7 +67,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                ops=[OtsuDetector(), CannyDetector(sigma=2)],
                 mode='overlap',
                 min_overlap_ratio=0.7
         )
@@ -85,7 +85,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[OtsuDetector()],
+                ops=[OtsuDetector()],
                 mode='union'
         )
         result = composite.apply(image)
@@ -100,7 +100,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(),
                     CannyDetector(sigma=2),
                     TriangleDetector()
@@ -116,7 +116,7 @@ class TestCompositeDetector:
     def test_empty_detectors_raises(self, synth_plate):
         """Test that empty detectors list raises an error."""
         with pytest.raises(Exception, match="At least one detector"):
-            CompositeDetector(detectors=[]).apply(synth_plate.copy())
+            CompositeDetector(ops=[]).apply(synth_plate.copy())
 
     def test_invalid_mode_raises(self, synth_plate):
         """Test that an invalid mode is rejected at construction.
@@ -130,7 +130,7 @@ class TestCompositeDetector:
 
         with pytest.raises(ValidationError):
             CompositeDetector(
-                    detectors=[OtsuDetector()],
+                    ops=[OtsuDetector()],
                     mode='invalid'
             )
 
@@ -138,7 +138,7 @@ class TestCompositeDetector:
         """Test that CompositeDetector serializes and deserializes correctly."""
         # Create composite detector with nested detectors
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(ignore_zeros=True),
                     CannyDetector(sigma=2)
                 ],
@@ -158,14 +158,14 @@ class TestCompositeDetector:
         assert len(restored_pipeline._ops) == 1
         restored_composite = list(restored_pipeline._ops.values())[0]
         assert isinstance(restored_composite, CompositeDetector)
-        assert len(restored_composite.detectors) == 2
-        assert isinstance(restored_composite.detectors[0], OtsuDetector)
-        assert isinstance(restored_composite.detectors[1], CannyDetector)
+        assert len(restored_composite.ops) == 2
+        assert isinstance(restored_composite.ops[0], OtsuDetector)
+        assert isinstance(restored_composite.ops[1], CannyDetector)
         assert restored_composite.mode == 'union'
 
         # Verify parameters preserved
-        assert restored_composite.detectors[0].ignore_zeros is True
-        assert restored_composite.detectors[1].sigma == 2
+        assert restored_composite.ops[0].ignore_zeros is True
+        assert restored_composite.ops[1].sigma == 2
 
     def test_serialization_functional_equivalence(self, synth_plate):
         """Test that serialized/deserialized CompositeDetector produces identical results."""
@@ -173,7 +173,7 @@ class TestCompositeDetector:
 
         # Original detector
         composite = CompositeDetector(
-                detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                ops=[OtsuDetector(), CannyDetector(sigma=2)],
                 mode='intersection'
         )
         original_result = composite.apply(image, inplace=False)
@@ -209,7 +209,7 @@ class TestCompositeDetector:
 
         # Conservative overlap (high ratio)
         conservative = CompositeDetector(
-                detectors=[
+                ops=[
                     StaticMaskDetector(key="large"),
                     StaticMaskDetector(key="small"),
                 ],
@@ -220,7 +220,7 @@ class TestCompositeDetector:
 
         # Permissive overlap (low ratio)
         permissive = CompositeDetector(
-                detectors=[
+                ops=[
                     StaticMaskDetector(key="large"),
                     StaticMaskDetector(key="small"),
                 ],
@@ -244,7 +244,7 @@ class TestCompositeDetector:
         image = Image(arr=np.zeros((8, 8), dtype=np.uint8))
 
         permissive = CompositeDetector(
-                detectors=[
+                ops=[
                     StaticMaskDetector(key="large"),
                     StaticMaskDetector(key="small"),
                 ],
@@ -253,7 +253,7 @@ class TestCompositeDetector:
         ).apply(image)
 
         strict = CompositeDetector(
-                detectors=[
+                ops=[
                     StaticMaskDetector(key="large"),
                     StaticMaskDetector(key="small"),
                 ],
@@ -272,7 +272,7 @@ class TestCompositeDetector:
         import json
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(ignore_zeros=True),
                     CannyDetector(sigma=2)
                 ],
@@ -292,8 +292,8 @@ class TestCompositeDetector:
         # Verify nested detectors are serialized. Under the pydantic
         # serializer each ``OperationField`` entry is a plain
         # ``{"class", "params"}`` dict, so ``detectors`` is a JSON list.
-        assert 'detectors' in composite_data['params']
-        detectors_data = composite_data['params']['detectors']
+        assert 'ops' in composite_data['params']
+        detectors_data = composite_data['params']['ops']
         assert isinstance(detectors_data, list)
         assert len(detectors_data) == 2
 
@@ -321,7 +321,7 @@ class TestCompositeDetector:
         pipeline = ImagePipeline(ops=[
             GaussianBlur(sigma=2),
             CompositeDetector(
-                    detectors=[OtsuDetector(), CannyDetector(sigma=2)],
+                    ops=[OtsuDetector(), CannyDetector(sigma=2)],
                     mode='union'
             ),
             SmallObjectRemover(min_size=50)
@@ -359,7 +359,7 @@ class TestCompositeDetector:
         ])
 
         composite = CompositeDetector(
-                detectors=[pipeline],
+                ops=[pipeline],
                 mode='union'
         )
         result = composite.apply(image)
@@ -374,7 +374,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(),  # Direct detector
                     ImagePipeline(ops=[  # Pipeline
                         GaussianBlur(sigma=2),
@@ -394,7 +394,7 @@ class TestCompositeDetector:
         from phenotypic.enhance import GaussianBlur
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
@@ -412,12 +412,12 @@ class TestCompositeDetector:
         restored_composite = list(restored._ops.values())[0]
 
         # Verify structure
-        assert len(restored_composite.detectors) == 2
-        assert isinstance(restored_composite.detectors[0], OtsuDetector)
-        assert isinstance(restored_composite.detectors[1], ImagePipeline)
+        assert len(restored_composite.ops) == 2
+        assert isinstance(restored_composite.ops[0], OtsuDetector)
+        assert isinstance(restored_composite.ops[1], ImagePipeline)
 
         # Verify nested pipeline structure
-        nested_pipeline = restored_composite.detectors[1]
+        nested_pipeline = restored_composite.ops[1]
         assert len(nested_pipeline._ops) == 2
 
     def test_pipeline_functional_equivalence(self, synth_plate):
@@ -427,7 +427,7 @@ class TestCompositeDetector:
         image = synth_plate.copy()
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
@@ -458,7 +458,7 @@ class TestCompositeDetector:
         import json
 
         composite = CompositeDetector(
-                detectors=[
+                ops=[
                     OtsuDetector(),
                     ImagePipeline(ops=[
                         GaussianBlur(sigma=2),
@@ -481,7 +481,7 @@ class TestCompositeDetector:
         # each entry to a class-tagged dict; an ``ObjectDetector`` entry is
         # ``{"class", "params"}`` and a nested ``ImagePipeline`` entry is
         # ``{"__type__": "pipeline", "config": ...}``.
-        detectors_data = composite_data['params']['detectors']
+        detectors_data = composite_data['params']['ops']
         assert isinstance(detectors_data, list)
         assert len(detectors_data) == 2
 

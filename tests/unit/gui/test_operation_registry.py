@@ -285,7 +285,7 @@ class TestIsListDetection:
     """`_extract_parameters` populates ``ParamInfo.is_list`` for list-typed params.
 
     The flag distinguishes list-typed aux ports (e.g.
-    ``CompositeDetector.detectors: List[Union[ObjectDetector, ImagePipeline]]``)
+    ``CompositeDetector.ops: List[Union[ObjectDetector, ImagePipeline]]``)
     from scalar variants (e.g.
     ``FilamentousFungiDetector.inoculum_detector: Union[ObjectDetector,
     ImagePipeline, None]``) so the GUI builder can render multi-port
@@ -299,10 +299,10 @@ class TestIsListDetection:
         return reg
 
     def test_composite_detector_detectors_is_list(self, registry):
-        """``CompositeDetector.detectors: List[Union[Op, Pipeline]]``."""
+        """``CompositeDetector.ops: List[Union[Op, Pipeline]]``."""
         info = registry.get("CompositeDetector")
         assert info is not None
-        p = info.parameters.get("detectors")
+        p = info.parameters.get("ops")
         assert p is not None
         assert p.is_list is True
         assert p.is_operation is True

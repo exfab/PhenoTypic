@@ -24,8 +24,8 @@ def test_presence_key_bare_and_classed():
 
 
 def test_nested_key():
-    t = Nested(op=1, field="detectors", index=0, leaf="ignore_zeros")
-    assert t.key == "1.detectors[0].ignore_zeros"
+    t = Nested(op=1, field="ops", index=0, leaf="ignore_zeros")
+    assert t.key == "1.ops[0].ignore_zeros"
 
 
 def test_targets_are_frozen_and_discriminated():
@@ -38,7 +38,7 @@ def test_targets_are_frozen_and_discriminated():
 
 
 @pytest.mark.parametrize("key", [
-    "0.sigma", "0.__enabled__", "0.GaussianBlur.__enabled__", "1.detectors[0].ignore_zeros",
+    "0.sigma", "0.__enabled__", "0.GaussianBlur.__enabled__", "1.ops[0].ignore_zeros",
 ])
 def test_parse_key_round_trips(key):
     assert parse_key(key).key == key          # string-preserving
@@ -80,8 +80,8 @@ def test_parse_key_rejects_depth_2_nested():
 
 
 def test_parse_key_accepts_depth_1_nested():
-    t = parse_key("0.detectors[1].ignore_zeros")
-    assert (t.op, t.field, t.index, t.leaf) == (0, "detectors", 1, "ignore_zeros")
+    t = parse_key("0.ops[1].ignore_zeros")
+    assert (t.op, t.field, t.index, t.leaf) == (0, "ops", 1, "ignore_zeros")
 
 
 def test_parse_key_rejects_empty_class_presence():

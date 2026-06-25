@@ -66,8 +66,8 @@ def test_nested_key_on_non_list_field_raises():
     the apply step rejects the key loudly rather than silently no-op'ing.
     """
     base = _base()
-    with pytest.raises(ValueError, match="detectors"):
-        build_pipeline(base, {"1.detectors[0].ignore_zeros": True})
+    with pytest.raises(ValueError, match="ops"):
+        build_pipeline(base, {"1.ops[0].ignore_zeros": True})
 
 
 def test_filamentous_scene_parent_tuning_recomputes_auto_derived_fields():

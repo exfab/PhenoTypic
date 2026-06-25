@@ -48,8 +48,8 @@ def test_written_proposal_round_trips_from_json(tmp_path):
 def test_run_auto_space_includes_nested_knobs(tmp_path):
     out = tmp_path / "auto"
     pipe = ImagePipeline(ops=[
-        CompositeDetector(detectors=[OtsuDetector(), RoundPeaksDetector()]),
+        CompositeDetector(ops=[OtsuDetector(), RoundPeaksDetector()]),
     ])
     proposal = run_auto_space(pipe, out)
     keys = {k.key for k in proposal.knobs}
-    assert any(k.startswith("0.detectors[0].") for k in keys)
+    assert any(k.startswith("0.ops[0].") for k in keys)

@@ -17,7 +17,7 @@
         "label": "CompositeDetector",
         "nested": null,
         "collapsed": false,
-        "list_slot_counts": {"detectors": 3}
+        "list_slot_counts": {"ops": 3}
       },
       {
         "block_id": "00000000000000000000000000000032",
@@ -53,7 +53,7 @@
         "source_block_id": "00000000000000000000000000000032",
         "source_port": "out",
         "target_block_id": "00000000000000000000000000000031",
-        "target_port": "detectors",
+        "target_port": "ops",
         "target_slot": 0,
         "kind": "aux"
       },
@@ -62,7 +62,7 @@
         "source_block_id": "00000000000000000000000000000033",
         "source_port": "out",
         "target_block_id": "00000000000000000000000000000031",
-        "target_port": "detectors",
+        "target_port": "ops",
         "target_slot": 2,
         "kind": "aux"
       }

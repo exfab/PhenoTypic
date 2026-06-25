@@ -346,9 +346,9 @@ def test_list_slot_counts_default_is_empty_dict() -> None:
     assert a.list_slot_counts == {}
     assert b.list_slot_counts == {}
 
-    a.list_slot_counts["detectors"] = 3
+    a.list_slot_counts["ops"] = 3
     assert b.list_slot_counts == {}  # mutating one doesn't leak.
-    assert a.list_slot_counts == {"detectors": 3}
+    assert a.list_slot_counts == {"ops": 3}
     assert a.list_slot_counts is not b.list_slot_counts
 
 

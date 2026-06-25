@@ -17,7 +17,7 @@ from pydantic_core import InitErrorDetails
 
 from phenotypic import ImagePipeline
 
-#: Matches a nested list-index segment ``name[i]`` (e.g. ``detectors[0]``) and
+#: Matches a nested list-index segment ``name[i]`` (e.g. ``ops[0]``) and
 #: captures the field name and the integer index. The depth cap is 1: a key may
 #: carry **exactly one** such segment (a second ``[i]`` is a depth error).
 _NESTED_SEGMENT_RE = re.compile(r"^(?P<field>[^\[\]]+)\[(?P<index>\d+)\]$")
@@ -86,7 +86,7 @@ def _parse_key(key: str, ordered_ops: list) -> ParsedKey:
     a segment matching ``name[i]`` switches the key into the nested grammar.
 
     Disambiguation and limits:
-        * A segment matching ``name[i]`` (e.g. ``detectors[0]``) marks a nested
+        * A segment matching ``name[i]`` (e.g. ``ops[0]``) marks a nested
           key; the **depth cap is 1** — a second ``[i]`` segment raises a
           "depth" ``ValueError``.
         * A malformed bracket segment (``name[x]``, ``name[]``) or a nested key
@@ -134,7 +134,7 @@ def _parse_key(key: str, ordered_ops: list) -> ParsedKey:
 
     if len(parts) == 2:
         # Guard against a malformed bracket that escaped the nested regex
-        # (e.g. ``"0.detectors[x]"``): an unmatched ``[`` is never a flat field.
+        # (e.g. ``"0.ops[x]"``): an unmatched ``[`` is never a flat field.
         if _BRACKET_SEGMENT_RE.search(parts[1]):
             raise ValueError(
                 f"combo key {key!r} has a malformed nested segment {parts[1]!r} "
@@ -321,7 +321,7 @@ def _rebuild_nested_field(
     Args:
         parent: The parent operation instance owning the list field.
         position: The parent's position in the pipeline (for key tagging).
-        field: The parent's operation-list field name (e.g. ``"detectors"``).
+        field: The parent's operation-list field name (e.g. ``"ops"``).
         slot_overrides: ``{index: {leaf_field: value}}`` for this field.
 
     Returns:

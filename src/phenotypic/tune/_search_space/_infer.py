@@ -562,8 +562,8 @@ def _reparent_key(child_key: str, prefix: str) -> str:
     ``_infer_field`` always builds keys as ``"<position>.<field>"`` with the
     position it is handed. When recursing, we infer each nested leaf field at a
     throwaway position ``0`` and then splice the real nested prefix
-    (``"1.detectors[0]"``) in front of the leaf name — so the canonical nested
-    key becomes ``"1.detectors[0].<leaf>"``.
+    (``"1.ops[0]"``) in front of the leaf name — so the canonical nested
+    key becomes ``"1.ops[0].<leaf>"``.
     """
     _, _, leaf = child_key.partition(".")
     return f"{prefix}.{leaf}"
@@ -587,7 +587,7 @@ def _recurse_into_op(
     Args:
         leaf_op: The nested operation instance to recurse into.
         prefix: The root-relative path of the nested slot (e.g.
-            ``"1.detectors[0]"``).
+            ``"1.ops[0]"``).
         factor: Multiplicative half-window for the unbounded heuristic.
         conditional_on: Parent-presence gate to stamp on each nested knob (a
             ``((key, value),)`` tuple), or ``None`` when the parent is not
