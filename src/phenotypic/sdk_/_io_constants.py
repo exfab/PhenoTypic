@@ -70,6 +70,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Iterable, Optional
@@ -1618,3 +1619,206 @@ def load_image_from_hdf(
         cls_attr = cls_attr.decode("utf-8", errors="replace")
     image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
     return image_cls.load_hdf5(hdf_path)
+
+
+# ---------------------------------------------------------------------------
+# BundleLayout — resolved on-disk topology value object
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class BundleLayout:
+    """Resolved on-disk topology of a run output or a standalone deliverables bundle.
+
+    Separates the *deliverables base* (the folder directly holding
+    ``master_measurements.parquet``) from the optional *output root* (the parent
+    that also holds ``results/`` and ``.phenotypic/``). A standalone bundle has
+    ``output_root is None``; deliverables-internal artefacts always resolve from
+    ``deliverables_base`` so the bundle is portable.
+
+    Attributes:
+        deliverables_base: Folder containing ``master_measurements.parquet``.
+        output_root: Parent run directory holding ``results/`` + machine state,
+            or ``None`` for a standalone (deliverables-only) bundle.
+    """
+
+    deliverables_base: Path
+    output_root: Optional[Path]
+
+    @classmethod
+    def detect(cls, path: Path) -> "BundleLayout":
+        """Classify ``path`` as a run output dir or a standalone deliverables bundle.
+
+        Case 1 — ``path`` directly holds ``master_measurements.parquet``: treat it
+        as the deliverables base. Promote ``path.parent`` to ``output_root`` ONLY
+        when ``path`` is literally named ``deliverables`` AND a sibling ``results/``
+        exists (the "pointed at the deliverables subdir of a full run" case); this
+        guard stops a renamed standalone bundle from adopting an unrelated sibling
+        ``results/``.
+
+        Case 2 — ``path`` contains ``deliverables/master_measurements.parquet``:
+        ``deliverables_base = path/deliverables`` and ``output_root = path``.
+
+        Args:
+            path: Either a run output directory (containing a ``deliverables/``
+                subdirectory) or a standalone deliverables folder (directly
+                containing ``master_measurements.parquet``).
+
+        Returns:
+            A :class:`BundleLayout` with resolved ``deliverables_base`` and
+            ``output_root``.
+
+        Raises:
+            FileNotFoundError: ``path`` is neither a run output directory nor a
+                deliverables bundle.
+        """
+        path = Path(path).resolve()
+        if (path / MASTER_MEASUREMENTS_PARQUET).is_file():
+            output_root: Optional[Path] = None
+            if path.name == DIR_DELIVERABLES and (path.parent / DIR_RESULTS).is_dir():
+                output_root = path.parent
+            return cls(deliverables_base=path, output_root=output_root)
+        if (path / DIR_DELIVERABLES / MASTER_MEASUREMENTS_PARQUET).is_file():
+            return cls(deliverables_base=path / DIR_DELIVERABLES, output_root=path)
+        raise FileNotFoundError(
+            f"{path} is neither a deliverables bundle nor a run output directory "
+            f"containing {DIR_DELIVERABLES}/{MASTER_MEASUREMENTS_PARQUET}. Point the "
+            "viewer at a `python -m phenotypic` output dir or a deliverables/ folder."
+        )
+
+    # -- capability ---------------------------------------------------------
+
+    @property
+    def has_results(self) -> bool:
+        """Return ``True`` when a ``results/`` directory exists under the output root."""
+        return self.output_root is not None and (self.output_root / DIR_RESULTS).is_dir()
+
+    @property
+    def results_dir(self) -> Optional[Path]:
+        """Return the ``results/`` directory, or ``None`` for a standalone bundle."""
+        if self.output_root is None:
+            return None
+        results = self.output_root / DIR_RESULTS
+        return results if results.is_dir() else None
+
+    def hdf_path(self, dataset: str, stem: str) -> Optional[Path]:
+        """Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.
+
+        Args:
+            dataset: Dataset name (subdirectory under ``results/``).
+            stem: Image stem (filename without extension).
+
+        Returns:
+            Resolved ``.h5`` path if the file exists, otherwise ``None``.
+        """
+        if self.output_root is None:
+            return None
+        candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
+        return candidate if candidate.is_file() else None
+
+    # -- deliverables-anchored artefacts ------------------------------------
+
+    @property
+    def master_parquet(self) -> Path:
+        """Return path to ``master_measurements.parquet`` in the deliverables base."""
+        return self.deliverables_base / MASTER_MEASUREMENTS_PARQUET
+
+    @property
+    def master_csv(self) -> Path:
+        """Return path to ``master_measurements.csv`` in the deliverables base."""
+        return self.deliverables_base / MASTER_MEASUREMENTS_CSV
+
+    @property
+    def mirror_parquet(self) -> Path:
+        """Return path to ``measurements.parquet`` (post-applied mirror)."""
+        return self.deliverables_base / MEASUREMENTS_PARQUET
+
+    @property
+    def mirror_csv(self) -> Path:
+        """Return path to ``measurements.csv`` (post-applied mirror)."""
+        return self.deliverables_base / MEASUREMENTS_CSV
+
+    @property
+    def pipeline_config_path(self) -> Path:
+        """Return path to ``pipeline.json`` in the deliverables base."""
+        return self.deliverables_base / PIPELINE_JSON
+
+    @property
+    def qc_dir(self) -> Path:
+        """Return the QC directory (``deliverables/qc/``).
+
+        Note:
+            Legacy-root fallback resolution is added in Task 2 (``resolve_qc_dir``).
+            This implementation returns the simple deliverables-anchored form only.
+        """
+        return self.deliverables_base / DIR_QC
+
+    @property
+    def qc_summary_parquet(self) -> Path:
+        """Return path to ``qc/qc_summary.parquet``."""
+        return self.qc_dir / QC_SUMMARY_PARQUET
+
+    @property
+    def qc_members_parquet(self) -> Path:
+        """Return path to ``qc/qc_members.parquet``."""
+        return self.qc_dir / QC_MEMBERS_PARQUET
+
+    @property
+    def qc_config_json(self) -> Path:
+        """Return path to ``qc/qc_config.json``."""
+        return self.qc_dir / QC_CONFIG_JSON
+
+    @property
+    def qc_review_state_path(self) -> Path:
+        """Return path to ``qc/review_state.json`` (GUI-owned review progress)."""
+        return self.qc_dir / QC_REVIEW_STATE_JSON
+
+    @property
+    def curation_labels_parquet(self) -> Path:
+        """Return path to ``qc/curation_labels.parquet`` (durable labels store)."""
+        return self.qc_dir / CURATION_LABELS_PARQUET
+
+    @property
+    def custom_categories_json(self) -> Path:
+        """Return path to ``qc/custom_categories.json`` (custom-category registry)."""
+        return self.qc_dir / CUSTOM_CATEGORIES_JSON
+
+    @property
+    def errors_dir(self) -> Path:
+        """Return path to the ``errors/`` directory under the deliverables base."""
+        return self.deliverables_base / DIR_ERRORS
+
+    def error_category_parquet(self, category: str) -> Path:
+        """Return path to ``errors/<category>.parquet``.
+
+        Args:
+            category: Bare, already-sanitized category token
+                (e.g. ``"background_noise"``).
+
+        Returns:
+            Path to the per-category error parquet file.
+        """
+        return self.errors_dir / f"{category}.parquet"
+
+    def overlays_dir(self, dataset: str) -> Path:
+        """Return path to ``overlays/<dataset>/``.
+
+        Args:
+            dataset: Dataset name.
+
+        Returns:
+            Directory path for overlay PNGs of the given dataset.
+        """
+        return self.deliverables_base / DIR_OVERLAYS / dataset
+
+    def overlay_path(self, dataset: str, stem: str) -> Path:
+        """Return path to ``overlays/<dataset>/<stem>.png``.
+
+        Args:
+            dataset: Dataset name.
+            stem: Image stem (filename without extension).
+
+        Returns:
+            Path to the overlay PNG for the given image.
+        """
+        return self.overlays_dir(dataset) / f"{stem}.png"

@@ -124,6 +124,7 @@ from ._io_constants import (
     checkpoint_lock_filename,
     checkpoint_lock_path,
     dashboard_html_path,
+    BundleLayout,
     dataset_hdf_dir,
     dataset_measurements_dir,
     dataset_overlays_dir,
@@ -321,6 +322,7 @@ __all__ = [
     "ModulePath",
     "ProcessingStateKey",
     # Path helpers
+    "BundleLayout",
     "analysis_csv_path",
     "analysis_full_parquet_path",
     "analysis_html_path",
