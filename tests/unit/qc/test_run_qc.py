@@ -89,7 +89,7 @@ class TestSummaryArtifact:
 
     def test_summary_schema(self, tmp_path: Path, layout_csv: Path) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         assert list(summ.columns) == [
             "instance_id", "class", "Metadata_ImageFile",
@@ -100,7 +100,7 @@ class TestSummaryArtifact:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         # 2 enabled instances x 2 plates = 4 rows.
         assert len(summ) == 4
@@ -110,14 +110,14 @@ class TestSummaryArtifact:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
         assert "qc-SE-disabled" not in set(summ["instance_id"])
 
     def test_rank_is_worst_first_within_instance(
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         for _, grp in summ.groupby("instance_id"):
             worst = grp.loc[grp["rank"].idxmin()]
@@ -131,7 +131,7 @@ class TestSummaryArtifact:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         fails = summ[summ["status"] == "fail"]
         assert (fails["flag"]).all()
@@ -145,7 +145,7 @@ class TestMembersArtifact:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        mem = pd.read_parquet(tmp_path / "qc" / "qc_members.parquet")
+        mem = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_members.parquet")
 
         # Metadata_ImageFile is a groupby column AND the curation key — it
         # must appear exactly once.
@@ -158,7 +158,7 @@ class TestMembersArtifact:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        mem = pd.read_parquet(tmp_path / "qc" / "qc_members.parquet")
+        mem = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_members.parquet")
 
         se_members = mem[mem["instance_id"] == "qc-SE-111"]
         # 12 measurement rows -> 12 SE members; member_value is Size_Area.
@@ -184,7 +184,7 @@ class TestMembersArtifact:
             )
         ])
         run_qc(meas, pipe, tmp_path)
-        mem = pd.read_parquet(tmp_path / "qc" / "qc_members.parquet")
+        mem = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_members.parquet")
 
         assert list(mem.columns) == [
             "instance_id", "Strain",
@@ -202,7 +202,7 @@ class TestConfigSnapshot:
         import json
 
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        cfg = json.loads((tmp_path / "qc" / "qc_config.json").read_text())
+        cfg = json.loads((tmp_path / "deliverables" / "qc" / "qc_config.json").read_text())
 
         ids = [e["instance_id"] for e in cfg["qc"]]
         assert ids == ["qc-SE-111", "qc-Count-222"]
@@ -215,13 +215,13 @@ class TestPurity:
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
-        assert not (tmp_path / "qc" / "review_state.json").exists()
+        assert not (tmp_path / "deliverables" / "qc" / "review_state.json").exists()
 
     def test_preserves_existing_review_state(
         self, tmp_path: Path, layout_csv: Path
     ) -> None:
-        (tmp_path / "qc").mkdir()
-        review = tmp_path / "qc" / "review_state.json"
+        (tmp_path / "deliverables" / "qc").mkdir(parents=True)
+        review = tmp_path / "deliverables" / "qc" / "review_state.json"
         review.write_text('{"qc-SE-111": {"reviewed": ["p1.png"]}}')
 
         run_qc(_measurements(), _pipeline(layout_csv), tmp_path)
@@ -260,13 +260,13 @@ class TestTolerance:
             ),
         ])
         run_qc(_measurements(), pipe, tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         assert set(summ["instance_id"]) == {"qc-SE-ok"}
 
     def test_no_qc_entries_is_noop(self, tmp_path: Path) -> None:
         run_qc(_measurements(), ImagePipeline(), tmp_path)
-        assert not (tmp_path / "qc").exists()
+        assert not (tmp_path / "deliverables" / "qc").exists()
 
     def test_all_entries_fail_writes_empty_schema(self, tmp_path: Path) -> None:
         pipe = ImagePipeline(qc=[
@@ -281,7 +281,7 @@ class TestTolerance:
             )
         ])
         run_qc(_measurements(), pipe, tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         assert summ.empty
         assert "instance_id" in summ.columns
@@ -309,7 +309,7 @@ class TestRankNaNLast:
             )
         ])
         run_qc(pd.DataFrame(rows), pipe, tmp_path)
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
+        summ = pd.read_parquet(tmp_path / "deliverables" / "qc" / "qc_summary.parquet")
 
         nan_row = summ[summ["Metadata_ImageFile"] == "thin.png"].iloc[0]
         bad_row = summ[summ["Metadata_ImageFile"] == "bad.png"].iloc[0]

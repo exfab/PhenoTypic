@@ -909,7 +909,7 @@ class TestPhenotypicCacheLayout:
         out = Path("/tmp/run")
         assert deliverables_dir(out) == out / "deliverables"
         assert results_dir(out) == out / "results"
-        assert qc_dir(out) == out / "qc"
+        assert qc_dir(out) == out / "deliverables" / "qc"
         assert logs_dir(out) == out / "logs"
         assert slurm_scripts_dir(out) == out / "slurm_scripts"
 
@@ -1304,3 +1304,43 @@ class TestTuneReExports:
             assert hasattr(tools, name), f"{name} missing from tools_ re-exports"
             assert name in tools.__all__, f"{name} missing from tools_.__all__"
             assert getattr(tools, name) == getattr(io, name)
+
+
+# ---------------------------------------------------------------------------
+# Task 2: qc_dir relocated under deliverables/ + resolve_qc_dir back-compat
+# ---------------------------------------------------------------------------
+
+
+def test_qc_dir_is_now_under_deliverables(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import deliverables_dir, qc_dir
+
+    assert qc_dir(tmp_path) == deliverables_dir(tmp_path) / "qc"
+
+
+def test_resolve_qc_dir_prefers_deliverables_then_legacy(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import qc_dir, resolve_qc_dir
+
+    # Neither exists -> canonical deliverables/qc.
+    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
+    # Legacy only -> legacy.
+    legacy = tmp_path / "qc"
+    legacy.mkdir()
+    assert resolve_qc_dir(tmp_path) == legacy
+    # Canonical present -> canonical wins.
+    qc_dir(tmp_path).mkdir(parents=True)
+    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
+
+
+def test_bundle_layout_qc_dir_resolves_legacy(tmp_path: Path) -> None:
+    import polars as pl
+
+    from phenotypic.sdk_ import BundleLayout
+
+    out = tmp_path / "run"
+    (out / "deliverables").mkdir(parents=True)
+    pl.DataFrame({"Metadata_Dataset": ["p1"]}).write_parquet(
+        out / "deliverables" / "master_measurements.parquet"
+    )
+    (out / "qc").mkdir()  # legacy root qc, no deliverables/qc yet
+    layout = BundleLayout.detect(out)
+    assert layout.qc_dir == out / "qc"

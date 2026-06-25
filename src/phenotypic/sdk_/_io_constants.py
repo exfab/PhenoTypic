@@ -1267,12 +1267,33 @@ def slurm_scripts_dir(output_dir: Path) -> Path:
 
 
 def qc_dir(output_dir: Path) -> Path:
-    """Return ``<output>/qc/``.
+    """Return ``<output>/deliverables/qc/`` — durable QC + curation state.
 
-    Pure path expression; ``run_qc`` is responsible for ``mkdir`` when it
-    writes into it (via :func:`_atomic_write`).
+    Relocated under ``deliverables/`` so a deliverables bundle is self-contained
+    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy
+    root ``<output>/qc/`` layout of pre-relocation runs.
     """
+    return deliverables_dir(output_dir) / DIR_QC
+
+
+def _legacy_qc_dir(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/qc/``."""
     return output_dir / DIR_QC
+
+
+def resolve_qc_dir(output_dir: Path) -> Path:
+    """Return the qc dir that exists, preferring ``deliverables/qc/``.
+
+    Read-only resolver: deliverables/qc if present, else legacy root qc if
+    present, else the canonical deliverables/qc (for fresh writes).
+    """
+    new = qc_dir(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_qc_dir(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
 
 
 def qc_summary_parquet_path(output_dir: Path) -> Path:
@@ -1745,13 +1766,21 @@ class BundleLayout:
 
     @property
     def qc_dir(self) -> Path:
-        """Return the QC directory (``deliverables/qc/``).
+        """Return the QC directory, resolving legacy ``<output>/qc/`` layouts.
 
-        Note:
-            Legacy-root fallback resolution is added in Task 2 (``resolve_qc_dir``).
-            This implementation returns the simple deliverables-anchored form only.
+        Prefers ``deliverables/qc/`` when it exists. Falls back to the
+        legacy root ``<output>/qc/`` when only that exists (pre-relocation
+        runs). Returns the canonical ``deliverables/qc/`` path for fresh
+        writes when neither is present.
         """
-        return self.deliverables_base / DIR_QC
+        canonical = self.deliverables_base / DIR_QC
+        if canonical.exists():
+            return canonical
+        if self.output_root is not None:
+            legacy = self.output_root / DIR_QC
+            if legacy.exists():
+                return legacy
+        return canonical
 
     @property
     def qc_summary_parquet(self) -> Path:
