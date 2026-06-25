@@ -36,7 +36,7 @@ import os
 import re
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import dash
 import numpy as np
@@ -173,13 +173,52 @@ def crop_overlay(
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
 
     """
-    # TODO(future): mirror this with crop_hdf_rgb(h5_path, ...) that
-    # loads the raw RGB layer via Image.load_hdf5 (see
-    # src/phenotypic/_core/_image_parts/_image_io_handler.py:944) for
-    # overlay-free crops.
     mtime_ns = os.stat(png_path).st_mtime_ns
     source = _load_overlay_rgb(str(png_path), mtime_ns)
+    return _crop_pil_source(
+        source,
+        center_rr,
+        center_cc,
+        size,
+        pad_value,
+        dim_alpha=dim_alpha,
+        bbox=bbox,
+    )
 
+
+def _crop_pil_source(
+    source: PILImage.Image,
+    center_rr: float,
+    center_cc: float,
+    size: int,
+    pad_value: tuple[int, int, int] = (0, 0, 0),
+    *,
+    dim_alpha: float = 0.0,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> bytes:
+    """Crop an already-decoded RGB source to a centered ``size`` x ``size`` window.
+
+    The shared geometry body behind both :func:`crop_overlay` (source = a baked
+    overlay PNG) and :func:`crop_hdf_rgb` (source = a raw HDF layer). Computes
+    ``(top, left) = (round(center_rr) - size // 2, round(center_cc) - size //
+    2)``, clamps the requested window to the image bounds, and pastes the
+    clamped region onto a freshly-allocated canvas filled with ``pad_value`` so
+    the output always has the exact requested dimensions even near an edge.
+
+    Args:
+        source: The decoded RGB :class:`PIL.Image.Image` to slice from.
+        center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
+        center_cc: Column coordinate (X) of the colony centroid, in image pixels.
+        size: Side length of the square crop, in pixels. Must be positive.
+        pad_value: RGB fill colour for any portion of the crop that falls
+            outside the source image. Defaults to black.
+        dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
+        bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
+            :func:`crop_overlay`.
+
+    Returns:
+        PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
+    """
     src_width, src_height = source.size
 
     half = size // 2
@@ -227,6 +266,112 @@ def crop_overlay(
     buf = io.BytesIO()
     result.save(buf, format="PNG")
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Full-resolution HDF-layer cropping
+# ---------------------------------------------------------------------------
+
+#: One of the displayable HDF layer names a crop can source.
+LayerName = Literal["rgb", "detect_mat", "objmap"]
+
+#: Number of decoded full-res HDF layers to keep in memory. Full-res layers
+#: are heavier than overlay PNGs (a single plate's rgb layer can be hundreds of
+#: MB), so this cache is deliberately smaller than ``_OVERLAY_CACHE_SIZE``.
+_HDF_LAYER_CACHE_SIZE = 4
+
+
+@functools.lru_cache(maxsize=_HDF_LAYER_CACHE_SIZE)
+def _load_hdf_layer_rgb(path: str, mtime_ns: int, layer: str) -> PILImage.Image:
+    """Decode one HDF layer to an RGB PIL image and cache it.
+
+    ``rgb`` -> raw uint8; ``objmap`` -> ``label2rgb`` colourisation; any other
+    (``detect_mat`` / ``gray``) -> contrast-normalised greyscale promoted to RGB.
+
+    Memory discipline (review W5 / spec Section 4): read ONLY the requested
+    ``/layers/<name>`` dataset via :mod:`h5py` — do NOT call
+    ``load_image_from_hdf`` / ``Image.load_hdf5``, which eagerly materialise
+    *every* layer (rgb + gray + detect_mat + objmap, hundreds of MB) only to
+    discard all but one.
+
+    Args:
+        path: Absolute path to the per-image ``.h5``, as a string so the cache
+            key is hashable.
+        mtime_ns: ``st_mtime_ns`` at lookup time. Including it in the cache key
+            invalidates the cached frame when the HDF is regenerated under a
+            running viewer.
+        layer: The ``/layers/<name>`` dataset to decode.
+
+    Returns:
+        The decoded layer as an RGB :class:`PIL.Image.Image`.
+
+    Raises:
+        KeyError: If ``layer`` is absent from the HDF.
+    """
+    del mtime_ns  # Cache-key only.
+    import h5py
+
+    from phenotypic.gui.builder._image_renderer import (
+        _label_map_to_rgb,
+        _normalize_to_uint8,
+    )
+
+    with h5py.File(path, "r") as fh:
+        # Modern layout is /layers/<name>; legacy flat layout is /<name>.
+        grp = fh["layers"] if "layers" in fh else fh
+        if layer not in grp:
+            raise KeyError(f"HDF {path} has no layer {layer!r}")
+        arr = np.asarray(grp[layer][:])
+
+    if layer == "rgb":
+        rgb = arr.astype(np.uint8)
+    elif layer == "objmap":
+        rgb = _label_map_to_rgb(arr)
+    else:  # detect_mat / gray-like float layer
+        gray = _normalize_to_uint8(arr)
+        rgb = np.stack([gray] * 3, axis=-1)
+    return PILImage.fromarray(rgb, mode="RGB")
+
+
+def crop_hdf_rgb(
+    h5_path: Path,
+    layer: str,
+    center_rr: float,
+    center_cc: float,
+    size: int,
+    mtime_ns: int,
+    *,
+    dim_alpha: float = 0.0,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> bytes:
+    """Full-resolution sibling of :func:`crop_overlay`, sourcing a chosen HDF layer.
+
+    Same centering / padding / dimming contract as :func:`crop_overlay`; the
+    only difference is the pixel source (a raw ``/layers/<name>`` HDF dataset
+    decoded to RGB instead of a baked overlay PNG). Geometry is byte-identical
+    because both croppers share :func:`_crop_pil_source`.
+
+    Args:
+        h5_path: Path to the per-image ``.h5`` written under
+            ``results/<dataset>/hdf/<stem>.h5``.
+        layer: The HDF layer to render (``"rgb"``, ``"detect_mat"``,
+            ``"objmap"``, …).
+        center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
+        center_cc: Column coordinate (X) of the colony centroid, in image pixels.
+        size: Side length of the square crop, in pixels.
+        mtime_ns: ``st_mtime_ns`` of the HDF, threaded into the layer cache key
+            so a regenerated HDF invalidates the cached layer.
+        dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
+        bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
+            :func:`crop_overlay`.
+
+    Returns:
+        PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
+    """
+    source = _load_hdf_layer_rgb(str(h5_path), mtime_ns, layer)
+    return _crop_pil_source(
+        source, center_rr, center_cc, size, dim_alpha=dim_alpha, bbox=bbox
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -782,7 +927,9 @@ def expand_range(
 
 
 __all__ = [
+    "LayerName",
     "crop_overlay",
+    "crop_hdf_rgb",
     "is_safe_path_component",
     "register_crop_route",
     "build_tile_cell",

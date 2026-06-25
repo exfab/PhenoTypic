@@ -38,6 +38,7 @@ from phenotypic.gui._shared.tiles import (
     _dim_outside_bbox,
     build_tile_cell,
     build_tile_grid,
+    crop_hdf_rgb,
     crop_overlay,
     expand_range,
     is_safe_path_component,
@@ -112,6 +113,59 @@ def test_crop_overlay_corner_is_padded(tmp_path: Path) -> None:
     assert img.size == (20, 20)
     assert img.getpixel((0, 0)) == (0, 0, 0)  # padding
     assert img.getpixel((19, 19)) == (255, 255, 255)  # source
+
+
+# ---------------------------------------------------------------------------
+# crop_hdf_rgb — full-res HDF-layer cropper (Batch B1)
+# ---------------------------------------------------------------------------
+
+
+def test_crop_hdf_rgb_returns_full_res_png(tmp_path: Path) -> None:
+    """``crop_hdf_rgb`` slices the raw ``/layers/rgb`` HDF dataset at full res."""
+    from phenotypic import Image
+
+    # Build a tiny image with a distinctive RGB layer and save to HDF.
+    rgb = np.zeros((40, 40, 3), dtype=np.uint8)
+    rgb[10:30, 10:30] = (255, 0, 0)
+    img = Image(arr=rgb)
+    h5 = tmp_path / "img001.h5"
+    img.save2hdf5(str(h5))
+
+    out = crop_hdf_rgb(
+        h5,
+        "rgb",
+        center_rr=20,
+        center_cc=20,
+        size=16,
+        mtime_ns=h5.stat().st_mtime_ns,
+    )
+    crop = PILImage.open(io.BytesIO(out)).convert("RGB")
+    assert crop.size == (16, 16)
+    # Centre pixel falls inside the red square.
+    assert crop.getpixel((8, 8)) == (255, 0, 0)
+
+
+def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
+    """The HDF cropper and the overlay cropper share byte-identical geometry.
+
+    Same pixel source (a solid RGB plane stored once as a PNG, once as an HDF
+    ``/layers/rgb`` dataset) must yield the same edge-padded crop, proving the
+    shared ``_crop_pil_source`` body is reused unchanged.
+    """
+    from phenotypic import Image
+
+    rgb = np.full((100, 100, 3), (200, 120, 40), dtype=np.uint8)
+
+    png = tmp_path / "src.png"
+    PILImage.fromarray(rgb, mode="RGB").save(png, format="PNG")
+    h5 = tmp_path / "src.h5"
+    Image(arr=rgb).save2hdf5(str(h5))
+
+    from_overlay = crop_overlay(png, center_rr=5, center_cc=5, size=24)
+    from_hdf = crop_hdf_rgb(
+        h5, "rgb", center_rr=5, center_cc=5, size=24, mtime_ns=h5.stat().st_mtime_ns
+    )
+    assert _decode_rgb(from_hdf).tolist() == _decode_rgb(from_overlay).tolist()
 
 
 # ---------------------------------------------------------------------------
