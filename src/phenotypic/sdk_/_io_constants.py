@@ -297,6 +297,12 @@ QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
 #: Written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
 QC_CONFIG_JSON: Final[str] = "qc_config.json"
 
+#: DuckDB QC analysis database filename: ``<output>/deliverables/qc/qc.duckdb``.
+#: One self-describing table per QC module + a ``qc_modules`` catalog; written
+#: by ``run_qc``. Supersedes :data:`QC_SUMMARY_PARQUET`/:data:`QC_MEMBERS_PARQUET`/
+#: :data:`QC_CONFIG_JSON`.
+QC_DUCKDB: Final[str] = "qc.duckdb"
+
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
 #: last position). Written **only** by the results-viewer QC Review tab;
 #: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` never touches it. The CLI finalize
@@ -1341,6 +1347,11 @@ def qc_config_json_path(output_dir: Path) -> Path:
     return qc_dir(output_dir) / QC_CONFIG_JSON
 
 
+def qc_duckdb_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/qc/qc.duckdb``."""
+    return qc_dir(output_dir) / QC_DUCKDB
+
+
 def qc_review_state_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/qc/review_state.json`` (GUI-owned review progress)."""
     return qc_dir(output_dir) / QC_REVIEW_STATE_JSON
@@ -1845,6 +1856,11 @@ class BundleLayout:
     def qc_config_json(self) -> Path:
         """Return path to ``deliverables/qc/qc_config.json`` (legacy root resolved)."""
         return self.qc_dir / QC_CONFIG_JSON
+
+    @property
+    def qc_duckdb(self) -> Path:
+        """Return path to ``qc/qc.duckdb`` (the QC analysis database)."""
+        return self.qc_dir / QC_DUCKDB
 
     @property
     def qc_review_state_path(self) -> Path:

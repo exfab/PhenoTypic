@@ -112,3 +112,19 @@ def test_deliverables_accessors_anchor_on_base(tmp_path):
     assert layout.qc_summary_parquet == base / "qc" / "qc_summary.parquet"
     assert layout.curation_labels_parquet == base / "qc" / "curation_labels.parquet"
     assert layout.overlay_path("plate1", "img001") == base / "overlays" / "plate1" / "img001.png"
+
+
+def test_qc_duckdb_path_under_deliverables_qc(tmp_path):
+    from phenotypic.sdk_ import qc_duckdb_path, qc_dir
+
+    assert qc_duckdb_path(tmp_path) == qc_dir(tmp_path) / "qc.duckdb"
+
+
+def test_bundle_layout_qc_duckdb_accessor(tmp_path):
+    from phenotypic.sdk_ import BundleLayout
+
+    # Seed a deliverables bundle so BundleLayout.detect classifies the dir
+    # (plan test omitted this; detect raises on an empty dir).
+    _seed_deliverables(tmp_path / "deliverables")
+    layout = BundleLayout.detect(tmp_path)
+    assert layout.qc_duckdb == layout.qc_dir / "qc.duckdb"
