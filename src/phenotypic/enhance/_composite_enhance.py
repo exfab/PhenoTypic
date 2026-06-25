@@ -28,8 +28,8 @@ class CompositeEnhance(ImageEnhancer):
     combines binary masks rather than continuous response maps.
 
     Each branch reads the *same* input ``detect_mat`` independently (branches
-    do not chain into one another), so the order of ``enhancers`` does not
-    affect the result for the commutative reductions used here.
+    do not chain into one another), so the order of ``ops`` does not affect
+    the result for the commutative reductions used here.
 
     Best For:
         - Fusing complementary focus maps (e.g. an edge response and a blob

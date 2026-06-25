@@ -30,29 +30,32 @@ class _SetPlane(GaussianBlur):
 
 
 def _branches() -> list[_SetPlane]:
-    return [_SetPlane(value=0.2), _SetPlane(value=0.6), _SetPlane(value=0.4)]
+    # Skewed triple so max/min/mean/median are all distinct (0.9 / 0.1 / 0.4 /
+    # 0.2) -- a symmetric set like {0.2, 0.4, 0.6} has mean == median, which
+    # would let a median-implemented-as-mean bug slip through.
+    return [_SetPlane(value=0.1), _SetPlane(value=0.2), _SetPlane(value=0.9)]
 
 
 class TestCombinationModes:
     def test_max_is_default(self):
         image, *_ = _three_branch_image()
         result = CompositeEnhance(ops=_branches()).apply(image)
-        assert np.allclose(result.detect_mat[:], 0.6)
+        assert np.allclose(result.detect_mat[:], 0.9)
 
     def test_min(self):
         image, *_ = _three_branch_image()
         result = CompositeEnhance(ops=_branches(), mode="min").apply(image)
-        assert np.allclose(result.detect_mat[:], 0.2)
+        assert np.allclose(result.detect_mat[:], 0.1)
 
     def test_mean(self):
         image, *_ = _three_branch_image()
         result = CompositeEnhance(ops=_branches(), mode="mean").apply(image)
-        assert np.allclose(result.detect_mat[:], (0.2 + 0.6 + 0.4) / 3)
+        assert np.allclose(result.detect_mat[:], (0.1 + 0.2 + 0.9) / 3)
 
     def test_median(self):
         image, *_ = _three_branch_image()
         result = CompositeEnhance(ops=_branches(), mode="median").apply(image)
-        assert np.allclose(result.detect_mat[:], 0.4)
+        assert np.allclose(result.detect_mat[:], 0.2)
 
 
 class TestClipping:
