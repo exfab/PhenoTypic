@@ -241,6 +241,45 @@ def test_crop_colony_prefers_hdf_falls_back_to_overlay(
     assert tiles.crop_colony(FakeRoot(False, False), "p", "s", "rgb", 1, 1, 8) is None
 
 
+def test_crop_colony_missing_hdf_layer_falls_back_to_overlay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An HDF present but lacking the requested layer degrades to the overlay.
+
+    A grayscale-only pipeline writes an HDF with no ``/layers/rgb`` dataset, so
+    :func:`crop_hdf_rgb` raises ``KeyError``. ``crop_colony`` must catch it and
+    fall back to the baked overlay PNG (404 only when no overlay exists either),
+    never surfacing the ``KeyError`` as a 500.
+    """
+    from phenotypic.gui._shared import tiles
+
+    def _raise_missing_layer(*_a: object, **_k: object) -> bytes:
+        raise KeyError("HDF has no layer 'rgb'")
+
+    monkeypatch.setattr(tiles, "crop_hdf_rgb", _raise_missing_layer)
+    monkeypatch.setattr(tiles, "crop_overlay", lambda *a, **k: b"O")
+
+    class FakeRoot:
+        def __init__(self, overlay_ok: bool) -> None:
+            self._overlay_ok = overlay_ok
+
+        def hdf_path(self, ds: str, stem: str) -> Path | None:
+            return tmp_path / "x.h5"
+
+        def has_overlay(self, ds: str, stem: str) -> bool:
+            return self._overlay_ok
+
+        def overlay_path(self, ds: str, stem: str) -> Path:
+            return tmp_path / "x.png"
+
+    (tmp_path / "x.h5").write_bytes(b"")
+
+    # HDF present but layer missing + overlay present -> overlay bytes.
+    assert tiles.crop_colony(FakeRoot(True), "p", "s", "rgb", 1, 1, 8) == b"O"
+    # HDF present but layer missing + no overlay -> None (caller 404s).
+    assert tiles.crop_colony(FakeRoot(False), "p", "s", "rgb", 1, 1, 8) is None
+
+
 # ---------------------------------------------------------------------------
 # crop_overlay — tile-spotlight dim pass (Phase 1)
 # ---------------------------------------------------------------------------

@@ -416,16 +416,29 @@ def crop_colony(
     """
     h5 = output_root.hdf_path(dataset, stem)
     if h5 is not None:
-        return crop_hdf_rgb(
-            h5,
-            layer,
-            center_rr,
-            center_cc,
-            size,
-            os.stat(h5).st_mtime_ns,
-            dim_alpha=dim_alpha,
-            bbox=bbox,
-        )
+        try:
+            return crop_hdf_rgb(
+                h5,
+                layer,
+                center_rr,
+                center_cc,
+                size,
+                os.stat(h5).st_mtime_ns,
+                dim_alpha=dim_alpha,
+                bbox=bbox,
+            )
+        except KeyError:
+            # The HDF exists but lacks the requested ``/layers/<name>``
+            # dataset (e.g. a grayscale-only pipeline writes no ``rgb``
+            # layer). Degrade to the baked overlay PNG rather than 500;
+            # fall through to the overlay branch below (else -> None -> 404).
+            logger.debug(
+                "HDF %s missing layer %r; falling back to overlay for %s/%s",
+                h5,
+                layer,
+                dataset,
+                stem,
+            )
     if output_root.has_overlay(dataset, stem):
         png = output_root.overlay_path(dataset, stem)
         return crop_overlay(

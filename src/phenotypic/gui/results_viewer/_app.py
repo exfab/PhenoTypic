@@ -305,6 +305,48 @@ def _load_qc_pipeline(output_root: OutputRoot):
         return None
 
 
+def _handoff_banner_state(
+    selection: "dict | None",
+) -> "tuple[dict, str, bool]":
+    """Return the empty-state hand-off banner's ``(style, label, disabled)``.
+
+    Pure helper behind the selection-store callback (extracted so the
+    Open-button gate is unit-testable). The Open button is enabled when the
+    sidebar selection is viewer-openable — either a full CLI output
+    (``is_cli_output``) **or** a standalone deliverables bundle
+    (``is_deliverables_bundle``); both boot the viewer.
+
+    Args:
+        selection: The :data:`SHELL_SIDEBAR_SELECTION_STORE` payload (or
+            ``None``/non-dict before any selection).
+
+    Returns:
+        A ``(style, label, disabled)`` triple for the banner's style,
+        path label, and Open-button ``disabled`` flag.
+    """
+    hidden = {"display": "none"}
+    visible = {
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "0.5rem",
+        "marginTop": "1rem",
+        "padding": "0.5rem 0.75rem",
+        "background": COLOR_SURFACE,
+        "border": f"1px solid {COLOR_BLUE}",
+        "borderRadius": "6px",
+    }
+    if not selection or not isinstance(selection, dict):
+        return hidden, "(none)", True
+    path = selection.get("path") or ""
+    if not path:
+        return hidden, "(none)", True
+    caps = selection.get("capabilities") or {}
+    openable = bool(caps.get("is_cli_output")) or bool(
+        caps.get("is_deliverables_bundle")
+    )
+    return visible, path, not openable
+
+
 def _register_empty_state_callbacks(
     app: dash.Dash,
     *,
@@ -337,25 +379,7 @@ def _register_empty_state_callbacks(
     def _populate_handoff_banner(
         selection: "dict | None",
     ) -> "tuple":
-        hidden = {"display": "none"}
-        visible = {
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "0.5rem",
-            "marginTop": "1rem",
-            "padding": "0.5rem 0.75rem",
-            "background": COLOR_SURFACE,
-            "border": f"1px solid {COLOR_BLUE}",
-            "borderRadius": "6px",
-        }
-        if not selection or not isinstance(selection, dict):
-            return hidden, "(none)", True
-        path = selection.get("path") or ""
-        if not path:
-            return hidden, "(none)", True
-        caps = selection.get("capabilities") or {}
-        is_cli_output = bool(caps.get("is_cli_output"))
-        return visible, path, not is_cli_output
+        return _handoff_banner_state(selection)
 
     # Clientside POST + navigate. Uses ``window.fetch`` with the prefix
     # so it works under any DispatcherMiddleware mount. On success the

@@ -443,6 +443,7 @@ def register_chrome_callbacks(
                 "is_image_dir": caps.is_image_dir,
                 "has_pipeline_json": caps.has_pipeline_json,
                 "is_cli_output": caps.is_cli_output,
+                "is_deliverables_bundle": caps.is_deliverables_bundle,
                 "has_dashboard": caps.has_dashboard,
                 "image_count": caps.image_count,
                 "bad_perms": caps.bad_perms,

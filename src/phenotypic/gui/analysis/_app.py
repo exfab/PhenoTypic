@@ -134,6 +134,47 @@ def create_app(
     return configure_url_prefix_routing(app, url_prefix)
 
 
+def _handoff_banner_state(selection):
+    """Return the empty-state hand-off banner's ``(style, label, disabled)``.
+
+    Pure helper behind the selection-store callback (extracted so the
+    Open-button gate is unit-testable), mirroring
+    :func:`phenotypic.gui.results_viewer._app._handoff_banner_state`. The
+    Open button is enabled when the sidebar selection is viewer-openable —
+    either a full CLI output (``is_cli_output``) **or** a standalone
+    deliverables bundle (``is_deliverables_bundle``).
+
+    Args:
+        selection: The :data:`SHELL_SIDEBAR_SELECTION_STORE` payload (or
+            ``None``/non-dict before any selection).
+
+    Returns:
+        A ``(style, label, disabled)`` triple for the banner's style,
+        path label, and Open-button ``disabled`` flag.
+    """
+    hidden = {"display": "none"}
+    visible = {
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "0.5rem",
+        "marginTop": "1rem",
+        "padding": "0.5rem 0.75rem",
+        "background": COLOR_SURFACE,
+        "border": f"1px solid {COLOR_BLUE}",
+        "borderRadius": RADIUS,
+    }
+    if not selection or not isinstance(selection, dict):
+        return hidden, "(none)", True
+    path = selection.get("path") or ""
+    if not path:
+        return hidden, "(none)", True
+    caps = selection.get("capabilities") or {}
+    openable = bool(caps.get("is_cli_output")) or bool(
+        caps.get("is_deliverables_bundle")
+    )
+    return visible, path, not openable
+
+
 def _register_empty_state_callbacks(
     app: dash.Dash,
     *,
@@ -157,25 +198,7 @@ def _register_empty_state_callbacks(
         Input(SHELL_SIDEBAR_SELECTION_STORE, "data"),
     )
     def _populate_handoff_banner(selection):
-        hidden = {"display": "none"}
-        visible = {
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "0.5rem",
-            "marginTop": "1rem",
-            "padding": "0.5rem 0.75rem",
-            "background": COLOR_SURFACE,
-            "border": f"1px solid {COLOR_BLUE}",
-            "borderRadius": RADIUS,
-        }
-        if not selection or not isinstance(selection, dict):
-            return hidden, "(none)", True
-        path = selection.get("path") or ""
-        if not path:
-            return hidden, "(none)", True
-        caps = selection.get("capabilities") or {}
-        is_cli_output = bool(caps.get("is_cli_output"))
-        return visible, path, not is_cli_output
+        return _handoff_banner_state(selection)
 
     api_output_root = join_url_prefix(api_url_prefix, SANDBOX_API_VIEWER_OUTPUT_ROOT)
 
