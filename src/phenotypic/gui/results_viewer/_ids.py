@@ -93,6 +93,10 @@ CARDS_CONTAINER_ID = "cards-container"
 #: :attr:`OutputRoot.pipeline_summary`).
 HEADER_PIPELINE_CHIP_ID = "header-pipeline-chip"
 
+#: Mode badge in the header bar — "Full run" (per-image ``results/`` present)
+#: vs "Standalone bundle" (deliverables-only). Reads ``OutputRoot.has_results``.
+HEADER_MODE_BADGE_ID = "header-mode-badge"
+
 #: Outer pattern-matching root for the dynamic filter rows. The filter
 #: rows are rendered into this ``html.Div`` by a callback whenever
 #: ``STORE_FILTER_SPEC`` changes.
@@ -782,6 +786,7 @@ __all__ = [
     "FILTER_TOGGLE_BADGE_ID",
     "CARDS_CONTAINER_ID",
     "HEADER_PIPELINE_CHIP_ID",
+    "HEADER_MODE_BADGE_ID",
     "FILTER_ROWS_CONTAINER_ID",
     "FILTER_MATCH_COUNT_ID",
     "OFFCANVAS_FILTER_ID",

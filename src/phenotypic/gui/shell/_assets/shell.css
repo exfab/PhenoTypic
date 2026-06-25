@@ -552,6 +552,12 @@
   border-color: rgba(0, 158, 115, 0.20);
 }
 
+.shell-badge-bundle {
+  background: rgba(230, 159, 0, 0.10);
+  color: #9A6B00;
+  border-color: rgba(230, 159, 0, 0.28);
+}
+
 .shell-badge-perm {
   background: rgba(213, 94, 0, 0.08);
   color: #D55E00;

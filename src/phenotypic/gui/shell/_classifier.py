@@ -81,6 +81,12 @@ class Capabilities:
             subdirectory — the layout produced by ``python -m phenotypic``.
             The master marker lives under ``deliverables/``; ``results/``
             stays at the output root.
+        is_deliverables_bundle: Directory carries
+            ``deliverables/master_measurements.parquet`` but **no** ``results/``
+            subdirectory — a standalone, portable deliverables bundle the
+            results viewer can still open read-only (curation + QC review work;
+            the per-image pixel-layer toggle is absent). Mutually exclusive with
+            :attr:`is_cli_output` (a full run always has ``results/``).
         has_dashboard: Directory contains ``deliverables/dashboard.html``.
             Used by the Run console's Recent Runs panel to enable the
             iframe link.
@@ -104,6 +110,7 @@ class Capabilities:
     is_image_dir: bool
     has_pipeline_json: bool
     is_cli_output: bool
+    is_deliverables_bundle: bool
     has_dashboard: bool
     is_process_only_output: bool
     is_tune_output: bool
@@ -171,6 +178,7 @@ _EMPTY = Capabilities(
     is_image_dir=False,
     has_pipeline_json=False,
     is_cli_output=False,
+    is_deliverables_bundle=False,
     has_dashboard=False,
     is_process_only_output=False,
     is_tune_output=False,
@@ -181,6 +189,7 @@ _BAD_PERMS = Capabilities(
     is_image_dir=False,
     has_pipeline_json=False,
     is_cli_output=False,
+    is_deliverables_bundle=False,
     has_dashboard=False,
     is_process_only_output=False,
     is_tune_output=False,
@@ -216,6 +225,7 @@ def _classify_file(path: Path) -> Capabilities:
             is_image_dir=False,
             has_pipeline_json=True,
             is_cli_output=False,
+            is_deliverables_bundle=False,
             has_dashboard=False,
             is_process_only_output=False,
             is_tune_output=False,
@@ -262,6 +272,11 @@ def _classify_dir(path: Path) -> Capabilities:
         has_dashboard = (deliverables / _DASHBOARD_FILENAME).is_file()
 
     is_cli_output = is_cli_output_master and is_cli_output_results
+    # A standalone, portable deliverables bundle: the master parquet lives
+    # under deliverables/ but there is no per-image results/ tree. The viewer
+    # opens it read-only (no pixel-layer toggle); give it its own affordance
+    # so the sidebar doesn't conflate it with a non-output directory.
+    is_deliverables_bundle = is_cli_output_master and not is_cli_output_results
 
     is_process_only_output = False
     if not is_cli_output and not is_cli_output_results:
@@ -288,6 +303,7 @@ def _classify_dir(path: Path) -> Capabilities:
         is_image_dir=is_image_dir,
         has_pipeline_json=False,  # only flagged for JSON files, not dirs
         is_cli_output=is_cli_output,
+        is_deliverables_bundle=is_deliverables_bundle,
         has_dashboard=has_dashboard,
         is_process_only_output=is_process_only_output,
         is_tune_output=is_tune_output,

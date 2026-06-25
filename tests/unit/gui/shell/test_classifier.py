@@ -60,6 +60,7 @@ def test_empty_directory(tmp_path: Path) -> None:
         is_image_dir=False,
         has_pipeline_json=False,
         is_cli_output=False,
+        is_deliverables_bundle=False,
         has_dashboard=False,
         is_process_only_output=False,
         is_tune_output=False,
@@ -110,6 +111,33 @@ def test_cli_output_requires_both_markers(tmp_path: Path) -> None:
     (tmp_path / "results").mkdir()
     caps = classify(tmp_path)
     assert caps.is_cli_output is False
+
+
+def test_deliverables_bundle_without_results(tmp_path: Path) -> None:
+    """deliverables/master but no results/ → standalone bundle, not a full run.
+
+    The viewer can still open such a directory read-only, so it gets its own
+    ``is_deliverables_bundle`` affordance distinct from ``is_cli_output``.
+    """
+    deliverables = tmp_path / DELIVERABLES_DIRNAME
+    deliverables.mkdir()
+    (deliverables / "master_measurements.parquet").write_bytes(b"")
+    caps = classify(tmp_path)
+    assert caps.is_deliverables_bundle is True
+    assert caps.is_cli_output is False
+
+
+def test_full_run_is_not_a_bundle(tmp_path: Path) -> None:
+    """A full run (deliverables/master + results/) is a CLI output, never a bundle."""
+    _seed_deliverables_cli_output(tmp_path)
+    caps = classify(tmp_path)
+    assert caps.is_cli_output is True
+    assert caps.is_deliverables_bundle is False
+
+
+def test_empty_dir_is_not_a_bundle(tmp_path: Path) -> None:
+    """No deliverables/master anywhere → not a bundle."""
+    assert classify(tmp_path).is_deliverables_bundle is False
 
 
 def test_legacy_root_layout_not_recognized(tmp_path: Path) -> None:
