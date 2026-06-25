@@ -168,6 +168,41 @@ def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
     assert _decode_rgb(from_hdf).tolist() == _decode_rgb(from_overlay).tolist()
 
 
+@pytest.mark.parametrize("layer", ["objmap", "detect_mat"])
+def test_crop_hdf_rgb_round_trips_non_rgb_layers(tmp_path: Path, layer: str) -> None:
+    """Non-rgb HDF layers crop to a correct-size RGB PNG (Batch B2 / B1-deferred).
+
+    Builds one image carrying a 2-label ``objmap`` (and the derived float
+    ``detect_mat``), saves it to HDF, and crops each non-rgb layer — exercising
+    the ``label2rgb`` colourisation (objmap) and the contrast-normalised
+    greyscale-→RGB promotion (detect_mat) paths through ``crop_hdf_rgb``.
+    """
+    from phenotypic import Image
+
+    rgb = np.zeros((40, 40, 3), dtype=np.uint8)
+    rgb[5:15, 5:15] = (10, 200, 10)
+    img = Image(arr=rgb)
+    # Two distinct labels so the objmap path colourises a non-trivial map.
+    labeled = np.zeros((40, 40), dtype=np.int32)
+    labeled[5:15, 5:15] = 1
+    labeled[20:30, 20:30] = 2
+    img.objmap[:] = labeled
+    h5 = tmp_path / "img001.h5"
+    img.save2hdf5(str(h5))
+
+    out = crop_hdf_rgb(
+        h5,
+        layer,
+        center_rr=20,
+        center_cc=20,
+        size=16,
+        mtime_ns=h5.stat().st_mtime_ns,
+    )
+    crop = PILImage.open(io.BytesIO(out))
+    assert crop.size == (16, 16)
+    assert crop.mode == "RGB"
+
+
 # ---------------------------------------------------------------------------
 # crop_colony — per-image source dispatcher (Batch B1, Task 7)
 # ---------------------------------------------------------------------------
@@ -466,6 +501,25 @@ def test_register_crop_route_validates_size_and_label(
 
     assert client.get("/extra-crops/d1/img-1/7.png").status_code == 400
     assert client.get("/extra-crops/d1/img-1/99.png?size=24").status_code == 404
+
+
+def test_register_crop_route_rejects_unknown_layer_with_404(
+    output_root: OutputRoot,
+) -> None:
+    """An invalid ``?layer=`` 404s at the boundary (not a KeyError → 500)."""
+    app = create_app(output_root)
+    register_crop_route(app, output_root, "extra-crops")
+    client = app.server.test_client()
+
+    # A valid layer serves the crop; an unknown layer is rejected up front.
+    assert (
+        client.get("/extra-crops/d1/img-1/7.png?size=24&layer=objmap").status_code
+        == 200
+    )
+    assert (
+        client.get("/extra-crops/d1/img-1/7.png?size=24&layer=bogus").status_code
+        == 404
+    )
 
 
 def test_register_crop_route_distinct_segments_coexist(

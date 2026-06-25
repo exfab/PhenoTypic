@@ -321,6 +321,7 @@ def _colony_crop_url(
     crop_size: int,
     *,
     dim_alpha: float = 0.0,
+    layer: str = "rgb",
 ) -> str:
     """Build the colony-view crop ``<img>`` src for one cell.
 
@@ -339,11 +340,16 @@ def _colony_crop_url(
             Bound per-render via :func:`functools.partial` so the 4-arg
             ``url_builder`` protocol expected by ``build_tile_cell`` is
             preserved.
+        layer: Pixel layer (``rgb`` / ``detect_mat`` / ``objmap``) forwarded
+            to the crop route as ``&layer=``. ``"rgb"`` (the default) sources
+            the finished plate; the crop route ignores it on the overlay
+            fallback (standalone bundle). Bound per-render via
+            :func:`functools.partial` alongside ``dim_alpha``.
     """
     prefix = _url_prefix()
     return (
         f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
-        f"{label}.png?size={crop_size}&dim={dim_alpha}"
+        f"{label}.png?size={crop_size}&dim={dim_alpha}&layer={layer}"
     )
 
 
@@ -361,6 +367,7 @@ def _build_cell(
     current_category: str | None = None,
     members: list[tuple[str, str, int]] | None = None,
     dim_alpha: float = 0.0,
+    layer: str = "rgb",
 ) -> Component:
     """Render the chrome + crop for a single grid cell.
 
@@ -392,6 +399,8 @@ def _build_cell(
         dim_alpha: Tile-spotlight strength threaded onto every crop URL in
             the cell (the main tile and any stack-popover thumbnails) as
             ``&dim=``. ``0.0`` (default) keeps today's full-context crop.
+        layer: Pixel layer threaded onto every crop URL in the cell as
+            ``&layer=``. ``"rgb"`` (default) sources the finished plate.
 
     Returns:
         A component ready to drop into the grid container.
@@ -418,6 +427,7 @@ def _build_cell(
                     crop_size=max_size,
                     display_size=display_size,
                     dim_alpha=dim_alpha,
+                    layer=layer,
                 )
             )
 
@@ -430,8 +440,10 @@ def _build_cell(
         has_overlay=has_overlay,
         is_removed=is_removed,
         is_selected=is_selected,
-        # Bind the spotlight strength onto the 4-arg url_builder protocol.
-        url_builder=functools.partial(_colony_crop_url, dim_alpha=dim_alpha),
+        # Bind the spotlight strength + layer onto the 4-arg url_builder protocol.
+        url_builder=functools.partial(
+            _colony_crop_url, dim_alpha=dim_alpha, layer=layer
+        ),
         remove_button=build_radial_trigger(
             "colony",
             image_file,
@@ -457,6 +469,7 @@ def _build_stack_popover(
     crop_size: int,
     display_size: int,
     dim_alpha: float = 0.0,
+    layer: str = "rgb",
 ) -> list[Component]:
     """Render the click-to-expand stack popover with a deferred body.
 
@@ -496,6 +509,7 @@ def _build_stack_popover(
             "crop_size": int(crop_size),
             "display_size": int(display_size),
             "dim_alpha": float(dim_alpha),
+            "layer": str(layer),
         },
     )
     return [popover, store]
@@ -508,6 +522,7 @@ def build_stack_popover_rows(
     display_size: int,
     removed_keys: set[tuple[str, int]],
     dim_alpha: float = 0.0,
+    layer: str = "rgb",
 ) -> list[Component]:
     """Render the per-member rows that populate a stack popover body.
 
@@ -523,6 +538,8 @@ def build_stack_popover_rows(
         removed_keys: ``(image_file, label)`` keys currently removed.
         dim_alpha: Tile-spotlight strength threaded onto each thumbnail's
             crop URL as ``&dim=`` so the popover matches the parent grid.
+        layer: Pixel layer threaded onto each thumbnail's crop URL as
+            ``&layer=`` so the popover matches the parent grid.
     """
     rows: list[Component] = []
     prefix = _url_prefix()
@@ -530,7 +547,7 @@ def build_stack_popover_rows(
         is_removed = (image_file, label) in removed_keys
         crop_url = (
             f"{prefix}{COLONY_CROPS_URL_SEGMENT}/{dataset}/{image_file}/"
-            f"{label}.png?size={crop_size}&dim={dim_alpha}"
+            f"{label}.png?size={crop_size}&dim={dim_alpha}&layer={layer}"
         )
         rows.append(
             html.Div(
@@ -575,6 +592,7 @@ def build_grid(
     display_size: int | None = None,
     dim_alpha: float = 0.0,
     category_of: dict[tuple[str, int], str] | None = None,
+    layer: str = "rgb",
 ) -> tuple[Component, list[tuple[str, int]]]:
     """Render the colony-grid component and its row-major key order.
 
@@ -623,6 +641,10 @@ def build_grid(
             radial trigger as a colored category badge. Defaults to ``None``
             (treated as empty), so a cell with no entry renders the neutral
             ▾ trigger.
+        layer: Pixel layer (``rgb`` / ``detect_mat`` / ``objmap``) threaded
+            onto every crop URL as ``&layer=`` (read from the active-layer
+            store). ``"rgb"`` (default) sources the finished plate; the crop
+            route ignores it on the overlay fallback (standalone bundle).
 
     Returns:
         A tuple ``(component, grid_order)``. ``grid_order`` is the
@@ -751,6 +773,7 @@ def build_grid(
                     current_category=category_of.get(key),
                     members=typed_members,
                     dim_alpha=dim_alpha,
+                    layer=layer,
                 )
             )
 

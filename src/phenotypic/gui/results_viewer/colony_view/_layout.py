@@ -34,6 +34,7 @@ from phenotypic.gui._design import (
     FONT_FAMILY_MONO,
     FONT_SIZE_LABEL,
 )
+from phenotypic.gui._shared.tiles import LayerName
 from phenotypic.gui.results_viewer import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -47,6 +48,64 @@ logger = logging.getLogger(__name__)
 _NAVY = COLOR_NAVY
 _BLUE = COLOR_BLUE
 _BG = COLOR_BG
+
+
+# ---------------------------------------------------------------------------
+# Pixel-layer toggle (gated on per-image ``results/`` availability)
+# ---------------------------------------------------------------------------
+
+#: Default pixel layer the colony crops source. The finished RGB plate is the
+#: most legible default; the other layers are opt-in via the toggle.
+_DEFAULT_LAYER: LayerName = "rgb"
+
+#: Segmented-control options for :func:`build_layer_toggle`. Values are the
+#: :data:`phenotypic.gui._shared.tiles.LayerName` members; the human labels map
+#: ``detect_mat`` → "Enhanced" and ``objmap`` → "Labels" so the control reads in
+#: phenotyping terms rather than internal layer names.
+_LAYER_OPTIONS: list[dict[str, str]] = [
+    {"label": "RGB", "value": "rgb"},
+    {"label": "Enhanced", "value": "detect_mat"},
+    {"label": "Labels", "value": "objmap"},
+]
+
+
+def build_layer_toggle(output_root: OutputRoot) -> Component | None:
+    """Build the RGB / Enhanced / Labels segmented control, or ``None`` if moot.
+
+    The toggle lets the user re-source every colony crop from a different
+    full-resolution HDF layer (``rgb`` / ``detect_mat`` / ``objmap``). That
+    only makes sense for a full CLI run that shipped per-image ``results/``
+    HDFs; a standalone deliverables bundle has only pre-baked overlay PNGs, so
+    the layer choice is moot and the control is omitted entirely.
+
+    Args:
+        output_root: Validated handle on the CLI output directory. Only its
+            :attr:`~phenotypic.gui.results_viewer._output_root.OutputRoot.has_results`
+            flag is read.
+
+    Returns:
+        A segmented :class:`dbc.RadioItems` (default ``"rgb"``, id
+        :data:`ids.LAYER_TOGGLE`) wrapped in a flex ``html.Div`` when
+        per-image results are available; otherwise ``None``. The companion
+        :data:`ids.STORE_ACTIVE_LAYER` store is mounted separately by
+        :func:`layout` so the render callback's Input resolves even when this
+        control is hidden.
+    """
+    if not output_root.has_results:
+        return None
+    return html.Div(
+        dbc.RadioItems(
+            id=ids.LAYER_TOGGLE,
+            options=_LAYER_OPTIONS,
+            value=_DEFAULT_LAYER,
+            inline=True,
+            class_name="btn-group",
+            input_class_name="btn-check",
+            label_class_name="btn btn-outline-primary btn-sm",
+            label_checked_class_name="active",
+        ),
+        style={"display": "flex", "alignItems": "center", "flex": "0 0 auto"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +180,7 @@ def _build_dim_stepper(
     )
 
 
-def _build_toolbar() -> Component:
+def _build_toolbar(layer_toggle: Component | None = None) -> Component:
     """Build the colony-view toolbar (axis dropdowns + refresh + info chip).
 
     The toolbar is a horizontal flex row that hosts the X / Y axis
@@ -130,6 +189,12 @@ def _build_toolbar() -> Component:
     refresh button. The dropdown ``options`` and ``value`` lists are
     intentionally empty here — they are populated reactively from the
     master measurements once the user opens the tab.
+
+    Args:
+        layer_toggle: The optional pixel-layer segmented control from
+            :func:`build_layer_toggle`. Spliced into the toolbar when
+            present (full run with per-image ``results/``); omitted for a
+            standalone bundle.
 
     Returns:
         An :class:`dash.html.Div` styled as a navy-tinted top bar.
@@ -250,21 +315,24 @@ def _build_toolbar() -> Component:
         readout_id=ids.COLONY_DIM_READOUT,
     )
 
+    toolbar_children: list[Component] = [
+        html.Div(
+            [x_label, x_dropdown],
+            style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
+        ),
+        html.Div(
+            [y_label, y_dropdown],
+            style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
+        ),
+        tile_size_stepper,
+        dim_stepper,
+    ]
+    if layer_toggle is not None:
+        toolbar_children.append(layer_toggle)
+    toolbar_children.extend([crop_size_info, refresh_button])
+
     return html.Div(
-        [
-            html.Div(
-                [x_label, x_dropdown],
-                style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
-            ),
-            html.Div(
-                [y_label, y_dropdown],
-                style={"display": "flex", "alignItems": "center", "gap": "0.25rem"},
-            ),
-            tile_size_stepper,
-            dim_stepper,
-            crop_size_info,
-            refresh_button,
-        ],
+        toolbar_children,
         id=ids.COLONY_TOOLBAR_ID,
         style={
             "display": "flex",
@@ -396,24 +464,31 @@ def layout(output_root: OutputRoot) -> Component:
     tab.
 
     Args:
-        output_root: Validated handle on the CLI output directory.
-            Currently unused (the layout itself depends only on static
-            id constants), but kept in the signature for API uniformity
-            with sibling layout factories — Wave 4 may extend this to
-            seed default axis options from on-disk measurements.
+        output_root: Validated handle on the CLI output directory. Read for
+            its ``has_results`` flag to decide whether the pixel-layer toggle
+            (:func:`build_layer_toggle`) is shown in the toolbar.
 
     Returns:
         A :class:`dash.html.Div` with class ``colony-view-root`` ready
         to drop into a :class:`dbc.Tab`.
     """
-    del output_root  # currently unused; kept for API symmetry
-
-    toolbar = _build_toolbar()
+    layer_toggle = build_layer_toggle(output_root)
+    toolbar = _build_toolbar(layer_toggle=layer_toggle)
     bulk_bar = _build_bulk_bar()
     grid_container = _build_grid_container()
 
+    # The active-layer store is mounted unconditionally (even in a standalone
+    # bundle where the visible toggle above is hidden) so the grid-render
+    # callback's ``Input(STORE_ACTIVE_LAYER)`` always resolves. It defaults to
+    # ``rgb``; in a bundle the layer is ignored by the overlay fallback anyway.
+    active_layer_store = dcc.Store(
+        id=ids.STORE_ACTIVE_LAYER,
+        data=_DEFAULT_LAYER,
+        storage_type="memory",
+    )
+
     return html.Div(
-        [toolbar, bulk_bar, grid_container],
+        [toolbar, bulk_bar, grid_container, active_layer_store],
         className="colony-view-root",
         style={
             "padding": "1rem",
@@ -424,4 +499,4 @@ def layout(output_root: OutputRoot) -> Component:
     )
 
 
-__all__ = ["layout"]
+__all__ = ["build_layer_toggle", "layout"]

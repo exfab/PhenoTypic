@@ -575,6 +575,22 @@ COLONY_DIM_PLUS = "colony-dim-plus"
 #: Synced from :data:`STORE_TILE_DIM_ALPHA` by the shared readout callback.
 COLONY_DIM_READOUT = "colony-dim-readout"
 
+#: Segmented control (``dbc.RadioItems``, button-group style) choosing which
+#: image layer the colony crops source — ``rgb`` / ``detect_mat`` / ``objmap``
+#: (labelled "RGB" / "Enhanced" / "Labels"). Rendered into the colony toolbar
+#: only when per-image ``results/`` HDFs are available
+#: (:attr:`OutputRoot.has_results`); a standalone deliverables bundle hides it
+#: (overlays are pre-baked RGB, so the layer choice is moot there).
+LAYER_TOGGLE = "colony-layer-toggle"
+
+#: ``dcc.Store`` mirroring the active pixel layer (one of ``rgb`` /
+#: ``detect_mat`` / ``objmap``; default ``rgb``). Mounted **unconditionally**
+#: in the colony tab body so the grid-render callback's Input always resolves
+#: — even in a standalone bundle where the visible :data:`LAYER_TOGGLE` is
+#: hidden. The render callback threads its value onto every crop URL as
+#: ``&layer=<layer>``.
+STORE_ACTIVE_LAYER = "store-active-layer"
+
 
 # ---------------------------------------------------------------------------
 # Bulk action bar
@@ -826,6 +842,8 @@ __all__ = [
     "COLONY_DIM_MINUS",
     "COLONY_DIM_PLUS",
     "COLONY_DIM_READOUT",
+    "LAYER_TOGGLE",
+    "STORE_ACTIVE_LAYER",
     "COLONY_BULK_BAR_ID",
     "COLONY_BULK_COUNT_LABEL_ID",
     "COLONY_BULK_REMOVE_BTN_ID",

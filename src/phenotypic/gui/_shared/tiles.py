@@ -36,7 +36,7 @@ import os
 import re
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast, get_args
 
 import dash
 import numpy as np
@@ -282,7 +282,9 @@ _HDF_LAYER_CACHE_SIZE = 4
 
 
 @functools.lru_cache(maxsize=_HDF_LAYER_CACHE_SIZE)
-def _load_hdf_layer_rgb(path: str, mtime_ns: int, layer: str) -> PILImage.Image:
+def _load_hdf_layer_rgb(
+    path: str, mtime_ns: int, layer: LayerName
+) -> PILImage.Image:
     """Decode one HDF layer to an RGB PIL image and cache it.
 
     ``rgb`` -> raw uint8; ``objmap`` -> ``label2rgb`` colourisation; any other
@@ -335,7 +337,7 @@ def _load_hdf_layer_rgb(path: str, mtime_ns: int, layer: str) -> PILImage.Image:
 
 def crop_hdf_rgb(
     h5_path: Path,
-    layer: str,
+    layer: LayerName,
     center_rr: float,
     center_cc: float,
     size: int,
@@ -378,7 +380,7 @@ def crop_colony(
     output_root: OutputRoot,
     dataset: str,
     stem: str,
-    layer: str,
+    layer: LayerName,
     center_rr: float,
     center_cc: float,
     size: int,
@@ -590,9 +592,13 @@ def register_crop_route(
         # Which image layer to source the crop from when a full-res HDF is
         # available (``rgb`` / ``detect_mat`` / ``objmap``). Defaults to the
         # finished RGB plate. Ignored on the overlay fallback (overlays are
-        # pre-baked RGB). Full DZI deep-zoom layer support lands in Task 9; the
-        # flat crop route threads it through :func:`crop_colony` already.
-        layer = request.args.get("layer", type=str, default="rgb")
+        # pre-baked RGB). Validate against ``LayerName`` at the boundary so an
+        # unknown layer 404s here rather than surfacing later as a ``KeyError``
+        # (missing HDF dataset) → 500 inside ``crop_colony``.
+        layer_raw = request.args.get("layer", type=str, default="rgb")
+        if layer_raw not in get_args(LayerName):
+            return (f"not found: unsupported layer {layer_raw!r}", 404)
+        layer = cast(LayerName, layer_raw)
 
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
