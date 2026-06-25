@@ -23,11 +23,11 @@ class SAMPLE_METADATA(IdentityInfo):
                           "Biological replicate identifier. Biological replicates are"
                           " parallel measurements of biologically distinct samples that"
                           " capture random biological variation.", )
-    EXP_REPLICATE = Entry("ExpReplicate",
-                          "Experimental replicate identifier. An example of an"
-                          " experimental replicate would be a pinned colony of the"
-                          " same strain on another plate being subjected to the same"
-                          " conditions.")
+    COND_REPLICATE = Entry("CondReplicate",
+                           "Experimental Conditional replicate identifier. An example "
+                           " of an experimental replicate would be a pinned colony of "
+                           " the same strain on another plate being subjected to the "
+                           "same conditions.")
     TECHNICAL_REPLICATE = Entry("TechReplicate", "Technical replicate identifier.")
     CLONE = Entry("Clone", "Clone or isolate identifier.")
     LIBRARY_ID = Entry(

@@ -7,7 +7,8 @@
 - `uv run <cmd>` — run commands
 - `uv add <package>` (or `--group dev`) — add dependencies
 - `uv sync` — sync env (after checkout or in new worktrees)
-- `uv sync --group dev --group qt-test --group docs --extra gui --extra napari` — full dev env
+- `uv sync --group dev --group qt-test --group docs --extra gui --extra napari` — full
+  dev env
   (`qt-test` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
@@ -38,15 +39,17 @@
   of resident-model shard-workers. Stage 2 survives walltime — each sidecar write is
   atomic and the worker SIGTERM-resubmits its shard, so a `TIMEOUT` never loses work.
   Staged GPU flags (Spec 1 §10):
-  - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
-    `--slurm`** (put a separate GPU partition/account here); auto-adds
-    `slurm_gpus_per_node=1` (explicit `=0` runs the GPU stage on a CPU partition).
-  - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
-  - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model fill).
-  - `--gpu-batch-size N|auto` (default 1) — images/forward (batchable models; `auto`
-    VRAM-probe lands in Spec 2).
+    - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
+      `--slurm`** (put a separate GPU partition/account here); auto-adds
+      `slurm_gpus_per_node=1` (explicit `=0` runs the GPU stage on a CPU partition).
+    - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
+    - `--gpu-workers-per-gpu W` (default 1) — replicas packed per GPU (small-model
+      fill).
+    - `--gpu-batch-size N|auto` (default 1) — images/forward (batchable models; `auto`
+      VRAM-probe lands in Spec 2).
 - `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
-  hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/`--storage-url`
+  hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
+  `--storage-url`
 
 ### GUI hub
 
@@ -166,9 +169,11 @@ operations copy data; avoid unnecessary intermediate allocations.
 ## Module Guides
 
 - [_core/CLAUDE.md](src/phenotypic/_core/CLAUDE.md) — Image class, accessors
-- [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — execution strategies, staged GPU engine, SLURM chaining
+- [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) — execution strategies, staged GPU
+  engine, SLURM chaining
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
-- [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (`MeasurementInfo` base + header enums)
+- [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (
+  `MeasurementInfo` base + header enums)
 - [tools_/CLAUDE.md](src/phenotypic/sdk_/CLAUDE.md) — mixins, utilities
 - [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
@@ -183,9 +188,11 @@ operations copy data; avoid unnecessary intermediate allocations.
 - `src/phenotypic/_core/_image_pipeline.py` — Pipeline implementation
 - `src/phenotypic/abc_/` — Operation interfaces
 - `src/phenotypic/__main__.py` — CLI entry point
-- `src/phenotypic/_cli/_cli_execution_strategies.py` — strategy dispatch (`create_execution_strategy`)
+- `src/phenotypic/_cli/_cli_execution_strategies.py` — strategy dispatch (
+  `create_execution_strategy`)
 - `src/phenotypic/_cli/_cli_staged_strategy.py`, `_cli_staged_slurm.py`,
-  `_cli_staged_workers.py` — staged GPU engine (local + SLURM); see [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)
+  `_cli_staged_workers.py` — staged GPU engine (local + SLURM);
+  see [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)
 
 ## Code Style
 
@@ -206,7 +213,8 @@ per-feature measurement-column enums live in `phenotypic.schema`. Do not modify 
 classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
 coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
 
-For **type-only enforcement** of a closed set with no documentation surface (CLI dispatch
+For **type-only enforcement** of a closed set with no documentation surface (CLI
+dispatch
 keys, internal mode flags), a `Literal[...]` `TypeAlias` in `tools_/typing_.py` is
 sufficient — no Enum needed. Examples: `FootprintShape`, `DetectMode`, `ExecutionMode`,
 `ImageTypeName`, `ProcessingStatus`.
@@ -228,19 +236,25 @@ never derive `Literal` from runtime expressions.
 
 A new numeric (`int`/`float`) field on any `detect/`, `enhance/`, `refine/`, `grid/`, or
 `correction/` operation is pulled into the annotation-coverage gate
-(`tests/unit/tune/test_annotation_coverage.py`) and **must be covered** — by a `TuneSpec`
-or a pydantic `Field` bound — or CI fails. Pick the annotation by intent, not just to pass
+(`tests/unit/tune/test_annotation_coverage.py`) and **must be covered** — by a
+`TuneSpec`
+or a pydantic `Field` bound — or CI fails. Pick the annotation by intent, not just to
+pass
 the gate:
 
-- **Has a fixed, sensible search window** → `Annotated[float, TuneSpec(low, high, log=...)]`.
+- **Has a fixed, sensible search window** →
+  `Annotated[float, TuneSpec(low, high, log=...)]`.
 - **Should never be tuned** (scene-derived, structural) → `TuneSpec(tunable=False)`.
 - **Worth tuning but the range depends on runtime context** (e.g. a filter cutoff on a
   measured value whose scale varies by feature) → a **bare `TuneSpec()`** (tunable, no
   `low`/`high`). It satisfies the gate and declares intent-to-tune, while auto-search
-  deliberately surfaces it as range-less (`_resolve_tune_spec` → `Excluded("non_numeric")`)
-  instead of fabricating a window; the concrete range is supplied per-run in the tune spec.
+  deliberately surfaces it as range-less (`_resolve_tune_spec` →
+  `Excluded("non_numeric")`)
+  instead of fabricating a window; the concrete range is supplied per-run in the tune
+  spec.
   Don't reach for `tunable=False` just to silence the gate when the field is genuinely a
-  knob. Canonical: `refine/_remove_by_feature.py` (`RemoveByFeature`, `min_value`/`max_value`).
+  knob. Canonical: `refine/_remove_by_feature.py` (`RemoveByFeature`, `min_value`/
+  `max_value`).
 
 ## Gotchas
 
@@ -251,28 +265,18 @@ the gate:
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
   engine (preprocess → GPU → measure) with a per-image objmap **sidecar**, not per-image
   processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
-  See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch + stages.
-- **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker resolve
-  custom op classes defined outside the `phenotypic` namespace (a self-registering module
-  it imports before `from_json`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` + `require_license_acceptance`
-  (`detect/nn/_checkpoint_manager.py`) gate gated-weight downloads — the hook for Spec 2's
-  SAM3/DINOv3. Third-party licensing scaffolding: root `NOTICE` + `licenses/` + `MANIFEST.in`.
-- **HPCC SLURM CPU heterogeneity (polars build):** the cluster has pre-AVX2 nodes
-  (`abu_dhabi` = c01–30, `ivy` = h01–06). The stock `polars` wheel bakes AVX2 into its
-  baseline with no runtime fallback, so it SIGILLs ("Illegal instruction (core dumped)")
-  there. We therefore **ship `polars[rtcompat]` by default** — the runtime-compat build
-  that ships both ISA variants (`polars-runtime-32` + `polars-runtime-compat`) and
-  picks the right `.so` at import time, so the same install runs on pre-AVX2 and modern
-  nodes alike (it supersedes the old `polars-lts-cpu` single-wheel workaround). numpy/scipy
-  use runtime SIMD dispatch and are fine on those nodes. The `import polars` API is
-  identical — see `docs/source/how_to/pages/polars_cpu_build.md`. Pinning jobs to AVX2
-  partitions/constraints is an alternative if you prefer a single-ISA stock build.
-  - **Gotcha — partial/corrupt extract:** `polars[rtcompat]` is a thin `polars` shim
-    package over the runtime wheels. An interrupted install can leave `polars/` missing
-    its own `__init__.py`, so Python treats it as a namespace package and
-    `import polars` yields `polars.__file__ == None` / `AttributeError: module 'polars'
-    has no attribute 'DataFrame'`. Fix: `uv pip install --reinstall polars` (or
-    `uv sync`). It's an environmental extract failure, not a code bug.
+  See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch +
+  stages.
+- **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker
+  resolve
+  custom op classes defined outside the `phenotypic` namespace (a self-registering
+  module
+  it imports before `from_json`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` +
+  `require_license_acceptance`
+  (`detect/nn/_checkpoint_manager.py`) gate gated-weight downloads — the hook for Spec
+  2's
+  SAM3/DINOv3. Third-party licensing scaffolding: root `NOTICE` + `licenses/` +
+  `MANIFEST.in`.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
@@ -342,42 +346,3 @@ the gate:
   run's final aggregation. Don't add `finalize_post_master_outputs` to
   the chunk writer — it would re-run expensive finalize work on every
   checkpoint.
-
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
-
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
-
-### When to use graph tools FIRST
-
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.
