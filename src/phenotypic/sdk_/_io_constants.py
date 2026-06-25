@@ -1843,6 +1843,36 @@ class BundleLayout:
         """Return path to the ``errors/`` directory under the deliverables base."""
         return self.deliverables_base / DIR_ERRORS
 
+    @property
+    def error_analysis_parquet(self) -> Path:
+        """Return path to ``error_analysis.parquet`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_PARQUET
+
+    @property
+    def error_analysis_csv(self) -> Path:
+        """Return path to ``error_analysis.csv`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_CSV
+
+    @property
+    def error_analysis_html(self) -> Path:
+        """Return path to ``error_analysis.html`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_HTML
+
+    @property
+    def verified_parquet(self) -> Path:
+        """Return path to ``verified.parquet`` (GUI-written verified-good archive)."""
+        return self.deliverables_base / VERIFIED_PARQUET
+
+    @property
+    def analysis_parquet(self) -> Path:
+        """Return path to ``analysis.parquet`` in the deliverables base."""
+        return self.deliverables_base / ANALYSIS_PARQUET
+
+    @property
+    def analysis_csv(self) -> Path:
+        """Return path to ``analysis.csv`` in the deliverables base."""
+        return self.deliverables_base / ANALYSIS_CSV
+
     def error_category_parquet(self, category: str) -> Path:
         """Return path to ``errors/<category>.parquet``.
 

@@ -195,7 +195,7 @@ def create_app(
     _tile_routes.register(app, output_root)
     timeline_thumb_routes.register(app, output_root)
 
-    filtered_state = CurationLabels.load(output_root.root, output_root.master_df)
+    filtered_state = CurationLabels.load(output_root.layout, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
     # QC Review tab serves the same centered crops under its own segment
@@ -207,8 +207,8 @@ def create_app(
     # clobber an existing instance e.g. when the analysis sub-app has
     # already populated the key.
     if app.server.config.get(CFG_MEASUREMENT_SCHEMA) is None:
-        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema(
-            output_root=Path(output_root.root)
+        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema.from_layout(
+            output_root.layout
         )
     # QC tab's augmented-frame cache starts empty; Wave E's QC writer
     # fills it on its first card refresh. The heatmap render callback
@@ -234,9 +234,13 @@ def create_app(
     # recompute via ``run_qc``). The per-revision instance cache is keyed
     # on the recipe revision counter so a stale entry can never serve a
     # moved configuration.
-    QcRecipe.migrate_from_sidecar(Path(output_root.root))
-    app.server.config[CFG_QC_RECIPE] = QcRecipe.load(Path(output_root.root))
-    app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(Path(output_root.root))
+    # Legacy ``.viewer_cache/qc_recipe.json`` sidecar migration only applies to
+    # full runs (the sidecar lived at the *output root*). A standalone bundle
+    # (``layout.output_root is None``) never has one, so skip it (review W6).
+    if output_root.layout.output_root is not None:
+        QcRecipe.migrate_from_sidecar(output_root.layout.output_root)
+    app.server.config[CFG_QC_RECIPE] = QcRecipe.from_layout(output_root.layout)
+    app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(output_root)
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
@@ -245,7 +249,7 @@ def create_app(
     return configure_url_prefix_routing(app, url_prefix)
 
 
-def _load_qc_pipeline(output_root_path: Path):
+def _load_qc_pipeline(output_root: OutputRoot):
     """Deserialize the output root's ``pipeline.json`` for QC recompute.
 
     The QC Review tab's per-group recompute hands this pipeline to
@@ -255,17 +259,28 @@ def _load_qc_pipeline(output_root_path: Path):
     ``None`` when the file is absent or unreadable — recompute then no-ops
     rather than raising.
 
+    Resolves the config through :attr:`OutputRoot.layout`: for a full run it
+    reuses ``resolve_pipeline_config_path`` (legacy ``.json`` fallback); for a
+    standalone bundle (``output_root is None``) it reads
+    ``layout.pipeline_config_path`` directly so it never double-joins
+    ``deliverables/``.
+
     Args:
-        output_root_path: The results-viewer output root.
+        output_root: The results-viewer output root handle.
 
     Returns:
         The deserialized ``ImagePipeline``, or ``None`` when no usable
         ``pipeline.json`` exists.
     """
     from phenotypic._core._image_pipeline import ImagePipeline
-    from phenotypic.sdk_ import resolve_pipeline_config_path
 
-    pipeline_path = resolve_pipeline_config_path(output_root_path)
+    layout = output_root.layout
+    if layout.output_root is not None:
+        from phenotypic.sdk_ import resolve_pipeline_config_path
+
+        pipeline_path = resolve_pipeline_config_path(layout.output_root)
+    else:
+        pipeline_path = layout.pipeline_config_path
     if not pipeline_path.exists():
         return None
     try:

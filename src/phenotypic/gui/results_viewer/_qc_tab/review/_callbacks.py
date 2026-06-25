@@ -647,7 +647,7 @@ def _load_review_state() -> ReviewState:
     output_root = _output_root()
     if output_root is None:
         return ReviewState(path=Path("review_state.json"))
-    return ReviewState.load(output_root.root)
+    return ReviewState.load(output_root.layout)
 
 
 def _metric_for_group(
@@ -714,7 +714,14 @@ def _recompute_after_curation(
     removed = _removed_keys_locked()
     frame = _data.build_recompute_frame(output_root, removed)
     try:
-        run_qc(frame, pipeline, Path(output_root.root))
+        # Write directly into the bundle's resolved qc dir so a standalone
+        # deliverables bundle (root == deliverables folder) never double-joins.
+        run_qc(
+            frame,
+            pipeline,
+            Path(output_root.root),
+            qc_output_dir=output_root.layout.qc_dir,
+        )
     except Exception:  # noqa: BLE001 - recompute failure must not crash curation
         logger.warning("In-session QC recompute failed", exc_info=True)
         return None

@@ -37,10 +37,19 @@ KEY_OBJECT_LABEL = "Object_Label"
 
 @dataclass
 class FakeOutputRoot:
-    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df``."""
+    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df`` + ``.layout``."""
 
     root: Path
     master_df: pl.DataFrame
+
+    @property
+    def layout(self):
+        """Full-run-style :class:`BundleLayout` rooted at ``self.root``."""
+        from phenotypic.sdk_ import BundleLayout
+
+        return BundleLayout(
+            deliverables_base=self.root / "deliverables", output_root=self.root
+        )
 
     @property
     def clean_master_df(self) -> pl.DataFrame:
@@ -159,7 +168,7 @@ def test_verified_good_keys_returns_unlabeled_members_of_reviewed_group(tmp_path
         ],
     )
     # Mark group A reviewed; (img1, 1) is labeled, so it is excluded.
-    state = ReviewState.load(root)
+    state = ReviewState.load(out.layout)
     state.mark_reviewed("qc-SE-aaaa", ("A",))
     labeled = {("img1", 1)}
 
@@ -202,7 +211,7 @@ def test_verified_good_keys_multicolumn_key_roundtrips(tmp_path: Path):
     )
     members.write_parquet(qc_members_parquet_path(root))
 
-    state = ReviewState.load(root)
+    state = ReviewState.load(out.layout)
     state.mark_reviewed(instance_id, ("plate1", "A"))
     # Sanity: the encoded key matches the review state's encoding.
     assert encode_group_key(("plate1", "A")) in state.modules[instance_id].reviewed
@@ -260,7 +269,7 @@ def test_build_good_error_frames_verified(tmp_path: Path):
             ("B", "img2", 3),
         ],
     )
-    state = ReviewState.load(root)
+    state = ReviewState.load(out.layout)
     state.mark_reviewed("qc-SE-aaaa", ("A",))
     labels = {("img1", 1): "debris"}
 

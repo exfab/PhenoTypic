@@ -32,9 +32,14 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     decode_group_key,
     encode_group_key,
 )
-from phenotypic.sdk_ import measurements_parquet_path
+from phenotypic.sdk_ import BundleLayout, measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror
+
+
+def _layout(tmp_path: Path) -> BundleLayout:
+    """Full-run-style layout rooted at ``tmp_path`` (deliverables under it)."""
+    return BundleLayout(deliverables_base=tmp_path / "deliverables", output_root=tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -238,12 +243,12 @@ def test_build_recompute_frame_reads_mirror_not_master(tmp_path: Path) -> None:
 
 
 def test_review_state_round_trip(tmp_path: Path) -> None:
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     key = ("img-2",)
     state.mark_reviewed("qc-SE-aaaa1111", key)
     state.set_last("qc-SE-aaaa1111", key)
 
-    reloaded = ReviewState.load(tmp_path)
+    reloaded = ReviewState.load(_layout(tmp_path))
     assert reloaded.is_reviewed("qc-SE-aaaa1111", key)
     assert reloaded.reviewed_count("qc-SE-aaaa1111") == 1
     progress = reloaded.progress_for("qc-SE-aaaa1111")
@@ -251,7 +256,7 @@ def test_review_state_round_trip(tmp_path: Path) -> None:
 
 
 def test_review_state_is_per_module(tmp_path: Path) -> None:
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     state.mark_reviewed("module-A", ("g1",))
     assert state.is_reviewed("module-A", ("g1",))
     assert not state.is_reviewed("module-B", ("g1",))
@@ -259,7 +264,7 @@ def test_review_state_is_per_module(tmp_path: Path) -> None:
 
 
 def test_review_state_unmark(tmp_path: Path) -> None:
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     state.mark_reviewed("m", ("g1",))
     state.unmark_reviewed("m", ("g1",))
     assert not state.is_reviewed("m", ("g1",))
@@ -269,10 +274,10 @@ def test_review_state_reset_when_file_cleared(tmp_path: Path) -> None:
     """Deleting review_state.json (CLI finalize reset) starts progress over."""
     from phenotypic.sdk_ import qc_review_state_path
 
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     state.mark_reviewed("m", ("g1",))
     qc_review_state_path(tmp_path).unlink()  # simulate CLI finalize clear
-    fresh = ReviewState.load(tmp_path)
+    fresh = ReviewState.load(_layout(tmp_path))
     assert fresh.reviewed_count("m") == 0
 
 

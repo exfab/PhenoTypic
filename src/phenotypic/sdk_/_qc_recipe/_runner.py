@@ -50,6 +50,9 @@ if TYPE_CHECKING:
 
 from phenotypic.schema import OBJECT
 from phenotypic.sdk_ import (
+    QC_CONFIG_JSON,
+    QC_MEMBERS_PARQUET,
+    QC_SUMMARY_PARQUET,
     qc_config_json_path,
     qc_members_parquet_path,
     qc_summary_parquet_path,
@@ -91,6 +94,7 @@ def run_qc(
     measurements_df: pd.DataFrame,
     pipeline: "ImagePipeline",
     output_dir: Path,
+    qc_output_dir: Path | None = None,
 ) -> None:
     """Run the pipeline's enabled QC checks and write the ``qc/`` artifact.
 
@@ -113,8 +117,15 @@ def run_qc(
             from joined metadata. A pandas DataFrame — not polars.
         pipeline: The pipeline whose ``qc`` entries (via
             :meth:`ImagePipeline.get_qc`) define the checks to run.
-        output_dir: Run output root; the ``qc/`` subdirectory is created
-            under it.
+        output_dir: Run output root; the canonical ``qc/`` subdirectory is
+            resolved under it via ``qc_*_parquet_path`` when ``qc_output_dir``
+            is not supplied (the CLI path).
+        qc_output_dir: Explicit, already-resolved QC directory to write into
+            (e.g. ``output_root.layout.qc_dir`` from the GUI). When provided,
+            the summary/members/config are written directly under it instead
+            of via ``qc_*_parquet_path(output_dir)`` — this is what keeps a
+            standalone deliverables bundle (where ``output_dir`` is the
+            deliverables folder) from double-joining ``deliverables/``.
 
     Side effects:
         Writes ``qc/qc_summary.parquet``, ``qc/qc_members.parquet``, and
@@ -146,16 +157,26 @@ def run_qc(
     summary = _concat_or_empty(summary_frames, _summary_empty())
     members = _concat_or_empty(member_frames, _members_empty())
 
-    _write_parquet(qc_summary_parquet_path(output_dir), summary)
-    _write_parquet(qc_members_parquet_path(output_dir), members)
-    _write_config(qc_config_json_path(output_dir), used_entries)
+    if qc_output_dir is not None:
+        qc_out = Path(qc_output_dir)
+        summary_path = qc_out / QC_SUMMARY_PARQUET
+        members_path = qc_out / QC_MEMBERS_PARQUET
+        config_path = qc_out / QC_CONFIG_JSON
+    else:
+        summary_path = qc_summary_parquet_path(output_dir)
+        members_path = qc_members_parquet_path(output_dir)
+        config_path = qc_config_json_path(output_dir)
+
+    _write_parquet(summary_path, summary)
+    _write_parquet(members_path, members)
+    _write_config(config_path, used_entries)
 
     logger.info(
         "Wrote QC artifact for %d check(s): %d summary rows, %d member rows -> %s",
         len(used_entries),
         len(summary),
         len(members),
-        output_dir / "qc",
+        summary_path.parent,
     )
 
 

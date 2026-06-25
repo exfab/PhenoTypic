@@ -27,7 +27,6 @@ ends up as a thin orchestrator.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import dash
@@ -396,7 +395,7 @@ def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
     Dash app factory in :mod:`._app` is responsible for the stash so
     construction stays a layout-time concern.
     """
-    return MeasurementSchema(output_root=Path(output_root.root))
+    return MeasurementSchema.from_layout(output_root.layout)
 
 
 def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
@@ -415,7 +414,7 @@ def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
             return recipe
     except RuntimeError:
         pass  # No application context (test harness, etc.).
-    return QcRecipe.load(Path(output_root.root))
+    return QcRecipe.from_layout(output_root.layout)
 
 
 # ---------------------------------------------------------------------------

@@ -52,12 +52,6 @@ from phenotypic.gui.results_viewer._error_tab._data import (
     verified_good_keys,
 )
 from phenotypic.gui.results_viewer._error_tab._figure import build_distribution_figure
-from phenotypic.sdk_ import (
-    error_analysis_csv_path,
-    error_analysis_html_path,
-    error_analysis_parquet_path,
-    verified_parquet_path,
-)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -289,9 +283,9 @@ def _persist(output_root: "OutputRoot", category: str, res: pd.DataFrame) -> Non
     out = res.copy()
     out.insert(0, "category", category)
     out = out[list(_PERSIST_COLUMNS)]
-    root = Path(output_root.root)
-    _atomic_write_parquet(out, error_analysis_parquet_path(root))
-    _atomic_write_csv(out, error_analysis_csv_path(root))
+    layout = output_root.layout
+    _atomic_write_parquet(out, layout.error_analysis_parquet)
+    _atomic_write_csv(out, layout.error_analysis_csv)
 
 
 def _persist_verified(output_root: "OutputRoot", good_pdf: pd.DataFrame) -> None:
@@ -303,7 +297,7 @@ def _persist_verified(output_root: "OutputRoot", good_pdf: pd.DataFrame) -> None
     """
     if good_pdf.empty:
         return
-    _atomic_write_parquet(good_pdf, verified_parquet_path(Path(output_root.root)))
+    _atomic_write_parquet(good_pdf, output_root.layout.verified_parquet)
 
 
 def _render_chips(
@@ -610,7 +604,7 @@ def register_error_callbacks(
         )
         res = ErrorCutoffFinder().analyze(good_pdf, error_pdf)
         html_str = render_error_analysis_html(category, res)
-        path = error_analysis_html_path(Path(output_root.root))
+        path = output_root.layout.error_analysis_html
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(html_str, encoding="utf-8")
         return True

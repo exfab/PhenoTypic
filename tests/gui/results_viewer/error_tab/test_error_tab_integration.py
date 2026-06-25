@@ -40,10 +40,19 @@ KEY_OBJECT_LABEL = "Object_Label"
 
 @dataclass
 class FakeOutputRoot:
-    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df``."""
+    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df`` + ``.layout``."""
 
     root: Path
     master_df: pl.DataFrame
+
+    @property
+    def layout(self):
+        """Full-run-style :class:`BundleLayout` rooted at ``self.root``."""
+        from phenotypic.sdk_ import BundleLayout
+
+        return BundleLayout(
+            deliverables_base=self.root / "deliverables", output_root=self.root
+        )
 
     @property
     def clean_master_df(self) -> pl.DataFrame:
@@ -76,9 +85,16 @@ def seeded_root(tmp_path: Path) -> FakeOutputRoot:
     return FakeOutputRoot(root=tmp_path, master_df=master)
 
 
+def _layout(root: Path):
+    """Full-run-style :class:`BundleLayout` rooted at ``root``."""
+    from phenotypic.sdk_ import BundleLayout
+
+    return BundleLayout(deliverables_base=root / "deliverables", output_root=root)
+
+
 def _label_errors(root: Path, master: pl.DataFrame, n: int) -> CurationLabels:
     """Label the first ``n`` (small-area) objects as ``debris``."""
-    state = CurationLabels.load(root, master)
+    state = CurationLabels.load(_layout(root), master)
     keys = [("img1", lbl) for lbl in range(1, n + 1)]
     state.mark_many(keys, "debris")
     return state
@@ -99,7 +115,7 @@ def test_build_error_tab_body_contains_table_and_figure():
 def test_register_error_callbacks_registers_without_raising(seeded_root):
     app = dash.Dash(__name__, suppress_callback_exceptions=True)
     app.layout = build_error_tab_body(seeded_root, MagicMock())
-    filtered = CurationLabels.load(seeded_root.root, seeded_root.master_df)
+    filtered = CurationLabels.load(seeded_root.layout, seeded_root.master_df)
     register_error_callbacks(app, seeded_root, filtered)
     # At least one callback now writes the chips/table/figure.
     outputs = "".join(app.callback_map.keys())
@@ -171,7 +187,7 @@ def _write_qc_one_group(root: Path, good_labels: list[int]) -> None:
             "member_value": [0.0] * len(good_labels),
         }
     ).write_parquet(qc_members_parquet_path(root))
-    state = ReviewState.load(root)
+    state = ReviewState.load(_layout(root))
     state.mark_reviewed(instance_id, ("A",))
 
 

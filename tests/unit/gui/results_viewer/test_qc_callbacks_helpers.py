@@ -226,12 +226,13 @@ def _qc_master() -> pl.DataFrame:
 
 def _curation_store(tmp_path: Path) -> CurationLabels:
     """Build a CurationLabels store over a synthetic master + mirror."""
+    from phenotypic.sdk_ import BundleLayout
     from tests._output_layout import write_master, write_measurements_mirror
 
     master = _qc_master()
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
-    return CurationLabels.load(tmp_path, master)
+    return CurationLabels.load(BundleLayout.detect(tmp_path), master)
 
 
 def test_mark_review_tile_assigns_category(tmp_path: Path) -> None:

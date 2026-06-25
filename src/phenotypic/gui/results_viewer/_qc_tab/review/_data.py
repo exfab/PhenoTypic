@@ -35,12 +35,6 @@ from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
-from phenotypic.sdk_ import (
-    measurements_parquet_path,
-    qc_members_parquet_path,
-    qc_summary_parquet_path,
-)
-
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
 
@@ -93,12 +87,12 @@ def load_qc_summary(output_root: "OutputRoot") -> pl.DataFrame | None:
         The summary frame, or ``None`` when the artifact has not been
         written yet (no QC configured / never recompiled).
     """
-    return _read_optional_parquet(qc_summary_parquet_path(Path(output_root.root)))
+    return _read_optional_parquet(output_root.layout.qc_summary_parquet)
 
 
 def load_qc_members(output_root: "OutputRoot") -> pl.DataFrame | None:
     """Read ``<root>/qc/qc_members.parquet`` or ``None`` when absent."""
-    return _read_optional_parquet(qc_members_parquet_path(Path(output_root.root)))
+    return _read_optional_parquet(output_root.layout.qc_members_parquet)
 
 
 def _read_optional_parquet(path: Path) -> pl.DataFrame | None:
@@ -518,8 +512,8 @@ def build_recompute_frame(
     Returns:
         A pandas DataFrame: the post-applied frame minus removed rows.
     """
-    root = Path(output_root.root)
-    mirror = measurements_parquet_path(root)
+    layout = output_root.layout
+    mirror = layout.mirror_parquet
     if mirror.is_file():
         frame = pl.read_parquet(mirror)
     else:
@@ -527,12 +521,10 @@ def build_recompute_frame(
         # the only frame available; it lacks post/metadata columns, so a
         # metadata groupby will still KeyError inside run_qc and be skipped
         # with a warning — acceptable degradation, never a crash here.
-        from phenotypic.sdk_ import master_measurements_parquet_path
-
         logger.info(
             "measurements.parquet absent; recompute falling back to master"
         )
-        frame = pl.read_parquet(master_measurements_parquet_path(root))
+        frame = pl.read_parquet(layout.master_parquet)
 
     curated = _anti_join_removed(frame, removed_keys)
     return curated.to_pandas()

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import dash
 
-from phenotypic.gui._config import VIEWER_CACHE_DIRNAME, VIEWER_THUMB_URL_SEGMENT
+from phenotypic.gui._config import VIEWER_THUMB_URL_SEGMENT
 from phenotypic.gui._shared.tiles import is_safe_path_component
 from phenotypic.gui._shared.timeline import register_thumbnail_route
 from phenotypic.gui.results_viewer._output_root import OutputRoot
@@ -69,7 +69,7 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         app,
         segment=VIEWER_THUMB_URL_SEGMENT,
         resolve_source=resolve_source,
-        cache_base=output_root.root / VIEWER_CACHE_DIRNAME / _THUMB_CACHE_SUBDIR,
+        cache_base=output_root.viewer_cache_dir / _THUMB_CACHE_SUBDIR,
     )
     logger.debug(
         "Registered Results Timeline thumbnail route under /%s for root=%s",

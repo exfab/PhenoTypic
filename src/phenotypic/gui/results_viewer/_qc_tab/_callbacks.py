@@ -22,7 +22,8 @@ Five primary callbacks plus the modal open/save/cancel flow:
 * :func:`_mark_flagged_for_removal` — push a card's flagged keys onto
   :data:`STORE_REMOVED_KEYS`.
 * :func:`_on_export_click` — write ``qc.parquet`` +
-  ``qc_summary.json`` under :attr:`OutputRoot.root`; show a toast.
+  ``qc_summary.json`` into ``deliverables/qc/`` (via
+  ``OutputRoot.layout.qc_dir``); show a toast.
 
 See spec lines 842-987 for the UX, lines 893-911 for the callback
 split, and lines 818-840 for the export format.
@@ -1003,21 +1004,28 @@ def _export_qc_report(
     filtered: Any,
     output_root: Any,
 ) -> tuple[Path, Path]:
-    """Write ``qc.parquet`` and ``qc_summary.json`` under the output root.
+    """Write ``qc.parquet`` and ``qc_summary.json`` into ``deliverables/qc/``.
+
+    Resolves the target via ``output_root.layout.qc_dir`` so a standalone
+    deliverables bundle writes inside the bundle (review C4).
 
     Args:
         recipe: The active QC recipe.
         filtered: The :class:`FilteredMeasurements` curation state.
         output_root: The :class:`OutputRoot` exposing ``master_df`` and
-            ``root``.
+            ``layout``.
 
     Returns:
         ``(parquet_path, summary_path)`` — absolute file paths written
         to disk.
     """
-    root = Path(output_root.root)
-    parquet_path = root / "qc.parquet"
-    summary_path = root / "qc_summary.json"
+    # Route through the resolved qc dir so a standalone deliverables bundle
+    # (root == deliverables folder) writes inside the bundle, never a raw
+    # ``output_root.root`` join (review C4).
+    qc_dir = output_root.layout.qc_dir
+    qc_dir.mkdir(parents=True, exist_ok=True)
+    parquet_path = qc_dir / "qc.parquet"
+    summary_path = qc_dir / "qc_summary.json"
 
     pandas_frame = get_curated_frame(filtered, output_root).to_pandas()
     instances = dict(recipe.instantiate())

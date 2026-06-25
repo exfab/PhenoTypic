@@ -22,7 +22,9 @@ import polars as pl
 from phenotypic.analysis import ErrorCutoffFinder, render_error_analysis_report
 from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS, _RESULT_DTYPES
 from phenotypic.sdk_ import (
+    BundleLayout,
     curation_labels_parquet_path,
+    deliverables_dir,
     error_analysis_csv_path,
     error_analysis_html_path,
     error_analysis_parquet_path,
@@ -56,7 +58,16 @@ def reemit_error_deliverables(output_dir: Path, master_df: pl.DataFrame) -> None
     # Dash-free (verified) so this stays cheap.
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 
-    store = CurationLabels.load(output_dir, master_df)  # re-keys onto fresh master
+    # The CLI always has a real output root, so build the full-run layout
+    # directly (``BundleLayout.detect`` would require the master parquet to
+    # already be on disk, which finalize writes *before* this call but
+    # direct-reemit unit tests do not). ``CurationLabels.load`` now takes a
+    # ``BundleLayout`` and falls back to the passed ``master_df`` when the
+    # on-disk clean master is absent.
+    layout = BundleLayout(
+        deliverables_base=deliverables_dir(output_dir), output_root=output_dir
+    )
+    store = CurationLabels.load(layout, master_df)  # re-keys onto fresh master
     if not store.labels:
         return
     store.write_error_partitions()  # errors/*.parquet + re-keyed labels parquet (no mirror)

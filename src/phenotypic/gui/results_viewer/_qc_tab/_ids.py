@@ -35,8 +35,8 @@ QC_CARDS_CONTAINER_ID: str = "qc-cards-container"
 QC_ADD_CHECK_BTN_ID: str = "qc-add-check-btn"
 
 #: ``Export QC report`` button on the top strip. Disabled when no checks
-#: are enabled; writes ``qc.parquet`` + ``qc_summary.json`` under the
-#: active ``OutputRoot.root`` on click.
+#: are enabled; writes ``qc.parquet`` + ``qc_summary.json`` into
+#: ``deliverables/qc/`` (via ``OutputRoot.layout.qc_dir``) on click.
 QC_EXPORT_BTN_ID: str = "qc-export-btn"
 
 #: Success/failure toast displayed after the export button completes.

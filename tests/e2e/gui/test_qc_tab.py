@@ -1044,8 +1044,11 @@ def test_export_emits_qc_parquet_and_summary(
     _dismiss_qc_modal_if_open(page)
     page.locator("#qc-export-btn").click(force=True)
 
-    parquet_path = output_dir / "qc.parquet"
-    summary_path = output_dir / "qc_summary.json"
+    from phenotypic.sdk_ import qc_dir
+
+    export_dir = qc_dir(output_dir)  # deliverables/qc (review C4 relocation)
+    parquet_path = export_dir / "qc.parquet"
+    summary_path = export_dir / "qc_summary.json"
     import time as _time
 
     deadline = _time.monotonic() + 10.0

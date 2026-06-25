@@ -183,7 +183,7 @@ def test_header_no_longer_contains_filters_toggle(tmp_path) -> None:
 
 def test_app_layout_keeps_filters_toggle_near_tabs(tmp_path) -> None:
     out = _make_output(tmp_path)
-    state = CurationLabels.load(out.root, out.clean_master_df)
+    state = CurationLabels.load(out.layout, out.clean_master_df)
     layout = build_app_layout(out, state)
     all_ids = _ids_in(layout)
     assert ids.BTN_FILTERS_TOGGLE in all_ids

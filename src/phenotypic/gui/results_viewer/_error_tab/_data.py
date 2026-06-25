@@ -132,7 +132,7 @@ def verified_good_keys(
         )
         return set()
 
-    state = ReviewState.load(output_root.root)
+    state = ReviewState.load(output_root.layout)
     reviewed_members: set[LabelKey] = set()
     for instance_id, progress in state.modules.items():
         if not progress.reviewed:

@@ -35,6 +35,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
+    BundleLayout,
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,
@@ -44,6 +45,11 @@ from phenotypic.sdk_ import (
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 
 _INSTANCE_ID = "qc-SE-aaaa1111"
+
+
+def _layout(tmp_path: Path) -> BundleLayout:
+    """Full-run-style layout rooted at ``tmp_path`` (deliverables under it)."""
+    return BundleLayout(deliverables_base=tmp_path / "deliverables", output_root=tmp_path)
 
 
 def _build_pipeline() -> ImagePipeline:
@@ -170,7 +176,7 @@ def test_recompute_does_not_touch_review_state(output_root, tmp_path: Path) -> N
     )
 
     # GUI marks a group reviewed.
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     state.mark_reviewed(_INSTANCE_ID, ("img-1",))
     assert qc_review_state_path(tmp_path).exists()
 
@@ -182,7 +188,7 @@ def test_recompute_does_not_touch_review_state(output_root, tmp_path: Path) -> N
     )
 
     # review_state.json survives the recompute.
-    reloaded = ReviewState.load(tmp_path)
+    reloaded = ReviewState.load(_layout(tmp_path))
     assert reloaded.is_reviewed(_INSTANCE_ID, ("img-1",))
 
 

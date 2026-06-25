@@ -6,11 +6,21 @@ import polars as pl
 import pytest
 
 import phenotypic.sdk_ as tools_
+from phenotypic.sdk_ import BundleLayout
 from phenotypic.gui.results_viewer._curation_labels import (
     CurationLabels,
     sanitize_category,
 )
 from phenotypic.schema import ErrorCategory
+
+
+def _layout(tmp_path: Path) -> BundleLayout:
+    """Full-run-style layout rooted at ``tmp_path`` (deliverables under it).
+
+    Keeps every ``tools_.*_path(tmp_path)`` assertion resolving to the same
+    on-disk locations the old ``CurationLabels.load(_layout(tmp_path), ...)`` used.
+    """
+    return BundleLayout(deliverables_base=tmp_path / "deliverables", output_root=tmp_path)
 
 
 def _master(n: int = 4) -> pl.DataFrame:
@@ -34,14 +44,14 @@ def test_sanitize_category():
 
 
 def test_load_empty_when_nothing_on_disk(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     assert store.labels == {}
     assert store.categories()[: len(ErrorCategory.labels())] == ErrorCategory.labels()
     assert store.rekey_report.total == 0
 
 
 def test_register_custom_category_persists_and_dedupes(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     token = store.register_custom_category("Halo Effect")
     assert token == "halo_effect"
     assert "halo_effect" in store.categories()
@@ -49,12 +59,12 @@ def test_register_custom_category_persists_and_dedupes(tmp_path: Path):
     assert store.register_custom_category("halo_effect") == "halo_effect"
     assert store.custom_categories.count("halo_effect") == 1
     # reloads from disk
-    reloaded = CurationLabels.load(tmp_path, _master())
+    reloaded = CurationLabels.load(_layout(tmp_path), _master())
     assert "halo_effect" in reloaded.custom_categories
 
 
 def test_register_rejects_core_collision_and_empty(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     with pytest.raises(ValueError):
         store.register_custom_category("debris")  # core token
     with pytest.raises(ValueError):
@@ -62,7 +72,7 @@ def test_register_rejects_core_collision_and_empty(tmp_path: Path):
 
 
 def test_mark_writes_all_derived_outputs(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 2, "background_noise")
 
     # label recorded + fingerprint captured from master
@@ -82,12 +92,12 @@ def test_mark_writes_all_derived_outputs(tmp_path: Path):
     assert errs.get_column("Curation_Category").to_list() == ["background_noise"]
 
     # labels store round-trips on reload
-    reloaded = CurationLabels.load(tmp_path, _master())
+    reloaded = CurationLabels.load(_layout(tmp_path), _master())
     assert reloaded.labels == {("plateA", 2): "background_noise"}
 
 
 def test_unmark_restores_and_clears_category_file(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 2, "debris")
     store.unmark("plateA", 2)
     assert store.labels == {}
@@ -98,13 +108,13 @@ def test_unmark_restores_and_clears_category_file(tmp_path: Path):
 
 
 def test_mark_rejects_unknown_category(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     with pytest.raises(ValueError):
         store.mark("plateA", 1, "not_registered")
 
 
 def test_mark_many_single_save(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark_many([("plateA", 1), ("plateA", 3)], "oversegmented")
     errs = pl.read_parquet(
         tools_.error_category_parquet_path(tmp_path, "oversegmented")
@@ -113,7 +123,7 @@ def test_mark_many_single_save(tmp_path: Path):
 
 
 def test_unmark_one_of_two_categories_keeps_other(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 1, "debris")
     store.mark("plateA", 2, "merged")
     store.unmark("plateA", 1)
@@ -124,12 +134,12 @@ def test_unmark_one_of_two_categories_keeps_other(tmp_path: Path):
 
 
 def test_mark_absent_key_degrades_to_nan_fingerprint(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 999, "debris")  # object 999 is not in master
     assert store.labels[("plateA", 999)] == "debris"
     assert ("plateA", 999) not in store.fingerprints  # no centroid to capture
     # persisted with NaN fingerprint -> dropped on the next re-key load
-    reloaded = CurationLabels.load(tmp_path, _master())
+    reloaded = CurationLabels.load(_layout(tmp_path), _master())
     assert ("plateA", 999) not in reloaded.labels
     # S1: no 0-row category parquet written for absent object
     assert not tools_.error_category_parquet_path(tmp_path, "debris").exists()
@@ -169,7 +179,7 @@ def _write_store_with_labels(tmp_path, rows):
 
 def test_rekey_keeps_exact_match(tmp_path: Path):
     _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     assert store.labels == {("plateA", 2): "debris"}
     assert store.rekey_report.kept == 1
 
@@ -184,7 +194,7 @@ def test_rekey_recovers_renumbered_object(tmp_path: Path):
         .otherwise(pl.col("Object_Label"))
         .alias("Object_Label")
     )
-    store = CurationLabels.load(tmp_path, master)
+    store = CurationLabels.load(_layout(tmp_path), master)
     assert store.labels == {("plateA", 99): "debris"}
     assert store.rekey_report.rekeyed == 1
 
@@ -192,7 +202,7 @@ def test_rekey_recovers_renumbered_object(tmp_path: Path):
 def test_rekey_drops_when_object_gone(tmp_path: Path):
     # Stored centroid (500,500) matches nothing in master -> dropped.
     _write_store_with_label(tmp_path, "plateA", 2, "debris", 500.0, 500.0)
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     assert store.labels == {}
     assert store.rekey_report.dropped == 1
 
@@ -209,7 +219,7 @@ def test_no_legacy_migration_from_measurements_parquet(tmp_path: Path):
     legacy.parent.mkdir(parents=True, exist_ok=True)
     curated.write_parquet(legacy)
 
-    store = CurationLabels.load(tmp_path, master)
+    store = CurationLabels.load(_layout(tmp_path), master)
     assert store.labels == {}
     assert store.rekey_report.migrated == 0
 
@@ -219,7 +229,7 @@ def test_rekey_drops_rather_than_attaching_to_neighbor(tmp_path: Path):
     # is (10,20) == object 1's position. The label must DROP, never silently
     # re-key onto the neighbour at the stored centroid.
     _write_store_with_label(tmp_path, "plateA", 2, "debris", 10.0, 20.0)
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     assert store.labels == {}
     assert store.rekey_report.dropped == 1
 
@@ -227,14 +237,14 @@ def test_rekey_drops_rather_than_attaching_to_neighbor(tmp_path: Path):
 def test_rekey_degrades_without_bbox(tmp_path: Path):
     _write_store_with_label(tmp_path, "plateA", 2, "debris", 20.0, 40.0)
     master = _master().drop(["Bbox_CenterRR", "Bbox_CenterCC"])
-    store = CurationLabels.load(tmp_path, master)
+    store = CurationLabels.load(_layout(tmp_path), master)
     # exact key (plateA, 2) still exists -> kept on the exact-key-only fallback
     assert store.labels == {("plateA", 2): "debris"}
     assert store.rekey_report.kept == 1
 
 
 def test_filtered_measurements_compat_surface(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
 
     # remove == mark as "other"
     store.remove("plateA", 1)
@@ -262,7 +272,7 @@ def test_filtered_measurements_compat_surface(tmp_path: Path):
 
 
 def test_mutate_and_payload_runs_under_lock(tmp_path: Path):
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     payload = store.mutate_and_payload(lambda s: s.mark("plateA", 1, "merged"))
     assert payload == [["plateA", 1]]
 
@@ -314,7 +324,7 @@ def test_rekey_drops_when_two_labels_claim_one_object(tmp_path: Path):
             ("plateA", 5, "merged", 20.0, 40.0),
         ],
     )
-    store = CurationLabels.load(tmp_path, master)
+    store = CurationLabels.load(_layout(tmp_path), master)
     # Both candidates claimed the same target -> both dropped
     assert store.labels == {}
     assert store.rekey_report.dropped == 2
@@ -334,7 +344,7 @@ def test_stale_sweep_preserves_foreign_files(tmp_path: Path):
     # Write a simple 1-column frame as the "foreign" file
     pl.DataFrame({"note": ["do not delete"]}).write_parquet(foreign)
 
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 1, "debris")
 
     assert foreign.exists(), "Foreign file must survive the stale-sweep"
@@ -357,7 +367,7 @@ def test_mark_across_multiple_images(tmp_path: Path):
             "Size_Area": [100.0, 200.0, 100.0, 200.0],
         }
     )
-    store = CurationLabels.load(tmp_path, master)
+    store = CurationLabels.load(_layout(tmp_path), master)
     store.mark("pA", 1, "debris")
     store.mark("pB", 2, "merged")
 
@@ -405,7 +415,7 @@ def test_save_refuses_after_external_reseed(tmp_path: Path):
     import os
     import time
 
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     store.mark("plateA", 1, "debris")  # seeds measurements.parquet + records mtime
 
     # Simulate a CLI re-seed: bump the mtime of measurements.parquet.
@@ -436,13 +446,13 @@ def test_labels_survive_reload_against_curated_mirror(tmp_path: Path):
     clean.write_parquet(master_path)
 
     # Session 1: open against the clean master, mark 3 objects.
-    s1 = CurationLabels.load(tmp_path, clean)
+    s1 = CurationLabels.load(_layout(tmp_path), clean)
     s1.mark_many([("plateA", i) for i in (1, 2, 3)], "debris")
     mirror = pl.read_parquet(tools_.measurements_parquet_path(tmp_path))
     assert mirror.height == 3  # labeled rows curated OUT of the mirror
 
     # Session 2 (reload): OutputRoot would pass the curated MIRROR as master_df.
-    s2 = CurationLabels.load(tmp_path, mirror)
+    s2 = CurationLabels.load(_layout(tmp_path), mirror)
     assert len(s2.labels) == 3  # all survive — re-keyed against the clean master
     assert s2.rekey_report.kept == 3
     assert s2.rekey_report.dropped == 0
@@ -464,9 +474,29 @@ def test_curated_mirror_preserves_post_columns(tmp_path: Path):
 
     # A post-applied mirror carries a column the clean master lacks.
     mirror = clean.with_columns(pl.lit(1.0).alias("Post_Normalized"))
-    store = CurationLabels.load(tmp_path, mirror)
+    store = CurationLabels.load(_layout(tmp_path), mirror)
     store.mark("plateA", 2, "debris")
 
     curated = pl.read_parquet(tools_.measurements_parquet_path(tmp_path))
     assert "Post_Normalized" in curated.columns  # post column preserved
     assert 2 not in curated.get_column("Object_Label").to_list()  # still curated
+
+
+def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
+    from phenotypic.gui.results_viewer._output_root import OutputRoot
+
+    base = tmp_path / "bundle" / "deliverables"
+    base.mkdir(parents=True)
+    df = pl.DataFrame(
+        {"Metadata_Dataset": ["p1"], "Metadata_ImageFile": ["img001"], "Object_Label": [1]}
+    )
+    df.write_parquet(base / "master_measurements.parquet")
+    df.write_parquet(base / "measurements.parquet")
+
+    root = OutputRoot.discover(base)
+    labels = CurationLabels.load(root.layout, root.master_df)  # NEW: takes BundleLayout
+    labels.mark("img001", 1, "debris")
+
+    # Durable store must live INSIDE the bundle, not at base.parent/qc.
+    assert (base / "qc" / "curation_labels.parquet").is_file()
+    assert not (base.parent / "qc").exists()
