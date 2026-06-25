@@ -228,13 +228,13 @@ def test_list_aux_row_renders_ordered_slots_with_remove_and_arrows() -> None:
         block_id=_new_block_id(),
         class_name="CompositeDetector",
         params={},
-        list_slot_counts={"detectors": 3},  # Two wired + one empty
+        list_slot_counts={"ops": 3},  # Two wired + one empty
     )
     edge_a = Edge(
         edge_id="ea",
         source_block_id=a.block_id,
         target_block_id=consumer.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=0,
         kind="aux",
     )
@@ -242,7 +242,7 @@ def test_list_aux_row_renders_ordered_slots_with_remove_and_arrows() -> None:
         edge_id="eb",
         source_block_id=b.block_id,
         target_block_id=consumer.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=1,
         kind="aux",
     )
@@ -254,8 +254,8 @@ def test_list_aux_row_renders_ordered_slots_with_remove_and_arrows() -> None:
             "CompositeDetector": _make_op_info(
                 "CompositeDetector",
                 {
-                    "detectors": _make_param(
-                        "detectors",
+                    "ops": _make_param(
+                        "ops",
                         is_operation=True,
                         is_list=True,
                         has_default=False,
@@ -278,7 +278,7 @@ def test_list_aux_row_renders_ordered_slots_with_remove_and_arrows() -> None:
     assert _find_by_id(section, ids.inspector_list_remove_id("eb"))
     # + Add empty slot button keyed by (block_id, param)
     add_btn_id = ids.inspector_add_empty_slot_id(
-        consumer.block_id, "detectors"
+        consumer.block_id, "ops"
     )
     assert _find_by_id(section, add_btn_id)
     # Up/down arrow buttons present for each row (pattern-match family).
@@ -300,13 +300,13 @@ def test_list_aux_row_includes_drag_handle_placeholder() -> None:
         block_id=_new_block_id(),
         class_name="CompositeDetector",
         params={},
-        list_slot_counts={"detectors": 1},
+        list_slot_counts={"ops": 1},
     )
     edge = Edge(
         edge_id="e",
         source_block_id=a.block_id,
         target_block_id=consumer.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=0,
         kind="aux",
     )
@@ -316,8 +316,8 @@ def test_list_aux_row_includes_drag_handle_placeholder() -> None:
             "CompositeDetector": _make_op_info(
                 "CompositeDetector",
                 {
-                    "detectors": _make_param(
-                        "detectors",
+                    "ops": _make_param(
+                        "ops",
                         is_operation=True,
                         is_list=True,
                         has_default=True,  # optional
@@ -353,13 +353,13 @@ def test_list_aux_row_emits_reorder_store_per_param() -> None:
         block_id=_new_block_id(),
         class_name="CompositeDetector",
         params={},
-        list_slot_counts={"detectors": 1},
+        list_slot_counts={"ops": 1},
     )
     edge = Edge(
         edge_id="e",
         source_block_id=a.block_id,
         target_block_id=consumer.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=0,
         kind="aux",
     )
@@ -369,8 +369,8 @@ def test_list_aux_row_emits_reorder_store_per_param() -> None:
             "CompositeDetector": _make_op_info(
                 "CompositeDetector",
                 {
-                    "detectors": _make_param(
-                        "detectors",
+                    "ops": _make_param(
+                        "ops",
                         is_operation=True,
                         is_list=True,
                     )
@@ -383,7 +383,7 @@ def test_list_aux_row_emits_reorder_store_per_param() -> None:
     )
     assert section is not None
     store_id = ids.inspector_list_reorder_store_id(
-        consumer.block_id, "detectors"
+        consumer.block_id, "ops"
     )
     stores = _find_by_id(section, store_id)
     assert len(stores) == 1
@@ -404,13 +404,13 @@ def test_aux_section_renders_inside_full_inspector() -> None:
         block_id=_new_block_id(),
         class_name="CompositeDetector",
         params={},
-        list_slot_counts={"detectors": 2},
+        list_slot_counts={"ops": 2},
     )
     edge = Edge(
         edge_id="e1",
         source_block_id=source.block_id,
         target_block_id=target.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=0,
         kind="aux",
     )
@@ -423,8 +423,8 @@ def test_aux_section_renders_inside_full_inspector() -> None:
             "CompositeDetector": _make_op_info(
                 "CompositeDetector",
                 {
-                    "detectors": _make_param(
-                        "detectors",
+                    "ops": _make_param(
+                        "ops",
                         is_operation=True,
                         is_list=True,
                         has_default=False,

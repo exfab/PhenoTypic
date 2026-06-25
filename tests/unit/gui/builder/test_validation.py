@@ -321,8 +321,8 @@ class TestRule3RequiredAux:
         empty_registry.ops["NeedsList"] = _make_op_info(
             "NeedsList",
             {
-                "detectors": _make_param(
-                    "detectors",
+                "ops": _make_param(
+                    "ops",
                     has_default=False,
                     is_operation=True,
                     is_list=True,
@@ -337,7 +337,7 @@ class TestRule3RequiredAux:
         issues = validate(_wrap(scope))
         req = [i for i in issues if i.kind == "required_aux"]
         assert any(
-            i.block_id == consumer.block_id and "detectors" in i.detail
+            i.block_id == consumer.block_id and "ops" in i.detail
             for i in req
         )
 
@@ -347,8 +347,8 @@ class TestRule3RequiredAux:
         empty_registry.ops["NeedsList"] = _make_op_info(
             "NeedsList",
             {
-                "detectors": _make_param(
-                    "detectors",
+                "ops": _make_param(
+                    "ops",
                     has_default=False,
                     is_operation=True,
                     is_list=True,
@@ -362,7 +362,7 @@ class TestRule3RequiredAux:
         scope.blocks.extend([producer, consumer])
         scope.edges.append(_image_edge(scope.blocks[0].block_id, consumer.block_id))
         scope.edges.append(
-            _aux_edge(producer.block_id, consumer.block_id, "detectors", slot=0)
+            _aux_edge(producer.block_id, consumer.block_id, "ops", slot=0)
         )
 
         issues = validate(_wrap(scope))

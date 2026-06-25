@@ -635,7 +635,7 @@ def test_disconnect_drops_aux(page: Page) -> None:
 def test_list_port_shows_multiple_slots(page: Page) -> None:
     """List-typed aux ports surface slot rows + an ``+ Add slot`` button.
 
-    ``CompositeDetector.detectors`` is a list-typed op param. The
+    ``CompositeDetector.ops`` is a list-typed op param. The
     popover should render one ``.cy-popover-slot-row`` per slot
     (including the empty defaults, if any) plus the
     ``.cy-popover-add-slot`` button at the bottom.
@@ -643,7 +643,7 @@ def test_list_port_shows_multiple_slots(page: Page) -> None:
     _add_op(page, "CompositeDetector")
     _wait_for_aux_port_count(page, 1)
     consumer_id = _first_consumer_node_id(page)
-    _click_aux_port(page, consumer_id, "detectors")
+    _click_aux_port(page, consumer_id, "ops")
     _wait_for_popover_visible(page)
 
     # Either slot rows OR a "no slots yet" placeholder + add button

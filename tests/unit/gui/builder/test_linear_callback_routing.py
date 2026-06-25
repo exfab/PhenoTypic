@@ -13,7 +13,7 @@ def test_linear_pattern_id_decoders_round_trip_dash_safe_fields():
         kind="parameter_slot",
         scope_path=["pipe-a", "pipe-b"],
         block_id="consumer",
-        param="detectors",
+        param="ops",
         slot=2,
         surface="side",
     )
@@ -24,7 +24,7 @@ def test_linear_pattern_id_decoders_round_trip_dash_safe_fields():
         "kind": "parameter_slot",
         "scope_path": ["pipe-a", "pipe-b"],
         "block_id": "consumer",
-        "param": "detectors",
+        "param": "ops",
         "slot": 2,
     }
 

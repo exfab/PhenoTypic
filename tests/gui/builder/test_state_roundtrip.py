@@ -383,7 +383,7 @@ def test_composite_detector_extracts_two_embedded_aux_nodes() -> None:
         OtsuDetector(ignore_zeros=True, ignore_borders=False),
         RoundPeaksDetector(),
     ]
-    composite = CompositeDetector(detectors=detectors, mode="union")
+    composite = CompositeDetector(ops=detectors, mode="union")
     pipeline = ImagePipeline(ops=[composite], name="composite_demo", desc="")
 
     rebuilt_scope = from_pipeline(pipeline)
@@ -392,9 +392,9 @@ def test_composite_detector_extracts_two_embedded_aux_nodes() -> None:
     assert consumer.class_name == "CompositeDetector"
 
     # Embedded-aux representation: detectors are extracted inline.
-    assert "detectors" not in consumer.params
-    assert "detectors" in consumer.aux_ports
-    slots = consumer.aux_ports["detectors"]
+    assert "ops" not in consumer.params
+    assert "ops" in consumer.aux_ports
+    slots = consumer.aux_ports["ops"]
     assert len(slots) == 2
     assert all(s is not None for s in slots)
     assert all(isinstance(s, StepNode) for s in slots)
@@ -417,7 +417,7 @@ def test_composite_detector_extracts_two_embedded_aux_nodes() -> None:
 def test_composite_detector_with_mixed_wired_and_empty_slots() -> None:
     """List-typed aux with one empty slot drops the empty on serialization.
 
-    The runtime ``CompositeDetector.detectors`` cannot represent an empty
+    The runtime ``CompositeDetector.ops`` cannot represent an empty
     slot — it just gets a 2-element list when 2 of 3 slots are wired.  On
     ``from_pipeline``, the reconstructed scope has 2 slots (not 3): the
     original empty slot does not survive a round-trip through
@@ -437,7 +437,7 @@ def test_composite_detector_with_mixed_wired_and_empty_slots() -> None:
                         label="CompositeDetector",
                         aux_ports={
                             # 3 slots: wired, empty, wired.
-                            "detectors": [otsu_aux, None, round_peaks_aux],
+                            "ops": [otsu_aux, None, round_peaks_aux],
                         },
                 ),
             ],
@@ -448,16 +448,16 @@ def test_composite_detector_with_mixed_wired_and_empty_slots() -> None:
     pipeline = to_pipeline(scope)
     composite = next(iter(pipeline.get_ops().values()))
     # The empty slot is dropped: runtime detectors is 2-element.
-    assert hasattr(composite, "detectors")
-    assert len(composite.detectors) == 2
-    assert type(composite.detectors[0]).__name__ == "OtsuDetector"
-    assert type(composite.detectors[1]).__name__ == "RoundPeaksDetector"
+    assert hasattr(composite, "ops")
+    assert len(composite.ops) == 2
+    assert type(composite.ops[0]).__name__ == "OtsuDetector"
+    assert type(composite.ops[1]).__name__ == "RoundPeaksDetector"
 
     # Round-trip back: the empty slot is gone.
     rebuilt_scope = from_pipeline(pipeline)
     assert len(rebuilt_scope.nodes) == 1
     consumer = rebuilt_scope.nodes[0]
-    slots = consumer.aux_ports["detectors"]
+    slots = consumer.aux_ports["ops"]
     assert len(slots) == 2  # ← the original 3 with one None becomes 2
     assert slots[0] is not None and slots[0].class_name == "OtsuDetector"
     assert slots[1] is not None and slots[1].class_name == "RoundPeaksDetector"

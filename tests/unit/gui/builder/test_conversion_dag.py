@@ -253,11 +253,11 @@ class TestToPipelineDagAuxFolding:
         assert len(ops) == 1
         consumer_inst = ops[0]
         assert isinstance(consumer_inst, CompositeDetector)
-        assert isinstance(consumer_inst.detectors, list)
-        assert len(consumer_inst.detectors) == 3
-        assert isinstance(consumer_inst.detectors[0], OtsuDetector)
-        assert consumer_inst.detectors[1] is None
-        assert isinstance(consumer_inst.detectors[2], OtsuDetector)
+        assert isinstance(consumer_inst.ops, list)
+        assert len(consumer_inst.ops) == 3
+        assert isinstance(consumer_inst.ops[0], OtsuDetector)
+        assert consumer_inst.ops[1] is None
+        assert isinstance(consumer_inst.ops[2], OtsuDetector)
 
 
 class TestToPipelineDagRaises:
@@ -493,7 +493,7 @@ class TestFromPipelineDagListAux:
         det_a = OtsuDetector()
         det_c = OtsuDetector()
         # slot 1 intentionally None (empty)
-        consumer = CompositeDetector(detectors=[det_a, None, det_c])
+        consumer = CompositeDetector(ops=[det_a, None, det_c])
         pipe = ImagePipeline(ops=[consumer])
 
         state = from_pipeline_dag(pipe)
@@ -503,7 +503,7 @@ class TestFromPipelineDagListAux:
         ]
         assert len(composite_blocks) == 1
         consumer_block = composite_blocks[0]
-        assert consumer_block.list_slot_counts.get("detectors") == 3
+        assert consumer_block.list_slot_counts.get("ops") == 3
 
         # Two aux edges should exist, with target_slot 0 and 2.
         aux_edges = [
@@ -511,7 +511,7 @@ class TestFromPipelineDagListAux:
             for e in state.root.edges
             if e.kind == "aux"
             and e.target_block_id == consumer_block.block_id
-            and e.target_port == "detectors"
+            and e.target_port == "ops"
         ]
         assert len(aux_edges) == 2
         slots = sorted(e.target_slot for e in aux_edges)
@@ -689,9 +689,9 @@ class TestContainerFixtureRoundTrip:
         assert isinstance(outer_op, CompositeDetector)
         # The consumer's detectors list-aux must carry one ImagePipeline
         # (the OuterContainer materialised).
-        assert isinstance(outer_op.detectors, list)
-        assert len(outer_op.detectors) >= 1
-        outer_container = outer_op.detectors[0]
+        assert isinstance(outer_op.ops, list)
+        assert len(outer_op.ops) >= 1
+        outer_container = outer_op.ops[0]
         assert isinstance(outer_container, ImagePipeline)
         # OuterContainer should expose one inner CompositeDetector that
         # in turn carries an inner ImagePipeline (the InnerContainer).
@@ -699,9 +699,9 @@ class TestContainerFixtureRoundTrip:
         assert len(inner_ops) == 1
         inner_composite = inner_ops[0]
         assert isinstance(inner_composite, CompositeDetector)
-        assert isinstance(inner_composite.detectors, list)
-        assert len(inner_composite.detectors) >= 1
-        inner_container = inner_composite.detectors[0]
+        assert isinstance(inner_composite.ops, list)
+        assert len(inner_composite.ops) >= 1
+        inner_container = inner_composite.ops[0]
         assert isinstance(inner_container, ImagePipeline)
         # Innermost pipeline holds the OtsuDetector.
         innermost_ops = list(inner_container.get_ops().values())
@@ -837,7 +837,7 @@ class TestContainerFixtureRoundTrip:
             ops=[GaussianBlur(sigma=1.0), OtsuDetector()], name="innermost"
         )
         outer_container = ImagePipeline(
-            ops=[CompositeDetector(detectors=[innermost])], name="outer"
+            ops=[CompositeDetector(ops=[innermost])], name="outer"
         )
         top = ImagePipeline(
             ops=[FilamentousFungiDetector(inoculum_detector=outer_container)],
@@ -900,8 +900,8 @@ class TestContainerFixtureRoundTrip:
         assert isinstance(rt_outer_composite, CompositeDetector)
         # Second-level aux container nested inside the
         # CompositeDetector's detectors list-aux.
-        assert isinstance(rt_outer_composite.detectors, list)
-        rt_inner = rt_outer_composite.detectors[0]
+        assert isinstance(rt_outer_composite.ops, list)
+        rt_inner = rt_outer_composite.ops[0]
         assert isinstance(rt_inner, ImagePipeline)
         rt_inner_classes = [
             type(o).__name__ for o in rt_inner.get_ops().values()

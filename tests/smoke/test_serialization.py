@@ -376,9 +376,9 @@ def test_operation_from_json_measurement_via_image_op_raises():
 @pytest.mark.smoke
 @timeit
 def test_nested_op_to_json_from_json_roundtrip():
-    """A nested ``OperationField`` (CompositeDetector.detectors) round-trips."""
+    """A nested ``OperationField`` (CompositeDetector.ops) round-trips."""
     composite = CompositeDetector(
-            detectors=[OtsuDetector(ignore_zeros=True), TriangleDetector()],
+            ops=[OtsuDetector(ignore_zeros=True), TriangleDetector()],
     )
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = Path(tmpdir) / "composite.json"
@@ -389,7 +389,7 @@ def test_nested_op_to_json_from_json_roundtrip():
 
         loaded = CompositeDetector.from_json(typed_filepath)
         assert isinstance(loaded, CompositeDetector)
-        assert len(loaded.detectors) == 2
-        assert isinstance(loaded.detectors[0], OtsuDetector)
-        assert loaded.detectors[0].ignore_zeros is True
-        assert isinstance(loaded.detectors[1], TriangleDetector)
+        assert len(loaded.ops) == 2
+        assert isinstance(loaded.ops[0], OtsuDetector)
+        assert loaded.ops[0].ignore_zeros is True
+        assert isinstance(loaded.ops[1], TriangleDetector)

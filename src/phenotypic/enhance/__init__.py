@@ -40,6 +40,7 @@ from ._gray_opening import GrayOpening
 from ._flatten_illumination import FlattenIllumination
 from ._focus_blob_log import FocusBlobLoG
 from ._set_detect_mode import SetDetectMode
+from ._composite_enhance import CompositeEnhance
 
 __all__ = [
     "BayesShrinkEnhancer",
@@ -71,4 +72,5 @@ __all__ = [
     "WhiteTophatEnhance",
     "SubtractWhiteTophat",
     "SetDetectMode",
+    "CompositeEnhance",
 ]

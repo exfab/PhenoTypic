@@ -34,7 +34,7 @@ def _synth_runnable_pipeline() -> ImagePipeline:
 def _nested_pipeline() -> ImagePipeline:
     """A pipeline whose CompositeDetector yields depth-1 ``Nested`` knobs."""
     return ImagePipeline(
-        ops=[GaussianBlur(sigma=2.0), CompositeDetector(detectors=[OtsuDetector()])]
+        ops=[GaussianBlur(sigma=2.0), CompositeDetector(ops=[OtsuDetector()])]
     )
 
 

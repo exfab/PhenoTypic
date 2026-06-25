@@ -124,13 +124,13 @@ def test_wire_card_aux_edge_renders_param_name_and_slot() -> None:
         block_id=_new_block_id(),
         class_name="CompositeDetector",
         params={},
-        list_slot_counts={"detectors": 2},
+        list_slot_counts={"ops": 2},
     )
     edge = Edge(
         edge_id="aux1",
         source_block_id=src.block_id,
         target_block_id=tgt.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=1,
         kind="aux",
     )
@@ -138,7 +138,7 @@ def test_wire_card_aux_edge_renders_param_name_and_slot() -> None:
 
     card = _build_wire_card(scope, edge)
     text = _collect_text(card)
-    assert "detectors[1]" in text
+    assert "ops[1]" in text
     assert "aux assignment" in text
 
 
@@ -234,7 +234,7 @@ def test_wire_card_id_present_for_every_kind() -> None:
         edge_id="e2",
         source_block_id=src.block_id,
         target_block_id=tgt.block_id,
-        target_port="detectors",
+        target_port="ops",
         target_slot=0,
         kind="aux",
     )

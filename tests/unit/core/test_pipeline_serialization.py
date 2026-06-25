@@ -530,10 +530,13 @@ class TestPreMigrationBackwardCompat:
     def test_loads_pre_migration_legacy_nested_operation_list(self):
         """Legacy ``__type__: operation_list`` nesting still reconstructs.
 
-        Before the migration a ``CompositeDetector`` serialized its
-        ``detectors`` field with the hand-rolled ``operation_list`` marker.
-        ``_deserialize_value`` must translate that legacy marker into live
-        operations so old composite pipelines load.
+        The hand-rolled ``operation_list`` marker (used before nested ops
+        moved to ``OperationField``) must still be translated into live
+        operations by ``_deserialize_value`` so old composite pipelines load.
+        This pins the *marker* translation under the current field name
+        ``ops``; the legacy ``detectors`` *field name* is a hard break, pinned
+        separately by
+        ``test_pre_migration_detectors_field_name_is_rejected``.
         """
         from phenotypic.detect import CompositeDetector
 
@@ -548,7 +551,7 @@ class TestPreMigrationBackwardCompat:
                     "params": {
                         "mode"             : "union",
                         "min_overlap_ratio": 0.0,
-                        "detectors"        : {
+                        "ops"        : {
                             "__type__": "operation_list",
                             "items"   : [
                                 {
@@ -571,11 +574,47 @@ class TestPreMigrationBackwardCompat:
         composite = loaded._ops["CompositeDetector"]
         assert isinstance(composite, CompositeDetector)
         assert composite.mode == "union"
-        assert len(composite.detectors) == 2
-        assert type(composite.detectors[0]).__name__ == "OtsuDetector"
-        assert composite.detectors[0].ignore_zeros is True
-        assert type(composite.detectors[1]).__name__ == "CannyDetector"
-        assert composite.detectors[1].sigma == 2
+        assert len(composite.ops) == 2
+        assert type(composite.ops[0]).__name__ == "OtsuDetector"
+        assert composite.ops[0].ignore_zeros is True
+        assert type(composite.ops[1]).__name__ == "CannyDetector"
+        assert composite.ops[1].sigma == 2
+
+    def test_pre_migration_detectors_field_name_is_rejected(self):
+        """The renamed ``detectors``→``ops`` field is a hard break (no alias).
+
+        A pipeline saved before the rename keyed the composite's nested ops
+        under ``detectors``. ``BaseOperation`` sets ``extra="forbid"``, so such
+        a document no longer loads -- it raises ``ValidationError`` rather than
+        silently dropping the legacy ops. This pins the intentional breaking
+        change so a future accidental alias/leniency is caught.
+        """
+        from pydantic import ValidationError
+
+        old_json = json.dumps({
+            "version"  : "0.13.0",
+            "name"     : "legacy_composite",
+            "desc"     : None,
+            "reset"    : False,
+            "pipe_cfgs": {
+                "CompositeDetector": {
+                    "class" : "CompositeDetector",
+                    "params": {
+                        "mode"     : "union",
+                        "detectors": {
+                            "__type__": "operation_list",
+                            "items"   : [
+                                {"class": "OtsuDetector", "params": {}},
+                            ],
+                        },
+                    },
+                },
+            },
+            "meas"     : {},
+        })
+
+        with pytest.raises(ValidationError):
+            ImagePipeline.from_json(old_json)
 
 
 class TestErrorHandling:
