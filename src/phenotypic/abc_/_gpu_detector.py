@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Annotated, Any, List
 
 import numpy as np
 
-from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind
+from phenotypic.sdk_.typing_ import GpuInputLayer, GpuOutputKind, TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -108,6 +108,17 @@ class GpuDetector(ObjectDetector, ABC):
     supports_batching: bool = False
     output_kind: GpuOutputKind = "instance"
 
+    # Post-inference cleanup: split a single instance label that spans spatially
+    # disconnected blobs into separate instances by connected components. A SAM
+    # mask (or a tile-merged objmap) can paint one label across distant regions;
+    # relabeling by connectivity gives each connected region its own id. Binary
+    # connected-components, so two *touching* distinct labels merge into one.
+    # ``instance`` output only — ``semantic`` already auto-labels by connectivity.
+    split_disconnected_labels: bool = True
+    # Connectivity for the relabel (1 = 4-neighbour, 2 = 8-neighbour). Structural,
+    # never tuned (TuneSpec(tunable=False) satisfies the annotation-coverage gate).
+    connectivity: Annotated[int, TuneSpec(tunable=False)] = 2
+
     @abstractmethod
     def _ensure_model_loaded(self) -> None:
         """Build/load the GPU model on first use (idempotent)."""
@@ -166,11 +177,18 @@ class GpuDetector(ObjectDetector, ABC):
         """Write one ``infer_batch`` result onto the image per ``output_kind``.
 
         - ``instance`` -> ``image.objmap[:]`` (detector-controlled labels).
+          When ``split_disconnected_labels`` is set, the written objmap is then
+          relabeled by connected components (``connectivity``) so one label
+          spanning spatially disconnected blobs becomes separate instances.
         - ``semantic`` -> ``image.objmask[:]`` (auto-labels into the shared
           ``objmap`` backend, exactly like a threshold detector; see Spec 1 §8).
+          Already connectivity-labeled, so ``split_disconnected_labels`` is a
+          no-op here.
         """
         if self.output_kind == "instance":
             image.objmap[:] = result.astype(np.uint16)
+            if self.split_disconnected_labels:
+                image.objmap.relabel(connectivity=self.connectivity)
         else:  # semantic
             image.objmask[:] = result.astype(bool)
 
