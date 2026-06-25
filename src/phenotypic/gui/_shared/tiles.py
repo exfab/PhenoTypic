@@ -374,6 +374,64 @@ def crop_hdf_rgb(
     )
 
 
+def crop_colony(
+    output_root: OutputRoot,
+    dataset: str,
+    stem: str,
+    layer: str,
+    center_rr: float,
+    center_cc: float,
+    size: int,
+    *,
+    dim_alpha: float = 0.0,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> bytes | None:
+    """Tier the crop source per-image: full-res HDF layer when available, else overlay.
+
+    The single entry point both the colony-view ``/crops`` route and the QC
+    review gallery use to fetch a centered colony crop. It prefers the
+    per-image full-resolution HDF (via :func:`crop_hdf_rgb`) and falls back to
+    the baked overlay PNG (via :func:`crop_overlay`) for a standalone
+    deliverables bundle that ships overlays but no ``results/`` HDFs.
+
+    Args:
+        output_root: Validated handle on the CLI output directory; supplies
+            :meth:`hdf_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
+        dataset: Dataset name (matches ``Metadata_Dataset``).
+        stem: Image stem (matches ``Metadata_ImageFile`` minus its extension).
+        layer: HDF layer to render when an HDF is the source (e.g. ``"rgb"``);
+            ignored for the overlay fallback (overlays are pre-baked RGB).
+        center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
+        center_cc: Column coordinate (X) of the colony centroid, in image pixels.
+        size: Side length of the square crop, in pixels.
+        dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
+        bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
+            :func:`crop_overlay`.
+
+    Returns:
+        PNG-encoded bytes of the ``size`` x ``size`` crop, or ``None`` when
+        neither an HDF nor an overlay exists (the caller serves a 404).
+    """
+    h5 = output_root.hdf_path(dataset, stem)
+    if h5 is not None:
+        return crop_hdf_rgb(
+            h5,
+            layer,
+            center_rr,
+            center_cc,
+            size,
+            os.stat(h5).st_mtime_ns,
+            dim_alpha=dim_alpha,
+            bbox=bbox,
+        )
+    if output_root.has_overlay(dataset, stem):
+        png = output_root.overlay_path(dataset, stem)
+        return crop_overlay(
+            png, center_rr, center_cc, size, dim_alpha=dim_alpha, bbox=bbox
+        )
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Path-traversal guard
 # ---------------------------------------------------------------------------
@@ -528,6 +586,14 @@ def register_crop_route(
         dim = request.args.get("dim", type=float, default=0.0)
         dim = min(TILE_DIM_MAX, max(TILE_DIM_MIN, dim))
 
+        # --- 3c. Layer selection -----------------------------------------
+        # Which image layer to source the crop from when a full-res HDF is
+        # available (``rgb`` / ``detect_mat`` / ``objmap``). Defaults to the
+        # finished RGB plate. Ignored on the overlay fallback (overlays are
+        # pre-baked RGB). Full DZI deep-zoom layer support lands in Task 9; the
+        # flat crop route threads it through :func:`crop_colony` already.
+        layer = request.args.get("layer", type=str, default="rgb")
+
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
         # the master frame stores Metadata_ImageFile as Categorical or
@@ -579,18 +645,17 @@ def register_crop_route(
                 float(row.get_column("Bbox_MaxCC")[0]),
             )
 
-        # --- 5. Overlay path ---------------------------------------------
-        if not output_root.has_overlay(dataset, stem):
-            return (
-                f"not found: overlay not found for {dataset!r}/{stem!r}",
-                404,
-            )
-        overlay_png = output_root.overlay_path(dataset, stem)
-
-        # --- 6. Crop ------------------------------------------------------
+        # --- 5+6. Crop (full-res HDF layer, overlay fallback) ------------
+        # ``crop_colony`` tiers the pixel source per-image: the per-image
+        # full-resolution HDF layer when ``results/`` is present, else the
+        # baked overlay PNG (standalone deliverables bundle). ``None`` means
+        # neither source exists -> 404.
         try:
-            png_bytes = crop_overlay(
-                overlay_png,
+            png_bytes = crop_colony(
+                output_root,
+                dataset,
+                stem,
+                layer,
                 center_rr,
                 center_cc,
                 size,
@@ -599,13 +664,21 @@ def register_crop_route(
             )
         except Exception:
             logger.exception(
-                "Crop generation failed for dataset=%s stem=%s label=%d size=%d",
+                "Crop generation failed for dataset=%s stem=%s label=%d size=%d "
+                "layer=%s",
                 dataset,
                 stem,
                 label_int,
                 size,
+                layer,
             )
             return ("internal error: crop generation failed", 500)
+
+        if png_bytes is None:
+            return (
+                f"not found: no image source for {dataset!r}/{stem!r}",
+                404,
+            )
 
         # --- 7. Response --------------------------------------------------
         response = Response(png_bytes, mimetype="image/png")
@@ -930,6 +1003,7 @@ __all__ = [
     "LayerName",
     "crop_overlay",
     "crop_hdf_rgb",
+    "crop_colony",
     "is_safe_path_component",
     "register_crop_route",
     "build_tile_cell",

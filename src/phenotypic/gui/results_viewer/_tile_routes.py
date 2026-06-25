@@ -66,11 +66,18 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
             )
             return _json_error("invalid dataset or stem", 404)
 
-        if output_root.results_dir is None or not (
-            output_root.results_dir / dataset
-        ).is_dir():
+        # Capability gate that works for a standalone deliverables bundle
+        # (which has no ``results/`` to anchor a dataset-dir existence check):
+        # accept when either a full-res per-image HDF or a baked overlay PNG
+        # exists for this image. The DZI tiler still needs the overlay PNG
+        # (HDF -> DZI tiling lands in Task 9), so the overlay gate below stays
+        # as the tiling prerequisite.
+        if (
+            output_root.hdf_path(dataset, stem) is None
+            and not output_root.has_overlay(dataset, stem)
+        ):
             return _json_error(
-                f"unknown dataset: {dataset!r}", 404
+                f"no image source for {dataset!r}/{stem!r}", 404
             )
         if not output_root.has_overlay(dataset, stem):
             return _json_error(

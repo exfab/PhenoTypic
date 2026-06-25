@@ -169,6 +169,44 @@ def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# crop_colony — per-image source dispatcher (Batch B1, Task 7)
+# ---------------------------------------------------------------------------
+
+
+def test_crop_colony_prefers_hdf_falls_back_to_overlay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dispatch: HDF when present, overlay otherwise, ``None`` when neither."""
+    from phenotypic.gui._shared import tiles
+
+    # Sentinel bytes mark which source the dispatcher chose.
+    monkeypatch.setattr(tiles, "crop_hdf_rgb", lambda *a, **k: b"H")
+    monkeypatch.setattr(tiles, "crop_overlay", lambda *a, **k: b"O")
+
+    class FakeRoot:
+        def __init__(self, hdf: bool, overlay_ok: bool) -> None:
+            self._hdf = hdf
+            self._overlay_ok = overlay_ok
+
+        def hdf_path(self, ds: str, stem: str) -> Path | None:
+            return tmp_path / "x.h5" if self._hdf else None
+
+        def has_overlay(self, ds: str, stem: str) -> bool:
+            return self._overlay_ok
+
+        def overlay_path(self, ds: str, stem: str) -> Path:
+            return tmp_path / "x.png"
+
+    # HDF present -> HDF path (os.stat needs the file to exist).
+    (tmp_path / "x.h5").write_bytes(b"")
+    assert tiles.crop_colony(FakeRoot(True, True), "p", "s", "rgb", 1, 1, 8) == b"H"
+    # No HDF but overlay -> overlay path.
+    assert tiles.crop_colony(FakeRoot(False, True), "p", "s", "rgb", 1, 1, 8) == b"O"
+    # Neither -> None (caller serves 404).
+    assert tiles.crop_colony(FakeRoot(False, False), "p", "s", "rgb", 1, 1, 8) is None
+
+
+# ---------------------------------------------------------------------------
 # crop_overlay — tile-spotlight dim pass (Phase 1)
 # ---------------------------------------------------------------------------
 
