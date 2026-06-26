@@ -194,9 +194,9 @@ class GridOccupancy(ExpectedVsDetectedCount):
         """
         df = self._latest_measurements
         occ_cols = [
-            "QC_Occupancy_Filled",
-            "QC_Occupancy_Expected",
-            "QC_Occupancy_Vacant",
+            str(QUALITY_OCCUPANCY.FILLED),
+            str(QUALITY_OCCUPANCY.EXPECTED),
+            str(QUALITY_OCCUPANCY.VACANT),
         ]
         first = (
             df.groupby(self.groupby, dropna=False)[
