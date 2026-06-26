@@ -2,8 +2,7 @@
 
 The QC tab body composes:
 
-* a top strip with ``+ Add check`` / ``Export QC report`` buttons and a
-  success toast;
+* a top strip with the ``+ Add check`` button;
 * a load-warning banner mounted via :data:`QC_LOAD_WARNING_BANNER_ID`
   (visibility toggled by the layout factory based on
   :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings`);
@@ -33,15 +32,6 @@ QC_CARDS_CONTAINER_ID: str = "qc-cards-container"
 #: ``+ Add check`` button on the top strip. Opens the shared QC modal in
 #: "add" mode (``STORE_QC_EDITING_INSTANCE`` is reset to ``None``).
 QC_ADD_CHECK_BTN_ID: str = "qc-add-check-btn"
-
-#: ``Export QC report`` button on the top strip. Disabled when no checks
-#: are enabled; writes ``qc.parquet`` + ``qc_summary.json`` into
-#: ``deliverables/qc/`` (via ``OutputRoot.layout.qc_dir``) on click.
-QC_EXPORT_BTN_ID: str = "qc-export-btn"
-
-#: Success/failure toast displayed after the export button completes.
-#: The body carries the absolute paths written.
-QC_EXPORT_TOAST_ID: str = "qc-export-toast"
 
 #: Banner ``<div>`` rendered above the cards container when the recipe
 #: failed to resolve one or more entries at load time. Visibility (via
@@ -212,8 +202,6 @@ def qc_card_status_badge_id(instance_id: str) -> Dict[str, str]:
 __all__ = [
     "QC_CARDS_CONTAINER_ID",
     "QC_ADD_CHECK_BTN_ID",
-    "QC_EXPORT_BTN_ID",
-    "QC_EXPORT_TOAST_ID",
     "QC_LOAD_WARNING_BANNER_ID",
     "QC_MODAL_ID",
     "QC_MODAL_TITLE_ID",
