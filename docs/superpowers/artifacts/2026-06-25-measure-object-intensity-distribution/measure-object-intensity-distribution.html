@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeasureObjectIntensityDistribution — Algorithm Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #f4f3ee;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --border: rgba(22, 32, 58, 0.11);
+    --border-bright: rgba(22, 32, 58, 0.22);
+    --text: #16203a;
+    --text-dim: #5b6680;
+
+    --ring: #1d4ed8;        /* radial ring branch — deep blue */
+    --ring-dim: rgba(29, 78, 216, 0.09);
+    --zern: #b45309;        /* zernike branch — gold/amber */
+    --zern-dim: rgba(180, 83, 9, 0.10);
+    --concept: #047857;     /* synthesis — emerald */
+    --concept-dim: rgba(4, 120, 55, 0.10);
+    --danger: #b91c1c;
+    --accent: var(--ring);
+    --accent-dim: var(--ring-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1320;
+      --surface: #151c2c;
+      --surface-elevated: #1b2333;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.16);
+      --text: #e7ecf6;
+      --text-dim: #97a1bb;
+
+      --ring: #6ea0ff;
+      --ring-dim: rgba(110, 160, 255, 0.14);
+      --zern: #f0b258;
+      --zern-dim: rgba(240, 178, 88, 0.15);
+      --concept: #4ec99a;
+      --concept-dim: rgba(78, 201, 154, 0.15);
+      --danger: #f87171;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    background-image: radial-gradient(ellipse at 50% -8%, var(--ring-dim) 0%, transparent 55%),
+                      radial-gradient(circle, var(--border) 1px, transparent 1px);
+    background-size: 100% 100%, 26px 26px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    padding: 44px 40px 80px;
+    min-height: 100vh;
+    overflow-wrap: break-word;
+  }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .animate { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  .container { max-width: 1060px; margin: 0 auto; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--zern);
+    margin-bottom: 12px;
+  }
+  h1 { font-size: 40px; font-weight: 700; letter-spacing: -1.2px; line-height: 1.08; text-wrap: balance; }
+  h1 .mono { font-family: var(--font-mono); font-weight: 600; }
+  .subtitle { color: var(--text-dim); font-family: var(--font-mono); font-size: 12.5px; margin-top: 10px; }
+  .lead { font-size: 18px; line-height: 1.65; color: var(--text); max-width: 760px; margin-top: 22px; }
+  .lead strong { color: var(--ring); font-weight: 600; }
+
+  h2 {
+    font-size: 13px; font-family: var(--font-mono); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim);
+    margin: 52px 0 18px; display: flex; align-items: center; gap: 10px;
+  }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ---- KPI / quick facts ---- */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  .kpi-card {
+    background: var(--surface-elevated); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .kpi-card__value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; }
+  .kpi-card__value .mono { font-family: var(--font-mono); font-size: 19px; }
+  .kpi-card__label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.4px; color: var(--text-dim); margin-top: 8px; }
+
+  /* ---- diagram shell (canonical mermaid pattern) ---- */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px; opacity: 0.75; }
+  .mermaid-wrap {
+    position: relative; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px 22px; overflow: auto;
+    display: flex; justify-content: center; align-items: center; min-height: 460px; cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .zoom-controls {
+    position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; z-index: 10;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 2px;
+  }
+  .zoom-controls button {
+    width: 28px; height: 28px; border: none; background: transparent; color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 14px; cursor: pointer; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s;
+  }
+  .zoom-controls button:hover { background: var(--border); color: var(--text); }
+  .mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 360px; }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding: 0 6px; white-space: nowrap; }
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 12px !important; }
+  .mermaid .cluster rect { rx: 12px; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .legend-swatch { width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid; }
+
+  /* ---- stage cards ---- */
+  .stage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .stage-grid > * { min-width: 0; }
+  @media (max-width: 860px) { .stage-grid { grid-template-columns: 1fr; } }
+
+  .ve-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px 24px; position: relative;
+  }
+  .ve-card--ring { border-top: 3px solid var(--ring); }
+  .ve-card--zern { border-top: 3px solid var(--zern); }
+  .ve-card--wide { grid-column: 1 / -1; }
+  .ve-card__step {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 9px; display: flex; align-items: center; gap: 8px;
+  }
+  .ve-card--ring .ve-card__step { color: var(--ring); }
+  .ve-card--zern .ve-card__step { color: var(--zern); }
+  .ve-card__step::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .ve-card h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 6px; }
+  .ve-card p { font-size: 14px; color: var(--text-dim); line-height: 1.62; margin-bottom: 12px; }
+  .ve-card p strong { color: var(--text); font-weight: 600; }
+  .ref { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); background: var(--accent-dim); padding: 1px 6px; border-radius: 4px; }
+
+  /* ---- formula block ---- */
+  .formula {
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 2.0;
+    background: color-mix(in srgb, var(--bg) 60%, var(--surface) 40%);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid var(--border); border-radius: 9px;
+    padding: 14px 16px; margin: 6px 0 13px; overflow-x: auto; white-space: nowrap;
+  }
+  .formula .lhs { color: var(--ring); font-weight: 600; }
+  .ve-card--zern .formula .lhs { color: var(--zern); }
+  .formula .dim { color: var(--text-dim); }
+  .formula sub, .formula sup { font-size: 0.72em; }
+  .formula .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 4px; }
+  .formula .frac > span:first-child { border-bottom: 1px solid var(--border-bright); padding: 0 6px 1px; }
+  .formula .frac > span:last-child { padding: 1px 6px 0; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .tag { font-family: var(--font-mono); font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 5px; background: var(--ring-dim); color: var(--ring); }
+  .ve-card--zern .tag { background: var(--zern-dim); color: var(--zern); }
+
+  /* ---- comparison table ---- */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.55; }
+  .data-table th {
+    background: var(--surface-elevated); font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; text-align: left; padding: 13px 18px;
+    border-bottom: 2px solid var(--border-bright); white-space: nowrap;
+  }
+  .data-table th.col-ring { color: var(--ring); }
+  .data-table th.col-zern { color: var(--zern); }
+  .data-table td { padding: 13px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .data-table td:first-child { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover { background: var(--accent-dim); }
+  .data-table code { font-family: var(--font-mono); font-size: 11px; background: var(--accent-dim); color: var(--accent); padding: 1px 5px; border-radius: 3px; }
+
+  /* ---- callout ---- */
+  .callout { border-radius: 10px; border-left: 4px solid var(--callout-border, var(--ring)); background: var(--callout-bg, var(--ring-dim)); padding: 18px 22px; margin-top: 20px; font-size: 14px; line-height: 1.66; }
+  .callout--concept { --callout-border: var(--concept); --callout-bg: var(--concept-dim); }
+  .callout--warn { --callout-border: var(--zern); --callout-bg: var(--zern-dim); }
+  .callout__title { font-weight: 600; margin-bottom: 7px; color: var(--callout-border, var(--ring)); font-size: 13px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.3px; }
+  .callout strong { color: var(--text); }
+  .callout code { font-family: var(--font-mono); font-size: 12px; background: var(--surface); padding: 1px 5px; border-radius: 3px; }
+
+  .foot { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.8; }
+
+  @media (max-width: 768px) {
+    body { padding: 24px 16px 60px; }
+    h1 { font-size: 27px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <p class="eyebrow animate" style="--i:0">CellProfiler · Object Measurement</p>
+  <h1 class="animate" style="--i:1"><span class="mono">MeasureObjectIntensity&shy;Distribution</span></h1>
+  <p class="subtitle animate" style="--i:2">how intensity is arranged from each object's center to its rim — two independent representations</p>
+
+  <p class="lead animate" style="--i:3">
+    Given a grayscale image and a set of segmented objects, the module describes the
+    <strong>internal spatial intensity distribution</strong> of every object. It emits two
+    independent descriptions side by side: a non-parametric <strong>radial ring histogram</strong>
+    (<span style="color:var(--ring);font-weight:600">FracAtD · MeanFrac · RadialCV</span>) and an
+    optional orthogonal <strong style="color:var(--zern)">Zernike moment</strong> decomposition.
+    They share no computation — different centers, different normalizations, different passes.
+  </p>
+
+  <!-- ===================== QUICK FACTS ===================== -->
+  <h2 class="animate" style="--i:4">At a glance</h2>
+  <div class="kpi-row animate" style="--i:5">
+    <div class="kpi-card">
+      <div class="kpi-card__value mono"><span class="mono">2</span> bases</div>
+      <div class="kpi-card__label">Ring histogram + Zernike</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__value"><span class="mono">N</span> = 4</div>
+      <div class="kpi-card__label">Default bins · scaled</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__value"><span class="mono">100</span> px</div>
+      <div class="kpi-card__label">Max radius · unscaled</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__value">deg <span class="mono">9</span></div>
+      <div class="kpi-card__label">Zernike order &rarr; 30 moments</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__value"><span class="mono">8</span> octants</div>
+      <div class="kpi-card__label">RadialCV anisotropy</div>
+    </div>
+  </div>
+
+  <!-- ===================== FLOWCHART ===================== -->
+  <h2 class="animate" style="--i:6">Control flow &amp; the two branches</h2>
+  <section class="diagram-shell animate" style="--i:7">
+    <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom &middot; drag to pan when zoomed &middot; double-click to fit &middot; &#x26F6; opens full size.</p>
+    <div class="mermaid-wrap">
+      <div class="zoom-controls">
+        <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+        <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+        <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+        <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+        <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+        <span class="zoom-label">Loading...</span>
+      </div>
+      <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+    </div>
+    <script type="text/plain" class="diagram-source">
+flowchart TD
+  IN["Grayscale image(s)<br/>+ object label matrix"]:::io
+  CFG["Config<br/>bin_count · scaled? · max_radius<br/>center_choice · zernike_degree"]:::io
+  LOOP{{"run() control loop<br/>for image × object-set × bin-count group"}}:::ctrl
+  IN --> LOOP
+  CFG --> LOOP
+
+  subgraph RING["RADIAL RING PROFILE — per bin group"]
+    direction TB
+    C1["1 · Center + normalized radius ρ<br/>compute_center_distances"]:::ring
+    C2["2 · Bin every pixel by ρ<br/>compute_per_bin_distributions"]:::ring
+    C3["FracAtD<br/>intensity mass per ring"]:::ring
+    C4["MeanFrac<br/>ring mean ÷ object mean"]:::ring
+    C5["RadialCV<br/>anisotropy over 8 octants"]:::ring
+    C1 --> C2
+    C2 --> C3
+    C2 --> C4
+    C2 --> C5
+    C1 --> C5
+  end
+
+  subgraph ZERN["ZERNIKE MOMENTS — one pass, if enabled"]
+    direction TB
+    Z1["A · Map object to unit disk<br/>min enclosing circle"]:::zern
+    Z2["B · Build Zernike basis Vnm<br/>construct_zernike_polynomials"]:::zern
+    Z3["C · Project intensity onto basis<br/>calculate_zernikes_for_image"]:::zern
+    Z4["D · Magnitude (rotation-invariant)<br/>+ Phase (orientation)"]:::zern
+    Z1 --> Z2 --> Z3 --> Z4
+  end
+
+  LOOP --> C1
+  LOOP -. "separate pass" .-> Z1
+  C3 --> OUT["Per-object table<br/>RadialDistribution_*"]:::io
+  C4 --> OUT
+  C5 --> OUT
+  Z4 --> OUT
+
+  classDef io fill:#e8edf8,stroke:#1e3a8a,color:#16203a,stroke-width:1.5px;
+  classDef ctrl fill:#fdf0d5,stroke:#a16207,color:#3a2c0a,stroke-width:1.5px;
+  classDef ring fill:#e3edff,stroke:#1d4ed8,color:#122a5e,stroke-width:1.5px;
+  classDef zern fill:#fbe7c6,stroke:#b45309,color:#4a2c06,stroke-width:1.5px;
+  style RING fill:#f3f7ff,stroke:#1d4ed8,color:#1d4ed8;
+  style ZERN fill:#fdf6ec,stroke:#b45309,color:#b45309;
+    </script>
+  </section>
+  <div class="legend animate" style="--i:8">
+    <div class="legend-item"><div class="legend-swatch" style="background:#e8edf8;border-color:#1e3a8a"></div> I/O</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fdf0d5;border-color:#a16207"></div> Control loop</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e3edff;border-color:#1d4ed8"></div> Radial ring branch</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fbe7c6;border-color:#b45309"></div> Zernike branch</div>
+  </div>
+
+  <!-- ===================== PART I: RING MATH ===================== -->
+  <h2 class="animate" style="--i:9">Part&nbsp;I &mdash; the radial ring profile (the math)</h2>
+  <div class="stage-grid">
+
+    <div class="ve-card ve-card--ring animate" style="--i:10">
+      <div class="ve-card__step">Stage 1 &middot; center + normalized radius</div>
+      <h3>Where is "center", and how far out is each pixel?</h3>
+      <p>The center is the pixel <strong>farthest from any edge</strong> (the distance-transform peak — guaranteed inside even crescent shapes). Labels are then propagated outward <strong>geodesically</strong> to give each pixel a <code style="font-family:var(--font-mono)">d_center</code>; the EDT gives <code style="font-family:var(--font-mono)">d_edge</code>. <span class="ref">compute_center_distances · measurement.py:3479</span></p>
+      <div class="formula"><span class="dim">scaled (default):&nbsp;&nbsp;</span><span class="lhs">ρ</span> = <span class="frac"><span>d<sub>center</sub></span><span>d<sub>center</sub> + d<sub>edge</sub> + 0.001</span></span> &nbsp;<span class="dim">→ 0 at center, ≈1 at rim</span></div>
+      <div class="formula"><span class="dim">unscaled:&nbsp;&nbsp;</span><span class="lhs">ρ</span> = d<sub>center</sub> / max_radius &nbsp;<span class="dim">→ fixed physical scale</span></div>
+      <p style="margin-bottom:6px"><strong>Center modes:</strong> <code>SELF</code> (own center), <code>CENTERS_OF_OTHER</code> / <code>EDGES_OF_OTHER</code> (radius from another object set — e.g. nuclei inside cells).</p>
+      <div class="tag-row"><span class="tag">geodesic distance</span><span class="tag">shape-following rings</span><span class="tag">cached per object pair</span></div>
+    </div>
+
+    <div class="ve-card ve-card--ring animate" style="--i:11">
+      <div class="ve-card__step">Stage 2 &middot; bin + intensity fractions</div>
+      <h3>FracAtD &amp; MeanFrac</h3>
+      <p>Each pixel lands in ring <code style="font-family:var(--font-mono)">b = ⌊ρ·N⌋</code> (clipped to N → the Overflow slot). Sparse accumulation gives per-(object, ring) sums. <span class="ref">compute_per_bin_distributions · measurement.py:3701</span></p>
+      <div class="formula"><span class="lhs">FracAtD</span>(b) = <span class="frac"><span>Σ<sub>p∈b</sub> I(p)</span><span>Σ<sub>p∈obj</sub> I(p)</span></span> &nbsp;<span class="dim">intensity mass in ring b</span></div>
+      <div class="formula"><span class="lhs">MeanFrac</span>(b) = <span class="frac"><span>FracAtD(b)</span><span>N<sub>b</sub> / N<sub>obj</sub></span></span> = <span class="frac"><span>ring-b mean</span><span>object mean</span></span></div>
+      <p><strong>FracAtD</strong> = where the stain mass sits (sums to 1 across rings). <strong>MeanFrac</strong> = the center→rim brightness profile; =1 average, &gt;1 brighter than the object as a whole.</p>
+    </div>
+
+    <div class="ve-card ve-card--ring animate" style="--i:12">
+      <div class="ve-card__step">Stage 3 &middot; angular anisotropy</div>
+      <h3>RadialCV — is the ring lopsided?</h3>
+      <p>Within each ring, split pixels into <strong>8 angular octants</strong> around the center, take each octant's mean intensity, then the CV across the 8. <span class="ref">compute_radial_cv_for_bin · measurement.py:3867</span></p>
+      <div class="formula"><span class="dim">octant =</span> 4&middot;[ |Δi| &gt; |Δj| ] + 2&middot;[ j &gt; j<sub>c</sub> ] + [ i &gt; i<sub>c</sub> ] &nbsp;<span class="dim">→ 0..7</span></div>
+      <div class="formula"><span class="lhs">RadialCV</span>(b) = <span class="frac"><span>std<sub>8 octants</sub>( mean<sub>octant</sub> )</span><span>mean<sub>8 octants</sub>( mean<sub>octant</sub> )</span></span></div>
+      <p>High <strong>RadialCV</strong> = the ring is bright on one side, dim on the other (sectoring / lopsided signal). Empty octants are masked; objects with no octant get CV&nbsp;0.</p>
+    </div>
+
+    <div class="ve-card ve-card--ring animate" style="--i:13">
+      <div class="ve-card__step">Conceptually</div>
+      <h3>A radial histogram</h3>
+      <p>The ring path is <strong>piecewise-constant in radius, integrated over angle</strong> — local, directly readable, and tunable in resolution via <code>bin_count</code> (like the <code>scale</code> knob in texture: fine vs coarse, not "more accurate"). It throws away angular structure except for <code>RadialCV</code>'s crude 8-bin anisotropy.</p>
+      <p style="margin-bottom:0"><strong>Scaled</strong> rings give a size-invariant morphology fingerprint; <strong>unscaled</strong> keeps physical distance and can reach past the object into background (the <code>Overflow</code> ring) to profile diffusion halos.</p>
+    </div>
+  </div>
+
+  <!-- ===================== PART II: ZERNIKE MATH ===================== -->
+  <h2 class="animate" style="--i:14">Part&nbsp;II &mdash; Zernike moments (the math)</h2>
+  <div class="stage-grid">
+
+    <div class="ve-card ve-card--zern animate" style="--i:15">
+      <div class="ve-card__step">Step A &middot; map to the unit disk</div>
+      <h3>Minimum enclosing circle</h3>
+      <p>Per object compute the <strong>minimum enclosing circle</strong> — center <code style="font-family:var(--font-mono)">(c<sub>i</sub>,c<sub>j</sub>)</code>, radius <code style="font-family:var(--font-mono)">R</code> — then normalize every pixel into the disk. <span class="ref">prepare_object_zernike_polynomials · measurement.py:3830</span></p>
+      <div class="formula"><span class="lhs">x</span> = (j − c<sub>j</sub>) / R, &nbsp;&nbsp; <span class="lhs">y</span> = (i − c<sub>i</sub>) / R &nbsp;<span class="dim">→ x²+y² ≤ 1</span></div>
+      <p style="margin-bottom:0"><strong>Note:</strong> a <em>different</em> center and scale than Part&nbsp;I (MEC center / MEC radius, not farthest-from-edge / edge distance).</p>
+    </div>
+
+    <div class="ve-card ve-card--zern animate" style="--i:16">
+      <div class="ve-card__step">Step B &middot; the basis</div>
+      <h3>Orthogonal polynomials on the disk</h3>
+      <p>Indexed by <code style="font-family:var(--font-mono)">(n,m)</code>, n≥0, 0≤m≤n, n−m even (<code>get_zernike_indexes</code>; degree 9 → 30 moments). Each factors into radial × angular. <span class="ref">construct_zernike_polynomials · zernike.py:40</span></p>
+      <div class="formula"><span class="lhs">V<sub>n,m</sub></span>(ρ,φ) = R<sub>n</sub><sup>m</sup>(ρ) &middot; e<sup>imφ</sup></div>
+      <div class="formula">R<sub>n</sub><sup>m</sup>(ρ) = <span class="dim">Σ<sub>k=0</sub><sup>(n−m)/2</sup></span> <span class="frac"><span>(−1)<sup>k</sup> (n−k)!</span><span>k! · ((n+m)/2−k)! · ((n−m)/2−k)!</span></span> ρ<sup>n−2k</sup></div>
+      <p style="margin-bottom:0">Computed via a factorial lookup table + Horner scheme; pixels outside the disk are zeroed. <span class="ref">construct_zernike_lookuptable · zernike.py:14</span></p>
+    </div>
+
+    <div class="ve-card ve-card--zern animate" style="--i:17">
+      <div class="ve-card__step">Step C &middot; project intensity</div>
+      <h3>The moment = inner product</h3>
+      <p>For each <code style="font-family:var(--font-mono)">(n,m)</code>, sum intensity against the basis (two real sums per object). <span class="ref">calculate_zernikes_for_image · _measureobjectintensitydistribution.py:144</span></p>
+      <div class="formula"><span class="lhs">v<sub>r</sub></span> = Σ<sub>p</sub> I(p)&middot;Re(V<sub>n,m</sub>), &nbsp;&nbsp; <span class="lhs">v<sub>i</sub></span> = Σ<sub>p</sub> I(p)&middot;Im(V<sub>n,m</sub>)</div>
+      <div class="formula"><span class="lhs">Magnitude</span> = √(v<sub>r</sub>² + v<sub>i</sub>²) / area &nbsp;&nbsp; <span class="lhs">Phase</span> = atan2(v<sub>r</sub>, v<sub>i</sub>)</div>
+      <p style="margin-bottom:0"><code>area</code> normalizes for object size, making the magnitude an intensity-density-like, scale-invariant quantity.</p>
+    </div>
+
+    <div class="ve-card ve-card--zern animate" style="--i:18">
+      <div class="ve-card__step">Step D &middot; what it means</div>
+      <h3>Rotation-invariant fingerprint</h3>
+      <p>Rotate the object by α: every φ→φ+α, so the moment picks up a pure phase.</p>
+      <div class="formula"><span class="lhs">A<sub>n,m</sub></span> → e<sup>imα</sup>&middot;A<sub>n,m</sub> &nbsp;<span class="dim">⇒ |A<sub>n,m</sub>| unchanged</span></div>
+      <p style="margin-bottom:6px"><strong>n</strong> = radial order (radial oscillations). <strong>m</strong> = angular harmonic: m=0 radially symmetric, m=1 one-sided gradient, m=2 bilobed, m=3 trilobed. Magnitude is invariant; phase is the orientation.</p>
+      <div class="tag-row"><span class="tag">complete basis</span><span class="tag">reconstructible</span><span class="tag">needs centrosome</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== COMPARISON ===================== -->
+  <h2 class="animate" style="--i:19">Two representations, head to head</h2>
+  <div class="table-wrap animate" style="--i:20">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr><th>Aspect</th><th class="col-ring">Radial rings</th><th class="col-zern">Zernike moments</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Representation</td><td>Non-parametric radial histogram (+8-octant CV)</td><td>Orthogonal, complete moment basis on the disk</td></tr>
+          <tr><td>Center</td><td>Farthest-from-edge + geodesic propagation</td><td>Minimum-enclosing-circle center</td></tr>
+          <tr><td>Radial normalization</td><td>Local edge distance (shape-following) or fixed <code>max_radius</code></td><td>MEC radius (unit disk)</td></tr>
+          <tr><td>Radial info</td><td>Piecewise-constant rings</td><td>Smooth polynomials R<sub>n</sub><sup>m</sup>(ρ)</td></tr>
+          <tr><td>Angular info</td><td><code>RadialCV</code>: intensity CV across 8 octants</td><td>Full m-fold harmonic spectrum + phase</td></tr>
+          <tr><td>Rotation handling</td><td>Rings invariant; partial angular</td><td>Magnitude invariant; phase = orientation</td></tr>
+          <tr><td>Output shape</td><td><code>3 × N_rings</code> scalars (+ Overflow)</td><td><code>|A<sub>n,m</sub>|</code> (+ phase) per index</td></tr>
+          <tr><td>Interpretability</td><td>High — per-ring scalars</td><td>Low per coefficient; rich as a vector</td></tr>
+          <tr><td>Dependency</td><td>scipy only</td><td><code>centrosome</code> (MEC + factorial LUT)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== OUTPUT + SYNTHESIS ===================== -->
+  <h2 class="animate" style="--i:21">Output &amp; synthesis</h2>
+  <div class="callout animate" style="--i:22">
+    <div class="callout__title">Feature names (one row per object)</div>
+    <code>RadialDistribution_FracAtD_&lt;image&gt;_&lt;b&gt;of&lt;N&gt;</code> &nbsp;·&nbsp;
+    <code>_MeanFrac_…</code> &nbsp;·&nbsp; <code>_RadialCV_…</code> &nbsp;(+ <code>_Overflow</code> when unscaled) &nbsp;·&nbsp;
+    <code>RadialDistribution_ZernikeMagnitude_&lt;image&gt;_&lt;n&gt;_&lt;m&gt;</code> &nbsp;·&nbsp; <code>_ZernikePhase_…</code>
+  </div>
+  <div class="callout callout--concept animate" style="--i:23">
+    <div class="callout__title">The unifying idea</div>
+    Both characterize the same internal intensity field. The <strong>rings</strong> give a localized, directly-readable
+    radial profile — "is the signal central or peripheral, and is each ring symmetric?" <strong>Zernike</strong> gives a
+    global, smooth, rotation-invariant decomposition by radial and angular frequency — a compact feature vector that
+    detects m-fold angular structure the rings cannot see. They are meant to be used <strong>together</strong> as
+    complementary descriptions.
+  </div>
+  <div class="callout callout--warn animate" style="--i:24">
+    <div class="callout__title">Failure mode to watch</div>
+    Zernike assumes intensity over a <strong>filled disk</strong> (pixels inside the MEC but outside the object are zeroed).
+    For sparse or branching objects that don't fill their enclosing circle, the low-order moments are dominated by the
+    <strong>fill fraction</strong> rather than internal structure — they degrade into a roundabout shape descriptor.
+  </div>
+
+  <div class="foot animate" style="--i:25">
+    Sources read: CellProfiler <span style="color:var(--text)">frontend/.../measureobjectintensitydistribution.py</span> (run · do_measurements · calculate_zernikes),
+    <span style="color:var(--text)">library/.../modules/_measureobjectintensitydistribution.py</span>,
+    <span style="color:var(--text)">library/.../functions/measurement.py</span> (compute_center_distances :3479 · compute_per_bin_distributions :3701 · compute_radial_indexes :3773 · compute_radial_cv_for_bin :3867),
+    <span style="color:var(--text)">centrosome/zernike.py</span>.<br/>
+    Generated 2026-06-25 · visual-explainer · self-contained HTML.
+  </div>
+
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  let elkOk = true;
+  try {
+    const elk = await import('https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs');
+    mermaid.registerLayoutLoaders(elk.default);
+  } catch (e) { elkOk = false; }
+
+  const config = { fitPadding: 28, minHeight: 420, maxHeightPx: 1100, maxHeightVh: 0.86, maxInitialZoom: 1.6, minZoom: 0.08, maxZoom: 6.5, zoomStep: 0.14, readabilityFloor: 0.56 };
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+
+  mermaid.initialize({
+    startOnLoad: false, theme: 'base', look: 'classic', layout: elkOk ? 'elk' : 'dagre',
+    themeVariables: {
+      fontFamily: "'IBM Plex Sans', system-ui, sans-serif", fontSize: '15px',
+      lineColor: isDark ? '#8b95b3' : '#5b6680',
+      primaryColor: isDark ? '#1b2333' : '#e8edf8',
+      primaryBorderColor: isDark ? '#6ea0ff' : '#1e3a8a',
+      primaryTextColor: isDark ? '#e7ecf6' : '#16203a',
+    }
+  });
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) return;
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight, rW = svgW*zoom, rH = svgH*zoom, pad = config.fitPadding;
+      panX = (rW + pad*2 <= vpW) ? (vpW-rW)/2 : clamp(panX, vpW-rW-pad, pad);
+      panY = (rH + pad*2 <= vpH) ? (vpH-rH)/2 : clamp(panY, vpH-rH-pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg'); if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW*zoom)+'px'; svg.style.height = (svgH*zoom)+'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom*100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW*zoom, rH = svgH*zoom;
+      return rW + config.fitPadding*2 > viewport.clientWidth || rH + config.fitPadding*2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding*2), aH = Math.max(80, vpH - config.fitPadding*2);
+      const contain = Math.min(aW/svgW, aH/svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH/svgW, vpR = vpH/Math.max(vpW,1);
+        if (chartR >= vpR) { z = aW/svgW; mode = 'width-priority'; } else { z = aH/svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit(); zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW*zoom)/2; panY = (viewport.clientHeight - svgH*zoom)/2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom); fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW*zoom)/2; panY = (viewport.clientHeight - svgH*zoom)/2; applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom*factor, config.minZoom, config.maxZoom), ratio = next/zoom;
+      panX = cx - ratio*(cx-panX); panY = cy - ratio*(cy-panY); zoom = next; fitMode = 'custom'; applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width'))||0; h = parseFloat(svg.getAttribute('height'))||0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width||1000; h = r.height||700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH/svgW)*usableW + config.fitPadding*2;
+      const maxVp = Math.floor(innerHeight*config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight+40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg'); if (!svg) return;
+      const clone = svg.cloneNode(true); clone.style.width = ''; clone.style.height = '';
+      const bg = isDark ? '#0d1320' : '#f4f3ee';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Diagram</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:${bg};padding:40px;box-sizing:border-box}svg{max-width:100%;max-height:90vh;height:auto}</style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    async function render() {
+      try {
+        const code = source.textContent.trim();
+        if (!code) { label.textContent = 'Error: Empty source'; return; }
+        const id = 'diagram-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+        const { svg } = await mermaid.render(id, code);
+        const parsed = new DOMParser().parseFromString(svg, 'text/html');
+        const parsedSvg = parsed.body.querySelector('svg');
+        if (!parsedSvg) { label.textContent = 'Error: No SVG'; return; }
+        canvas.replaceChildren(document.adoptNode(parsedSvg));
+        const svgNode = canvas.querySelector('svg');
+        const size = readSvgNaturalSize(svgNode); svgW = size.w; svgH = size.h;
+        svgNode.removeAttribute('width'); svgNode.removeAttribute('height');
+        svgNode.style.maxWidth = 'none'; svgNode.style.display = 'block';
+        setAdaptiveHeight(); fitDiagram();
+      } catch (err) { console.error('Mermaid render failed:', err); label.textContent = 'Error: ' + (err.message || 'Render failed'); }
+    }
+    const actions = {
+      'zoom-in': () => zoomAround(1+config.zoomStep, viewport.clientWidth/2, viewport.clientHeight/2),
+      'zoom-out': () => zoomAround(1/(1+config.zoomStep), viewport.clientWidth/2, viewport.clientHeight/2),
+      'zoom-fit': fitDiagram, 'zoom-one': setOneToOne, 'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([a, h]) => wrap.querySelector(`[data-action="${a}"]`)?.addEventListener('click', h));
+    viewport.addEventListener('dblclick', fitDiagram);
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        zoomAround(e.deltaY < 0 ? 1+config.zoomStep : 1/(1+config.zoomStep), e.clientX-rect.left, e.clientY-rect.top);
+        return;
+      }
+      if (canPan()) { e.preventDefault(); panX -= e.deltaX; panY -= e.deltaY; applyTransform(); }
+    }, { passive: false });
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning'); sx = e.clientX; sy = e.clientY; spx = panX; spy = panY; e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX-sx); panY = spy + (ev.clientY-sy); applyTransform(); },
+        onEnd: () => wrap.classList.remove('is-panning')
+      };
+    });
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; }
+      else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx*dx+dy*dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX)/2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY)/2 - r.top;
+      }
+    }, { passive: true });
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault(); panX = spx + (e.touches[0].clientX-sx); panY = spy + (e.touches[0].clientY-sy); applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx*dx+dy*dy); zoomAround(d/touchDist, touchCx, touchCy); touchDist = d;
+      }
+    }, { passive: false });
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+    render();
+  }
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>
