@@ -1049,6 +1049,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             return [], [], [], None, {"display": "block", "padding": "2rem",
                                       "textAlign": "center"}, []
 
+        instance_id = module.instance_id  # narrow str | None → str
         groupby_cols = module.groupby_cols
         worklist = _db.module_summary(output_root, instance_id)
         review_state = _load_review_state()
