@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import PrivateAttr
 
@@ -11,7 +12,7 @@ from phenotypic.detect.nn._checkpoint_manager import (
     Device,
     Sam2ModelSize,
 )
-from phenotypic.sdk_.typing_ import GpuInputLayer
+from phenotypic.sdk_.typing_ import GpuInputLayer, TuneSpec
 
 
 def build_sam2_generator(
@@ -22,6 +23,10 @@ def build_sam2_generator(
     pred_iou_thresh: float = 0.7,
     stability_score_thresh: float = 0.92,
     min_mask_region_area: int = 100,
+    crop_n_layers: int = 0,
+    crop_nms_thresh: float = 0.7,
+    crop_overlap_ratio: float = 512 / 1500,
+    crop_n_points_downscale_factor: int = 1,
     checkpoint: str | Path | None = None,
     config: str | None = None,
 ) -> object:
@@ -33,6 +38,10 @@ def build_sam2_generator(
     Hydra-config-prefix logic. There is no public accessor for an existing
     generator, so each detector calls this to rebuild its own.
 
+    The ``crop_*`` arguments expose SAM2's native sliding-window crop
+    mechanism; they default to the upstream ``SAM2AutomaticMaskGenerator``
+    values, so an un-set call reproduces SAM2's stock single-pass behaviour.
+
     Args:
         model_size: SAM2 variant (``"tiny"`` … ``"large"``).
         device: Resolved torch device string (from ``resolve_device``).
@@ -40,6 +49,14 @@ def build_sam2_generator(
         pred_iou_thresh: Minimum predicted-IoU score to keep a mask.
         stability_score_thresh: Minimum mask-stability score.
         min_mask_region_area: Minimum mask area in pixels.
+        crop_n_layers: Number of additional sliding-window crop layers
+            (SAM2 default ``0`` = single full-image pass).
+        crop_nms_thresh: Box-IoU cutoff for NMS between masks from different
+            crops (SAM2 default ``0.7``).
+        crop_overlap_ratio: Fractional overlap of first-layer crops
+            (SAM2 default ``512 / 1500``).
+        crop_n_points_downscale_factor: Per-layer point-grid downscale factor
+            (SAM2 default ``1``).
         checkpoint: Optional path to a custom checkpoint.
         config: Optional SAM2 config YAML identifier for a custom checkpoint.
 
@@ -81,6 +98,10 @@ def build_sam2_generator(
         pred_iou_thresh=pred_iou_thresh,
         stability_score_thresh=stability_score_thresh,
         min_mask_region_area=min_mask_region_area,
+        crop_n_layers=crop_n_layers,
+        crop_nms_thresh=crop_nms_thresh,
+        crop_overlap_ratio=crop_overlap_ratio,
+        crop_n_points_downscale_factor=crop_n_points_downscale_factor,
     )
 
 
@@ -131,6 +152,30 @@ class Sam2Detector(GpuDetector):
             agar texture, dust, and other small artefacts that SAM2
             segments as objects.  Typical range: 50--500 depending on
             image resolution.  Default 100.
+        crop_n_layers: Number of additional **sliding-window crop layers**
+            SAM2 runs for higher accuracy on large or dense plates.  SAM2's
+            encoder resizes the whole image to 1024 px before segmenting, so
+            small colonies on a multi-megapixel plate can be lost to
+            downsampling and the prompt grid can step over them.  ``0`` (the
+            SAM2 default) keeps the stock single full-image pass; ``1`` re-runs
+            mask prediction on a 2x2 grid of overlapping crops (each encoded
+            nearer native resolution) and merges them by NMS, with each added
+            layer ``i`` contributing ``2**i`` crops.  Raise to 1--2 for maximal
+            segmentation accuracy at proportionally higher inference cost.
+            Default 0.
+        crop_nms_thresh: Box-IoU cutoff for non-maximum suppression between
+            masks from different crops -- deduplicates a colony seen in two
+            overlapping crops.  Typical range 0.5--0.9.  Default 0.7 (the SAM2
+            default).
+        crop_overlap_ratio: Fraction of image length by which first-layer
+            crops overlap (later layers scale this down).  Set this so the
+            overlap exceeds the largest colony diameter, guaranteeing every
+            colony appears whole in at least one crop.  Default ``512 / 1500``
+            (the SAM2 default).
+        crop_n_points_downscale_factor: Point-grid density divisor per crop
+            layer -- ``points_per_side`` in layer ``n`` is scaled by
+            ``crop_n_points_downscale_factor ** n``.  Default 1 (the SAM2
+            default).
         device: PyTorch device for inference.  ``"auto"`` probes
             accelerators in priority order (CUDA, MPS, XPU, HPU) and
             raises ``RuntimeError`` if none is found.  Pass ``"cpu"``
@@ -222,6 +267,12 @@ class Sam2Detector(GpuDetector):
     pred_iou_thresh: float = 0.7
     stability_score_thresh: float = 0.92
     min_mask_region_area: int = 100
+    # Native SAM2 sliding-window crop knobs — defaults mirror upstream
+    # ``SAM2AutomaticMaskGenerator`` (crop_n_layers=0 → stock single pass).
+    crop_n_layers: Annotated[int, TuneSpec(0, 2)] = 0
+    crop_nms_thresh: Annotated[float, TuneSpec(0.0, 1.0)] = 0.7
+    crop_overlap_ratio: Annotated[float, TuneSpec(0.0, 0.5)] = 512 / 1500
+    crop_n_points_downscale_factor: Annotated[int, TuneSpec(1, 2)] = 1
     device: Device = "auto"
     checkpoint: str | Path | None = None
     config: str | None = None
@@ -249,6 +300,10 @@ class Sam2Detector(GpuDetector):
             pred_iou_thresh=self.pred_iou_thresh,
             stability_score_thresh=self.stability_score_thresh,
             min_mask_region_area=self.min_mask_region_area,
+            crop_n_layers=self.crop_n_layers,
+            crop_nms_thresh=self.crop_nms_thresh,
+            crop_overlap_ratio=self.crop_overlap_ratio,
+            crop_n_points_downscale_factor=self.crop_n_points_downscale_factor,
             checkpoint=self.checkpoint,
             config=self.config,
         )
