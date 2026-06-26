@@ -90,6 +90,31 @@ def test_run_qc_writes_per_module_tables_and_catalog(tmp_path):
         con.close()
 
 
+def test_run_qc_cleans_staging_tmp_on_success(tmp_path):
+    """A successful run_qc leaves the canonical db and no ``.tmp`` staging file.
+
+    The writer builds into ``qc.duckdb.tmp`` then atomically ``os.replace``-s
+    it over ``qc.duckdb``; after a clean build the staging file must be gone
+    and only the canonical file present.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.analysis.qc import MaxModifiedZScore
+    from phenotypic.sdk_ import qc_duckdb_path
+    from phenotypic.sdk_._qc_recipe._runner import run_qc
+
+    pipe = ImagePipeline()
+    pipe.set_qc(
+        [_entry(MaxModifiedZScore, {"on": "Size_Area", "groupby": ["Plate"]})]
+    )
+
+    run_qc(_frame(), pipe, tmp_path)
+
+    db = qc_duckdb_path(tmp_path)
+    tmp = db.with_suffix(db.suffix + ".tmp")
+    assert db.is_file()
+    assert not tmp.exists()
+
+
 def test_run_qc_no_enabled_checks_is_noop(tmp_path):
     from phenotypic import ImagePipeline
     from phenotypic.sdk_ import qc_duckdb_path
