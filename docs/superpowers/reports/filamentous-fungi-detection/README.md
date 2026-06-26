@@ -6,13 +6,13 @@ on macroscopic RGB agar-plate images (PhenoTypic context). Curvilinear/ridge det
 low-SNR + dense-overlap (junction/gap) regimes; chromatic-aberration + agar-grain confounders.
 Baseline to beat: phase congruency + background subtraction + hysteresis + Dijkstra reconnection.
 
-## Files (flat, prefixed `filamentous-fungi-detection-`)
-- **-recommendations.md** — assembled long-form report: 3 ranked recommendations vs the baseline
+## Files
+- **recommendations.md** — assembled long-form report: 3 ranked recommendations vs the baseline
   (classical-CV / small-data-learned / cross-field transfer). `(V)`=verified, `(u)`=unverified inline.
-- **-breadth-survey.md** — breadth-first survey of 83 methods across 16 families, each with
+- **breadth-survey.md** — breadth-first survey of 83 methods across 16 families, each with
   Math / Used-for / How-it-works + a master comparison table. No adversarial verification.
-- **-claims-verified-66.md** — 66 claims that survived 3-vote adversarial verification (quotes + sources).
-- **-claims-all-2289.md** — all 2,289 extracted claims (sourced; mostly unverified), grouped by topic.
+- **claims-verified-66.md** — 66 claims that survived 3-vote adversarial verification (quotes + sources).
+- **claims-all-2289.md** — all 2,289 extracted claims (sourced; mostly unverified), grouped by topic.
 
 ## Provenance / caveats
 - Source workflow `deep-research-litmax` (16 topic angles x web + scite/NCBI/bioRxiv -> fetch ->
