@@ -96,19 +96,22 @@ def open_qc_db(output_root: "OutputRoot") -> duckdb.DuckDBPyConnection | None:
         return None
 
 
-def list_modules(output_root: "OutputRoot") -> list[QcModule]:
-    """Return the catalog's modules, ordered by ``ordinal`` (recipe order).
+def _modules_from_con(con: duckdb.DuckDBPyConnection) -> list[QcModule]:
+    """Read the ``qc_modules`` catalog from an already-open connection.
+
+    The shared catalog-decode seam: both :func:`list_modules` (which owns
+    the connection) and :func:`_module_from_con` (which resolves a single
+    module on a connection the caller already holds) route through here so
+    a high-level read opens ``qc.duckdb`` exactly once.
 
     Args:
-        output_root: The active output root.
+        con: An open ``read_only`` DuckDB connection.
 
     Returns:
-        One :class:`QcModule` per ``qc_modules`` row, in run order. Empty
-        when ``qc.duckdb`` is absent / unreadable.
+        One :class:`QcModule` per ``qc_modules`` row, ordered by
+        ``ordinal`` (recipe order). Empty when the catalog is unreadable
+        (a corrupt catalog is non-fatal).
     """
-    con = open_qc_db(output_root)
-    if con is None:
-        return []
     try:
         rows = con.execute(
             "SELECT instance_id, class, name, table_name, summary_table, "
@@ -119,8 +122,6 @@ def list_modules(output_root: "OutputRoot") -> list[QcModule]:
     except Exception:  # noqa: BLE001 - a corrupt catalog is non-fatal
         logger.warning("Failed to read qc_modules catalog", exc_info=True)
         return []
-    finally:
-        con.close()
     return [
         QcModule(
             instance_id=r[0],
@@ -142,10 +143,42 @@ def list_modules(output_root: "OutputRoot") -> list[QcModule]:
     ]
 
 
-def _module(output_root: "OutputRoot", instance_id: str) -> QcModule | None:
-    """Return the catalog descriptor for ``instance_id``, or ``None``."""
+def list_modules(output_root: "OutputRoot") -> list[QcModule]:
+    """Return the catalog's modules, ordered by ``ordinal`` (recipe order).
+
+    Args:
+        output_root: The active output root.
+
+    Returns:
+        One :class:`QcModule` per ``qc_modules`` row, in run order. Empty
+        when ``qc.duckdb`` is absent / unreadable.
+    """
+    con = open_qc_db(output_root)
+    if con is None:
+        return []
+    try:
+        return _modules_from_con(con)
+    finally:
+        con.close()
+
+
+def _module_from_con(
+    con: duckdb.DuckDBPyConnection, instance_id: str
+) -> QcModule | None:
+    """Resolve one module's descriptor on an already-open connection.
+
+    Reads the catalog via :func:`_modules_from_con` on the supplied
+    connection so the caller does exactly one ``open_qc_db`` per read.
+
+    Args:
+        con: An open ``read_only`` DuckDB connection.
+        instance_id: The module to resolve.
+
+    Returns:
+        The matching :class:`QcModule`, or ``None`` when absent.
+    """
     return next(
-        (m for m in list_modules(output_root) if m.instance_id == instance_id),
+        (m for m in _modules_from_con(con) if m.instance_id == instance_id),
         None,
     )
 
@@ -161,13 +194,13 @@ def module_summary(output_root: "OutputRoot", instance_id: str) -> pl.DataFrame:
         The module's summary rows ordered ascending by ``rank`` (0 = worst,
         NaN ranks last). Empty when the module / DB is absent.
     """
-    mod = _module(output_root, instance_id)
     con = open_qc_db(output_root)
-    if mod is None or con is None:
-        if con is not None:
-            con.close()
+    if con is None:
         return pl.DataFrame()
     try:
+        mod = _module_from_con(con, instance_id)
+        if mod is None:
+            return pl.DataFrame()
         return con.execute(
             f'SELECT * FROM "{mod.summary_table}" ORDER BY rank NULLS LAST'
         ).pl()
@@ -195,13 +228,13 @@ def module_members(
         The (optionally filtered) data frame. Empty when the module / DB is
         absent.
     """
-    mod = _module(output_root, instance_id)
     con = open_qc_db(output_root)
-    if mod is None or con is None:
-        if con is not None:
-            con.close()
+    if con is None:
         return pl.DataFrame()
     try:
+        mod = _module_from_con(con, instance_id)
+        if mod is None:
+            return pl.DataFrame()
         frame = con.execute(f'SELECT * FROM "{mod.table_name}"').pl()
     finally:
         con.close()
