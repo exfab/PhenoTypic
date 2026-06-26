@@ -202,6 +202,31 @@ class ReviewState:
         progress.reviewed.discard(encode_group_key(key))
         self.save()
 
+    def reconcile_to_summary(
+        self, instance_id: str, present_keys: set[str]
+    ) -> None:
+        """Drop reviewed encoded keys whose group no longer exists.
+
+        After a full rebuild the module's group keys may change (a settings
+        edit altered ``groupby`` or thresholds, dropping or renaming groups).
+        Prune any reviewed key not in ``present_keys`` so the worklist's
+        reviewed counter + the verified-good set never reference a vanished
+        group. Persists only when something changed.
+
+        Args:
+            instance_id: The recomputed module.
+            present_keys: Encoded group keys present in the new summary.
+        """
+        progress = self.modules.get(instance_id)
+        if progress is None:
+            return
+        stale = progress.reviewed - present_keys
+        if stale:
+            progress.reviewed -= stale
+            if progress.last in stale:
+                progress.last = None
+            self.save()
+
     def set_last(self, instance_id: str, key: GroupKey | None) -> None:
         """Record the last-visited group for the module and persist.
 

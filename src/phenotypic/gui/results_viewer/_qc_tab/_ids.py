@@ -84,6 +84,13 @@ QC_MODAL_CANCEL_BTN_ID: str = "qc-add-check-cancel"
 #: :meth:`QcRecipe.update`.
 STORE_QC_EDITING_INSTANCE: str = "store-qc-editing-instance"
 
+#: Hidden ``dcc.Store`` ticked by the settings-edit recompute callback
+#: after a full ``run_qc`` rebuild of ``qc.duckdb``. The Review worklist
+#: subscribes to it so the worklist + summary header re-render off the
+#: freshly-rewritten database whenever a check's settings change (even when
+#: the selected module's ``instance_id`` is unchanged).
+STORE_QC_RECOMPUTE_DONE: str = "store-qc-recompute-done"
+
 
 # ---------------------------------------------------------------------------
 # Pattern-matching id-builders — per-card components
@@ -215,6 +222,7 @@ __all__ = [
     "QC_MODAL_SUBMIT_BTN_ID",
     "QC_MODAL_CANCEL_BTN_ID",
     "STORE_QC_EDITING_INSTANCE",
+    "STORE_QC_RECOMPUTE_DONE",
     "qc_card_root_id",
     "qc_card_figure_id",
     "qc_card_summary_id",

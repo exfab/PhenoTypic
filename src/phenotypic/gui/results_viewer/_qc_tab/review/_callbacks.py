@@ -90,6 +90,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
     decode_removed_keys_payload,
 )
 from phenotypic.schema import ErrorCategory
+from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
 from phenotypic.gui.results_viewer._qc_tab.review import _data, _db, _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     _SUMMARY_HEADER_HEIGHT,
@@ -858,6 +859,71 @@ def _metric_status_for_group(
     return record.get("metric"), None if status is None else str(status)
 
 
+def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
+    """Atomically (re)build ``qc.duckdb`` from the curated post-applied frame.
+
+    Shared by BOTH live recompute triggers — per-group curation and the
+    settings-edit rebuild. Reads the curated post-applied frame
+    (:func:`._data.build_recompute_frame`, minus the live removal set) and
+    runs ``run_qc`` (only — never ``finalize_*``, which would wipe
+    ``review_state.json``). A full rebuild: ``run_qc`` re-derives every
+    module's tables + catalog from the synced pipeline.
+
+    Args:
+        output_root: The active output root (``None`` → no-op).
+        pipeline: The pipeline whose ``qc`` entries drive the rebuild. The
+            caller MUST have synced it from the live recipe first (the
+            settings-edit path calls ``pipeline.set_qc(recipe.entries)``).
+        removed: The curated ``(image_file, label)`` removal set.
+
+    Returns:
+        ``True`` when ``run_qc`` ran (or no-oped cleanly), ``False`` on a
+        missing root / pipeline / empty recipe or a rebuild exception.
+    """
+    if output_root is None or pipeline is None or not pipeline.get_qc():
+        return False
+
+    from phenotypic.sdk_._qc_recipe._runner import run_qc
+
+    frame = _data.build_recompute_frame(output_root, removed)
+    try:
+        # Write directly into the bundle's resolved qc dir so a standalone
+        # deliverables bundle (root == deliverables folder) never double-joins.
+        run_qc(
+            frame,
+            pipeline,
+            Path(output_root.root),
+            qc_output_dir=output_root.layout.qc_dir,
+        )
+    except Exception:  # noqa: BLE001 - recompute failure must not crash curation
+        logger.warning("In-session QC recompute (full rebuild) failed", exc_info=True)
+        return False
+    return True
+
+
+def reconcile_review_state_after_rebuild(output_root) -> None:
+    """Prune review progress against the just-rebuilt ``qc.duckdb`` groups.
+
+    For every module in the rebuilt catalog, drop any reviewed encoded
+    group key whose group no longer exists in the new summary (a settings
+    edit may have changed ``groupby`` or thresholds). Modules absent from
+    the catalog are left untouched (their progress is orphaned, not pruned).
+
+    Args:
+        output_root: The active output root (``None`` → no-op).
+    """
+    if output_root is None:
+        return
+    state = ReviewState.load(output_root.layout)
+    for module in _db.list_modules(output_root):
+        summary = _db.module_summary(output_root, module.instance_id)
+        present = {
+            encode_group_key(tuple(r.get(c) for c in module.groupby_cols))
+            for r in summary.iter_rows(named=True)
+        }
+        state.reconcile_to_summary(module.instance_id, present)
+
+
 def _recompute_after_curation(
     instance_id: str,
     groupby_cols: list[str],
@@ -866,10 +932,10 @@ def _recompute_after_curation(
 ) -> dict[str, Any] | None:
     """Run an in-session per-group recompute and return its before→after delta.
 
-    Reads the curated post-applied frame, runs ``run_qc`` (only — never
-    ``finalize_*``, which would wipe ``review_state.json``), reloads the
-    rewritten summary, and reports this group's new metric. Returns
-    ``None`` (no-op) when no pipeline is available.
+    Reads the curated post-applied frame, runs the shared full rebuild
+    (:func:`_recompute_full_rebuild`), reloads the rewritten summary, and
+    reports this group's new metric. Returns ``None`` (no-op) when no
+    pipeline is available.
 
     Args:
         instance_id: The module being recomputed.
@@ -885,24 +951,8 @@ def _recompute_after_curation(
     """
     output_root = _output_root()
     pipeline = current_app.config.get(CFG_QC_PIPELINE)
-    if output_root is None or pipeline is None or not pipeline.get_qc():
-        return None
-
-    from phenotypic.sdk_._qc_recipe._runner import run_qc
-
     removed = _removed_keys_locked()
-    frame = _data.build_recompute_frame(output_root, removed)
-    try:
-        # Write directly into the bundle's resolved qc dir so a standalone
-        # deliverables bundle (root == deliverables folder) never double-joins.
-        run_qc(
-            frame,
-            pipeline,
-            Path(output_root.root),
-            qc_output_dir=output_root.layout.qc_dir,
-        )
-    except Exception:  # noqa: BLE001 - recompute failure must not crash curation
-        logger.warning("In-session QC recompute failed", exc_info=True)
+    if not _recompute_full_rebuild(output_root, pipeline, removed):
         return None
 
     new_summary = _db.module_summary(output_root, instance_id)
@@ -978,6 +1028,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Input(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         Input(rids.QC_REVIEW_RESORT_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_SHOW_FILTER_ID, "value"),
+        # A settings-edit full rebuild ticks this store after rewriting
+        # qc.duckdb, so the worklist + header re-render off the fresh DB
+        # even when the selected module's instance_id is unchanged.
+        Input(qc_tab_ids.STORE_QC_RECOMPUTE_DONE, "data"),
         State(rids.STORE_QC_SELECTED_GROUP, "data"),
         State(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
     )
@@ -985,6 +1039,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
         instance_id: str | None,
         _resort_clicks: int | None,
         show_filter: str,
+        _recompute_done: int | None,
         selected_encoded: str | None,
         deltas: dict[str, dict[str, Any]] | None,
     ):
@@ -2047,5 +2102,7 @@ __all__ = [
     "render_worklist_row_metric_cell",
     "worklist_row_metric_update",
     "_previous_group",
+    "_recompute_full_rebuild",
+    "reconcile_review_state_after_rebuild",
 ]
 

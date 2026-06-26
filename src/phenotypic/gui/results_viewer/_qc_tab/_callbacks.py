@@ -49,6 +49,7 @@ from phenotypic.gui._config import (
     CFG_OPERATION_REGISTRY,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
+    CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
 )
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION, OI_VERMILION_TEXT
@@ -415,6 +416,76 @@ def _columns_provider(source: str) -> list[str]:
     except Exception:  # noqa: BLE001 - defensive
         logger.warning("Schema lookup failed", exc_info=True)
         return []
+
+
+def _removed_keys_locked(filtered: Any) -> set[tuple[str, int]]:
+    """Snapshot the curation removal set under the state lock.
+
+    Reading under the lock gives the recompute a coherent
+    state-at-settings-edit rather than a set mid-mutated by a concurrent
+    curation callback.
+    """
+    if filtered is None:
+        return set()
+    with filtered._lock:
+        return set(filtered.removed_keys)
+
+
+def _run_settings_edit_recompute(
+    output_root: Any,
+    recipe: QcRecipe | None,
+    pipeline: Any,
+    removed: set[tuple[str, int]],
+) -> bool:
+    """Durably rebuild ``qc.duckdb`` after a QC settings edit (spec §D.8).
+
+    ``CFG_QC_PIPELINE`` is loaded once at app boot and is **not**
+    auto-updated when :meth:`QcRecipe.update` mutates ``CFG_QC_RECIPE``, so
+    this MUST sync it (``pipeline.set_qc(recipe.entries)``) before
+    rebuilding — otherwise ``run_qc`` rebuilds from stale boot-time entries
+    and the edit is invisible. After a full rebuild, review progress is
+    reconciled against the new group set so reviewed keys for vanished
+    groups are pruned.
+
+    All-disabled edge: ``run_qc`` no-ops without clearing a pre-existing
+    ``qc.duckdb`` when nothing is enabled, so this removes the stale DB
+    directly to empty the worklist.
+
+    Args:
+        output_root: The active ``OutputRoot`` (``None`` → no-op).
+        recipe: The live, just-saved :class:`QcRecipe`.
+        pipeline: The boot-time ``CFG_QC_PIPELINE`` to sync + rebuild from.
+        removed: The curated ``(image_file, label)`` removal set.
+
+    Returns:
+        ``True`` when the rebuild (or the all-disabled clear) ran.
+    """
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _recompute_full_rebuild,
+        reconcile_review_state_after_rebuild,
+    )
+
+    if output_root is None or recipe is None or pipeline is None:
+        return False
+    pipeline.set_qc(list(recipe.entries))  # reflect the just-saved recipe
+
+    if not any(e.enabled for e in recipe.entries):
+        # run_qc no-ops (without clearing) when nothing is enabled; remove
+        # the stale DB so the worklist empties.
+        db_path = output_root.layout.qc_duckdb
+        try:
+            db_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning(
+                "Failed to clear stale qc.duckdb at %s", db_path, exc_info=True
+            )
+        reconcile_review_state_after_rebuild(output_root)
+        return True
+
+    if not _recompute_full_rebuild(output_root, pipeline, removed):
+        return False
+    reconcile_review_state_after_rebuild(output_root)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -986,6 +1057,32 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             review_style,
             review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
         )
+
+    # -----------------------------------------------------------------
+    # Callback I: durable settings-edit recompute
+    # -----------------------------------------------------------------
+    # Fires on every recipe-revision tick (modal submit / card lifecycle
+    # action). Syncs the boot-time CFG_QC_PIPELINE from the just-saved
+    # recipe, full-rebuilds qc.duckdb, and reconciles review progress.
+    # ``allow_duplicate`` + ``prevent_initial_call`` keep it off the boot
+    # render and clear of the other STORE_QC_RECIPE_REVISION listeners.
+    @app.callback(
+        Output(ids.STORE_QC_RECOMPUTE_DONE, "data", allow_duplicate=True),
+        Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
+        prevent_initial_call=True,
+    )
+    def _recompute_qc_on_settings_edit(revision: int | None) -> Any:
+        """Durably rebuild qc.duckdb after a QC settings edit (spec §D.8)."""
+        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+        recipe = current_app.config.get(CFG_QC_RECIPE)
+        pipeline = current_app.config.get(CFG_QC_PIPELINE)
+        filtered = current_app.config.get(CFG_FILTERED_STATE)
+        removed = _removed_keys_locked(filtered)
+        if not _run_settings_edit_recompute(
+            output_root, recipe, pipeline, removed
+        ):
+            return no_update
+        return (revision or 0) + 1
 
     # Review sub-view owns its own callback bundle (worklist, detail,
     # curation, recompute, review-state). Registered here so the QC tab's
