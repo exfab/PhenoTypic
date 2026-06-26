@@ -28,13 +28,14 @@ Critical invariants (spec §D risk refinements):
 * ``removed_keys`` is read under the ``FilteredMeasurements`` lock so the
   recomputed ``qc/`` reflects a coherent state-at-mark-reviewed.
 * The summary header counts NaN/insufficient groups separately from
-  ``pass`` and uses a robust median (handled in :func:`._data.summary_stats`).
+  ``pass`` and uses a robust median (handled in :func:`._db.summary_stats`).
 """
 
 from __future__ import annotations
 
 import functools
 import logging
+import math
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -83,10 +84,13 @@ from phenotypic.gui._shared._triage_callbacks import (
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
+    KEY_IMAGE_FILE,
+    KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
 )
 from phenotypic.schema import ErrorCategory
-from phenotypic.gui.results_viewer._qc_tab.review import _data, _ids as rids
+from phenotypic.gui.results_viewer._qc_tab.review import _data, _db, _ids as rids
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     _SUMMARY_HEADER_HEIGHT,
     clamp_sidebar_width,
@@ -650,29 +654,204 @@ def _load_review_state() -> ReviewState:
     return ReviewState.load(output_root.layout)
 
 
+def _module_picker_options(output_root) -> list[dict[str, str]]:
+    """Build the module-picker options from the DuckDB catalog (recipe order).
+
+    Each option's ``label`` is ``"<Class> (<short-id>)"`` and its ``value``
+    is the full ``instance_id``. Order follows the catalog's ``ordinal``
+    (recipe order). Empty when ``qc.duckdb`` is absent.
+
+    Args:
+        output_root: The active output root (or ``None``).
+
+    Returns:
+        A list of ``{"label", "value"}`` dicts (empty when no modules).
+    """
+    if output_root is None:
+        return []
+    return [
+        {
+            "label": f"{m.cls_name} ({m.instance_id.rsplit('-', 1)[-1]})",
+            "value": m.instance_id,
+        }
+        for m in _db.list_modules(output_root)
+    ]
+
+
+def _module_for(output_root, instance_id: str | None) -> "_db.QcModule | None":
+    """Return the catalog descriptor for ``instance_id``, or ``None``."""
+    if output_root is None or not instance_id:
+        return None
+    return next(
+        (m for m in _db.list_modules(output_root) if m.instance_id == instance_id),
+        None,
+    )
+
+
+def _summary_row_for_key(
+    module_summary: pl.DataFrame | None,
+    groupby_cols: list[str],
+    key_values: tuple[Any, ...],
+) -> dict[str, Any] | None:
+    """Return one group's worklist row (first match) as a dict, or ``None``.
+
+    Filters a module's ``module_summary`` (already single-module, worst-first)
+    to the group key. Null/NaN group keys route through ``is_null`` so a
+    ``groupby(dropna=False)`` null key stays selectable.
+
+    Args:
+        module_summary: The module's worklist frame (from
+            :func:`._db.module_summary`).
+        groupby_cols: The module's group-key column names.
+        key_values: The group-key value tuple aligned to ``groupby_cols``.
+
+    Returns:
+        The matching row as a ``{column: value}`` dict, or ``None``.
+    """
+    if module_summary is None or module_summary.is_empty():
+        return None
+    filtered = module_summary
+    for col, value in zip(groupby_cols, key_values):
+        if col not in filtered.columns:
+            continue
+        if value is None or (isinstance(value, float) and math.isnan(value)):
+            filtered = filtered.filter(pl.col(col).is_null())
+        else:
+            filtered = filtered.filter(pl.col(col).cast(pl.String) == str(value))
+    if filtered.is_empty():
+        return None
+    return filtered.head(1).to_dicts()[0]
+
+
+def _member_keys_from_frame(
+    members: pl.DataFrame, module: "_db.QcModule"
+) -> list[tuple[str, str, int]]:
+    """Resolve the ``(dataset, image_file, label)`` tiles for a member frame.
+
+    The data table now carries ``Metadata_Dataset`` context (when present),
+    so the dataset is read straight off each member row instead of joining a
+    master-derived map. Members whose dataset is unknown are dropped (logged)
+    rather than rendered with a bogus crop URL.
+
+    Args:
+        members: The module's data rows for one group (from
+            :func:`._db.module_members`).
+        module: The module's catalog descriptor.
+
+    Returns:
+        ``(dataset, image_file, label)`` tuples in member order.
+    """
+    if members.is_empty():
+        return []
+    if KEY_IMAGE_FILE not in members.columns or KEY_OBJECT_LABEL not in members.columns:
+        return []
+    has_dataset = KEY_DATASET in members.columns
+    keys: list[tuple[str, str, int]] = []
+    for row in members.iter_rows(named=True):
+        image_file = row.get(KEY_IMAGE_FILE)
+        label = row.get(KEY_OBJECT_LABEL)
+        if image_file is None or label is None:
+            continue
+        dataset = row.get(KEY_DATASET) if has_dataset else None
+        if dataset is None:
+            logger.debug(
+                "QC member %r has no dataset in the table; skipping tile",
+                image_file,
+            )
+            continue
+        keys.append((str(dataset), str(image_file), int(label)))
+    return keys
+
+
+def _time_by_key_from_members(
+    members: pl.DataFrame, module: "_db.QcModule"
+) -> dict[tuple[str, int], Any]:
+    """Build a ``(image_file, label) -> timepoint`` map from the member frame.
+
+    Empty when the module is not a time-course (``module.time_col is None``)
+    or the table lacks the time column, which makes
+    :func:`_facet_keys_by_timepoint` fall back to a single unfaceted gallery.
+    """
+    time_col = module.time_col
+    if time_col is None or members.is_empty() or time_col not in members.columns:
+        return {}
+    if KEY_IMAGE_FILE not in members.columns or KEY_OBJECT_LABEL not in members.columns:
+        return {}
+    out: dict[tuple[str, int], Any] = {}
+    for row in members.iter_rows(named=True):
+        image_file = row.get(KEY_IMAGE_FILE)
+        label = row.get(KEY_OBJECT_LABEL)
+        if image_file is None or label is None:
+            continue
+        out[(str(image_file), int(label))] = row.get(time_col)
+    return out
+
+
+def _facet_keys_by_timepoint(
+    keys: list[tuple[str, str, int]],
+    time_by_key: dict[tuple[str, int], Any],
+) -> list[tuple[Any, list[tuple[str, str, int]]]]:
+    """Group a flat tile-key list into per-timepoint facet rows.
+
+    For time-course checks the detail gallery shows one row per timepoint.
+    Each tile's timepoint is looked up by its ``(image_file, label)`` key.
+    When no timepoint is known for any tile, a single ``(None, keys)`` facet
+    is returned so the caller renders one unfaceted gallery.
+
+    Args:
+        keys: ``(dataset, image_file, label)`` tuples for the group.
+        time_by_key: ``(image_file, label) -> timepoint`` map.
+
+    Returns:
+        A list of ``(timepoint, keys)`` facet rows, ordered by timepoint
+        (``None`` timepoints sort last). A single ``(None, keys)`` row when
+        no timepoints are available.
+    """
+    if not time_by_key:
+        return [(None, keys)]
+
+    facets: dict[Any, list[tuple[str, str, int]]] = {}
+    any_known = False
+    for dataset, image_file, label in keys:
+        timepoint = time_by_key.get((image_file, label))
+        if timepoint is not None:
+            any_known = True
+        facets.setdefault(timepoint, []).append((dataset, image_file, label))
+
+    if not any_known:
+        return [(None, keys)]
+
+    def _sort_key(item: tuple[Any, Any]) -> tuple[int, str]:
+        tp = item[0]
+        return (1, "") if tp is None else (0, _time_sort_token(tp))
+
+    return sorted(facets.items(), key=_sort_key)
+
+
+def _time_sort_token(value: Any) -> str:
+    """Zero-pad numeric timepoints so they sort numerically as strings."""
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return f"{float(value):020.6f}"
+    return str(value)
+
+
 def _metric_for_group(
-    summary_df: pl.DataFrame | None,
-    instance_id: str,
+    module_summary: pl.DataFrame | None,
     groupby_cols: list[str],
     key_values: tuple[Any, ...],
 ) -> Any:
-    """Read one group's metric from a (re)loaded summary frame, or ``None``."""
-    if summary_df is None:
-        return None
-    record = _data.group_record(summary_df, instance_id, groupby_cols, key_values)
+    """Read one group's metric from a (re)loaded module summary, or ``None``."""
+    record = _summary_row_for_key(module_summary, groupby_cols, key_values)
     return None if record is None else record.get("metric")
 
 
 def _metric_status_for_group(
-    summary_df: pl.DataFrame | None,
-    instance_id: str,
+    module_summary: pl.DataFrame | None,
     groupby_cols: list[str],
     key_values: tuple[Any, ...],
 ) -> tuple[Any, str | None]:
-    """Read one group's ``(metric, status)`` from a (re)loaded summary frame."""
-    if summary_df is None:
-        return None, None
-    record = _data.group_record(summary_df, instance_id, groupby_cols, key_values)
+    """Read one group's ``(metric, status)`` from a (re)loaded module summary."""
+    record = _summary_row_for_key(module_summary, groupby_cols, key_values)
     if record is None:
         return None, None
     status = record.get("status")
@@ -726,9 +905,9 @@ def _recompute_after_curation(
         logger.warning("In-session QC recompute failed", exc_info=True)
         return None
 
-    new_summary = _data.load_qc_summary(output_root)
+    new_summary = _db.module_summary(output_root, instance_id)
     metric_after, status_after = _metric_status_for_group(
-        new_summary, instance_id, groupby_cols, key_values
+        new_summary, groupby_cols, key_values
     )
     moved = not _metrics_equal(metric_before, metric_after)
     return {
@@ -774,12 +953,11 @@ def register_review_callbacks(app: dash.Dash) -> None:
     def _populate_module_picker(
         _revision: int | None, current: str | None
     ) -> tuple[list[dict[str, str]], str | None]:
-        """Populate the module picker from the committed qc_summary artifact."""
+        """Populate the module picker from the DuckDB catalog (recipe order)."""
         output_root = _output_root()
         if output_root is None:
             return [], None
-        summary = _data.load_qc_summary(output_root)
-        options = _data.module_options(summary)
+        options = _module_picker_options(output_root)
         values = {opt["value"] for opt in options}
         value = current if current in values else (
             options[0]["value"] if options else None
@@ -811,17 +989,13 @@ def register_review_callbacks(app: dash.Dash) -> None:
         deltas: dict[str, dict[str, Any]] | None,
     ):
         output_root = _output_root()
-        if output_root is None or not instance_id:
+        module = _module_for(output_root, instance_id)
+        if module is None:
             return [], [], [], None, {"display": "block", "padding": "2rem",
                                       "textAlign": "center"}, []
 
-        summary = _data.load_qc_summary(output_root)
-        if summary is None:
-            return [], [], [], None, {"display": "block", "padding": "2rem",
-                                      "textAlign": "center"}, []
-
-        groupby_cols = _data.groupby_cols_for(summary, instance_id)
-        worklist = _data.module_worklist(summary, instance_id)
+        groupby_cols = module.groupby_cols
+        worklist = _db.module_summary(output_root, instance_id)
         review_state = _load_review_state()
         deltas = deltas or {}
 
@@ -842,16 +1016,13 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected_encoded,
         )
 
-        stats = _data.summary_stats(_data.module_worklist(summary, instance_id))
+        stats = _db.summary_stats(worklist)
         removed = _removed_keys_locked()
-        members = _data.load_qc_members(output_root)
-        colonies_removed = _count_removed_in_module(
-            members, instance_id, removed
-        )
+        colonies_removed = _count_removed_in_module(output_root, module, removed)
         header = _render_summary_header(
             stats, review_state.reviewed_count(instance_id), colonies_removed
         )
-        chips = _module_chips(summary, instance_id, groupby_cols)
+        chips = _module_chips(module, groupby_cols)
         empty_style = {"display": "none"}
         return rows, header, order, selected_encoded, empty_style, chips
 
@@ -918,23 +1089,28 @@ def register_review_callbacks(app: dash.Dash) -> None:
             return [], [], no_update, skip_styles, no_update
 
         output_root = _output_root()
-        summary = _data.load_qc_summary(output_root)
-        members = _data.load_qc_members(output_root)
-        if summary is None or members is None:
+        module = _module_for(output_root, instance_id)
+        if module is None:
             return [], [], selected_encoded, skip_styles, no_update
 
-        groupby_cols = _data.groupby_cols_for(summary, instance_id)
+        groupby_cols = module.groupby_cols
         key_values = decode_group_key(selected_encoded)
-        record = _data.group_record(summary, instance_id, groupby_cols, key_values)
+        summary = _db.module_summary(output_root, instance_id)
+        record = _summary_row_for_key(summary, groupby_cols, key_values)
         if record is None:
             return [], [], selected_encoded, skip_styles, no_update
 
-        dataset_by_image = _data.dataset_by_image_map(output_root)
-        keys = _data.group_member_keys(
-            members, instance_id, groupby_cols, key_values, dataset_by_image
-        )
-        time_by_key = _data.time_by_key_map(output_root)
-        facets = _data.facet_keys_by_timepoint(keys, time_by_key)
+        # Diagnostic-only modules (group-level, no per-object rows) hide the
+        # curation radial + tile gallery: render the header only.
+        if module.supports_object_curation:
+            members = _db.module_members(output_root, instance_id, key_values)
+            keys = _member_keys_from_frame(members, module)
+            facets = _facet_keys_by_timepoint(
+                keys, _time_by_key_from_members(members, module)
+            )
+        else:
+            keys = []
+            facets = []
 
         removed = _removed_keys_locked()
         n_removed = sum(1 for _ds, im, lbl in keys if (im, lbl) in removed)
@@ -1049,39 +1225,44 @@ def _apply_show_filter(
 
 
 def _count_removed_in_module(
-    members: pl.DataFrame | None,
-    instance_id: str,
+    output_root,
+    module: "_db.QcModule",
     removed: set[tuple[str, int]],
 ) -> int:
-    """Count distinct removed colonies that belong to this module's members."""
-    if members is None or members.is_empty() or not removed:
+    """Count distinct removed colonies that belong to this module's members.
+
+    Reads the module's whole data table (empty group-key tuple → no filter)
+    and counts the distinct ``(image_file, label)`` members in the live
+    removal set. Diagnostic-only modules (no per-object rows) contribute 0.
+    """
+    if not module.supports_object_curation or not removed:
         return 0
-    slice_df = members.filter(pl.col("instance_id") == instance_id)
-    count = 0
+    members = _db.module_members(output_root, module.instance_id, ())
+    if (
+        members.is_empty()
+        or KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
+        return 0
     seen: set[tuple[str, int]] = set()
     for image_file, label in zip(
-        slice_df.get_column("Metadata_ImageFile").to_list(),
-        slice_df.get_column("Object_Label").to_list(),
+        members.get_column(KEY_IMAGE_FILE).to_list(),
+        members.get_column(KEY_OBJECT_LABEL).to_list(),
     ):
+        if image_file is None or label is None:
+            continue
         key = (str(image_file), int(label))
-        if key in removed and key not in seen:
+        if key in removed:
             seen.add(key)
-            count += 1
-    return count
+    return len(seen)
 
 
 def _module_chips(
-    summary: pl.DataFrame, instance_id: str, groupby_cols: list[str]
+    module: "_db.QcModule", groupby_cols: list[str]
 ) -> list[Component]:
     """Render the read-only ``class`` + ``groupby`` chips for the module."""
-    record = summary.filter(pl.col("instance_id") == instance_id).head(1)
-    cls = (
-        str(record.get_column("class")[0])
-        if not record.is_empty()
-        else "?"
-    )
     chips: list[Component] = [
-        dbc.Badge(cls, color="light", text_color="dark", className="me-1")
+        dbc.Badge(module.cls_name, color="light", text_color="dark", className="me-1")
     ]
     if groupby_cols:
         chips.append(
@@ -1585,11 +1766,9 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         if output_root is None:
             return no_update, no_update
 
-        summary = _data.load_qc_summary(output_root)
-        groupby_cols = (
-            _data.groupby_cols_for(summary, instance_id) if summary is not None
-            else []
-        )
+        module = _module_for(output_root, instance_id)
+        groupby_cols = module.groupby_cols if module is not None else []
+        summary = _db.module_summary(output_root, instance_id)
         key_values = decode_group_key(selected_encoded)
         review_state = _load_review_state()
 
@@ -1608,7 +1787,7 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         # Recompute only when changes were made (spec §D.5).
         if curated:
             metric_before = _metric_for_group(
-                summary, instance_id, groupby_cols, key_values
+                summary, groupby_cols, key_values
             )
             delta = _recompute_after_curation(
                 instance_id, groupby_cols, key_values, metric_before
@@ -1633,15 +1812,23 @@ def _group_has_removed_members(
     key_values: tuple[Any, ...],
 ) -> bool:
     """Return ``True`` if any of the group's member colonies are removed."""
-    members = _data.load_qc_members(output_root)
-    if members is None:
+    members = _db.module_members(output_root, instance_id, key_values)
+    if (
+        members.is_empty()
+        or KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
         return False
-    dataset_by_image = _data.dataset_by_image_map(output_root)
-    keys = _data.group_member_keys(
-        members, instance_id, groupby_cols, key_values, dataset_by_image
-    )
     removed = _removed_keys_locked()
-    return any((im, lbl) in removed for _ds, im, lbl in keys)
+    member_keys = {
+        (str(image_file), int(label))
+        for image_file, label in zip(
+            members.get_column(KEY_IMAGE_FILE).to_list(),
+            members.get_column(KEY_OBJECT_LABEL).to_list(),
+        )
+        if image_file is not None and label is not None
+    }
+    return any(key in removed for key in member_keys)
 
 
 def _next_unreviewed(
