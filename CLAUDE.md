@@ -319,13 +319,17 @@ the gate:
   **per-image** parquets in `results/<ds>/measurements/` (and the rest
   of `results/`, `progress/`, `processing_state.json`) stay at the
   output-dir **root**. The durable **QC + curation state** relocated under
-  `deliverables/qc/` (`qc_summary.parquet`, `qc_members.parquet`,
-  `review_state.json`, `curation_labels.parquet`, `custom_categories.json`)
-  so a `deliverables/` bundle is self-contained — the GUI can open such a
-  bundle standalone; `resolve_qc_dir` / `migrate_legacy_qc` still read/move a
-  pre-relocation root `qc/`. Resolve these paths via the `phenotypic.sdk_`
-  helpers (`deliverables_dir`, `master_measurements_parquet_path`, `qc_dir`,
-  etc.), not by hand-joining names.
+  `deliverables/qc/` (`qc.duckdb`, `review_state.json`,
+  `curation_labels.parquet`, `custom_categories.json`) so a `deliverables/`
+  bundle is self-contained — the GUI can open such a bundle standalone;
+  `resolve_qc_dir` / `migrate_legacy_qc` still read/move a pre-relocation root
+  `qc/`. `run_qc` writes the single `deliverables/qc/qc.duckdb` (one
+  self-describing table per QC module plus a `qc_modules` catalog, atomic full
+  rebuild); the legacy flat `qc_summary.parquet`/`qc_members.parquet`/
+  `qc_config.json` artifact and its `phenotypic.sdk_` path helpers are gone.
+  Resolve these paths via the `phenotypic.sdk_` helpers (`deliverables_dir`,
+  `master_measurements_parquet_path`, `qc_dir`, `qc_duckdb_path`, etc.), not by
+  hand-joining names.
 - **Master vs. mirror outputs:** `deliverables/master_measurements.{csv,parquet}`
   is a **clean, pre-post, metadata-free archive** of what per-image runs
   measured; `deliverables/measurements.{csv,parquet}` is the

@@ -109,7 +109,7 @@ def test_deliverables_accessors_anchor_on_base(tmp_path):
     base = out / "deliverables"
     assert layout.master_parquet == base / "master_measurements.parquet"
     assert layout.mirror_parquet == base / "measurements.parquet"
-    assert layout.qc_summary_parquet == base / "qc" / "qc_summary.parquet"
+    assert layout.qc_duckdb == base / "qc" / "qc.duckdb"
     assert layout.curation_labels_parquet == base / "qc" / "curation_labels.parquet"
     assert layout.overlay_path("plate1", "img001") == base / "overlays" / "plate1" / "img001.png"
 

@@ -190,11 +190,13 @@ paths. The user-facing run artifacts (`master_measurements.*`,
 `master_measurements_parquet_path(output)`, …) so the subfolder stays
 single-sourced. Detection overlay PNGs now live under
 `deliverables/overlays/<dataset>/` (also accessed via the `phenotypic.sdk_`
-path helpers). The durable **QC + curation state** (`qc_summary.parquet`,
-`qc_members.parquet`, `review_state.json`, `curation_labels.parquet`,
-`custom_categories.json`) now lives under `deliverables/qc/` (`DIR_QC` joined
-on `deliverables_dir(output)`; resolve via `qc_dir(output)` /
-`qc_summary_parquet_path(output)` / … — never hand-join `qc/`). It moved
+path helpers). The durable **QC + curation state** (`qc.duckdb`,
+`review_state.json`, `curation_labels.parquet`, `custom_categories.json`) now
+lives under `deliverables/qc/` (`DIR_QC` joined on `deliverables_dir(output)`;
+resolve via `qc_dir(output)` / `qc_duckdb_path(output)` / … — never hand-join
+`qc/`). `run_qc` writes the single `qc.duckdb` (one self-describing table per
+QC module plus a `qc_modules` catalog); the QC tabs read it through the
+`review/_db.py` catalog-driven API. It moved
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
 `resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
@@ -449,9 +451,11 @@ and `_ids.py` (all-static component ids, e.g. `error-cutoff-table`,
 - **Good-baseline toggle (`ERROR_GOOD_MODE_TOGGLE_ID`):** `all_unlabeled`
   (default — every unlabeled object is good) vs `verified` (the good class
   is restricted to `verified_good_keys`, the unlabeled members of
-  QC-reviewed groups, derived from `qc/qc_summary.parquet` +
-  `qc/qc_members.parquet` + `qc/review_state.json`). The verified-good
-  count badge (`ERROR_VERIFIED_COUNT_ID`) reports that set's size.
+  QC-reviewed groups, derived from `qc/qc.duckdb` (the `qc_modules` catalog +
+  per-module member tables, read via `review/_db.py`) + `qc/review_state.json`;
+  diagnostic-only modules — `supports_object_curation == False` — are skipped).
+  The verified-good count badge (`ERROR_VERIFIED_COUNT_ID`) reports that set's
+  size.
 - **Server-side state, recompute on activation:** the recompute callback
   reads `filtered_state.labels` under `filtered_state._lock` (the shared
   `CurationLabels`; there is **no** `STORE_LABELS` Dash store) and builds

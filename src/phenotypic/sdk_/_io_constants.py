@@ -280,27 +280,11 @@ _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
 
-#: Per-group QC summary written by
-#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`. One row per
-#: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
-#: status, flag, member/flagged counts, and a worst-first ``rank``.
-QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
-
-#: Per-group member colonies written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
-#: One row per ``(instance_id, group member)`` carrying the curation key
-#: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
-#: contributing value, so the Review gallery can render each group's tiles.
-QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
-
-#: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
-#: ``enabled``/``params``) that produced the current ``qc/`` artifact.
-#: Written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
-QC_CONFIG_JSON: Final[str] = "qc_config.json"
-
 #: DuckDB QC analysis database filename: ``<output>/deliverables/qc/qc.duckdb``.
-#: One self-describing table per QC module + a ``qc_modules`` catalog; written
-#: by ``run_qc``. Supersedes :data:`QC_SUMMARY_PARQUET`/:data:`QC_MEMBERS_PARQUET`/
-#: :data:`QC_CONFIG_JSON`.
+#: The sole QC artifact written by
+#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`: one self-describing table
+#: per QC module (worst-direction metric, tri-state status, flag, member rows,
+#: worst-first ``rank``) plus a ``qc_modules`` catalog describing each table.
 QC_DUCKDB: Final[str] = "qc.duckdb"
 
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
@@ -431,8 +415,7 @@ DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
 #: QC artifact subdirectory: ``<output>/deliverables/qc/``. Holds
-#: :data:`QC_SUMMARY_PARQUET`, :data:`QC_MEMBERS_PARQUET`,
-#: :data:`QC_CONFIG_JSON` (written by ``run_qc``), and
+#: :data:`QC_DUCKDB` (written by ``run_qc``) and
 #: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated
 #: under ``deliverables/`` so a bundle is self-contained;
 #: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy
@@ -1332,21 +1315,6 @@ def resolve_qc_dir(output_dir: Path) -> Path:
     return new
 
 
-def qc_summary_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/qc/qc_summary.parquet``."""
-    return qc_dir(output_dir) / QC_SUMMARY_PARQUET
-
-
-def qc_members_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/qc/qc_members.parquet``."""
-    return qc_dir(output_dir) / QC_MEMBERS_PARQUET
-
-
-def qc_config_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/qc/qc_config.json``."""
-    return qc_dir(output_dir) / QC_CONFIG_JSON
-
-
 def qc_duckdb_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/qc/qc.duckdb``."""
     return qc_dir(output_dir) / QC_DUCKDB
@@ -1841,21 +1809,6 @@ class BundleLayout:
             if legacy.exists():
                 return legacy
         return canonical
-
-    @property
-    def qc_summary_parquet(self) -> Path:
-        """Return path to ``deliverables/qc/qc_summary.parquet`` (legacy root resolved)."""
-        return self.qc_dir / QC_SUMMARY_PARQUET
-
-    @property
-    def qc_members_parquet(self) -> Path:
-        """Return path to ``deliverables/qc/qc_members.parquet`` (legacy root resolved)."""
-        return self.qc_dir / QC_MEMBERS_PARQUET
-
-    @property
-    def qc_config_json(self) -> Path:
-        """Return path to ``deliverables/qc/qc_config.json`` (legacy root resolved)."""
-        return self.qc_dir / QC_CONFIG_JSON
 
     @property
     def qc_duckdb(self) -> Path:
