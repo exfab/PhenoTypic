@@ -18,6 +18,8 @@ import numpy as np
 import polars as pl
 import pytest
 
+from phenotypic import ImagePipeline
+from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._error_tab import (
     build_error_tab_body,
@@ -25,10 +27,10 @@ from phenotypic.gui.results_viewer._error_tab import (
 )
 from phenotypic.gui.results_viewer._error_tab import _callbacks, _ids as ids
 from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
     error_analysis_parquet_path,
-    qc_members_parquet_path,
-    qc_summary_parquet_path,
     verified_parquet_path,
 )
 
@@ -161,32 +163,32 @@ def test_recompute_empty_state_when_insufficient(seeded_root):
 # ---------------------------------------------------------------------------
 
 
-def _write_qc_one_group(root: Path, good_labels: list[int]) -> None:
-    """Write a qc artifact whose single reviewed group holds ``good_labels``."""
-    instance_id = "qc-SE-aaaa"
-    qc_summary_parquet_path(root).parent.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame(
-        {
-            "instance_id": [instance_id],
-            "class": ["SE"],
-            "plate": ["A"],
-            "metric": [0.9],
-            "status": ["fail"],
-            "flag": [True],
-            "n_members": [len(good_labels)],
-            "n_flagged": [0],
-            "rank": [0],
-        }
-    ).write_parquet(qc_summary_parquet_path(root))
-    pl.DataFrame(
-        {
-            "instance_id": [instance_id] * len(good_labels),
-            "plate": ["A"] * len(good_labels),
-            KEY_IMAGE_FILE: ["img1"] * len(good_labels),
-            KEY_OBJECT_LABEL: good_labels,
-            "member_value": [0.0] * len(good_labels),
-        }
-    ).write_parquet(qc_members_parquet_path(root))
+def _write_qc_one_group(
+    root: Path, master: pl.DataFrame, good_labels: list[int]
+) -> None:
+    """Seed qc.duckdb whose single reviewed group ("A") holds ``good_labels``.
+
+    Tags ``good_labels`` with a synthetic ``plate == "A"`` group (the rest
+    "B"), runs the real :class:`MaxModifiedZScore` writer grouped by
+    ``plate``, then marks group "A" reviewed — so the reviewed group's
+    members are exactly the ``good_labels`` objects on ``img1``.
+    """
+    instance_id = "qc-ZMax-aaaa"
+    good = set(good_labels)
+    df = master.to_pandas()
+    df["plate"] = ["A" if lbl in good else "B" for lbl in df[KEY_OBJECT_LABEL]]
+    pipe = ImagePipeline()
+    pipe.set_qc(
+        [
+            QcRecipeEntry(
+                cls=MaxModifiedZScore,
+                params={"on": "Size_Area", "groupby": ["plate"]},
+                instance_id=instance_id,
+                enabled=True,
+            )
+        ]
+    )
+    run_qc(df, pipe, root)
     state = ReviewState.load(_layout(root))
     state.mark_reviewed(instance_id, ("A",))
 
@@ -195,7 +197,7 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     # Label the 10 small-area objects as errors; the 10 large-area objects
     # (labels 11..20) are the good pool and all reviewed in one QC group.
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
-    _write_qc_one_group(seeded_root.root, list(range(11, 21)))
+    _write_qc_one_group(seeded_root.root, seeded_root.master_df, list(range(11, 21)))
 
     all_unlabeled = _callbacks._recompute(
         seeded_root, filtered, "debris", "all_unlabeled"

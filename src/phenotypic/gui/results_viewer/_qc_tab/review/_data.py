@@ -1,28 +1,21 @@
-"""Pure data layer for the QC Review tab — recompute frame (+ legacy reads).
+"""Pure data layer for the QC Review tab — the in-session recompute frame.
 
-Every function here is side-effect-free (except the disk *reads* of the
-``qc/`` artifact) and Dash-free. The Review callbacks now read the QC
-worklist + members through the catalog-driven DuckDB API (:mod:`._db`);
-this module retains only:
+Side-effect-free (except the disk *read* of ``measurements.parquet``) and
+Dash-free. The QC worklist + members are now read through the
+catalog-driven DuckDB API (:mod:`._db`); this module retains only the
+recompute frame:
 
-* **Recompute frame** — :func:`build_recompute_frame` reads the
-  **post-applied + metadata-joined** ``measurements.parquet`` and
-  anti-joins the curated removal set, producing exactly the frame the CLI
-  feeds :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` minus the user's
+* :func:`build_recompute_frame` reads the **post-applied + metadata-joined**
+  ``measurements.parquet`` and anti-joins the curated removal set, producing
+  exactly the frame the CLI feeds
+  :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` minus the user's
   removals (spec §D.5 / risk refinement #1 — NOT ``master − removed``).
-* **Legacy flat-parquet readers** — :func:`load_qc_summary` /
-  :func:`load_qc_members` / :func:`groupby_cols_for` / :func:`_eq_or_null`
-  are retained ONLY for the Error-analysis tab's verified-good derivation,
-  which is migrated onto :mod:`._db` in a later task; once that lands these
-  are removed.
 """
 
 from __future__ import annotations
 
 import logging
-import math
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import polars as pl
 
@@ -39,99 +32,6 @@ _KEY_IMAGE_FILE: str = "Metadata_ImageFile"
 _KEY_OBJECT_LABEL: str = "Object_Label"
 _KEY_DATASET: str = "Metadata_Dataset"
 _KEY_TIME: str = "Metadata_Time"
-
-#: Fixed lead/tail columns of the legacy ``qc_summary.parquet``. The
-#: ``groupby`` columns sit between the ``class`` lead and the ``metric``
-#: tail, so :func:`groupby_cols_for` recovers them by slicing out these
-#: known names. (Legacy reader scaffolding for the Error tab only.)
-_SUMMARY_LEAD: tuple[str, ...] = ("instance_id", "class")
-_SUMMARY_TAIL: tuple[str, ...] = (
-    "metric",
-    "status",
-    "flag",
-    "n_members",
-    "n_flagged",
-    "rank",
-)
-
-
-# ---------------------------------------------------------------------------
-# Legacy artifact readers (Error-tab verified-good only — removed once it
-# migrates onto the DuckDB catalog)
-# ---------------------------------------------------------------------------
-
-
-def load_qc_summary(output_root: "OutputRoot") -> pl.DataFrame | None:
-    """Read ``<root>/qc/qc_summary.parquet`` or ``None`` when absent.
-
-    Args:
-        output_root: The active results-viewer output root.
-
-    Returns:
-        The summary frame, or ``None`` when the artifact has not been
-        written yet (no QC configured / never recompiled).
-    """
-    return _read_optional_parquet(output_root.layout.qc_summary_parquet)
-
-
-def load_qc_members(output_root: "OutputRoot") -> pl.DataFrame | None:
-    """Read ``<root>/qc/qc_members.parquet`` or ``None`` when absent."""
-    return _read_optional_parquet(output_root.layout.qc_members_parquet)
-
-
-def _read_optional_parquet(path: Path) -> pl.DataFrame | None:
-    """Read a parquet, returning ``None`` (logged) on missing/corrupt file."""
-    if not path.is_file():
-        return None
-    try:
-        return pl.read_parquet(path)
-    except Exception:  # noqa: BLE001 - defensive: a corrupt artifact is non-fatal
-        logger.warning("Failed to read QC artifact %s", path, exc_info=True)
-        return None
-
-
-def groupby_cols_for(
-    summary_df: pl.DataFrame, instance_id: str
-) -> list[str]:
-    """Return the ``groupby`` column names a module's summary rows carry.
-
-    Recovered structurally: any summary column that is neither a fixed
-    lead/tail column nor all-null for this instance's rows is a group key.
-    Columns that belong to *other* modules (all-null here) are excluded so
-    a union-schema summary (multiple checks with different ``groupby``)
-    still yields the right keys per module.
-
-    Args:
-        summary_df: The full summary frame.
-        instance_id: The module whose group keys are wanted.
-
-    Returns:
-        Ordered group-key column names for this module.
-    """
-    fixed = set(_SUMMARY_LEAD) | set(_SUMMARY_TAIL)
-    candidate_cols = [c for c in summary_df.columns if c not in fixed]
-    slice_df = summary_df.filter(pl.col("instance_id") == instance_id)
-    if slice_df.is_empty():
-        return []
-    keep: list[str] = []
-    for col in candidate_cols:
-        # A genuine group key for this module has at least one non-null
-        # value across its rows; a foreign module's key is all-null here.
-        if slice_df.get_column(col).null_count() < slice_df.height:
-            keep.append(col)
-    return keep
-
-
-def _eq_or_null(col: str, value: Any) -> pl.Expr:
-    """Build an equality predicate that also matches a null group key.
-
-    ``groupby(dropna=False)`` can produce a null group key; a plain ``==``
-    never matches null in polars, so route null comparisons through
-    ``is_null`` to keep null-keyed groups selectable.
-    """
-    if value is None or (isinstance(value, float) and math.isnan(value)):
-        return pl.col(col).is_null()
-    return pl.col(col).cast(pl.String) == str(value)
 
 
 # ---------------------------------------------------------------------------
@@ -218,8 +118,5 @@ def _anti_join_removed(
 
 
 __all__ = [
-    "load_qc_summary",
-    "load_qc_members",
-    "groupby_cols_for",
     "build_recompute_frame",
 ]

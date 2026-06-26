@@ -11,10 +11,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import duckdb
 import numpy as np
+import pandas as pd
 import polars as pl
 import pytest
 
+from phenotypic import ImagePipeline
+from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.gui.results_viewer._error_tab._data import (
     build_good_error_frames,
     category_counts,
@@ -26,10 +30,8 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     encode_group_key,
 )
-from phenotypic.sdk_ import (
-    qc_members_parquet_path,
-    qc_summary_parquet_path,
-)
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
 
 KEY_IMAGE_FILE = "Metadata_ImageFile"
 KEY_OBJECT_LABEL = "Object_Label"
@@ -68,51 +70,40 @@ def _master_six() -> pl.DataFrame:
     )
 
 
-def _write_qc_artifacts(
+def _seed_qc_db(
     root: Path,
-    groupby_col: str,
+    frame: pd.DataFrame,
     *,
-    group_a_value: str,
-    group_b_value: str,
-    members: list[tuple[str, str, int]],
-    instance_id: str = "qc-SE-aaaa",
+    groupby: list[str],
+    instance_id: str = "qc-ZMax-aaaa0001",
 ) -> None:
-    """Write tiny qc_summary/qc_members parquets matching the runner schema.
+    """Seed ``<root>/deliverables/qc/qc.duckdb`` via the real ``run_qc`` writer.
+
+    Runs a single :class:`MaxModifiedZScore` (a per-object,
+    curation-supporting check) grouped by ``groupby`` over ``frame`` so the
+    member table's ``(Metadata_ImageFile, Object_Label)`` rows mirror a real
+    QC artifact — exactly what the Error tab's verified-good derivation
+    reads through the DuckDB catalog.
 
     Args:
         root: Output root directory.
-        groupby_col: Name of the single group-key column.
-        group_a_value: Group-A key value.
-        group_b_value: Group-B key value.
-        members: ``(group_value, image_file, label)`` member rows.
+        frame: The measurement frame to analyze (must carry ``Size_Area`` +
+            the ``groupby`` columns + the curation key columns).
+        groupby: The check's group-key columns.
         instance_id: The module instance id.
     """
-    qc_summary_parquet_path(root).parent.mkdir(parents=True, exist_ok=True)
-    summary = pl.DataFrame(
-        {
-            "instance_id": [instance_id, instance_id],
-            "class": ["SE", "SE"],
-            groupby_col: [group_a_value, group_b_value],
-            "metric": [0.9, 0.1],
-            "status": ["fail", "pass"],
-            "flag": [True, False],
-            "n_members": [2, 2],
-            "n_flagged": [2, 0],
-            "rank": [0, 1],
-        }
+    pipe = ImagePipeline()
+    pipe.set_qc(
+        [
+            QcRecipeEntry(
+                cls=MaxModifiedZScore,
+                params={"on": "Size_Area", "groupby": groupby},
+                instance_id=instance_id,
+                enabled=True,
+            )
+        ]
     )
-    summary.write_parquet(qc_summary_parquet_path(root))
-
-    members_df = pl.DataFrame(
-        {
-            "instance_id": [instance_id] * len(members),
-            groupby_col: [m[0] for m in members],
-            KEY_IMAGE_FILE: [m[1] for m in members],
-            KEY_OBJECT_LABEL: [m[2] for m in members],
-            "member_value": [0.0] * len(members),
-        }
-    )
-    members_df.write_parquet(qc_members_parquet_path(root))
+    run_qc(frame, pipe, root)
 
 
 # ---------------------------------------------------------------------------
@@ -152,29 +143,18 @@ def test_verified_good_keys_returns_unlabeled_members_of_reviewed_group(tmp_path
     root = tmp_path / "run"
     master = _master_six()
     out = FakeOutputRoot(root=root, master_df=master)
-    # Group A holds img1's 3 objects; group B holds img2's 3 objects.
-    _write_qc_artifacts(
-        root,
-        "plate",
-        group_a_value="A",
-        group_b_value="B",
-        members=[
-            ("A", "img1", 1),
-            ("A", "img1", 2),
-            ("A", "img1", 3),
-            ("B", "img2", 1),
-            ("B", "img2", 2),
-            ("B", "img2", 3),
-        ],
+    # Group by image: group "img1" holds img1's 3 objects; "img2" holds img2's.
+    _seed_qc_db(
+        root, master.to_pandas(), groupby=[KEY_IMAGE_FILE], instance_id="qc-ZMax-a1"
     )
-    # Mark group A reviewed; (img1, 1) is labeled, so it is excluded.
+    # Mark group img1 reviewed; (img1, 1) is labeled, so it is excluded.
     state = ReviewState.load(out.layout)
-    state.mark_reviewed("qc-SE-aaaa", ("A",))
+    state.mark_reviewed("qc-ZMax-a1", ("img1",))
     labeled = {("img1", 1)}
 
     keys = verified_good_keys(out, labeled)
     # img1/2 and img1/3 are reviewed-and-unlabeled; img1/1 excluded (labeled);
-    # img2/* excluded (group B not reviewed).
+    # img2/* excluded (group img2 not reviewed).
     assert keys == {("img1", 2), ("img1", 3)}
 
 
@@ -182,34 +162,23 @@ def test_verified_good_keys_multicolumn_key_roundtrips(tmp_path: Path):
     root = tmp_path / "run"
     master = _master_six()
     out = FakeOutputRoot(root=root, master_df=master)
-    instance_id = "qc-SE-bbbb"
-    qc_summary_parquet_path(root).parent.mkdir(parents=True, exist_ok=True)
-    summary = pl.DataFrame(
+    instance_id = "qc-ZMax-bbbb"
+    # A 2-column groupby: only img1/2 and img1/3 fall in (plate1, A).
+    frame = pd.DataFrame(
         {
-            "instance_id": [instance_id],
-            "class": ["SE"],
-            "Metadata_Plate": ["plate1"],
-            "Metadata_Group": ["A"],
-            "metric": [0.9],
-            "status": ["fail"],
-            "flag": [True],
-            "n_members": [2],
-            "n_flagged": [2],
-            "rank": [0],
-        }
-    )
-    summary.write_parquet(qc_summary_parquet_path(root))
-    members = pl.DataFrame(
-        {
-            "instance_id": [instance_id, instance_id],
-            "Metadata_Plate": ["plate1", "plate1"],
-            "Metadata_Group": ["A", "A"],
             KEY_IMAGE_FILE: ["img1", "img1"],
             KEY_OBJECT_LABEL: [2, 3],
-            "member_value": [0.0, 0.0],
+            "Metadata_Plate": ["plate1", "plate1"],
+            "Metadata_Group": ["A", "A"],
+            "Size_Area": [11.0, 12.0],
         }
     )
-    members.write_parquet(qc_members_parquet_path(root))
+    _seed_qc_db(
+        root,
+        frame,
+        groupby=["Metadata_Plate", "Metadata_Group"],
+        instance_id=instance_id,
+    )
 
     state = ReviewState.load(out.layout)
     state.mark_reviewed(instance_id, ("plate1", "A"))
@@ -223,6 +192,33 @@ def test_verified_good_keys_multicolumn_key_roundtrips(tmp_path: Path):
 def test_verified_good_keys_empty_when_artifacts_absent(tmp_path: Path):
     root = tmp_path / "run"
     out = FakeOutputRoot(root=root, master_df=_master_six())
+    assert verified_good_keys(out, set()) == set()
+
+
+def test_verified_good_keys_skips_diagnostic_only_modules(tmp_path: Path):
+    """A reviewed group of a diagnostic-only module contributes nothing.
+
+    Seeds a real per-object curation module (its reviewed group DOES
+    contribute), then flips its catalog ``supports_object_curation`` flag to
+    ``False`` (mirroring a GridOccupancy-style diagnostic module) and asserts
+    the same reviewed group now contributes no verified-good members.
+    """
+    root = tmp_path / "run"
+    master = _master_six()
+    out = FakeOutputRoot(root=root, master_df=master)
+    _seed_qc_db(
+        root, master.to_pandas(), groupby=[KEY_IMAGE_FILE], instance_id="qc-ZMax-a1"
+    )
+    state = ReviewState.load(out.layout)
+    state.mark_reviewed("qc-ZMax-a1", ("img1",))
+
+    # As a curation module the reviewed group contributes its members.
+    assert verified_good_keys(out, set()) == {("img1", 1), ("img1", 2), ("img1", 3)}
+
+    # Flip it to diagnostic-only; now it must be skipped entirely.
+    con = duckdb.connect(str(out.layout.qc_duckdb))
+    con.execute("UPDATE qc_modules SET supports_object_curation = false")
+    con.close()
     assert verified_good_keys(out, set()) == set()
 
 
@@ -254,23 +250,13 @@ def test_build_good_error_frames_all_unlabeled(tmp_path: Path):
 
 def test_build_good_error_frames_verified(tmp_path: Path):
     root = tmp_path / "run"
-    out = FakeOutputRoot(root=root, master_df=_master_six())
-    _write_qc_artifacts(
-        root,
-        "plate",
-        group_a_value="A",
-        group_b_value="B",
-        members=[
-            ("A", "img1", 1),
-            ("A", "img1", 2),
-            ("A", "img1", 3),
-            ("B", "img2", 1),
-            ("B", "img2", 2),
-            ("B", "img2", 3),
-        ],
+    master = _master_six()
+    out = FakeOutputRoot(root=root, master_df=master)
+    _seed_qc_db(
+        root, master.to_pandas(), groupby=[KEY_IMAGE_FILE], instance_id="qc-ZMax-a1"
     )
     state = ReviewState.load(out.layout)
-    state.mark_reviewed("qc-SE-aaaa", ("A",))
+    state.mark_reviewed("qc-ZMax-a1", ("img1",))
     labels = {("img1", 1): "debris"}
 
     good_pdf, error_pdf = build_good_error_frames(out, labels, "debris", "verified")
