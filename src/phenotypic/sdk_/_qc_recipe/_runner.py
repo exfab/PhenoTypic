@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -67,6 +68,9 @@ _OBJECT_LABEL: str = str(OBJECT.LABEL)
 
 #: Status severity ranking used to order the worklist worst-first.
 _STATUS_RANK: dict[str, int] = {"pass": 0, "warn": 1, "fail": 2}
+
+#: Matches any run of characters that are illegal in a DuckDB identifier.
+_IDENT_UNSAFE = re.compile(r"[^a-z0-9]+")
 
 #: Column order of ``qc_summary.parquet`` (group key columns are spliced in
 #: between ``class`` and ``metric`` at write time).
@@ -376,6 +380,24 @@ def _rank_worst_first(
 
     ranks = pd.Series(range(len(sorted_index)), index=sorted_index)
     return ranks.reindex(metric.index).astype(int)
+
+
+def _safe_table_name(instance_id: str) -> str:
+    """Return a deterministic, DuckDB-identifier-safe table name.
+
+    Lowercases, replaces any run of non-alphanumerics with ``_``, strips
+    leading/trailing ``_``, and prefixes ``qc_`` so the result always starts
+    with a letter. Instance ids are already unique (``qc-<name>-<8hex>``), so
+    the lowercased, underscore-joined form stays unique.
+
+    Args:
+        instance_id: The recipe entry id.
+
+    Returns:
+        A valid table identifier (e.g. ``qc_se_1a2b3c4d``).
+    """
+    core = _IDENT_UNSAFE.sub("_", instance_id.lower()).strip("_")
+    return core if core.startswith("qc_") else f"qc_{core}"
 
 
 def _concat_or_empty(
