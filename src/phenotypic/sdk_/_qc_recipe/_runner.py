@@ -1,70 +1,65 @@
-"""Compute the compact ``qc/`` artifact from a pipeline's QC config.
+"""Build the ``deliverables/qc/qc.duckdb`` artifact from a pipeline's QC config.
 
 :func:`run_qc` is the single, GUI-free seam that turns a measurement frame
-plus a pipeline's ``qc`` entries into the on-disk ``qc/`` artifact the
-results-viewer Review tab reads. It is called in two places with identical
-semantics:
+plus a pipeline's ``qc`` entries into the on-disk QC analysis database the
+results-viewer Review + Error tabs read. It is called in two places with
+identical semantics:
 
 * the CLI's ``finalize_post_master_outputs`` (once per recompile/remeasure,
   on the post-applied + metadata-joined frame), and
 * the GUI's after-each-group recompute (in-process, on the curated frame).
 
-It is **pure with respect to review progress**: it writes
-``qc_summary.parquet`` / ``qc_members.parquet`` / ``qc_config.json`` and
+It is **pure with respect to review progress**: it writes ``qc.duckdb`` and
 **never** touches ``review_state.json`` (that file is GUI-owned; the CLI
 finalize path resets it separately). It also never writes
-``measurements.parquet`` — only the three ``qc/`` files.
+``measurements.parquet`` — only the QC database.
 
-Artifact schema
+Atomic full rebuild
+-------------------
+``run_qc`` is always an **atomic full rebuild**: it builds a fresh DuckDB
+into ``qc.duckdb.tmp`` and then ``os.replace``-s it over the canonical
+``qc.duckdb`` so a reader never observes a partial database. The replace is
+wrapped in a bounded retry on :class:`PermissionError` for the Windows
+open-handle race. It is a **no-op** when the pipeline has no *enabled* QC
+entries (and when entries exist but none analyze successfully).
+
+Database schema
 ---------------
-``qc_summary.parquet`` — one row per ``(instance_id, groupby key)``:
+``qc_modules`` — the catalog, one row per enabled+built module: the 15
+:class:`~phenotypic.analysis.abc_.QcTableSpec` role fields plus
+``table_name``, ``summary_table``, ``ordinal``, and a JSON ``params``
+snapshot. Any consumer can render a module generically from this row.
 
-    instance_id, class, <groupby cols...>, metric, status, flag,
-    n_members, n_flagged, rank
+``<table_name>`` — the module's self-describing data table
+(``QualityCheck.to_table()``); columns vary per check.
 
-``rank`` is worst-first *within each instance* (0 = worst): rows are ordered
-by status severity (fail > warn > pass) then by the bad-direction extremity
-of ``metric``; ``NaN`` metrics sort last.
-
-``qc_members.parquet`` — one row per ``(instance_id, group member)``:
-
-    instance_id, <groupby cols...>, Metadata_ImageFile, Object_Label,
-    member_value
-
-``qc_config.json`` — a snapshot of the enabled ``qc`` entries that produced
-this artifact (``{instance_id, class, enabled, params}`` each).
+``<table_name>__summary`` — the per-module worklist (one row per group):
+``[*groupby, n_members, n_flagged, metric, status, flag, rank]`` where
+``rank`` is worst-first within the module (0 = worst).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import duckdb
 import pandas as pd
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
-    from phenotypic.analysis.abc_ import QualityCheck
+    from phenotypic.analysis.abc_ import QcTableSpec, QualityCheck
 
-from phenotypic.schema import OBJECT
-from phenotypic.sdk_ import (
-    QC_CONFIG_JSON,
-    QC_MEMBERS_PARQUET,
-    QC_SUMMARY_PARQUET,
-    qc_config_json_path,
-    qc_members_parquet_path,
-    qc_summary_parquet_path,
-)
+from phenotypic.sdk_ import QC_DUCKDB, qc_duckdb_path
 
 from ._recipe import QcRecipeEntry
 
 logger = logging.getLogger(__name__)
-
-#: Per-object primary-key column shared by every measurement table.
-_OBJECT_LABEL: str = str(OBJECT.LABEL)
 
 #: Status severity ranking used to order the worklist worst-first.
 _STATUS_RANK: dict[str, int] = {"pass": 0, "warn": 1, "fail": 2}
@@ -72,47 +67,43 @@ _STATUS_RANK: dict[str, int] = {"pass": 0, "warn": 1, "fail": 2}
 #: Matches any run of characters that are illegal in a DuckDB identifier.
 _IDENT_UNSAFE = re.compile(r"[^a-z0-9]+")
 
-#: Column order of ``qc_summary.parquet`` (group key columns are spliced in
-#: between ``class`` and ``metric`` at write time).
-_SUMMARY_LEAD_COLS: tuple[str, ...] = ("instance_id", "class")
-_SUMMARY_TAIL_COLS: tuple[str, ...] = (
-    "metric",
-    "status",
-    "flag",
-    "n_members",
-    "n_flagged",
-    "rank",
+#: ``qc_modules`` catalog DDL. Exactly 19 columns; the positional INSERT in
+#: :func:`_insert_catalog_row` supplies 19 values in this same order
+#: (the 15 :class:`QcTableSpec` fields + ``table_name``/``summary_table``/
+#: ``ordinal``/``params``).
+_CATALOG_DDL = """
+CREATE TABLE qc_modules (
+    instance_id TEXT, class TEXT, name TEXT,
+    table_name TEXT, summary_table TEXT, ordinal INTEGER,
+    groupby_cols TEXT, metric_col TEXT, status_col TEXT, flag_col TEXT,
+    on_col TEXT, member_key_cols TEXT, supports_object_curation BOOLEAN,
+    time_col TEXT, higher_is_bad BOOLEAN, extra_cols TEXT, params TEXT,
+    warn_threshold DOUBLE, fail_threshold DOUBLE
 )
+"""
 
-#: Column order of ``qc_members.parquet`` (group key columns spliced after
-#: ``instance_id``).
-_MEMBERS_LEAD_COLS: tuple[str, ...] = ("instance_id",)
-_MEMBERS_TAIL_COLS: tuple[str, ...] = (
-    "Metadata_ImageFile",
-    _OBJECT_LABEL,
-    "member_value",
-)
+#: Number of columns in :data:`_CATALOG_DDL` (kept in lock-step with the
+#: positional INSERT placeholder count).
+_CATALOG_NCOLS: int = 19
 
 
 def run_qc(
     measurements_df: pd.DataFrame,
     pipeline: "ImagePipeline",
     output_dir: Path,
+    *,
     qc_output_dir: Path | None = None,
 ) -> None:
-    """Run the pipeline's enabled QC checks and write the ``qc/`` artifact.
+    """Run enabled QC checks and atomically (re)build ``qc.duckdb``.
 
-    Instantiates each enabled :class:`~phenotypic.analysis.abc_.QualityCheck`
-    from ``pipeline.get_qc()`` (tolerantly — a check that fails to build or
-    fails to analyze is skipped with a warning, never aborting the run),
-    analyzes ``measurements_df``, and assembles + atomically writes
-    ``qc_summary.parquet``, ``qc_members.parquet``, and ``qc_config.json``
-    under ``<output_dir>/qc/``.
+    Always a FULL rebuild: a temp DB is built then ``os.replace``-d over the
+    canonical path so readers never see a partial DB. No-op when the pipeline
+    has no enabled QC entries (or when entries exist but none analyze). Each
+    enabled+built check becomes one ``qc_modules`` catalog row plus a
+    ``<table_name>`` data table and a ``<table_name>__summary`` worklist.
 
-    No-op (writes nothing) when the pipeline has no QC entries. When entries
-    exist but *none* analyze successfully, empty-but-schema-correct summary /
-    members parquets are still written alongside the config snapshot, so a
-    stale prior artifact never lingers.
+    Tolerant: a check that fails to instantiate or analyze is skipped with a
+    WARNING, never aborting the rest of the rebuild.
 
     Args:
         measurements_df: The frame to evaluate. The CLI passes the
@@ -121,86 +112,95 @@ def run_qc(
             from joined metadata. A pandas DataFrame — not polars.
         pipeline: The pipeline whose ``qc`` entries (via
             :meth:`ImagePipeline.get_qc`) define the checks to run.
-        output_dir: Run output root; the canonical ``qc/`` subdirectory is
-            resolved under it via ``qc_*_parquet_path`` when ``qc_output_dir``
-            is not supplied (the CLI path).
+        output_dir: Run output root; ``qc.duckdb`` is resolved under it via
+            :func:`~phenotypic.sdk_.qc_duckdb_path` when ``qc_output_dir`` is
+            not supplied (the CLI path).
         qc_output_dir: Explicit, already-resolved QC directory to write into
             (e.g. ``output_root.layout.qc_dir`` from the GUI). When provided,
-            the summary/members/config are written directly under it instead
-            of via ``qc_*_parquet_path(output_dir)`` — this is what keeps a
-            standalone deliverables bundle (where ``output_dir`` is the
-            deliverables folder) from double-joining ``deliverables/``.
+            ``qc.duckdb`` is written directly under it instead of via
+            ``qc_duckdb_path(output_dir)`` — this is what keeps a standalone
+            deliverables bundle (where ``output_dir`` is the deliverables
+            folder) from double-joining ``deliverables/``.
 
     Side effects:
-        Writes ``qc/qc_summary.parquet``, ``qc/qc_members.parquet``, and
-        ``qc/qc_config.json``. Never touches ``review_state.json`` or
+        Writes ``deliverables/qc/qc.duckdb`` (via a ``.tmp`` + atomic
+        replace). Never touches ``review_state.json`` or
         ``measurements.parquet``.
     """
-    entries = list(pipeline.get_qc())
+    entries = [e for e in pipeline.get_qc() if e.enabled]
     if not entries:
-        logger.debug("Pipeline has no QC entries; skipping run_qc")
+        logger.debug("No enabled QC entries; skipping run_qc")
         return
 
     output_dir = Path(output_dir)
-
-    summary_frames: list[pd.DataFrame] = []
-    member_frames: list[pd.DataFrame] = []
-    used_entries: list[QcRecipeEntry] = []
-
-    for entry in entries:
-        if not entry.enabled:
-            continue
-        result = _run_one_check(entry, measurements_df)
-        if result is None:
-            continue
-        summary_df, members_df = result
-        summary_frames.append(summary_df)
-        member_frames.append(members_df)
-        used_entries.append(entry)
-
-    summary = _concat_or_empty(summary_frames, _summary_empty())
-    members = _concat_or_empty(member_frames, _members_empty())
-
     if qc_output_dir is not None:
-        qc_out = Path(qc_output_dir)
-        summary_path = qc_out / QC_SUMMARY_PARQUET
-        members_path = qc_out / QC_MEMBERS_PARQUET
-        config_path = qc_out / QC_CONFIG_JSON
+        target = Path(qc_output_dir) / QC_DUCKDB
     else:
-        summary_path = qc_summary_parquet_path(output_dir)
-        members_path = qc_members_parquet_path(output_dir)
-        config_path = qc_config_json_path(output_dir)
+        target = qc_duckdb_path(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
 
-    _write_parquet(summary_path, summary)
-    _write_parquet(members_path, members)
-    _write_config(config_path, used_entries)
+    # Thread `entry` alongside the built frames so the catalog row carries the
+    # real params snapshot (QcTableSpec does not hold params).
+    built: list[tuple[QcRecipeEntry, "QcTableSpec", pd.DataFrame, pd.DataFrame]] = []
+    for entry in entries:
+        result = _run_one_check(entry, measurements_df)
+        if result is not None:
+            spec, table_df, summary_df = result
+            built.append((entry, spec, table_df, summary_df))
 
-    logger.info(
-        "Wrote QC artifact for %d check(s): %d summary rows, %d member rows -> %s",
-        len(used_entries),
-        len(summary),
-        len(members),
-        summary_path.parent,
-    )
+    if not built:
+        logger.info("No QC check produced a table; not writing qc.duckdb")
+        return
+
+    con = duckdb.connect(str(tmp))
+    try:
+        _create_catalog(con)
+        for ordinal, (entry, spec, table_df, summary_df) in enumerate(built):
+            tname = _safe_table_name(spec.instance_id)
+            stname = f"{tname}__summary"
+            con.register("_qc_data", table_df)
+            con.execute(f'CREATE TABLE "{tname}" AS SELECT * FROM _qc_data')
+            con.unregister("_qc_data")
+            con.register("_qc_summary", summary_df)
+            con.execute(f'CREATE TABLE "{stname}" AS SELECT * FROM _qc_summary')
+            con.unregister("_qc_summary")
+            _insert_catalog_row(
+                con,
+                spec,
+                tname,
+                stname,
+                ordinal,
+                params=entry.to_dict()["params"],
+            )
+    finally:
+        con.close()
+
+    _atomic_replace_with_retry(tmp, target)
+    logger.info("Wrote QC DuckDB for %d module(s) -> %s", len(built), target)
 
 
 def _run_one_check(
     entry: QcRecipeEntry,
     measurements_df: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    """Instantiate + analyze one entry, returning its summary/member frames.
+) -> tuple["QcTableSpec", pd.DataFrame, pd.DataFrame] | None:
+    """Instantiate + analyze one entry, returning its catalog spec + frames.
 
-    Tolerant: any construction or analysis failure is logged at WARNING and
-    yields ``None`` so the offending check is skipped without aborting the
-    whole ``qc/`` write.
+    Tolerant: any construction or analysis/build failure is logged at
+    WARNING and yields ``None`` so the offending check is skipped without
+    aborting the whole rebuild.
 
     Args:
         entry: The QC config entry to run.
         measurements_df: The frame to analyze.
 
     Returns:
-        ``(summary_df, members_df)`` for this instance, or ``None`` when the
-        check could not be built or analyzed.
+        ``(spec, table_df, summary_df)`` for this instance — the
+        :class:`QcTableSpec` catalog descriptor, the self-describing data
+        table (:meth:`QualityCheck.to_table`), and the per-module summary
+        worklist — or ``None`` when the check could not be built or analyzed.
     """
     try:
         check = entry.instantiate()
@@ -215,44 +215,40 @@ def _run_one_check(
 
     try:
         check.analyze(measurements_df)
-        summary_df = _build_summary_rows(entry, check)
-        members_df = _build_member_rows(entry, check)
+        table_df = check.to_table()
+        spec = check.table_spec(entry.instance_id)
+        summary_df = _build_summary_frame(check)
     except Exception as exc:  # noqa: BLE001 - tolerant; surfaced as warning
         logger.warning(
-            "Skipping QC check %s (%s): analyze failed: %s",
+            "Skipping QC check %s (%s): analyze/build failed: %s",
             entry.instance_id,
             entry.cls.__name__,
             exc,
         )
         return None
 
-    return summary_df, members_df
+    return spec, table_df, summary_df
 
 
-def _build_summary_rows(
-    entry: QcRecipeEntry,
-    check: "QualityCheck",
-) -> pd.DataFrame:
-    """Map ``check.summary()`` into the ``qc_summary.parquet`` row schema.
+def _build_summary_frame(check: "QualityCheck") -> pd.DataFrame:
+    """Map ``check.summary()`` into the per-module worklist frame.
 
     ``QualityCheck.summary()`` returns ``[*groupby, qc_n_members,
     qc_n_flagged, qc_worst_metric, qc_status]``. This renames those into the
-    artifact's ``metric``/``status``/``n_members``/``n_flagged`` columns,
-    derives a group-level ``flag`` (any member flagged), tags every row with
-    ``instance_id`` + ``class``, and assigns a worst-first ``rank`` within
-    the instance.
+    catalog-agnostic ``metric``/``status``/``n_members``/``n_flagged``
+    columns (the instance/class columns now live in ``qc_modules``, not in
+    every summary row), derives a group-level ``flag`` (any member flagged),
+    and assigns a worst-first ``rank`` within the module via
+    :func:`_rank_worst_first`.
 
     Args:
-        entry: The originating config entry (for ``instance_id``/``class``).
         check: The analyzed check instance.
 
     Returns:
-        A summary frame with columns ``instance_id, class, <groupby...>,
-        metric, status, flag, n_members, n_flagged, rank``.
+        A frame with columns ``[*groupby, n_members, n_flagged, metric,
+        status, flag, rank]``.
     """
     raw = check.summary()
-    groupby_cols = list(check.groupby)
-
     out = raw.rename(
         columns={
             "qc_worst_metric": "metric",
@@ -261,76 +257,11 @@ def _build_summary_rows(
             "qc_n_flagged": "n_flagged",
         }
     )
-    out["instance_id"] = entry.instance_id
-    out["class"] = entry.cls.__name__
     out["flag"] = out["n_flagged"].astype(int) > 0
     out["rank"] = _rank_worst_first(
         out["metric"], out["status"], higher_is_bad=check._HIGHER_IS_BAD
     )
-
-    ordered = [
-        *_SUMMARY_LEAD_COLS,
-        *groupby_cols,
-        *_SUMMARY_TAIL_COLS,
-    ]
-    return out[ordered]
-
-
-def _build_member_rows(
-    entry: QcRecipeEntry,
-    check: "QualityCheck",
-) -> pd.DataFrame:
-    """Map ``check.group_members()`` into the ``qc_members.parquet`` schema.
-
-    ``QualityCheck.group_members()`` returns ``{group_key_tuple:
-    [(image_file, object_label, member_value), ...]}``. This flattens it to
-    one row per member, splicing the group-key tuple back into its
-    ``groupby`` columns and tagging each row with ``instance_id``.
-
-    Args:
-        entry: The originating config entry (for ``instance_id``).
-        check: The analyzed check instance.
-
-    Returns:
-        A member frame with columns ``instance_id, <groupby...>,
-        Metadata_ImageFile, Object_Label, member_value``. Empty (schema
-        only) when the analyzed frame lacked the curation-key columns.
-        ``Metadata_ImageFile`` / ``Object_Label`` are emitted once even when
-        they also appear in ``groupby`` — the per-member curation key is
-        authoritative and is never duplicated as a group-key column.
-    """
-    # Curation-key columns are emitted explicitly from the member tuple, so
-    # drop them from the group-key splice to avoid duplicate columns when
-    # ``groupby`` already contains e.g. ``Metadata_ImageFile``.
-    splice_cols = [
-        col
-        for col in check.groupby
-        if col not in ("Metadata_ImageFile", _OBJECT_LABEL)
-    ]
-    groupby_cols = list(check.groupby)
-    members = check.group_members()
-
-    rows: list[dict[str, Any]] = []
-    for key_tuple, member_list in members.items():
-        key_map = {
-            col: val
-            for col, val in zip(groupby_cols, key_tuple)
-            if col in splice_cols
-        }
-        for image_file, object_label, member_value in member_list:
-            rows.append({
-                "instance_id": entry.instance_id,
-                **key_map,
-                "Metadata_ImageFile": image_file,
-                _OBJECT_LABEL: object_label,
-                "member_value": member_value,
-            })
-
-    ordered = [*_MEMBERS_LEAD_COLS, *splice_cols, *_MEMBERS_TAIL_COLS]
-    if not rows:
-        return pd.DataFrame(columns=ordered)
-
-    return pd.DataFrame(rows)[ordered]
+    return out
 
 
 def _rank_worst_first(
@@ -400,82 +331,86 @@ def _safe_table_name(instance_id: str) -> str:
     return core if core.startswith("qc_") else f"qc_{core}"
 
 
-def _concat_or_empty(
-    frames: list[pd.DataFrame], empty: pd.DataFrame
-) -> pd.DataFrame:
-    """Concatenate per-check frames, or return a schema-only empty frame.
-
-    Per-check frames have heterogeneous ``groupby`` columns; an outer concat
-    aligns them (missing keys become ``NaN`` for checks that don't use that
-    column), which is the desired union schema for the artifact.
+def _create_catalog(con: duckdb.DuckDBPyConnection) -> None:
+    """Create the empty ``qc_modules`` catalog table.
 
     Args:
-        frames: Per-check summary/member frames (may be empty).
-        empty: The minimal schema-only frame to return when ``frames`` is
-            empty.
-
-    Returns:
-        The concatenated frame, or ``empty``.
+        con: An open DuckDB connection to the temp database.
     """
-    if not frames:
-        return empty
-    return pd.concat(frames, axis=0, ignore_index=True)
+    con.execute(_CATALOG_DDL)
 
 
-def _summary_empty() -> pd.DataFrame:
-    """Return a schema-only empty ``qc_summary`` frame (no groupby cols)."""
-    return pd.DataFrame(
-        columns=[*_SUMMARY_LEAD_COLS, *_SUMMARY_TAIL_COLS]
+def _insert_catalog_row(
+    con: duckdb.DuckDBPyConnection,
+    spec: "QcTableSpec",
+    tname: str,
+    stname: str,
+    ordinal: int,
+    params: dict[str, Any],
+) -> None:
+    """Insert one module's catalog row into ``qc_modules``.
+
+    The positional value list MUST match :data:`_CATALOG_DDL`'s column order
+    exactly (the 15 :class:`QcTableSpec` fields then ``table_name``,
+    ``summary_table``, ``ordinal``, ``params`` interleaved per the DDL).
+    List-valued spec fields and the params dict are JSON-encoded into their
+    ``TEXT`` columns.
+
+    Args:
+        con: An open DuckDB connection to the temp database.
+        spec: The module's catalog descriptor.
+        tname: The module's data table name.
+        stname: The module's summary table name.
+        ordinal: Zero-based display/run order.
+        params: The entry's JSON-native params snapshot.
+    """
+    placeholders = ",".join(["?"] * _CATALOG_NCOLS)
+    con.execute(
+        f"INSERT INTO qc_modules VALUES ({placeholders})",
+        [
+            spec.instance_id,
+            spec.cls_name,
+            spec.name,
+            tname,
+            stname,
+            ordinal,
+            json.dumps(spec.groupby_cols),
+            spec.metric_col,
+            spec.status_col,
+            spec.flag_col,
+            spec.on_col,
+            json.dumps(spec.member_key_cols),
+            spec.supports_object_curation,
+            spec.time_col,
+            spec.higher_is_bad,
+            json.dumps(spec.extra_cols),
+            json.dumps(params),
+            spec.warn_threshold,
+            spec.fail_threshold,
+        ],
     )
 
 
-def _members_empty() -> pd.DataFrame:
-    """Return a schema-only empty ``qc_members`` frame (no groupby cols)."""
-    return pd.DataFrame(
-        columns=[*_MEMBERS_LEAD_COLS, *_MEMBERS_TAIL_COLS]
-    )
+def _atomic_replace_with_retry(
+    tmp: Path, target: Path, attempts: int = 5
+) -> None:
+    """``os.replace`` *tmp* onto *target* with a bounded Windows retry.
 
-
-def _write_parquet(target: Path, df: pd.DataFrame) -> None:
-    """Atomically write *df* to *target* as zstd Parquet.
-
-    Reuses the CLI's :func:`_atomic_write` (lazy-imported to keep
-    ``phenotypic.sdk_._qc_recipe`` free of an eager ``_cli`` import). Failure is logged at
-    WARNING and swallowed so one bad write never aborts the others — the
-    caller (CLI finalize) already runs ``run_qc`` under its own try/except.
+    ``os.replace`` is atomic on POSIX. On Windows it can raise
+    :class:`PermissionError` when a reader's handle transiently overlaps the
+    swap; this retries with a brief linear backoff before re-raising.
 
     Args:
-        target: Destination parquet path.
-        df: Frame to write.
+        tmp: The freshly-built temp database path.
+        target: The canonical ``qc.duckdb`` path to swap into place.
+        attempts: Maximum number of replace attempts.
     """
-    from phenotypic._cli._cli_output_manager import _atomic_write
-
-    try:
-        _atomic_write(
-            target,
-            lambda p: df.to_parquet(p, compression="zstd", index=False),
-        )
-    except Exception:
-        logger.warning("Failed to write QC parquet %s", target, exc_info=True)
-
-
-def _write_config(target: Path, entries: list[QcRecipeEntry]) -> None:
-    """Atomically write the ``qc_config.json`` snapshot.
-
-    Args:
-        target: Destination ``qc_config.json`` path.
-        entries: The entries that produced this artifact.
-    """
-    from phenotypic._cli._cli_output_manager import _atomic_write
-
-    payload = json.dumps(
-        {"qc": [entry.to_dict() for entry in entries]}, indent=2
-    )
-
-    def _write(p: str) -> None:
-        Path(p).write_text(payload, encoding="utf-8")
-
-    try:
-        _atomic_write(target, _write)
-    except Exception:
-        logger.warning("Failed to write QC config %s", target, exc_info=True)
+    for i in range(attempts):
+        try:
+            os.replace(tmp, target)
+            return
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            # A reader handle overlaps the swap (Windows). Brief backoff.
+            time.sleep(0.1 * (i + 1))
