@@ -102,8 +102,13 @@ def run_qc(
     enabled+built check becomes one ``qc_modules`` catalog row plus a
     ``<table_name>`` data table and a ``<table_name>__summary`` worklist.
 
-    Tolerant: a check that fails to instantiate or analyze is skipped with a
-    WARNING, never aborting the rest of the rebuild.
+    Tolerant: a check that fails to instantiate, analyze, *or* ingest into
+    DuckDB (its ``CREATE``/``INSERT``) is skipped with a WARNING, never
+    aborting the rest of the rebuild — the resulting DB carries the good
+    modules. When *no* module ingests cleanly the build is a no-op (the
+    staging ``.tmp`` is removed and the canonical DB is left untouched);
+    any failure before the atomic swap also removes the ``.tmp`` so a
+    failed rebuild never leaves a stale staging file behind.
 
     Args:
         measurements_df: The frame to evaluate. The CLI passes the
@@ -155,31 +160,93 @@ def run_qc(
         logger.info("No QC check produced a table; not writing qc.duckdb")
         return
 
-    con = duckdb.connect(str(tmp))
+    # Build the temp DB; on *any* failure (catalog DDL, the per-module
+    # ingest, or the atomic swap) never leave a stale ``.tmp`` behind.
     try:
-        _create_catalog(con)
-        for ordinal, (entry, spec, table_df, summary_df) in enumerate(built):
-            tname = _safe_table_name(spec.instance_id)
-            stname = f"{tname}__summary"
-            con.register("_qc_data", table_df)
-            con.execute(f'CREATE TABLE "{tname}" AS SELECT * FROM _qc_data')
-            con.unregister("_qc_data")
-            con.register("_qc_summary", summary_df)
-            con.execute(f'CREATE TABLE "{stname}" AS SELECT * FROM _qc_summary')
-            con.unregister("_qc_summary")
-            _insert_catalog_row(
-                con,
-                spec,
-                tname,
-                stname,
-                ordinal,
-                params=entry.to_dict()["params"],
-            )
-    finally:
-        con.close()
+        written = 0
+        con = duckdb.connect(str(tmp))
+        try:
+            _create_catalog(con)
+            for ordinal, (entry, spec, table_df, summary_df) in enumerate(built):
+                if _create_module_tables(
+                    con, entry, spec, table_df, summary_df, ordinal
+                ):
+                    written += 1
+        finally:
+            con.close()
 
-    _atomic_replace_with_retry(tmp, target)
-    logger.info("Wrote QC DuckDB for %d module(s) -> %s", len(built), target)
+        if written == 0:
+            logger.info("No QC module ingested cleanly; not writing qc.duckdb")
+            if tmp.exists():
+                tmp.unlink()
+            return
+
+        _atomic_replace_with_retry(tmp, target)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
+
+    logger.info("Wrote QC DuckDB for %d module(s) -> %s", written, target)
+
+
+def _create_module_tables(
+    con: duckdb.DuckDBPyConnection,
+    entry: QcRecipeEntry,
+    spec: "QcTableSpec",
+    table_df: pd.DataFrame,
+    summary_df: pd.DataFrame,
+    ordinal: int,
+) -> bool:
+    """Create one module's data + summary tables and catalog row.
+
+    Tolerant: any failure to ingest this module's frames (a ``CREATE``/
+    ``INSERT`` DuckDB rejects) is logged at WARNING and yields ``False`` so
+    the offending module is skipped without aborting the rest of the
+    rebuild — mirroring the tolerant-skip contract of
+    :func:`_run_one_check`. A partial-but-valid DB carrying only the good
+    modules is the accepted outcome (any orphaned data table left by a
+    half-built module is unreferenced by ``qc_modules`` and invisible to
+    the catalog-driven readers).
+
+    Args:
+        con: An open DuckDB connection to the temp database.
+        entry: The recipe entry (its params snapshot lands in the catalog).
+        spec: The module's catalog descriptor.
+        table_df: The self-describing data table frame.
+        summary_df: The per-module summary worklist frame.
+        ordinal: Zero-based display/run order.
+
+    Returns:
+        ``True`` when the module's tables + catalog row were written;
+        ``False`` when the module was skipped.
+    """
+    tname = _safe_table_name(spec.instance_id)
+    stname = f"{tname}__summary"
+    try:
+        con.register("_qc_data", table_df)
+        con.execute(f'CREATE TABLE "{tname}" AS SELECT * FROM _qc_data')
+        con.unregister("_qc_data")
+        con.register("_qc_summary", summary_df)
+        con.execute(f'CREATE TABLE "{stname}" AS SELECT * FROM _qc_summary')
+        con.unregister("_qc_summary")
+        _insert_catalog_row(
+            con,
+            spec,
+            tname,
+            stname,
+            ordinal,
+            params=entry.to_dict()["params"],
+        )
+    except Exception as exc:  # noqa: BLE001 - tolerant; surfaced as warning
+        logger.warning(
+            "Skipping QC module %s (%s): table build failed: %s",
+            spec.instance_id,
+            spec.cls_name,
+            exc,
+        )
+        return False
+    return True
 
 
 def _run_one_check(
