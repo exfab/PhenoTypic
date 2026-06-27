@@ -61,7 +61,7 @@ class ObjectDetector(ImageOperation, ABC):
       validation (``@validate_operation_integrity`` decorator).
 
     Any attempt to modify protected image components raises ``OperationIntegrityError`` when
-    ``VALIDATE_OPS=True`` in the environment (enabled during development/testing).
+    ``phenotypic.settings.VALIDATE_OPS`` is true (enabled during development/testing).
 
     **Why is detection central to the pipeline?**
 

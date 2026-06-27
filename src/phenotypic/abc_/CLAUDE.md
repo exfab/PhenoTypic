@@ -104,7 +104,7 @@ See [tools_/CLAUDE.md](../tools_/CLAUDE.md) for the full mixin reference.
 ## Integrity Validation
 
 `@validate_operation_integrity` protects components (only when
-`settings.VALIDATE_OPS = True`):
+`phenotypic.settings.VALIDATE_OPS = True`):
 
 | ABC               | Protected                                  |
 |-------------------|--------------------------------------------|
