@@ -12,6 +12,7 @@ Covers each branch of :class:`Capabilities`:
 Also verifies the LRU cache invalidates on mtime change (the cache key is
 ``(path, mtime_ns)``).
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,9 @@ from phenotypic.gui.shell._classifier import (
 )
 
 
-def _seed_deliverables_cli_output(root: Path, *, dashboard: bool = False) -> None:
+def _seed_deliverables_cli_output(
+    root: Path, *, dashboard: bool = False
+) -> None:
     """Write the NESTED CLI-output layout under ``root``.
 
     ``master_measurements.parquet`` (and optionally ``dashboard.html``) go
@@ -53,6 +56,7 @@ def _flush_classifier_cache() -> None:
 # ---------------------------------------------------------------------------
 # Directory classification
 # ---------------------------------------------------------------------------
+
 
 def test_empty_directory(tmp_path: Path) -> None:
     caps = classify(tmp_path)
@@ -127,6 +131,32 @@ def test_deliverables_bundle_without_results(tmp_path: Path) -> None:
     assert caps.is_cli_output is False
 
 
+def test_direct_deliverables_bundle_directory(tmp_path: Path) -> None:
+    """A selected bundle folder can carry master_measurements.parquet directly."""
+    (tmp_path / "master_measurements.parquet").write_bytes(b"")
+    (tmp_path / "dashboard.html").write_text("<html/>")
+
+    caps = classify(tmp_path)
+
+    assert caps.is_deliverables_bundle is True
+    assert caps.is_cli_output is False
+    assert caps.has_dashboard is True
+
+
+def test_direct_full_run_deliverables_subdir_is_openable(
+    tmp_path: Path,
+) -> None:
+    """Selecting ``run/deliverables`` promotes to the full run's output root."""
+    _seed_deliverables_cli_output(tmp_path, dashboard=True)
+    deliverables = tmp_path / DELIVERABLES_DIRNAME
+
+    caps = classify(deliverables)
+
+    assert caps.is_cli_output is True
+    assert caps.is_deliverables_bundle is False
+    assert caps.has_dashboard is True
+
+
 def test_full_run_is_not_a_bundle(tmp_path: Path) -> None:
     """A full run (deliverables/master + results/) is a CLI output, never a bundle."""
     _seed_deliverables_cli_output(tmp_path)
@@ -180,11 +210,14 @@ def test_mixed_images_and_dashboard(tmp_path: Path) -> None:
 # File classification
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_json_detected(tmp_path: Path) -> None:
     p = tmp_path / "my_pipeline.json"
-    p.write_text(json.dumps(
-        {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
-    ))
+    p.write_text(
+        json.dumps(
+            {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
+        )
+    )
     caps = classify(p)
     assert caps.has_pipeline_json is True
     assert caps.is_image_dir is False
@@ -192,9 +225,11 @@ def test_pipeline_json_detected(tmp_path: Path) -> None:
 
 def test_typed_pipeline_config_detected(tmp_path: Path) -> None:
     p = tmp_path / "my_pipeline.json.pht-pipe"
-    p.write_text(json.dumps(
-        {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
-    ))
+    p.write_text(
+        json.dumps(
+            {"name": "demo", "operations": [{"type": "GrayscaleEnhancer"}]}
+        )
+    )
     caps = classify(p)
     assert caps.has_pipeline_json is True
     assert caps.is_image_dir is False
@@ -222,6 +257,7 @@ def test_image_file_alone(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Failure modes
 # ---------------------------------------------------------------------------
+
 
 def test_missing_path_returns_empty_no_raise(tmp_path: Path) -> None:
     caps = classify(tmp_path / "does_not_exist")
@@ -260,6 +296,7 @@ def test_permission_denied_directory(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Cache behaviour
 # ---------------------------------------------------------------------------
+
 
 def test_cache_invalidates_on_mtime_change(tmp_path: Path) -> None:
     """Adding a new image bumps the directory's mtime → cache miss."""

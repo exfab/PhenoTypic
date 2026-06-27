@@ -28,10 +28,8 @@ The review loop:
 ## Prerequisites
 
 - A finished CLI run whose `deliverables/pipeline.json` carries at least
-  one QC check, so the CLI wrote the `qc/` artifact
-  (`qc/qc_summary.parquet`, `qc/qc_members.parquet`,
-  `qc/qc_config.json` — these stay at the output-dir root). Configure a
-  check in the **Configure** sub-view, then re-run
+  one QC check, so the CLI wrote `deliverables/qc/qc.duckdb`.
+  Configure a check in the **Configure** sub-view, then re-run
   `python -m phenotypic --mode recompile --output <output>` (or `--mode measure --pipeline <pipeline.json> --output <output>`) to compute
   it. See [Run Locally](04_run_local.md).
 - The post-applied `deliverables/measurements.parquet` mirror under
@@ -86,10 +84,15 @@ gains a `⤳` "moved/changed" hint. The queue only reorders when you click
   `insufficient` and they sort to the bottom of the worklist — they are
   "no signal", not "good".
 - **Review progress is per-module and resets on re-run.** Marked-reviewed
-  groups live in GUI-owned `qc/review_state.json`, keyed by check
+  groups live in GUI-owned `deliverables/qc/review_state.json`, keyed by check
   `instance_id`. An in-session recompute preserves it; the next CLI
   recompile or measure-mode run clears it so a fresh run starts the queue
   over.
+- **Legacy flat QC parquets are not read.** Outputs that only contain
+  `qc_summary.parquet`, `qc_members.parquet`, or `qc_config.json` need a
+  recompile to create `deliverables/qc/qc.duckdb`. The old SDK constants and
+  path helpers for those parquet artifacts were removed; use `QC_DUCKDB`,
+  `qc_duckdb_path(output_dir)`, or `BundleLayout.qc_duckdb`.
 - **Curation is shared.** Removing a colony in Review removes it
   everywhere (the Plate / Colony tabs and the heatmap) — it writes the
   same `deliverables/measurements.parquet` removal set.

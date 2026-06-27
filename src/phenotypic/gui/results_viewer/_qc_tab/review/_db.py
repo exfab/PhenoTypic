@@ -11,8 +11,10 @@ self-describing ``<table_name>`` data table and a ``<table_name>__summary``
 worklist. Every read here is catalog-driven: :func:`list_modules` reads the
 catalog, then :func:`module_summary` / :func:`module_members` resolve a
 module's tables from its :class:`QcModule` descriptor. A missing/corrupt DB
-degrades to an empty module list (and empty frames), so the Review + Error
-tabs render an empty worklist rather than raising.
+degrades to an empty module list (and empty frames), while legacy
+``qc_summary.parquet`` / ``qc_members.parquet`` artifacts are detected so the
+UI can show the hard-cutover recompile message instead of silently looking
+empty.
 """
 
 from __future__ import annotations
@@ -30,6 +32,13 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 logger = logging.getLogger(__name__)
+
+_LEGACY_QC_PARQUETS = ("qc_summary.parquet", "qc_members.parquet")
+
+_LEGACY_QC_CUTOVER_MESSAGE = (
+    "Legacy QC parquet artifacts were found, but this version reads QC review "
+    "data only from qc.duckdb. Recompile the output to rebuild the QC database."
+)
 
 
 @dataclass(frozen=True)
@@ -94,6 +103,22 @@ def open_qc_db(output_root: "OutputRoot") -> duckdb.DuckDBPyConnection | None:
     except Exception:  # noqa: BLE001 - a corrupt/locked DB is non-fatal
         logger.warning("Failed to open QC DuckDB %s", path, exc_info=True)
         return None
+
+
+def legacy_qc_parquets_present(output_root: "OutputRoot") -> bool:
+    """Return ``True`` when legacy flat QC parquets exist without ``qc.duckdb``."""
+    path = output_root.layout.qc_duckdb
+    if path.is_file():
+        return False
+    qc_dir = output_root.layout.qc_dir
+    return any((qc_dir / name).is_file() for name in _LEGACY_QC_PARQUETS)
+
+
+def legacy_qc_cutover_message(output_root: "OutputRoot") -> str | None:
+    """Return the hard-cutover message for legacy parquet-only QC outputs."""
+    if not legacy_qc_parquets_present(output_root):
+        return None
+    return _LEGACY_QC_CUTOVER_MESSAGE
 
 
 def _modules_from_con(con: duckdb.DuckDBPyConnection) -> list[QcModule]:
@@ -183,7 +208,9 @@ def _module_from_con(
     )
 
 
-def module_summary(output_root: "OutputRoot", instance_id: str) -> pl.DataFrame:
+def module_summary(
+    output_root: "OutputRoot", instance_id: str
+) -> pl.DataFrame:
     """Return a module's worklist (``<table>__summary``), worst-first.
 
     Args:
@@ -333,5 +360,7 @@ __all__ = [
     "list_modules",
     "module_summary",
     "module_members",
+    "legacy_qc_cutover_message",
+    "legacy_qc_parquets_present",
     "summary_stats",
 ]

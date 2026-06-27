@@ -83,7 +83,9 @@ def _find_by_class(root: object, class_substr: str) -> list[object]:
 # ---------------------------------------------------------------------------
 
 
-def _write_solid_png(path: Path, w: int, h: int, color: tuple[int, int, int]) -> None:
+def _write_solid_png(
+    path: Path, w: int, h: int, color: tuple[int, int, int]
+) -> None:
     PILImage.new("RGB", (w, h), color).save(path, format="PNG")
 
 
@@ -163,13 +165,20 @@ def test_crop_hdf_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
 
     from_overlay = crop_overlay(png, center_rr=5, center_cc=5, size=24)
     from_hdf = crop_hdf_rgb(
-        h5, "rgb", center_rr=5, center_cc=5, size=24, mtime_ns=h5.stat().st_mtime_ns
+        h5,
+        "rgb",
+        center_rr=5,
+        center_cc=5,
+        size=24,
+        mtime_ns=h5.stat().st_mtime_ns,
     )
     assert _decode_rgb(from_hdf).tolist() == _decode_rgb(from_overlay).tolist()
 
 
 @pytest.mark.parametrize("layer", ["objmap", "detect_mat"])
-def test_crop_hdf_rgb_round_trips_non_rgb_layers(tmp_path: Path, layer: str) -> None:
+def test_crop_hdf_rgb_round_trips_non_rgb_layers(
+    tmp_path: Path, layer: str
+) -> None:
     """Non-rgb HDF layers crop to a correct-size RGB PNG (Batch B2 / B1-deferred).
 
     Builds one image carrying a 2-label ``objmap`` (and the derived float
@@ -234,11 +243,20 @@ def test_crop_colony_prefers_hdf_falls_back_to_overlay(
 
     # HDF present -> HDF path (os.stat needs the file to exist).
     (tmp_path / "x.h5").write_bytes(b"")
-    assert tiles.crop_colony(FakeRoot(True, True), "p", "s", "rgb", 1, 1, 8) == b"H"
+    assert (
+        tiles.crop_colony(FakeRoot(True, True), "p", "s", "rgb", 1, 1, 8)
+        == b"H"
+    )
     # No HDF but overlay -> overlay path.
-    assert tiles.crop_colony(FakeRoot(False, True), "p", "s", "rgb", 1, 1, 8) == b"O"
+    assert (
+        tiles.crop_colony(FakeRoot(False, True), "p", "s", "rgb", 1, 1, 8)
+        == b"O"
+    )
     # Neither -> None (caller serves 404).
-    assert tiles.crop_colony(FakeRoot(False, False), "p", "s", "rgb", 1, 1, 8) is None
+    assert (
+        tiles.crop_colony(FakeRoot(False, False), "p", "s", "rgb", 1, 1, 8)
+        is None
+    )
 
 
 def test_crop_colony_missing_hdf_layer_falls_back_to_overlay(
@@ -354,7 +372,9 @@ def test_crop_overlay_dims_outside_bbox_keeps_inside(tmp_path: Path) -> None:
     assert tuple(arr[19, 19]) == (expected_dim, expected_dim, expected_dim)
 
 
-def test_crop_overlay_dim_edge_clamped_origin_frames_bbox(tmp_path: Path) -> None:
+def test_crop_overlay_dim_edge_clamped_origin_frames_bbox(
+    tmp_path: Path,
+) -> None:
     """Near a border (negative unclamped origin) the keep-rect still frames the bbox."""
     src = tmp_path / "src.png"
     _write_solid_png(src, 100, 100, (255, 255, 255))
@@ -476,7 +496,9 @@ def test_is_safe_path_component_accepts_clean_identifiers(name: str) -> None:
     "name",
     ["", ".hidden", "..", "a/b", "a\\b", "../etc", "with space", "weird*char"],
 )
-def test_is_safe_path_component_rejects_traversal_and_bad_charset(name: str) -> None:
+def test_is_safe_path_component_rejects_traversal_and_bad_charset(
+    name: str,
+) -> None:
     """Empty, dot-leading, separator-bearing, or odd-charset names are rejected."""
     assert is_safe_path_component(name) is False
 
@@ -503,7 +525,9 @@ def output_root(tmp_path: Path) -> OutputRoot:
         }
     )
     write_master(tmp_path, master)
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
@@ -539,7 +563,9 @@ def test_register_crop_route_validates_size_and_label(
     client = app.server.test_client()
 
     assert client.get("/extra-crops/d1/img-1/7.png").status_code == 400
-    assert client.get("/extra-crops/d1/img-1/99.png?size=24").status_code == 404
+    assert (
+        client.get("/extra-crops/d1/img-1/99.png?size=24").status_code == 404
+    )
 
 
 def test_register_crop_route_rejects_unknown_layer_with_404(
@@ -552,11 +578,15 @@ def test_register_crop_route_rejects_unknown_layer_with_404(
 
     # A valid layer serves the crop; an unknown layer is rejected up front.
     assert (
-        client.get("/extra-crops/d1/img-1/7.png?size=24&layer=objmap").status_code
+        client.get(
+            "/extra-crops/d1/img-1/7.png?size=24&layer=objmap"
+        ).status_code
         == 200
     )
     assert (
-        client.get("/extra-crops/d1/img-1/7.png?size=24&layer=bogus").status_code
+        client.get(
+            "/extra-crops/d1/img-1/7.png?size=24&layer=bogus"
+        ).status_code
         == 404
     )
 
@@ -581,7 +611,9 @@ def test_register_crop_route_distinct_segments_coexist(
 # ---------------------------------------------------------------------------
 
 
-def test_register_crop_route_dim_param_serves_png(output_root: OutputRoot) -> None:
+def test_register_crop_route_dim_param_serves_png(
+    output_root: OutputRoot,
+) -> None:
     """A valid ``?dim=`` returns a 200 PNG (the master has the bbox columns)."""
     app = create_app(output_root)
     register_crop_route(app, output_root, "extra-crops")
@@ -653,7 +685,9 @@ def output_root_no_bbox(tmp_path: Path) -> OutputRoot:
         }
     )
     write_master(tmp_path, master)
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True)
     PILImage.new("RGB", (100, 100), (255, 0, 0)).save(
@@ -680,7 +714,9 @@ def test_register_crop_route_degrades_when_bbox_columns_absent(
 # ---------------------------------------------------------------------------
 
 
-def _url_builder(dataset: str, image_file: str, label: int, crop_size: int) -> str:
+def _url_builder(
+    dataset: str, image_file: str, label: int, crop_size: int
+) -> str:
     return f"/seg/{dataset}/{image_file}/{label}.png?size={crop_size}"
 
 
@@ -693,14 +729,14 @@ def _remove_button(image_file: str, label: int, is_removed: bool) -> Component:
 
 
 def test_build_tile_cell_renders_img_with_url_builder_src() -> None:
-    """When the overlay exists, the tile carries an <img> from the url_builder."""
+    """When an image source exists, the tile carries an <img> from the url_builder."""
     cell = build_tile_cell(
         image_file="img-1",
         label=7,
         dataset="d1",
         crop_size=128,
         display_size=96,
-        has_overlay=True,
+        has_image_source=True,
         is_removed=False,
         is_selected=False,
         url_builder=_url_builder,
@@ -711,15 +747,15 @@ def test_build_tile_cell_renders_img_with_url_builder_src() -> None:
     assert imgs[0].src == "/seg/d1/img-1/7.png?size=128"
 
 
-def test_build_tile_cell_placeholder_when_no_overlay() -> None:
-    """A missing overlay renders the striped placeholder and no <img>."""
+def test_build_tile_cell_placeholder_when_no_image_source() -> None:
+    """A missing image source renders the striped placeholder and no <img>."""
     cell = build_tile_cell(
         image_file="img-1",
         label=7,
         dataset="d1",
         crop_size=128,
         display_size=96,
-        has_overlay=False,
+        has_image_source=False,
         is_removed=False,
         is_selected=False,
         url_builder=_url_builder,
@@ -737,7 +773,7 @@ def test_build_tile_cell_checkbox_carries_data_key() -> None:
         dataset="d1",
         crop_size=128,
         display_size=96,
-        has_overlay=True,
+        has_image_source=True,
         is_removed=False,
         is_selected=False,
         url_builder=_url_builder,
@@ -746,9 +782,7 @@ def test_build_tile_cell_checkbox_carries_data_key() -> None:
     checkboxes = _find_by_class(cell, "colony-cell-checkbox")
     # The inner span (not the wrap) carries the data-key attribute.
     keyed = [
-        n
-        for n in checkboxes
-        if getattr(n, "data-key", None) == "img-1::7"
+        n for n in checkboxes if getattr(n, "data-key", None) == "img-1::7"
     ]
     assert keyed, "checkbox inner span missing data-key='img-1::7'"
 
@@ -761,7 +795,7 @@ def test_build_tile_cell_selected_and_removed_modifiers() -> None:
         dataset="d1",
         crop_size=128,
         display_size=96,
-        has_overlay=True,
+        has_image_source=True,
         is_removed=True,
         is_selected=True,
         url_builder=_url_builder,
@@ -786,7 +820,7 @@ def test_build_tile_cell_appends_extra_children_and_outer_height() -> None:
         dataset="d1",
         crop_size=128,
         display_size=96,
-        has_overlay=True,
+        has_image_source=True,
         is_removed=False,
         is_selected=False,
         url_builder=_url_builder,
@@ -819,16 +853,14 @@ def test_build_tile_grid_row_major_order_and_tile_count() -> None:
         removed=set(),
         crop_size=128,
         display_size=80,
-        has_overlay=lambda dataset, image_file: True,
+        has_image_source=lambda dataset, image_file: True,
         remove_button_builder=_remove_button,
     )
     assert grid_order == [("img-1", 1), ("img-1", 2), ("img-2", 5)]
     cells = _find_by_class(component, "colony-cell")
     # Each tile's outer div + (no extra children) — count the keyed checkboxes.
     keyed = [
-        n
-        for n in _walk(component)
-        if getattr(n, "data-key", None) is not None
+        n for n in _walk(component) if getattr(n, "data-key", None) is not None
     ]
     assert {getattr(n, "data-key") for n in keyed} == {
         "img-1::1",
@@ -848,15 +880,15 @@ def test_build_tile_grid_marks_removed_tiles() -> None:
         removed={("img-1", 2)},
         crop_size=64,
         display_size=64,
-        has_overlay=lambda dataset, image_file: True,
+        has_image_source=lambda dataset, image_file: True,
         remove_button_builder=_remove_button,
     )
     removed_cells = _find_by_class(component, "is-removed")
     assert len(removed_cells) == 1
 
 
-def test_build_tile_grid_honours_missing_overlay_per_tile() -> None:
-    """has_overlay=False tiles render a placeholder instead of an <img>."""
+def test_build_tile_grid_honours_missing_image_source_per_tile() -> None:
+    """has_image_source=False tiles render a placeholder instead of an <img>."""
     keys = [("d1", "img-1", 1), ("d1", "img-2", 1)]
     component, _ = build_tile_grid(
         keys,
@@ -865,7 +897,7 @@ def test_build_tile_grid_honours_missing_overlay_per_tile() -> None:
         removed=set(),
         crop_size=64,
         display_size=64,
-        has_overlay=lambda dataset, image_file: image_file == "img-1",
+        has_image_source=lambda dataset, image_file: image_file == "img-1",
         remove_button_builder=_remove_button,
     )
     imgs = [n for n in _walk(component) if isinstance(n, html.Img)]

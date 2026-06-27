@@ -28,6 +28,7 @@ of a prior Dash callback:
   builder's asset-readiness poller is bounded (<=1500 ms, no ``fetch``),
   so ``networkidle`` always settles.
 """
+
 from __future__ import annotations
 
 import re
@@ -35,7 +36,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from tests.e2e.gui.conftest import expand_palette_accordions
 
@@ -84,7 +85,9 @@ def _builder_failure_diagnostics(request, page: Page):  # noqa: ANN001, ANN201
     if "hub_url" in request.fixturenames:
         hub_url = request.getfixturevalue("hub_url")
         port = hub_url.rsplit(":", 1)[-1]
-        log_path = Path(tempfile.gettempdir()) / f"phenotypic-gui-e2e-{port}.log"
+        log_path = (
+            Path(tempfile.gettempdir()) / f"phenotypic-gui-e2e-{port}.log"
+        )
         print(f"--- GUI server log: {log_path} (last 150 lines) ---")
         if log_path.exists():
             lines = log_path.read_text(
@@ -126,6 +129,7 @@ def _open_builder(page: Page, hub_url: str) -> None:
 
     page.goto(hub_url + "/builder/")
     page.wait_for_selector("#linear-map-container", timeout=15_000)
+    expect(page.locator(".linear-node-card")).to_have_count(1)
     page.wait_for_function(
         """() => (
             window.dash_clientside != null
@@ -141,12 +145,17 @@ def _open_builder(page: Page, hub_url: str) -> None:
 def _click_palette_button(page: Page, class_name: str) -> None:
     """Click a linear builder palette button by visible operation name."""
 
+    before_count = page.locator(".linear-node-card").count()
     button = page.locator("button.palette-button").filter(
         has_text=re.compile(rf"^\s*{re.escape(class_name)}\s*$")
     )
     expect_count = button.count()
-    assert expect_count == 1, f"expected one {class_name} button, saw {expect_count}"
+    assert expect_count == 1, (
+        f"expected one {class_name} button, saw {expect_count}"
+    )
     button.click()
+    expect(page.locator(".linear-node-card")).to_have_count(before_count + 1)
+    expect(page.locator(".linear-side-title")).to_have_text(class_name)
 
 
 def _linear_node_titles(page: Page) -> list[str]:

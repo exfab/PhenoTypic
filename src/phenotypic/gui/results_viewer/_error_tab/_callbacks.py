@@ -16,6 +16,7 @@ The load-bearing body lives in the module-level :func:`_recompute` helper
 is extracted for direct unit testing); the registered callbacks are thin
 adapters around it.
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,9 +50,12 @@ from phenotypic.gui.results_viewer._error_tab._data import (
     category_counts,
     classify_at_cutoff,
     default_category,
+    legacy_qc_cutover_message,
     verified_good_keys,
 )
-from phenotypic.gui.results_viewer._error_tab._figure import build_distribution_figure
+from phenotypic.gui.results_viewer._error_tab._figure import (
+    build_distribution_figure,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from phenotypic.gui.results_viewer._curation_labels import CurationLabels
@@ -183,13 +187,17 @@ def _recompute(
 
     verified_count = 0
     if good_mode == "verified":
-        verified_count = len(verified_good_keys(output_root, set(labels.keys())))
+        verified_count = len(
+            verified_good_keys(output_root, set(labels.keys()))
+        )
 
     if not finder.enough_data(good_pdf, error_pdf):
         # R5: in verified mode, a short good class means "review more QC
         # groups"; otherwise the error class is the limiting one.
         if good_mode == "verified" and len(good_pdf) < finder.min_good_n:
-            message = _MSG_FEW_VERIFIED
+            message = (
+                legacy_qc_cutover_message(output_root) or _MSG_FEW_VERIFIED
+            )
         else:
             message = _few_errors_message(category)
         return RecomputeResult(
@@ -257,7 +265,9 @@ def _measurement_values(frame: pd.DataFrame, measurement: str) -> np.ndarray:
     """Return ``measurement``'s float values from a frame (empty if absent)."""
     if measurement not in frame.columns:
         return np.empty(0, dtype=float)
-    return pd.to_numeric(frame[measurement], errors="coerce").to_numpy(dtype=float)
+    return pd.to_numeric(frame[measurement], errors="coerce").to_numpy(
+        dtype=float
+    )
 
 
 def _table_columns(res: pd.DataFrame) -> list[dict[str, Any]]:
@@ -272,7 +282,9 @@ def _table_columns(res: pd.DataFrame) -> list[dict[str, Any]]:
     return columns
 
 
-def _persist(output_root: "OutputRoot", category: str, res: pd.DataFrame) -> None:
+def _persist(
+    output_root: "OutputRoot", category: str, res: pd.DataFrame
+) -> None:
     """Write ``error_analysis.{parquet,csv}`` for the focused category (R3).
 
     Prepends a leading ``category`` column so the on-disk shape matches
@@ -288,7 +300,9 @@ def _persist(output_root: "OutputRoot", category: str, res: pd.DataFrame) -> Non
     _atomic_write_csv(out, layout.error_analysis_csv)
 
 
-def _persist_verified(output_root: "OutputRoot", good_pdf: pd.DataFrame) -> None:
+def _persist_verified(
+    output_root: "OutputRoot", good_pdf: pd.DataFrame
+) -> None:
     """Write ``verified.parquet`` from the verified-good frame (R4).
 
     Only called from the non-degenerate verified branch (the caller has
@@ -362,14 +376,13 @@ def _chip_id(token: Any) -> dict[str, Any]:
 def _render_readout(metrics: dict[str, float]) -> list[Any]:
     """Build the recall / specificity / good-flagged readout pills."""
     return [
-        html.Span(
-            f"recall {metrics['recall']:.2f}", className="error-pill"
-        ),
+        html.Span(f"recall {metrics['recall']:.2f}", className="error-pill"),
         html.Span(
             f"specificity {metrics['specificity']:.2f}", className="error-pill"
         ),
         html.Span(
-            f"good flagged {int(metrics['good_flagged'])}", className="error-pill"
+            f"good flagged {int(metrics['good_flagged'])}",
+            className="error-pill",
         ),
     ]
 
@@ -490,13 +503,17 @@ def register_error_callbacks(
             raise PreventUpdate
 
         mode = good_mode or "all_unlabeled"
-        result = _recompute(output_root, filtered_state, focused_category, mode)
+        result = _recompute(
+            output_root, filtered_state, focused_category, mode
+        )
         with filtered_state._lock:
             counts = category_counts(dict(filtered_state.labels))
             custom = list(filtered_state.custom_categories)
         chips = _render_chips(counts, result.category, custom)
         verified_style = (
-            {"display": "inline-block"} if mode == "verified" else {"display": "none"}
+            {"display": "inline-block"}
+            if mode == "verified"
+            else {"display": "none"}
         )
         verified_text = f"verified good: {result.verified_count}"
         stale_open, stale_text = _stale_banner_text(filtered_state)
@@ -577,7 +594,9 @@ def register_error_callbacks(
             # Focus store changed (new measurement): reset to suggested cutoff.
             cutoff = float(focus.get("cutoff", 0.0))
 
-        metrics = classify_at_cutoff(good_values, error_values, cutoff, direction)
+        metrics = classify_at_cutoff(
+            good_values, error_values, cutoff, direction
+        )
         readout = _render_readout(metrics)
         spec = _filter_spec_text(measurement, direction, cutoff)
         return readout, cutoff, spec
@@ -600,7 +619,10 @@ def register_error_callbacks(
         with filtered_state._lock:
             labels = dict(filtered_state.labels)
         good_pdf, error_pdf = build_good_error_frames(
-            output_root, labels, category, cast(GoodMode, good_mode or "all_unlabeled")
+            output_root,
+            labels,
+            category,
+            cast(GoodMode, good_mode or "all_unlabeled"),
         )
         res = ErrorCutoffFinder().analyze(good_pdf, error_pdf)
         html_str = render_error_analysis_html(category, res)

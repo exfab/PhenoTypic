@@ -103,3 +103,31 @@ def test_list_modules_missing_db_is_empty(tmp_path):
     from phenotypic.gui.results_viewer._qc_tab.review import _db
 
     assert _db.list_modules(_Root(_layout(tmp_path))) == []
+
+
+def test_legacy_qc_parquet_cutover_message_when_duckdb_absent(tmp_path):
+    from phenotypic.gui.results_viewer._qc_tab.review import _db
+
+    root = _Root(_layout(tmp_path))
+    qc_dir = root.layout.qc_dir
+    qc_dir.mkdir(parents=True)
+    (qc_dir / "qc_summary.parquet").write_bytes(b"legacy summary")
+    (qc_dir / "qc_members.parquet").write_bytes(b"legacy members")
+
+    message = _db.legacy_qc_cutover_message(root)
+
+    assert message is not None
+    assert "qc.duckdb" in message
+    assert "recompile" in message.lower()
+
+
+def test_legacy_qc_parquet_cutover_message_suppressed_when_duckdb_exists(
+    tmp_path,
+):
+    from phenotypic.gui.results_viewer._qc_tab.review import _db
+
+    root = _seed_db(tmp_path)
+    qc_dir = root.layout.qc_dir
+    (qc_dir / "qc_summary.parquet").write_bytes(b"legacy summary")
+
+    assert _db.legacy_qc_cutover_message(root) is None

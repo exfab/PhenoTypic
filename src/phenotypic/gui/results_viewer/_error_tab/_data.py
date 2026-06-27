@@ -18,6 +18,7 @@ What lives here:
 * :func:`classify_at_cutoff` — recall / specificity / good-flagged for an
   arbitrary dragged cutoff, NaN-safe.
 """
+
 from __future__ import annotations
 
 import logging
@@ -126,7 +127,11 @@ def verified_good_keys(
         mod = modules.get(instance_id)
         # Skip modules that vanished from the catalog or are diagnostic-only
         # (no curatable per-object rows), and groups never reviewed.
-        if mod is None or not mod.supports_object_curation or not progress.reviewed:
+        if (
+            mod is None
+            or not mod.supports_object_curation
+            or not progress.reviewed
+        ):
             continue
         for encoded in progress.reviewed:
             key = decode_group_key(encoded)
@@ -145,6 +150,11 @@ def verified_good_keys(
                     continue
                 reviewed_members.add((str(img), int(lbl)))
     return reviewed_members - labeled_keys
+
+
+def legacy_qc_cutover_message(output_root: "OutputRoot") -> str | None:
+    """Return the hard-cutover message for legacy parquet-only QC outputs."""
+    return _db.legacy_qc_cutover_message(output_root)
 
 
 # ---------------------------------------------------------------------------
@@ -292,5 +302,6 @@ __all__ = [
     "category_counts",
     "classify_at_cutoff",
     "default_category",
+    "legacy_qc_cutover_message",
     "verified_good_keys",
 ]

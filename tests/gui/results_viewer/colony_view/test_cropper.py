@@ -13,12 +13,16 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
+import numpy as np
 from PIL import Image as PILImage
 
+from phenotypic.gui._shared import tiles
 from phenotypic.gui.results_viewer.colony_view._cropper import crop_overlay
 
 
-def _write_solid_png(path: Path, w: int, h: int, color: tuple[int, int, int]) -> None:
+def _write_solid_png(
+    path: Path, w: int, h: int, color: tuple[int, int, int]
+) -> None:
     """Helper: write a solid-colour RGB PNG of size *w*×*h*."""
     PILImage.new("RGB", (w, h), color).save(path, format="PNG")
 
@@ -93,3 +97,36 @@ def test_rgba_source_is_normalised_to_rgb(tmp_path: Path) -> None:
 
     assert img.mode == "RGB"
     assert img.getpixel((4, 4)) == (200, 100, 50)
+
+
+def test_hdf_crop_reads_window_without_full_layer_loader(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import h5py
+
+    h5_path = tmp_path / "plate.h5"
+    rgb = np.zeros((64, 64, 3), dtype=np.uint8)
+    rgb[24:40, 24:40] = (10, 80, 160)
+    with h5py.File(h5_path, "w") as fh:
+        layers = fh.create_group("layers")
+        layers.create_dataset("rgb", data=rgb)
+
+    def _raise_full_layer(*_args, **_kwargs):
+        raise AssertionError(
+            "crop_hdf_rgb should not decode the full HDF layer"
+        )
+
+    monkeypatch.setattr(tiles, "_load_hdf_layer_rgb", _raise_full_layer)
+
+    png_bytes = tiles.crop_hdf_rgb(
+        h5_path,
+        "rgb",
+        center_rr=32,
+        center_cc=32,
+        size=16,
+        mtime_ns=h5_path.stat().st_mtime_ns,
+    )
+    img = PILImage.open(io.BytesIO(png_bytes))
+
+    assert img.size == (16, 16)
+    assert img.getpixel((8, 8)) == (10, 80, 160)

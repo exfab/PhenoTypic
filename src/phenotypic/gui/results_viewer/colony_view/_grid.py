@@ -33,7 +33,11 @@ from dash import dcc, html
 from dash.development.base_component import Component
 from flask import current_app, has_app_context
 
-from phenotypic.gui._config import CFG_URL_PREFIX, COLONY_CROPS_URL_SEGMENT, MOUNT_HOME
+from phenotypic.gui._config import (
+    CFG_URL_PREFIX,
+    COLONY_CROPS_URL_SEGMENT,
+    MOUNT_HOME,
+)
 from phenotypic.gui._design import (
     COLOR_NAVY,
     FONT_FAMILY_MONO,
@@ -88,6 +92,7 @@ def _url_prefix() -> str:
     if has_app_context():
         return current_app.config.get(CFG_URL_PREFIX, MOUNT_HOME)
     return MOUNT_HOME
+
 
 #: Sort buckets — Metadata_ first, then Grid_, then everything else.
 _METADATA_PREFIX = "Metadata_"
@@ -281,7 +286,9 @@ def _representative_per_cell(
     )
 
 
-def _build_axis_label(value: object, *, axis: str, max_width_px: int) -> Component:
+def _build_axis_label(
+    value: object, *, axis: str, max_width_px: int
+) -> Component:
     """Render an X/Y axis header label for the corner row/column.
 
     ``max_width_px`` caps the label so long values wrap inside their grid
@@ -361,7 +368,7 @@ def _build_cell(
     count: int,
     max_size: int,
     display_size: int,
-    has_overlay: bool,
+    has_image_source: bool,
     is_removed: bool,
     is_selected: bool,
     current_category: str | None = None,
@@ -388,8 +395,8 @@ def _build_cell(
         display_size: CSS render size, in pixels. The browser scales the
             ``<img>`` to this size; ``object-fit`` keeps colonies centered
             without distortion.
-        has_overlay: Whether the source overlay PNG exists on disk; if not,
-            a striped placeholder is rendered instead of an ``<img>``.
+        has_image_source: Whether an HDF layer or overlay PNG exists on disk;
+            if not, a striped placeholder is rendered instead of an ``<img>``.
         is_removed: Whether the representative colony is in the curated
             removal set. Dims the crop.
         is_selected: Whether the cell is in the active multi-select.
@@ -437,7 +444,7 @@ def _build_cell(
         dataset=dataset,
         crop_size=max_size,
         display_size=display_size,
-        has_overlay=has_overlay,
+        has_image_source=has_image_source,
         is_removed=is_removed,
         is_selected=is_selected,
         # Bind the spotlight strength + layer onto the 4-arg url_builder protocol.
@@ -658,8 +665,14 @@ def build_grid(
     if category_of is None:
         category_of = {}
 
-    if df.is_empty() or x_axis_col not in df.columns or y_axis_col not in df.columns:
-        return html.Div("No colonies match the active filter.", className="text-muted"), []
+    if (
+        df.is_empty()
+        or x_axis_col not in df.columns
+        or y_axis_col not in df.columns
+    ):
+        return html.Div(
+            "No colonies match the active filter.", className="text-muted"
+        ), []
 
     if x_axis_col == y_axis_col:
         # polars rejects ``group_by([col, col])`` with a duplicate-column
@@ -672,14 +685,12 @@ def build_grid(
             [],
         )
 
-    x_values = (
-        df.get_column(x_axis_col).drop_nulls().unique().sort().to_list()
-    )
-    y_values = (
-        df.get_column(y_axis_col).drop_nulls().unique().sort().to_list()
-    )
+    x_values = df.get_column(x_axis_col).drop_nulls().unique().sort().to_list()
+    y_values = df.get_column(y_axis_col).drop_nulls().unique().sort().to_list()
     if not x_values or not y_values:
-        return html.Div("No colonies match the active filter.", className="text-muted"), []
+        return html.Div(
+            "No colonies match the active filter.", className="text-muted"
+        ), []
 
     representatives = _representative_per_cell(df, x_axis_col, y_axis_col)
 
@@ -702,7 +713,9 @@ def build_grid(
             )
         ]
         cell_index[(row[x_axis_col], row[y_axis_col])] = {
-            "image_file": members_image_file[0] if members_image_file else None,
+            "image_file": members_image_file[0]
+            if members_image_file
+            else None,
             "dataset": members_dataset[0] if members_dataset else None,
             "label": members_label[0] if members_label else None,
             "count": row["count"],
@@ -721,7 +734,9 @@ def build_grid(
     children.append(html.Div(className="colony-grid-corner"))
     # X-axis header row.
     for x_value in x_values:
-        children.append(_build_axis_label(x_value, axis="x", max_width_px=display_size))
+        children.append(
+            _build_axis_label(x_value, axis="x", max_width_px=display_size)
+        )
 
     grid_order: list[tuple[str, int]] = []
     for y_value in y_values:
@@ -755,7 +770,9 @@ def build_grid(
             # polars row dicts type values as ``object``; the index stored a
             # ``list[tuple[str, str, int]]`` under "members". Cast so the
             # comprehension below has a concrete iterable element type.
-            members = cast("list[tuple[str, str, int]]", entry.get("members") or [])
+            members = cast(
+                "list[tuple[str, str, int]]", entry.get("members") or []
+            )
             typed_members = [
                 (str(m[0]), str(m[1]), int(m[2])) for m in members
             ]
@@ -767,7 +784,9 @@ def build_grid(
                     count=count,
                     max_size=max_size,
                     display_size=display_size,
-                    has_overlay=output_root.has_overlay(dataset, image_file),
+                    has_image_source=output_root.has_image_source(
+                        dataset, image_file
+                    ),
                     is_removed=key in removed_keys,
                     is_selected=key in selected_keys,
                     current_category=category_of.get(key),
@@ -789,7 +808,9 @@ def build_grid(
             ),
             "gridTemplateRows": (
                 "auto "
-                + " ".join([f"{display_size + _STACK_TAB_OFFSET}px"] * len(y_values))
+                + " ".join(
+                    [f"{display_size + _STACK_TAB_OFFSET}px"] * len(y_values)
+                )
             ),
             "gap": "8px",
             "padding": "0.5rem",

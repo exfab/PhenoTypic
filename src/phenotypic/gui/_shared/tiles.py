@@ -319,11 +319,6 @@ def _load_hdf_layer_rgb(
     del mtime_ns  # Cache-key only.
     import h5py
 
-    from phenotypic.gui.builder._image_renderer import (
-        _label_map_to_rgb,
-        _normalize_to_uint8,
-    )
-
     with h5py.File(path, "r") as fh:
         # Modern layout is /layers/<name>; legacy flat layout is /<name>.
         grp = fh["layers"] if "layers" in fh else fh
@@ -331,14 +326,24 @@ def _load_hdf_layer_rgb(
             raise KeyError(f"HDF {path} has no layer {layer!r}")
         arr = np.asarray(grp[layer][:])
 
-    if layer == "rgb":
-        rgb = arr.astype(np.uint8)
-    elif layer == "objmap":
-        rgb = _label_map_to_rgb(arr)
-    else:  # detect_mat / gray-like float layer
-        gray = _normalize_to_uint8(arr)
-        rgb = np.stack([gray] * 3, axis=-1)
+    rgb = _hdf_layer_array_to_rgb(arr, layer)
     return PILImage.fromarray(rgb, mode="RGB")
+
+
+def _hdf_layer_array_to_rgb(arr: np.ndarray, layer: LayerName) -> np.ndarray:
+    """Convert a decoded HDF layer array to an RGB uint8 array."""
+    from phenotypic.gui.builder._image_renderer import (
+        _label_map_to_rgb,
+        _normalize_to_uint8,
+    )
+
+    if layer == "rgb":
+        return arr.astype(np.uint8)
+    if layer == "objmap":
+        return _label_map_to_rgb(arr)
+    # detect_mat / gray-like float layer
+    gray = _normalize_to_uint8(arr)
+    return np.stack([gray] * 3, axis=-1)
 
 
 def crop_hdf_rgb(
@@ -367,8 +372,8 @@ def crop_hdf_rgb(
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
         center_cc: Column coordinate (X) of the colony centroid, in image pixels.
         size: Side length of the square crop, in pixels.
-        mtime_ns: ``st_mtime_ns`` of the HDF, threaded into the layer cache key
-            so a regenerated HDF invalidates the cached layer.
+        mtime_ns: ``st_mtime_ns`` of the HDF. Accepted for caller/API
+            compatibility; crop reads are windowed and not full-layer cached.
         dim_alpha: Tile-spotlight strength; see :func:`crop_overlay`.
         bbox: ``(min_rr, max_rr, min_cc, max_cc)`` keep-rectangle; see
             :func:`crop_overlay`.
@@ -376,10 +381,91 @@ def crop_hdf_rgb(
     Returns:
         PNG-encoded bytes of the ``size`` x ``size`` crop in RGB mode.
     """
-    source = _load_hdf_layer_rgb(str(h5_path), mtime_ns, layer)
-    return _crop_pil_source(
-        source, center_rr, center_cc, size, dim_alpha=dim_alpha, bbox=bbox
+    del mtime_ns
+    return _crop_hdf_layer_window(
+        h5_path,
+        layer,
+        center_rr,
+        center_cc,
+        size,
+        dim_alpha=dim_alpha,
+        bbox=bbox,
     )
+
+
+def _crop_hdf_layer_window(
+    h5_path: Path,
+    layer: LayerName,
+    center_rr: float,
+    center_cc: float,
+    size: int,
+    pad_value: tuple[int, int, int] = (0, 0, 0),
+    *,
+    dim_alpha: float = 0.0,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> bytes:
+    """Crop by reading only the requested HDF window."""
+    import h5py
+
+    half = size // 2
+    left_unclamped = round(center_cc) - half
+    top_unclamped = round(center_rr) - half
+    right_unclamped = left_unclamped + size
+    bottom_unclamped = top_unclamped + size
+
+    with h5py.File(h5_path, "r") as fh:
+        grp = fh["layers"] if "layers" in fh else fh
+        if layer not in grp:
+            raise KeyError(f"HDF {h5_path} has no layer {layer!r}")
+        dset = grp[layer]
+        src_height, src_width = dset.shape[:2]
+        left_clamped = max(0, left_unclamped)
+        top_clamped = max(0, top_unclamped)
+        right_clamped = min(src_width, right_unclamped)
+        bottom_clamped = min(src_height, bottom_unclamped)
+
+        arr: np.ndarray | None = None
+        if right_clamped > left_clamped and bottom_clamped > top_clamped:
+            if len(dset.shape) == 2:
+                arr = np.asarray(
+                    dset[
+                        top_clamped:bottom_clamped, left_clamped:right_clamped
+                    ]
+                )
+            else:
+                arr = np.asarray(
+                    dset[
+                        top_clamped:bottom_clamped,
+                        left_clamped:right_clamped,
+                        ...,
+                    ]
+                )
+
+    result = PILImage.new("RGB", (size, size), pad_value)
+    if arr is not None:
+        region = PILImage.fromarray(
+            _hdf_layer_array_to_rgb(arr, layer), mode="RGB"
+        )
+        paste_x = max(0, -left_unclamped)
+        paste_y = max(0, -top_unclamped)
+        result.paste(region, (paste_x, paste_y))
+
+    if dim_alpha > 0.0 and bbox is not None:
+        min_rr, max_rr, min_cc, max_cc = bbox
+        keep_top = _clamp(round(min_rr) - top_unclamped, 0, size)
+        keep_bottom = _clamp(round(max_rr) - top_unclamped, 0, size)
+        keep_left = _clamp(round(min_cc) - left_unclamped, 0, size)
+        keep_right = _clamp(round(max_cc) - left_unclamped, 0, size)
+        dimmed = _dim_outside_bbox(
+            np.asarray(result),
+            (keep_top, keep_left, keep_bottom, keep_right),
+            alpha=dim_alpha,
+        )
+        result = PILImage.fromarray(dimmed)
+
+    buf = io.BytesIO()
+    result.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def crop_colony(
@@ -558,17 +644,26 @@ def register_crop_route(
 
     # Bbox extent columns used to locate the spotlight keep-rectangle.
     # Older masters may lack them — handled gracefully below (bbox=None).
-    _BBOX_EXTENT_COLS = ("Bbox_MinRR", "Bbox_MaxRR", "Bbox_MinCC", "Bbox_MaxCC")
+    _BBOX_EXTENT_COLS = (
+        "Bbox_MinRR",
+        "Bbox_MaxRR",
+        "Bbox_MinCC",
+        "Bbox_MaxCC",
+    )
 
     bp = Blueprint(
         f"results_viewer_crops_{segment}", __name__, url_prefix=f"/{segment}"
     )
 
     @bp.route("/<dataset>/<stem>/<label>.png")
-    def crop_endpoint(dataset: str, stem: str, label: str) -> Response | tuple[str, int]:
+    def crop_endpoint(
+        dataset: str, stem: str, label: str
+    ) -> Response | tuple[str, int]:
         """Serve a single PNG colony crop for ``(dataset, stem, label)``."""
         # --- 1. Path-component validation --------------------------------
-        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(
+            stem
+        ):
             logger.warning(
                 "Rejected crop request with unsafe identifiers: "
                 "dataset=%r stem=%r",
@@ -581,10 +676,14 @@ def register_crop_route(
         try:
             label_int = int(label)
         except (TypeError, ValueError):
-            logger.warning("Rejected crop request with non-numeric label: %r", label)
+            logger.warning(
+                "Rejected crop request with non-numeric label: %r", label
+            )
             return ("bad request: label must be an integer", 400)
         if label_int < 0 or label_int > _MAX_OBJECT_LABEL:
-            logger.warning("Rejected crop request with out-of-range label: %d", label_int)
+            logger.warning(
+                "Rejected crop request with out-of-range label: %d", label_int
+            )
             return ("bad request: label out of range", 400)
 
         # --- 3. Size parsing ---------------------------------------------
@@ -614,7 +713,9 @@ def register_crop_route(
         # pre-baked RGB). Validate against ``LayerName`` at the boundary so an
         # unknown layer 404s here rather than surfacing later as a ``KeyError``
         # (missing HDF dataset) → 500 inside ``crop_colony``.
-        layer_raw = request.args.get("layer", type=str, default=cast(str, DEFAULT_LAYER))
+        layer_raw = request.args.get(
+            "layer", type=str, default=cast(str, DEFAULT_LAYER)
+        )
         if layer_raw not in get_args(LayerName):
             return (f"not found: unsupported layer {layer_raw!r}", 404)
         layer = cast(LayerName, layer_raw)
@@ -730,7 +831,7 @@ def build_tile_cell(
     dataset: str,
     crop_size: int,
     display_size: int,
-    has_overlay: bool,
+    has_image_source: bool,
     is_removed: bool,
     is_selected: bool,
     url_builder: Callable[[str, str, int, int], str],
@@ -764,8 +865,8 @@ def build_tile_cell(
         display_size: CSS render size, in pixels. The browser scales the
             ``<img>`` to this size; ``object-fit: cover`` keeps colonies
             centered without distortion.
-        has_overlay: Whether the source overlay PNG exists on disk; if
-            not, a striped placeholder is rendered instead of an ``<img>``.
+        has_image_source: Whether an HDF layer or overlay PNG exists on disk;
+            if not, a striped placeholder is rendered instead of an ``<img>``.
         is_removed: Whether the colony is in the curated removal set.
             Dims the crop and toggles the ``is-removed`` modifier.
         is_selected: Whether the tile is in the active multi-select.
@@ -794,7 +895,7 @@ def build_tile_cell(
     if is_removed:
         classes.append("is-removed")
 
-    if has_overlay:
+    if has_image_source:
         crop_url = url_builder(dataset, image_file, label, crop_size)
         crop_node: Component = html.Img(
             src=crop_url,
@@ -897,7 +998,7 @@ def build_tile_grid(
     removed: set[tuple[str, int]],
     crop_size: int,
     display_size: int,
-    has_overlay: Callable[[str, str], bool],
+    has_image_source: Callable[[str, str], bool],
     remove_button_builder: Callable[
         [str, int, bool], Component | list[Component]
     ],
@@ -921,9 +1022,9 @@ def build_tile_grid(
             removal set.
         crop_size: Server crop side length, in pixels.
         display_size: CSS render size, in pixels, for each tile.
-        has_overlay: Callable ``(dataset, image_file) -> bool`` answering
-            whether the overlay PNG exists (typically
-            :meth:`OutputRoot.has_overlay`).
+        has_image_source: Callable ``(dataset, image_file) -> bool`` answering
+            whether an HDF layer or overlay PNG exists (typically
+            :meth:`OutputRoot.has_image_source`).
         remove_button_builder: Callable ``(image_file, label, is_removed)
             -> Component | list[Component]`` returning the tile's curation
             affordance so the gallery owner controls the button id + styling.
@@ -950,11 +1051,13 @@ def build_tile_grid(
                 dataset=dataset,
                 crop_size=crop_size,
                 display_size=display_size,
-                has_overlay=has_overlay(dataset, image_file),
+                has_image_source=has_image_source(dataset, image_file),
                 is_removed=is_removed,
                 is_selected=key in selected,
                 url_builder=url_builder,
-                remove_button=remove_button_builder(image_file, label, is_removed),
+                remove_button=remove_button_builder(
+                    image_file, label, is_removed
+                ),
             )
         )
 

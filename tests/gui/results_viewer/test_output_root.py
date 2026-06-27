@@ -14,7 +14,11 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer import _output_root
+from phenotypic.gui.results_viewer._output_root import (
+    OutputRoot,
+    _all_parse_as_float,
+)
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_parquet_path,
@@ -89,7 +93,31 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
     assert out.cache_dir == tmp_path.resolve() / ".viewer_cache" / "dzi"
 
 
-def test_discover_prefers_post_applied_mirror_over_master(tmp_path: Path) -> None:
+def test_resolve_cache_dir_falls_back_when_existing_cache_unwritable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache_root = tmp_path / "readonly-run"
+    primary = cache_root / ".viewer_cache" / "dzi"
+    primary.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        _output_root,
+        "_cache_dir_is_writable",
+        lambda path: path != primary,
+    )
+
+    resolved = _output_root._resolve_cache_dir(
+        cache_root, tmp_path / "deliverables"
+    )
+
+    assert resolved != primary
+    assert resolved.is_dir()
+    assert ".viewer_cache" in str(resolved)
+
+
+def test_discover_prefers_post_applied_mirror_over_master(
+    tmp_path: Path,
+) -> None:
     """When ``measurements.parquet`` exists, viewer reads it (post-applied)."""
     _make_minimal_output(tmp_path)
 
@@ -113,7 +141,9 @@ def test_discover_prefers_post_applied_mirror_over_master(tmp_path: Path) -> Non
     assert out.master_df["post_tag"].to_list() == ["tagged", "tagged"]
 
 
-def test_discover_falls_back_to_master_when_mirror_absent(tmp_path: Path) -> None:
+def test_discover_falls_back_to_master_when_mirror_absent(
+    tmp_path: Path,
+) -> None:
     """Mid-run / legacy outputs without ``measurements.parquet`` use master."""
     df = _make_minimal_output(tmp_path)
     # No measurements.parquet — only master.
@@ -156,7 +186,9 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
     assert "d1" in out.master_df["Metadata_Dataset"].to_list()
 
 
-def test_discover_dataset_from_master_with_empty_results(tmp_path: Path) -> None:
+def test_discover_dataset_from_master_with_empty_results(
+    tmp_path: Path,
+) -> None:
     """Datasets are data-driven: a master's ``Metadata_Dataset`` wins over an empty ``results/``."""
 
     (tmp_path / "results").mkdir()
@@ -199,14 +231,18 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
     assert "Metadata_ImageFile" in str(excinfo.value)
 
 
-def test_discover_aliases_imagename_when_imagefile_absent(tmp_path: Path) -> None:
+def test_discover_aliases_imagename_when_imagefile_absent(
+    tmp_path: Path,
+) -> None:
     """``Metadata_ImageName`` is aliased as ``Metadata_ImageFile`` when the latter is absent."""
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
     _write_master_parquet(
         tmp_path,
-        pl.DataFrame({"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}),
+        pl.DataFrame(
+            {"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}
+        ),
     )
 
     out = OutputRoot.discover(tmp_path)
@@ -223,7 +259,9 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
     (tmp_path / "results" / "d2" / "measurements" / "b.parquet").touch()
     _write_master_parquet(
         tmp_path,
-        pl.DataFrame({"Metadata_ImageFile": ["a", "b"], "Size_Area": [100.0, 200.0]}),
+        pl.DataFrame(
+            {"Metadata_ImageFile": ["a", "b"], "Size_Area": [100.0, 200.0]}
+        ),
     )
 
     out = OutputRoot.discover(tmp_path)
@@ -262,11 +300,7 @@ def test_overlay_path_returns_expected_absolute_path(tmp_path: Path) -> None:
     _make_minimal_output(tmp_path)
     out = OutputRoot.discover(tmp_path)
     expected = (
-        tmp_path.resolve()
-        / "deliverables"
-        / "overlays"
-        / "d1"
-        / "a.png"
+        tmp_path.resolve() / "deliverables" / "overlays" / "d1" / "a.png"
     )
     assert out.overlay_path("d1", "a") == expected
 
@@ -302,7 +336,9 @@ def test_image_pairs_returns_sorted_unique_tuples(tmp_path: Path) -> None:
     assert pairs == [("d1", "a"), ("d1", "b")]
 
 
-def test_pipeline_summary_reads_name_from_pipeline_json(tmp_path: Path) -> None:
+def test_pipeline_summary_reads_name_from_pipeline_json(
+    tmp_path: Path,
+) -> None:
     """A valid ``pipeline.json`` with a ``name`` populates ``pipeline_summary``."""
 
     _make_minimal_output(tmp_path)
@@ -339,9 +375,6 @@ def test_cache_dir_is_created_on_discover(tmp_path: Path) -> None:
     _make_minimal_output(tmp_path)
     out = OutputRoot.discover(tmp_path)
     assert out.cache_dir.is_dir()
-
-
-from phenotypic.gui.results_viewer._output_root import _all_parse_as_float
 
 
 def test_all_parse_as_float_true_for_numeric_strings() -> None:

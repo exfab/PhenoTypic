@@ -135,7 +135,9 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
     # ID generation. Both route handlers below close over this one binding.
     from flask import request
 
-    bp = Blueprint("results_viewer_tiles", __name__, url_prefix=VIEWER_TILES_PREFIX)
+    bp = Blueprint(
+        "results_viewer_tiles", __name__, url_prefix=VIEWER_TILES_PREFIX
+    )
 
     @bp.route("/<dataset>/<stem>.dzi")
     def manifest(dataset: str, stem: str) -> Response:
@@ -147,7 +149,9 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         deliverables bundle (no per-image HDF) — or an explicit
         ``?layer=overlay`` — tiles the baked overlay PNG instead.
         """
-        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(
+            stem
+        ):
             logger.warning(
                 "Rejected tile manifest request with unsafe identifiers: "
                 "dataset=%r stem=%r",
@@ -174,43 +178,51 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
                 f"no image source for {dataset!r}/{stem!r}", 404
             )
 
-        cache_dir = _dzi_cache_dir_for(output_root.cache_dir, dataset, stem, layer)
+        cache_dir = _dzi_cache_dir_for(
+            output_root.cache_dir, dataset, stem, layer
+        )
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Skip-if-exists: a per-(image, layer) pyramid already on disk is
-        # served directly. This guards the expensive HDF branch, whose
-        # unconditional ``_load_hdf_layer_rgb(...).save(source_png)`` bumps the
-        # source PNG mtime on every request and so defeats ``_dzi_tiler.tile``'s
-        # own freshness check (re-tiling each load). It matches the overlay
-        # branch's idempotency; mtime-staleness is intentionally ignored,
-        # exactly as the overlay path already does.
-        if not (cache_dir / f"{stem}.dzi").exists():
-            try:
-                if layer == _OVERLAY_LAYER:
+        try:
+            if layer == _OVERLAY_LAYER:
+                if not output_root.has_overlay(dataset, stem):
+                    return _json_error(
+                        f"no overlay for {dataset!r}/{stem!r}", 404
+                    )
+                _tile_overlay_source(output_root, dataset, stem, cache_dir)
+            else:
+                # ``_resolve_dzi_layer`` collapses every layer to the overlay
+                # sentinel when no HDF is available, so ``h5`` is non-None here.
+                assert h5 is not None
+                source_png = cache_dir / f"{stem}.png"
+                try:
+                    _ensure_hdf_layer_source_png(
+                        h5, cast(LayerName, layer), source_png
+                    )
+                    _dzi_tiler.tile(source_png, cache_dir)
+                except KeyError:
                     if not output_root.has_overlay(dataset, stem):
                         return _json_error(
-                            f"no overlay for {dataset!r}/{stem!r}", 404
+                            f"HDF layer {layer!r} not found for {dataset!r}/{stem!r}",
+                            404,
                         )
-                    _dzi_tiler.tile(
-                        output_root.overlay_path(dataset, stem), cache_dir
+                    logger.warning(
+                        "HDF layer %s missing for %s/%s; tiling overlay fallback",
+                        layer,
+                        dataset,
+                        stem,
                     )
-                else:
-                    # ``_resolve_dzi_layer`` collapses every layer to the overlay
-                    # sentinel when no HDF is available, so ``h5`` is non-None here.
-                    assert h5 is not None
-                    source_png = cache_dir / f"{stem}.png"
-                    _load_hdf_layer_rgb(
-                        str(h5), os.stat(h5).st_mtime_ns, cast(LayerName, layer)
-                    ).save(source_png)
-                    _dzi_tiler.tile(source_png, cache_dir)
-            except Exception:
-                logger.exception(
-                    "DZI tile generation failed: dataset=%s stem=%s layer=%s",
-                    dataset,
-                    stem,
-                    layer,
-                )
-                return _json_error("tile generation failed", 500)
+                    _tile_overlay_source(
+                        output_root, dataset, stem, cache_dir, force=True
+                    )
+        except Exception:
+            logger.exception(
+                "DZI tile generation failed: dataset=%s stem=%s layer=%s",
+                dataset,
+                stem,
+                layer,
+            )
+            return _json_error("tile generation failed", 500)
 
         return send_from_directory(
             cache_dir,
@@ -223,7 +235,9 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         dataset: str, stem: str, level: int, filename: str
     ) -> Response:
         """Serve an individual tile PNG from the per-(image, layer) cache."""
-        if not is_safe_path_component(dataset) or not is_safe_path_component(stem):
+        if not is_safe_path_component(dataset) or not is_safe_path_component(
+            stem
+        ):
             logger.warning(
                 "Rejected tile request with unsafe identifiers: "
                 "dataset=%r stem=%r",
@@ -252,7 +266,9 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
         if layer is None:
             return _json_error("invalid layer", 404)
 
-        cache_dir = _dzi_cache_dir_for(output_root.cache_dir, dataset, stem, layer)
+        cache_dir = _dzi_cache_dir_for(
+            output_root.cache_dir, dataset, stem, layer
+        )
         tile_dir = cache_dir / f"{stem}_files" / str(level)
         if not tile_dir.is_dir():
             # Manifest endpoint is responsible for tiling; if a tile
@@ -262,15 +278,44 @@ def register(app: dash.Dash, output_root: OutputRoot) -> None:
                 f"tile cache missing for {dataset!r}/{stem!r}", 404
             )
 
-        return send_from_directory(
-            tile_dir, filename, mimetype="image/png"
-        )
+        return send_from_directory(tile_dir, filename, mimetype="image/png")
 
     app.server.register_blueprint(bp)
     logger.debug(
         "Registered results viewer tile routes under /tiles for root=%s",
         output_root.root,
     )
+
+
+def _ensure_hdf_layer_source_png(
+    h5: Path, layer: LayerName, source_png: Path
+) -> None:
+    """Refresh the rendered HDF-layer source PNG only when the HDF is newer."""
+    h5_stat = os.stat(h5)
+    if (
+        source_png.exists()
+        and source_png.stat().st_mtime_ns >= h5_stat.st_mtime_ns
+    ):
+        return
+    _load_hdf_layer_rgb(str(h5), h5_stat.st_mtime_ns, layer).save(source_png)
+    os.utime(source_png, ns=(h5_stat.st_mtime_ns, h5_stat.st_mtime_ns))
+
+
+def _tile_overlay_source(
+    output_root: OutputRoot,
+    dataset: str,
+    stem: str,
+    cache_dir: Path,
+    *,
+    force: bool = False,
+) -> None:
+    """Tile the baked overlay PNG into ``cache_dir``."""
+    if force:
+        try:
+            (cache_dir / f"{stem}.dzi").unlink()
+        except FileNotFoundError:
+            pass
+    _dzi_tiler.tile(output_root.overlay_path(dataset, stem), cache_dir)
 
 
 def _json_error(message: str, status: int) -> Response:

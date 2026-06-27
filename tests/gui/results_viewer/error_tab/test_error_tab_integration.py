@@ -26,7 +26,9 @@ from phenotypic.gui.results_viewer._error_tab import (
     register_error_callbacks,
 )
 from phenotypic.gui.results_viewer._error_tab import _callbacks, _ids as ids
-from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+    ReviewState,
+)
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
@@ -91,7 +93,9 @@ def _layout(root: Path):
     """Full-run-style :class:`BundleLayout` rooted at ``root``."""
     from phenotypic.sdk_ import BundleLayout
 
-    return BundleLayout(deliverables_base=root / "deliverables", output_root=root)
+    return BundleLayout(
+        deliverables_base=root / "deliverables", output_root=root
+    )
 
 
 def _label_errors(root: Path, master: pl.DataFrame, n: int) -> CurationLabels:
@@ -197,7 +201,9 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     # Label the 10 small-area objects as errors; the 10 large-area objects
     # (labels 11..20) are the good pool and all reviewed in one QC group.
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
-    _write_qc_one_group(seeded_root.root, seeded_root.master_df, list(range(11, 21)))
+    _write_qc_one_group(
+        seeded_root.root, seeded_root.master_df, list(range(11, 21))
+    )
 
     all_unlabeled = _callbacks._recompute(
         seeded_root, filtered, "debris", "all_unlabeled"
@@ -211,6 +217,22 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     assert verified.good_n <= all_unlabeled.good_n
     # verified.parquet written only in the non-degenerate verified branch (R4).
     assert verified_parquet_path(seeded_root.root).is_file()
+
+
+def test_recompute_verified_mode_explains_legacy_qc_parquet_cutover(
+    seeded_root,
+):
+    filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
+    qc_dir = seeded_root.layout.qc_dir
+    qc_dir.mkdir(parents=True, exist_ok=True)
+    (qc_dir / "qc_summary.parquet").write_bytes(b"legacy summary")
+    (qc_dir / "qc_members.parquet").write_bytes(b"legacy members")
+
+    result = _callbacks._recompute(seeded_root, filtered, "debris", "verified")
+
+    assert result.empty_state
+    assert "qc.duckdb" in result.empty_message
+    assert "recompile" in result.empty_message.lower()
 
 
 def test_recompute_all_unlabeled_does_not_write_verified_parquet(seeded_root):

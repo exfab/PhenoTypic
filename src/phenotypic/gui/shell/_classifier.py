@@ -18,6 +18,7 @@ artifact that lands inside ``<root>/deliverables/`` (e.g. ``dashboard.html`` or
 not bump the root mtime and may need a sidebar Refresh to surface — matching the
 existing behaviour for files written under ``results/``.
 """
+
 from __future__ import annotations
 
 import os
@@ -28,25 +29,21 @@ from pathlib import Path
 from phenotypic.gui._config import (
     DASHBOARD_FILENAME,
     DELIVERABLES_DIRNAME,
-    MASTER_MEASUREMENTS_PARQUET,
     RESULTS_DIRNAME,
 )
 from phenotypic.gui.builder._directory_browser import IMAGE_EXTS
-from phenotypic.sdk_ import PIPELINE_CONFIG_SUFFIXES, matches_any_suffix
+from phenotypic.sdk_ import (
+    BundleLayout,
+    PIPELINE_CONFIG_SUFFIXES,
+    matches_any_suffix,
+)
 
 __all__ = ["Capabilities", "classify", "invalidate_cache"]
 
 
-# Markers that identify a CLI-output directory. The master parquet name is
-# centralised in ``gui/_config.py`` so the shell classifier and the results
-# viewer's ``_output_root`` stay in lockstep without either importing the
-# other (which would re-introduce the historical circular dependency).
-#
-# Layout note: ``master_measurements.parquet`` and ``dashboard.html`` now live
-# under ``<root>/deliverables/`` (not the output root itself), so the dir
-# classifier stats them inside that subdir. Only ``results/`` stays at the
-# output root.
-_MASTER_MEASUREMENTS_FILENAME = MASTER_MEASUREMENTS_PARQUET
+# Markers that identify a CLI-output directory. The output topology itself is
+# resolved through ``BundleLayout.detect`` so the shell classifier and results
+# viewer agree on direct deliverables bundles as well as full run roots.
 _RESULTS_DIRNAME = RESULTS_DIRNAME
 _DASHBOARD_FILENAME = DASHBOARD_FILENAME
 
@@ -81,13 +78,14 @@ class Capabilities:
             subdirectory — the layout produced by ``python -m phenotypic``.
             The master marker lives under ``deliverables/``; ``results/``
             stays at the output root.
-        is_deliverables_bundle: Directory carries
-            ``deliverables/master_measurements.parquet`` but **no** ``results/``
-            subdirectory — a standalone, portable deliverables bundle the
-            results viewer can still open read-only (curation + QC review work;
-            the per-image pixel-layer toggle is absent). Mutually exclusive with
+        is_deliverables_bundle: Directory resolves through
+            :class:`phenotypic.sdk_.BundleLayout` as a portable deliverables
+            bundle, either directly containing ``master_measurements.parquet``
+            or carrying ``deliverables/master_measurements.parquet`` without a
+            full-run ``results/`` tree. Mutually exclusive with
             :attr:`is_cli_output` (a full run always has ``results/``).
-        has_dashboard: Directory contains ``deliverables/dashboard.html``.
+        has_dashboard: Directory resolves to a deliverables base containing
+            ``dashboard.html``.
             Used by the Run console's Recent Runs panel to enable the
             iframe link.
         is_process_only_output: Directory is a process-mode run — it
@@ -121,6 +119,7 @@ class Capabilities:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def classify(path: str | os.PathLike[str]) -> Capabilities:
     """Classify ``path`` into a :class:`Capabilities` summary.
@@ -245,38 +244,21 @@ def _classify_dir(path: Path) -> Capabilities:
         return _EMPTY
 
     image_count = 0
-    is_cli_output_master = False
     is_cli_output_results = False
-    has_dashboard = False
-    has_deliverables_dir = False
 
     for child in children:
         name = child.name
         if name == _RESULTS_DIRNAME and child.is_dir():
             is_cli_output_results = True
             continue
-        if name == DELIVERABLES_DIRNAME and child.is_dir():
-            has_deliverables_dir = True
-            continue
         if image_count < _IMAGE_COUNT_CAP:
             suffix = child.suffix.lower()
             if suffix in IMAGE_EXTS and child.is_file():
                 image_count += 1
 
-    # The master parquet and dashboard now live under ``<root>/deliverables/``.
-    # Only stat them when that subdir exists, so a non-output directory pays
-    # at most the cheap iterdir above (no extra stats per child).
-    if has_deliverables_dir:
-        deliverables = path / DELIVERABLES_DIRNAME
-        is_cli_output_master = (deliverables / _MASTER_MEASUREMENTS_FILENAME).is_file()
-        has_dashboard = (deliverables / _DASHBOARD_FILENAME).is_file()
-
-    is_cli_output = is_cli_output_master and is_cli_output_results
-    # A standalone, portable deliverables bundle: the master parquet lives
-    # under deliverables/ but there is no per-image results/ tree. The viewer
-    # opens it read-only (no pixel-layer toggle); give it its own affordance
-    # so the sidebar doesn't conflate it with a non-output directory.
-    is_deliverables_bundle = is_cli_output_master and not is_cli_output_results
+    is_cli_output, is_deliverables_bundle, has_dashboard = (
+        _output_flags_from_layout(path, has_results=is_cli_output_results)
+    )
 
     is_process_only_output = False
     if not is_cli_output and not is_cli_output_results:
@@ -310,6 +292,37 @@ def _classify_dir(path: Path) -> Capabilities:
         image_count=image_count if is_image_dir else None,
         bad_perms=False,
     )
+
+
+def _output_flags_from_layout(
+    path: Path, *, has_results: bool
+) -> tuple[bool, bool, bool]:
+    """Return ``(is_cli_output, is_bundle, has_dashboard)`` for a directory."""
+    try:
+        layout = BundleLayout.detect(path)
+    except FileNotFoundError:
+        return False, False, _dashboard_marker_exists(path)
+
+    has_dashboard = (layout.deliverables_base / _DASHBOARD_FILENAME).is_file()
+    if layout.output_root is None:
+        # Preserve the hard cutover for legacy root-level full outputs:
+        # ``master_measurements.parquet`` directly under a directory that also
+        # has ``results/`` is the old layout, not a portable bundle.
+        if has_results:
+            return False, False, False
+        return False, True, has_dashboard
+
+    root_has_results = (layout.output_root / _RESULTS_DIRNAME).is_dir()
+    if root_has_results:
+        return True, False, has_dashboard
+    return False, True, has_dashboard
+
+
+def _dashboard_marker_exists(path: Path) -> bool:
+    """Return ``True`` when ``path`` or its deliverables child has a dashboard."""
+    return (path / _DASHBOARD_FILENAME).is_file() or (
+        path / DELIVERABLES_DIRNAME / _DASHBOARD_FILENAME
+    ).is_file()
 
 
 def _peek_for_pipeline_marker(path: Path) -> bool:

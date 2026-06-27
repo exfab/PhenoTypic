@@ -46,7 +46,10 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
             "Grid_RowNum": [1, 2, 1],
         }
     )
-    column_value_sets = {col: sorted(df[col].cast(pl.String).unique().to_list()) for col in df.columns}
+    column_value_sets = {
+        col: sorted(df[col].cast(pl.String).unique().to_list())
+        for col in df.columns
+    }
 
     out = selectable_axis_columns(df, column_value_sets)
 
@@ -63,12 +66,16 @@ def test_selectable_axis_columns_filters_by_cardinality() -> None:
     """Columns with cardinality 1 or > max_cardinality are dropped."""
     df = pl.DataFrame(
         {
-            "Metadata_Constant": ["x"] * 60,                 # card 1 → drop
-            "Metadata_HighCard": [str(i) for i in range(60)],  # card 60 → drop (> 50)
-            "Metadata_OK": ["a", "b"] * 30,                   # card 2 → keep
+            "Metadata_Constant": ["x"] * 60,  # card 1 → drop
+            "Metadata_HighCard": [
+                str(i) for i in range(60)
+            ],  # card 60 → drop (> 50)
+            "Metadata_OK": ["a", "b"] * 30,  # card 2 → keep
         }
     )
-    column_value_sets = {col: sorted(df[col].unique().to_list()) for col in df.columns}
+    column_value_sets = {
+        col: sorted(df[col].unique().to_list()) for col in df.columns
+    }
 
     out = selectable_axis_columns(df, column_value_sets, max_cardinality=50)
 
@@ -87,13 +94,20 @@ def test_selectable_axis_columns_orders_metadata_first() -> None:
             "Metadata_Aaa": ["x", "y"],
         }
     )
-    column_value_sets = {col: sorted(df[col].cast(pl.String).unique().to_list()) for col in df.columns}
+    column_value_sets = {
+        col: sorted(df[col].cast(pl.String).unique().to_list())
+        for col in df.columns
+    }
 
     out = selectable_axis_columns(df, column_value_sets)
 
     metadata_idx = [i for i, c in enumerate(out) if c.startswith("Metadata_")]
     grid_idx = [i for i, c in enumerate(out) if c.startswith("Grid_")]
-    other_idx = [i for i, c in enumerate(out) if not (c.startswith("Metadata_") or c.startswith("Grid_"))]
+    other_idx = [
+        i
+        for i, c in enumerate(out)
+        if not (c.startswith("Metadata_") or c.startswith("Grid_"))
+    ]
     assert max(metadata_idx) < min(grid_idx)
     assert max(grid_idx) < min(other_idx)
 
@@ -121,9 +135,9 @@ def test_compute_max_bbox_size_uses_max_extent_plus_padding() -> None:
     df = pl.DataFrame(
         {
             "Bbox_MinRR": [0, 10, 100],
-            "Bbox_MaxRR": [40, 50, 200],   # extents 40, 40, 100
+            "Bbox_MaxRR": [40, 50, 200],  # extents 40, 40, 100
             "Bbox_MinCC": [0, 5, 100],
-            "Bbox_MaxCC": [30, 40, 150],   # extents 30, 35, 50
+            "Bbox_MaxCC": [30, 40, 150],  # extents 30, 35, 50
         }
     )
     # Max(rr, cc) extent = 100; default padding 8 → 100 + 16 = 116.
@@ -210,12 +224,43 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     # Build the directory shell discover() expects, just enough to load
     # without crashing. Use the minimum: master parquet + a results dir
     # for the "plate1" dataset (we don't need actual PNGs here).
-    (tmp_path / "results" / "plate1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "plate1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     write_master(tmp_path, master)
     return OutputRoot.discover(tmp_path)
 
 
-def test_build_grid_returns_component_and_row_major_order(tmp_path: Path) -> None:
+def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
+    master = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["plate1"] * 2,
+            "Metadata_ImageFile": ["img-001", "img-002"],
+            "Object_Label": [1, 1],
+            "Bbox_MinRR": [0, 10],
+            "Bbox_MaxRR": [40, 50],
+            "Bbox_MinCC": [0, 10],
+            "Bbox_MaxCC": [40, 50],
+            "Bbox_CenterRR": [20, 30],
+            "Bbox_CenterCC": [20, 30],
+            "Grid_RowNum": [1, 1],
+            "Grid_ColNum": [1, 2],
+        }
+    )
+    hdf_dir = tmp_path / "results" / "plate1" / "hdf"
+    hdf_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "plate1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
+    for stem in ("img-001", "img-002"):
+        (hdf_dir / f"{stem}.h5").write_bytes(b"")
+    write_master(tmp_path, master)
+    return OutputRoot.discover(tmp_path)
+
+
+def test_build_grid_returns_component_and_row_major_order(
+    tmp_path: Path,
+) -> None:
     """grid_order is row-major (Y-axis outer, X-axis inner)."""
     root = _make_output_root(tmp_path)
     df = root.master_df
@@ -238,6 +283,25 @@ def test_build_grid_returns_component_and_row_major_order(tmp_path: Path) -> Non
     for img, label in grid_order:
         assert isinstance(img, str)
         assert isinstance(label, int)
+
+
+def test_build_grid_renders_image_for_hdf_only_source(tmp_path: Path) -> None:
+    root = _make_output_root_with_hdf_only(tmp_path)
+
+    component, _grid_order = build_grid(
+        df=root.master_df,
+        x_axis_col="Grid_ColNum",
+        y_axis_col="Grid_RowNum",
+        max_size=64,
+        removed_keys=set(),
+        selected_keys=set(),
+        output_root=root,
+    )
+
+    srcs = _collect_img_srcs(component)
+    assert srcs
+    assert root.has_overlay("plate1", "img-001") is False
+    assert root.has_image_source("plate1", "img-001") is True
 
 
 # -------------------------------------------------------------------------
@@ -288,11 +352,15 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
             "Grid_ColNum": [1, 1, 2, 2],
         }
     )
-    (tmp_path / "results" / "plate1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "plate1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlays = tmp_path / "deliverables" / "overlays" / "plate1"
     overlays.mkdir(parents=True)
     for stem in ("img-001", "img-002"):
-        PILImage.new("RGB", (64, 64), (200, 0, 0)).save(overlays / f"{stem}.png")
+        PILImage.new("RGB", (64, 64), (200, 0, 0)).save(
+            overlays / f"{stem}.png"
+        )
     write_master(tmp_path, master)
     return OutputRoot.discover(tmp_path)
 
@@ -396,12 +464,15 @@ def test_build_grid_tiles_carry_radial_trigger_not_old_remove_button(
     triggers = [
         btn
         for btn in buttons
-        if isinstance(btn.id, dict) and btn.id.get("type") == "colony-radial-trigger"
+        if isinstance(btn.id, dict)
+        and btn.id.get("type") == "colony-radial-trigger"
     ]
     assert len(triggers) == len(grid_order) == 4
 
 
-def test_build_grid_renders_category_badge_for_labeled_cell(tmp_path: Path) -> None:
+def test_build_grid_renders_category_badge_for_labeled_cell(
+    tmp_path: Path,
+) -> None:
     """A cell whose key is in ``category_of`` renders a colored category badge."""
     from phenotypic.gui._design import category_color
 
@@ -436,7 +507,9 @@ def test_build_grid_renders_category_badge_for_labeled_cell(tmp_path: Path) -> N
     )
     assert labeled_trigger is not None
     assert "radial-badge" in (labeled_trigger.className or "")  # type: ignore[union-attr]
-    assert labeled_trigger.style.get("backgroundColor") == category_color("debris")  # type: ignore[union-attr]
+    assert labeled_trigger.style.get("backgroundColor") == category_color(
+        "debris"
+    )  # type: ignore[union-attr]
 
 
 def test_build_grid_default_category_of_renders_neutral_triggers(
@@ -459,7 +532,8 @@ def test_build_grid_default_category_of_renders_neutral_triggers(
     triggers = [
         btn
         for btn in buttons
-        if isinstance(btn.id, dict) and btn.id.get("type") == "colony-radial-trigger"
+        if isinstance(btn.id, dict)
+        and btn.id.get("type") == "colony-radial-trigger"
     ]
     assert triggers
     for btn in triggers:
@@ -467,7 +541,9 @@ def test_build_grid_default_category_of_renders_neutral_triggers(
         assert not btn.style.get("backgroundColor")  # type: ignore[union-attr]
 
 
-def test_build_grid_custom_category_badge_marks_is_custom(tmp_path: Path) -> None:
+def test_build_grid_custom_category_badge_marks_is_custom(
+    tmp_path: Path,
+) -> None:
     """A custom (non-core) category token renders the ``radial-badge--custom`` modifier."""
     root = _make_output_root(tmp_path)
     category_of = {("img-001", 1): "halo"}  # not an ErrorCategory token

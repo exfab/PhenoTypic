@@ -39,7 +39,9 @@ from tests._output_layout import write_master, write_measurements_mirror
 
 def _layout(tmp_path: Path) -> BundleLayout:
     """Full-run-style layout rooted at ``tmp_path`` (deliverables under it)."""
-    return BundleLayout(deliverables_base=tmp_path / "deliverables", output_root=tmp_path)
+    return BundleLayout(
+        deliverables_base=tmp_path / "deliverables", output_root=tmp_path
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -71,11 +73,15 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
 
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True)
     for stem in ("img-1", "img-2"):
-        PILImage.new("RGB", (120, 120), (255, 0, 0)).save(overlays / f"{stem}.png")
+        PILImage.new("RGB", (120, 120), (255, 0, 0)).save(
+            overlays / f"{stem}.png"
+        )
 
     return OutputRoot.discover(tmp_path)
 
@@ -120,6 +126,32 @@ def test_module_picker_options_empty_without_db(tmp_path: Path) -> None:
     assert _callbacks._module_picker_options(root) == []
 
 
+def _component_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return " ".join(_component_text(item) for item in value)
+    children = getattr(value, "children", None)
+    return _component_text(children)
+
+
+def test_review_empty_state_calls_out_legacy_qc_parquets(
+    tmp_path: Path,
+) -> None:
+    root = _write_output_root(tmp_path)
+    qc_dir = root.layout.qc_dir
+    qc_dir.mkdir(parents=True, exist_ok=True)
+    (qc_dir / "qc_summary.parquet").write_bytes(b"legacy summary")
+
+    text = _component_text(_callbacks._review_empty_state_children(root))
+
+    assert "Legacy QC parquet artifacts" in text
+    assert "qc.duckdb" in text
+    assert "recompile" in text.lower()
+
+
 # ---------------------------------------------------------------------------
 # Recompute frame: post-applied mirror anti-joined with removals
 # ---------------------------------------------------------------------------
@@ -132,9 +164,7 @@ def test_build_recompute_frame_anti_joins_removals(tmp_path: Path) -> None:
 
     frame = _data.build_recompute_frame(root, {("img-2", 1)})
     assert len(frame) == 3
-    remaining = set(
-        zip(frame["Metadata_ImageFile"], frame["Object_Label"])
-    )
+    remaining = set(zip(frame["Metadata_ImageFile"], frame["Object_Label"]))
     assert ("img-2", 1) not in remaining
     assert ("img-2", 2) in remaining
 

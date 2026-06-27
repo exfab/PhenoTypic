@@ -42,7 +42,16 @@ from typing import Any
 
 import dash
 import polars as pl
-from dash import ALL, MATCH, Input, Output, State, callback_context, html, no_update
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    State,
+    callback_context,
+    html,
+    no_update,
+)
 from dash.development.base_component import Component
 from flask import current_app
 
@@ -91,7 +100,11 @@ from phenotypic.gui.results_viewer._filtered_state import (
 )
 from phenotypic.schema import ErrorCategory
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
-from phenotypic.gui.results_viewer._qc_tab.review import _data, _db, _ids as rids
+from phenotypic.gui.results_viewer._qc_tab.review import (
+    _data,
+    _db,
+    _ids as rids,
+)
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     _SUMMARY_HEADER_HEIGHT,
     clamp_sidebar_width,
@@ -187,7 +200,9 @@ def _review_radial_trigger_builder(
         A ``remove_button_builder`` closure.
     """
 
-    def _build(image_file: str, label: int, _is_removed: bool) -> list[Component]:
+    def _build(
+        image_file: str, label: int, _is_removed: bool
+    ) -> list[Component]:
         current_category = category_of.get((image_file, label))
         return build_radial_trigger(
             "qc",
@@ -245,7 +260,10 @@ def _render_summary_header(
                 ),
                 html.Div(
                     label,
-                    style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
+                    style={
+                        "color": COLOR_MUTED,
+                        "fontSize": FONT_SIZE_CAPTION,
+                    },
                 ),
             ],
             # ``flex: 0 0 auto`` keeps each tile at its intrinsic width so
@@ -394,7 +412,9 @@ def _render_worklist_row(
         html.Span(label, style={"fontFamily": FONT_FAMILY_MONO}),
         html.Span(
             id=rids.worklist_row_metric_id(instance_id, encoded),
-            children=render_worklist_row_metric_cell(metric, status, moved=moved),
+            children=render_worklist_row_metric_cell(
+                metric, status, moved=moved
+            ),
             style={"marginLeft": "auto"},
         ),
     ]
@@ -405,11 +425,15 @@ def _render_worklist_row(
         id=rids.worklist_row_id(instance_id, encoded),
         n_clicks=0,
         className="qc-worklist-row d-flex align-items-center w-100",
-        style=_worklist_row_style(is_selected=is_selected, is_reviewed=is_reviewed),
+        style=_worklist_row_style(
+            is_selected=is_selected, is_reviewed=is_reviewed
+        ),
     )
 
 
-def _worklist_row_style(*, is_selected: bool, is_reviewed: bool) -> dict[str, str]:
+def _worklist_row_style(
+    *, is_selected: bool, is_reviewed: bool
+) -> dict[str, str]:
     """Return the visual state for a Review worklist row."""
     return {
         "gap": "0.4rem",
@@ -475,7 +499,9 @@ def _render_detail_header(
     if before is not None and after is not None:
         metric_node: Component = html.Span(
             [
-                html.Span(_format_metric(before), style={"color": COLOR_MUTED}),
+                html.Span(
+                    _format_metric(before), style={"color": COLOR_MUTED}
+                ),
                 html.Span(" → "),
                 html.Span(_format_metric(after), style={"fontWeight": 600}),
             ]
@@ -487,13 +513,22 @@ def _render_detail_header(
 
     return html.Div(
         [
-            html.Span(label, className="fw-semibold me-3",
-                      style={"fontFamily": FONT_FAMILY_MONO}),
-            dbc.Badge(status, color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
-                      className="me-3"),
+            html.Span(
+                label,
+                className="fw-semibold me-3",
+                style={"fontFamily": FONT_FAMILY_MONO},
+            ),
+            dbc.Badge(
+                status,
+                color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
+                className="me-3",
+            ),
             html.Span(["metric: ", metric_node], className="me-3"),
-            html.Span(f"n={n_members}", className="me-3",
-                      style={"color": COLOR_MUTED}),
+            html.Span(
+                f"n={n_members}",
+                className="me-3",
+                style={"color": COLOR_MUTED},
+            ),
             html.Span(f"removed={n_removed}", style={"color": COLOR_MUTED}),
         ],
         style={
@@ -510,7 +545,7 @@ def _render_faceted_gallery(
     removed: set[tuple[str, int]],
     crop_size: int,
     display_size: int,
-    has_overlay,
+    has_image_source,
     dim_alpha: float = 0.0,
     selected: set[tuple[str, int]] | None = None,
     category_of: dict[tuple[str, int], str] | None = None,
@@ -526,7 +561,7 @@ def _render_faceted_gallery(
         removed: ``(image_file, label)`` keys currently removed.
         crop_size: Server crop side length, in pixels.
         display_size: CSS render size, in pixels, for each tile.
-        has_overlay: ``(dataset, image_file) -> bool`` overlay probe.
+        has_image_source: ``(dataset, image_file) -> bool`` HDF/overlay probe.
         dim_alpha: Tile-spotlight strength threaded onto each crop URL as
             ``&dim=`` via a :func:`functools.partial` over
             :func:`_qc_crop_url`. ``0.0`` (default) keeps the full-context
@@ -553,7 +588,7 @@ def _render_faceted_gallery(
             removed=removed,
             crop_size=crop_size,
             display_size=display_size,
-            has_overlay=has_overlay,
+            has_image_source=has_image_source,
             remove_button_builder=remove_button_builder,
         )
         if single_facet:
@@ -563,7 +598,9 @@ def _render_faceted_gallery(
                 html.Div(
                     [
                         html.Div(
-                            f"t = {timepoint}" if timepoint is not None else "t = ?",
+                            f"t = {timepoint}"
+                            if timepoint is not None
+                            else "t = ?",
                             style={
                                 "fontFamily": FONT_FAMILY_MONO,
                                 "fontSize": FONT_SIZE_CAPTION,
@@ -679,12 +716,57 @@ def _module_picker_options(output_root) -> list[dict[str, str]]:
     ]
 
 
+def _review_empty_state_children(output_root) -> Component:
+    """Return the Review empty-state content for the active output root."""
+    if output_root is not None:
+        cutover_message = _db.legacy_qc_cutover_message(output_root)
+        if cutover_message is not None:
+            return html.Div(
+                [
+                    html.Div(
+                        "Legacy QC parquet artifacts found.",
+                        className="fw-semibold",
+                    ),
+                    html.Div(
+                        cutover_message,
+                        style={
+                            "color": COLOR_MUTED,
+                            "fontSize": FONT_SIZE_CAPTION,
+                        },
+                    ),
+                    html.Div(
+                        "`python -m phenotypic --mode recompile --output <output>`",
+                        style={
+                            "color": COLOR_MUTED,
+                            "fontFamily": FONT_FAMILY_MONO,
+                            "fontSize": FONT_SIZE_CAPTION,
+                        },
+                    ),
+                ]
+            )
+    return html.Div(
+        [
+            html.Div("No QC review queue yet.", className="fw-semibold"),
+            html.Div(
+                "Configure a quality check, then re-run "
+                "`python -m phenotypic --mode recompile --output <output>` "
+                "(or pick a module above if a qc/ artifact already exists).",
+                style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
+            ),
+        ]
+    )
+
+
 def _module_for(output_root, instance_id: str | None) -> "_db.QcModule | None":
     """Return the catalog descriptor for ``instance_id``, or ``None``."""
     if output_root is None or not instance_id:
         return None
     return next(
-        (m for m in _db.list_modules(output_root) if m.instance_id == instance_id),
+        (
+            m
+            for m in _db.list_modules(output_root)
+            if m.instance_id == instance_id
+        ),
         None,
     )
 
@@ -718,7 +800,9 @@ def _summary_row_for_key(
         if value is None or (isinstance(value, float) and math.isnan(value)):
             filtered = filtered.filter(pl.col(col).is_null())
         else:
-            filtered = filtered.filter(pl.col(col).cast(pl.String) == str(value))
+            filtered = filtered.filter(
+                pl.col(col).cast(pl.String) == str(value)
+            )
     if filtered.is_empty():
         return None
     return filtered.head(1).to_dicts()[0]
@@ -744,7 +828,10 @@ def _member_keys_from_frame(
     """
     if members.is_empty():
         return []
-    if KEY_IMAGE_FILE not in members.columns or KEY_OBJECT_LABEL not in members.columns:
+    if (
+        KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
         return []
     has_dataset = KEY_DATASET in members.columns
     keys: list[tuple[str, str, int]] = []
@@ -774,9 +861,16 @@ def _time_by_key_from_members(
     :func:`_facet_keys_by_timepoint` fall back to a single unfaceted gallery.
     """
     time_col = module.time_col
-    if time_col is None or members.is_empty() or time_col not in members.columns:
+    if (
+        time_col is None
+        or members.is_empty()
+        or time_col not in members.columns
+    ):
         return {}
-    if KEY_IMAGE_FILE not in members.columns or KEY_OBJECT_LABEL not in members.columns:
+    if (
+        KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
         return {}
     out: dict[tuple[str, int], Any] = {}
     for row in members.iter_rows(named=True):
@@ -896,7 +990,9 @@ def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
             qc_output_dir=output_root.layout.qc_dir,
         )
     except Exception:  # noqa: BLE001 - recompute failure must not crash curation
-        logger.warning("In-session QC recompute (full rebuild) failed", exc_info=True)
+        logger.warning(
+            "In-session QC recompute (full rebuild) failed", exc_info=True
+        )
         return False
     return True
 
@@ -1009,8 +1105,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
             return [], None
         options = _module_picker_options(output_root)
         values = {opt["value"] for opt in options}
-        value = current if current in values else (
-            options[0]["value"] if options else None
+        value = (
+            current
+            if current in values
+            else (options[0]["value"] if options else None)
         )
         return options, value
 
@@ -1024,6 +1122,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Output(rids.STORE_QC_WORKLIST_ORDER, "data"),
         Output(rids.STORE_QC_SELECTED_GROUP, "data"),
         Output(rids.QC_REVIEW_EMPTY_STATE_ID, "style"),
+        Output(rids.QC_REVIEW_EMPTY_STATE_ID, "children"),
         Output(rids.QC_REVIEW_MODULE_CHIPS_ID, "children"),
         Input(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         Input(rids.QC_REVIEW_RESORT_BTN_ID, "n_clicks"),
@@ -1046,8 +1145,20 @@ def register_review_callbacks(app: dash.Dash) -> None:
         output_root = _output_root()
         module = _module_for(output_root, instance_id)
         if module is None:
-            return [], [], [], None, {"display": "block", "padding": "2rem",
-                                      "textAlign": "center"}, []
+            empty_style = {
+                "display": "block",
+                "padding": "2rem",
+                "textAlign": "center",
+            }
+            return (
+                [],
+                [],
+                [],
+                None,
+                empty_style,
+                _review_empty_state_children(output_root),
+                [],
+            )
 
         instance_id = module.instance_id  # narrow str | None → str
         groupby_cols = module.groupby_cols
@@ -1068,19 +1179,33 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected_encoded = order[0] if order else None
 
         rows = _render_worklist_rows(
-            visible, instance_id, groupby_cols, review_state, deltas,
+            visible,
+            instance_id,
+            groupby_cols,
+            review_state,
+            deltas,
             selected_encoded,
         )
 
         stats = _db.summary_stats(worklist)
         removed = _removed_keys_locked()
-        colonies_removed = _count_removed_in_module(output_root, module, removed)
+        colonies_removed = _count_removed_in_module(
+            output_root, module, removed
+        )
         header = _render_summary_header(
             stats, review_state.reviewed_count(instance_id), colonies_removed
         )
         chips = _module_chips(module, groupby_cols)
         empty_style = {"display": "none"}
-        return rows, header, order, selected_encoded, empty_style, chips
+        return (
+            rows,
+            header,
+            order,
+            selected_encoded,
+            empty_style,
+            no_update,
+            chips,
+        )
 
     # -----------------------------------------------------------------
     # C. Group selection → detail header + faceted gallery.
@@ -1099,7 +1224,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
             allow_duplicate=True,
         ),
         Output(rids.STORE_QC_GALLERY_ORDER, "data"),
-        Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
+        Input(
+            {"type": "qc-worklist-row", "instance": ALL, "key": ALL},
+            "n_clicks",
+        ),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
         Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -1139,7 +1267,13 @@ def register_review_callbacks(app: dash.Dash) -> None:
             # group leaves the store unchanged and so never echoes, so we
             # still fall through and render to refresh it.)
             if clicked_key != selected_encoded:
-                return no_update, no_update, clicked_key, skip_styles, no_update
+                return (
+                    no_update,
+                    no_update,
+                    clicked_key,
+                    skip_styles,
+                    no_update,
+                )
             selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
             return [], [], no_update, skip_styles, no_update
@@ -1192,7 +1326,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             removed=removed,
             crop_size=_crop_size_for(keys, output_root),
             display_size=120,
-            has_overlay=output_root.has_overlay,
+            has_image_source=output_root.has_image_source,
             dim_alpha=alpha,
             selected=selected,
             category_of=category_of,
@@ -1318,7 +1452,9 @@ def _module_chips(
 ) -> list[Component]:
     """Render the read-only ``class`` + ``groupby`` chips for the module."""
     chips: list[Component] = [
-        dbc.Badge(module.cls_name, color="light", text_color="dark", className="me-1")
+        dbc.Badge(
+            module.cls_name, color="light", text_color="dark", className="me-1"
+        )
     ]
     if groupby_cols:
         chips.append(
@@ -1590,7 +1726,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             "children",
         ),
         Output(
-            viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True
+            viewer_ids.STORE_CATEGORY_VOCAB_REVISION,
+            "data",
+            allow_duplicate=True,
         ),
         Input(
             {
@@ -1669,7 +1807,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     # selects on a single surface at a time, so sharing the selection store
     # is safe (decision C).
     @app.callback(
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Input(rids.STORE_QC_GALLERY_SELECTION_DELTA, "data"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
         State(rids.STORE_QC_GALLERY_ORDER, "data"),
@@ -1697,7 +1837,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Input(rids.QC_REVIEW_BULK_REMOVE_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_BULK_RESTORE_BTN_ID, "n_clicks"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -1743,7 +1885,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Output(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
         Input(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -1767,7 +1911,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         try:
             payload = bulk_mark(filtered, selected, category)
         except ValueError:
-            logger.warning("QC bulk-mark rejected unknown category %r", category)
+            logger.warning(
+                "QC bulk-mark rejected unknown category %r", category
+            )
             return no_update, no_update, None
         return payload, {"selected": []}, None
 
@@ -1973,7 +2119,11 @@ def _register_worklist_row_metric_callback(app: dash.Dash) -> None:
 
     @app.callback(
         Output(
-            {"type": "qc-worklist-row-metric", "instance": MATCH, "key": MATCH},
+            {
+                "type": "qc-worklist-row-metric",
+                "instance": MATCH,
+                "key": MATCH,
+            },
             "children",
         ),
         Input(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
@@ -2106,4 +2256,3 @@ __all__ = [
     "_recompute_full_rebuild",
     "reconcile_review_state_after_rebuild",
 ]
-

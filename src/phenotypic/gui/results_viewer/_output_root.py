@@ -21,7 +21,10 @@ from phenotypic.gui._config import (
     DIR_MEASUREMENTS,
     VIEWER_CACHE_DIRNAME,
 )
-from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
+    KEY_IMAGE_FILE,
+)
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
@@ -166,7 +169,9 @@ class OutputRoot:
             )
 
         master_df = _ensure_required_columns(master_df, layout, datasets)
-        clean_master_df = _ensure_required_columns(clean_master_df, layout, datasets)
+        clean_master_df = _ensure_required_columns(
+            clean_master_df, layout, datasets
+        )
 
         datasets_with_overlays = [
             ds for ds in datasets if layout.overlays_dir(ds).is_dir()
@@ -196,22 +201,7 @@ class OutputRoot:
             if layout.output_root is not None
             else layout.deliverables_base
         )
-        cache_dir = cache_root / _CACHE_RELATIVE
-        try:
-            cache_dir.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            import hashlib
-            import tempfile
-
-            key = hashlib.sha1(
-                str(layout.deliverables_base).encode()
-            ).hexdigest()[:12]
-            cache_dir = (
-                Path(tempfile.gettempdir())
-                / f"phenotypic-viewer-{key}"
-                / _CACHE_RELATIVE
-            )
-            cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_dir = _resolve_cache_dir(cache_root, layout.deliverables_base)
 
         pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
         overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
@@ -289,6 +279,12 @@ class OutputRoot:
         """
         return (dataset, stem) in self.overlay_index
 
+    def has_image_source(self, dataset: str, stem: str) -> bool:
+        """Return ``True`` when a crop/DZI source exists for this image."""
+        return self.hdf_path(dataset, stem) is not None or self.has_overlay(
+            dataset, stem
+        )
+
     def image_pairs(self, df: pl.DataFrame) -> list[tuple[str, str]]:
         """Extract unique ``(dataset, image_stem)`` pairs from a frame.
 
@@ -340,7 +336,43 @@ class OutputRoot:
         return _all_parse_as_float(self.column_value_sets.get(column, []))
 
 
-def _discover_datasets(master_df: pl.DataFrame, layout: BundleLayout) -> list[str]:
+def _resolve_cache_dir(cache_root: Path, deliverables_base: Path) -> Path:
+    """Return a writable DZI cache dir, falling back to session temp if needed."""
+    cache_dir = cache_root / _CACHE_RELATIVE
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if _cache_dir_is_writable(cache_dir):
+            return cache_dir
+    except OSError:
+        pass
+
+    import hashlib
+    import tempfile
+
+    key = hashlib.sha1(str(deliverables_base).encode()).hexdigest()[:12]
+    fallback = (
+        Path(tempfile.gettempdir())
+        / f"phenotypic-viewer-{key}"
+        / _CACHE_RELATIVE
+    )
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _cache_dir_is_writable(cache_dir: Path) -> bool:
+    """Probe writability with a create/delete operation, not permission bits."""
+    probe = cache_dir / ".write-test"
+    try:
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError:
+        return False
+    return True
+
+
+def _discover_datasets(
+    master_df: pl.DataFrame, layout: BundleLayout
+) -> list[str]:
     """Enumerate dataset names from the master frame, overlays, and results/.
 
     Datasets are data-driven: the master frame's ``Metadata_Dataset`` values
@@ -360,13 +392,18 @@ def _discover_datasets(master_df: pl.DataFrame, layout: BundleLayout) -> list[st
     if KEY_DATASET in master_df.columns:
         names.update(
             str(v)
-            for v in master_df.get_column(KEY_DATASET).drop_nulls().unique().to_list()
+            for v in master_df.get_column(KEY_DATASET)
+            .drop_nulls()
+            .unique()
+            .to_list()
         )
     overlays_root = layout.deliverables_base / DIR_OVERLAYS
     if overlays_root.is_dir():
         names.update(e.name for e in overlays_root.iterdir() if e.is_dir())
     if layout.results_dir is not None:
-        names.update(e.name for e in layout.results_dir.iterdir() if e.is_dir())
+        names.update(
+            e.name for e in layout.results_dir.iterdir() if e.is_dir()
+        )
     return sorted(names)
 
 
@@ -597,5 +634,9 @@ def _read_pipeline_summary(pipeline_json: Path) -> str | None:
                     return value.strip()
         return None
     except Exception:
-        logger.debug("Failed to parse %s for pipeline_summary", pipeline_json, exc_info=True)
+        logger.debug(
+            "Failed to parse %s for pipeline_summary",
+            pipeline_json,
+            exc_info=True,
+        )
         return None

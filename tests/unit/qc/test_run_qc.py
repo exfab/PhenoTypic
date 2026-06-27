@@ -40,56 +40,69 @@ def _measurements() -> pd.DataFrame:
         ("p2.png", [50, 500, 80, 300, 90, 400]),
     ]:
         for i, area in enumerate(areas, start=1):
-            rows.append({
-                "Metadata_ImageFile": plate,
-                "Object_Label": i,
-                "Size_Area": float(area),
-            })
+            rows.append(
+                {
+                    "Metadata_ImageFile": plate,
+                    "Object_Label": i,
+                    "Size_Area": float(area),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 @pytest.fixture
 def layout_csv(tmp_path: Path) -> Path:
     """Layout where p1 expects 6 wells and p2 expects 8 (count mismatch)."""
-    md = pd.DataFrame({
-        "Metadata_ImageFile": ["p1.png"] * 6 + ["p2.png"] * 8,
-        "Object_Label": list(range(1, 7)) + list(range(1, 9)),
-    })
+    md = pd.DataFrame(
+        {
+            "Metadata_ImageFile": ["p1.png"] * 6 + ["p2.png"] * 8,
+            "Object_Label": list(range(1, 7)) + list(range(1, 9)),
+        }
+    )
     path = tmp_path / "layout.csv"
     md.to_csv(path, index=False)
     return path
 
 
 def _pipeline(layout_csv: Path) -> ImagePipeline:
-    return ImagePipeline(qc=[
-        QcRecipeEntry(
-            cls=ReplicateAgreement,
-            params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
-            instance_id="qc-SE-111",
-            enabled=True,
-        ),
-        QcRecipeEntry(
-            cls=ExpectedVsDetectedCount,
-            params={
-                "metadata": str(layout_csv),
-                "groupby": ["Metadata_ImageFile"],
-            },
-            instance_id="qc-Count-222",
-            enabled=True,
-        ),
-        QcRecipeEntry(
-            cls=ReplicateAgreement,
-            params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
-            instance_id="qc-SE-disabled",
-            enabled=False,
-        ),
-    ])
+    return ImagePipeline(
+        qc=[
+            QcRecipeEntry(
+                cls=ReplicateAgreement,
+                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                instance_id="qc-SE-111",
+                enabled=True,
+            ),
+            QcRecipeEntry(
+                cls=ExpectedVsDetectedCount,
+                params={
+                    "metadata": str(layout_csv),
+                    "groupby": ["Metadata_ImageFile"],
+                },
+                instance_id="qc-Count-222",
+                enabled=True,
+            ),
+            QcRecipeEntry(
+                cls=ReplicateAgreement,
+                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                instance_id="qc-SE-disabled",
+                enabled=False,
+            ),
+        ]
+    )
 
 
 def _connect(tmp_path: Path) -> duckdb.DuckDBPyConnection:
     db = qc_duckdb_path(tmp_path)
     assert db.is_file()
     return duckdb.connect(str(db), read_only=True)
+
+
+def _seed_stale_qc_db(tmp_path: Path) -> Path:
+    db = qc_duckdb_path(tmp_path)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    db.write_bytes(b"stale qc database from an earlier run")
+    return db
 
 
 class TestCatalog:
@@ -178,10 +191,12 @@ class TestPerModuleTables:
                 "SELECT table_name FROM qc_modules "
                 "WHERE instance_id = 'qc-SE-111'"
             ).fetchone()[0]
-            cols = [c[0] for c in con.execute(f'DESCRIBE "{tname}"').fetchall()]
-            n_rows = con.execute(
-                f'SELECT count(*) FROM "{tname}"'
-            ).fetchone()[0]
+            cols = [
+                c[0] for c in con.execute(f'DESCRIBE "{tname}"').fetchall()
+            ]
+            n_rows = con.execute(f'SELECT count(*) FROM "{tname}"').fetchone()[
+                0
+            ]
         finally:
             con.close()
         # Member-level: one row per measured object (12 here), with the
@@ -203,13 +218,18 @@ class TestPerModuleTables:
             scols = [
                 c[0] for c in con.execute(f'DESCRIBE "{stname}"').fetchall()
             ]
-            summ = con.execute(
-                f'SELECT * FROM "{stname}" ORDER BY rank'
-            ).pl()
+            summ = con.execute(f'SELECT * FROM "{stname}" ORDER BY rank').pl()
         finally:
             con.close()
 
-        assert {"metric", "status", "flag", "n_members", "n_flagged", "rank"} <= set(scols)
+        assert {
+            "metric",
+            "status",
+            "flag",
+            "n_members",
+            "n_flagged",
+            "rank",
+        } <= set(scols)
         # Worst-first: rank 0 is the failing plate p2.
         worst = summ.row(0, named=True)
         assert worst["Metadata_ImageFile"] == "p2.png"
@@ -253,23 +273,28 @@ class TestTolerance:
     def test_unbuildable_check_is_skipped(self, tmp_path: Path) -> None:
         # A Count check whose metadata path does not exist fails to build;
         # it must be skipped while the good SE check still produces output.
-        pipe = ImagePipeline(qc=[
-            QcRecipeEntry(
-                cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
-                instance_id="qc-SE-ok",
-                enabled=True,
-            ),
-            QcRecipeEntry(
-                cls=ExpectedVsDetectedCount,
-                params={
-                    "metadata": "/nonexistent/layout.csv",
-                    "groupby": ["Metadata_ImageFile"],
-                },
-                instance_id="qc-Count-broken",
-                enabled=True,
-            ),
-        ])
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ReplicateAgreement,
+                    params={
+                        "on": "Size_Area",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-SE-ok",
+                    enabled=True,
+                ),
+                QcRecipeEntry(
+                    cls=ExpectedVsDetectedCount,
+                    params={
+                        "metadata": "/nonexistent/layout.csv",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-Count-broken",
+                    enabled=True,
+                ),
+            ]
+        )
         run_qc(_measurements(), pipe, tmp_path)
         con = _connect(tmp_path)
         try:
@@ -287,32 +312,92 @@ class TestTolerance:
         run_qc(_measurements(), ImagePipeline(), tmp_path)
         assert not qc_duckdb_path(tmp_path).exists()
 
+    def test_no_qc_entries_removes_stale_database(
+        self, tmp_path: Path
+    ) -> None:
+        stale = _seed_stale_qc_db(tmp_path)
+
+        run_qc(_measurements(), ImagePipeline(), tmp_path)
+
+        assert not stale.exists()
+
     def test_all_entries_disabled_is_noop(self, tmp_path: Path) -> None:
-        pipe = ImagePipeline(qc=[
-            QcRecipeEntry(
-                cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
-                instance_id="qc-SE-off",
-                enabled=False,
-            )
-        ])
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ReplicateAgreement,
+                    params={
+                        "on": "Size_Area",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-SE-off",
+                    enabled=False,
+                )
+            ]
+        )
         run_qc(_measurements(), pipe, tmp_path)
         assert not qc_duckdb_path(tmp_path).exists()
 
+    def test_all_entries_disabled_removes_stale_database(
+        self, tmp_path: Path
+    ) -> None:
+        stale = _seed_stale_qc_db(tmp_path)
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ReplicateAgreement,
+                    params={
+                        "on": "Size_Area",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-SE-off",
+                    enabled=False,
+                )
+            ]
+        )
+
+        run_qc(_measurements(), pipe, tmp_path)
+
+        assert not stale.exists()
+
     def test_all_entries_fail_writes_no_database(self, tmp_path: Path) -> None:
-        pipe = ImagePipeline(qc=[
-            QcRecipeEntry(
-                cls=ExpectedVsDetectedCount,
-                params={
-                    "metadata": "/nonexistent/layout.csv",
-                    "groupby": ["Metadata_ImageFile"],
-                },
-                instance_id="qc-Count-broken",
-                enabled=True,
-            )
-        ])
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ExpectedVsDetectedCount,
+                    params={
+                        "metadata": "/nonexistent/layout.csv",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-Count-broken",
+                    enabled=True,
+                )
+            ]
+        )
         run_qc(_measurements(), pipe, tmp_path)
         assert not qc_duckdb_path(tmp_path).exists()
+
+    def test_all_entries_fail_removes_stale_database(
+        self, tmp_path: Path
+    ) -> None:
+        stale = _seed_stale_qc_db(tmp_path)
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ExpectedVsDetectedCount,
+                    params={
+                        "metadata": "/nonexistent/layout.csv",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-Count-broken",
+                    enabled=True,
+                )
+            ]
+        )
+
+        run_qc(_measurements(), pipe, tmp_path)
+
+        assert not stale.exists()
 
 
 class TestRankNaNLast:
@@ -323,19 +408,36 @@ class TestRankNaNLast:
         # rank after a real failing group.
         rows = [
             # fail group: scattered
-            {"Metadata_ImageFile": "bad.png", "Object_Label": 1, "Size_Area": 10.0},
-            {"Metadata_ImageFile": "bad.png", "Object_Label": 2, "Size_Area": 1000.0},
+            {
+                "Metadata_ImageFile": "bad.png",
+                "Object_Label": 1,
+                "Size_Area": 10.0,
+            },
+            {
+                "Metadata_ImageFile": "bad.png",
+                "Object_Label": 2,
+                "Size_Area": 1000.0,
+            },
             # under-powered: single member -> NaN metric
-            {"Metadata_ImageFile": "thin.png", "Object_Label": 1, "Size_Area": 100.0},
+            {
+                "Metadata_ImageFile": "thin.png",
+                "Object_Label": 1,
+                "Size_Area": 100.0,
+            },
         ]
-        pipe = ImagePipeline(qc=[
-            QcRecipeEntry(
-                cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
-                instance_id="qc-SE-nan",
-                enabled=True,
-            )
-        ])
+        pipe = ImagePipeline(
+            qc=[
+                QcRecipeEntry(
+                    cls=ReplicateAgreement,
+                    params={
+                        "on": "Size_Area",
+                        "groupby": ["Metadata_ImageFile"],
+                    },
+                    instance_id="qc-SE-nan",
+                    enabled=True,
+                )
+            ]
+        )
         run_qc(pd.DataFrame(rows), pipe, tmp_path)
         con = _connect(tmp_path)
         try:

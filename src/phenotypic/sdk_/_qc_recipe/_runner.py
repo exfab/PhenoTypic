@@ -17,11 +17,12 @@ finalize path resets it separately). It also never writes
 Atomic full rebuild
 -------------------
 ``run_qc`` is always an **atomic full rebuild**: it builds a fresh DuckDB
-into ``qc.duckdb.tmp`` and then ``os.replace``-s it over the canonical
-``qc.duckdb`` so a reader never observes a partial database. The replace is
-wrapped in a bounded retry on :class:`PermissionError` for the Windows
-open-handle race. It is a **no-op** when the pipeline has no *enabled* QC
-entries (and when entries exist but none analyze successfully).
+into a unique sibling ``*.tmp`` file and then ``os.replace``-s it over the
+canonical ``qc.duckdb`` so a reader never observes a partial database. The
+replace is wrapped in a bounded retry on :class:`PermissionError` for the
+Windows open-handle race. When the pipeline has no *enabled* QC entries (or
+entries exist but none analyze successfully), ``run_qc`` removes any existing
+canonical ``qc.duckdb`` so readers do not see stale modules from a prior run.
 
 Database schema
 ---------------
@@ -44,7 +45,9 @@ import json
 import logging
 import os
 import re
+import threading
 import time
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -86,6 +89,9 @@ CREATE TABLE qc_modules (
 #: positional INSERT placeholder count).
 _CATALOG_NCOLS: int = 19
 
+_WRITER_LOCKS_GUARD = threading.Lock()
+_WRITER_LOCKS: dict[Path, threading.Lock] = {}
+
 
 def run_qc(
     measurements_df: pd.DataFrame,
@@ -97,18 +103,19 @@ def run_qc(
     """Run enabled QC checks and atomically (re)build ``qc.duckdb``.
 
     Always a FULL rebuild: a temp DB is built then ``os.replace``-d over the
-    canonical path so readers never see a partial DB. No-op when the pipeline
-    has no enabled QC entries (or when entries exist but none analyze). Each
-    enabled+built check becomes one ``qc_modules`` catalog row plus a
+    canonical path so readers never see a partial DB. Removes any stale
+    canonical database when the pipeline has no enabled QC entries (or when
+    entries exist but none analyze). Each enabled+built check becomes one
+    ``qc_modules`` catalog row plus a
     ``<table_name>`` data table and a ``<table_name>__summary`` worklist.
 
     Tolerant: a check that fails to instantiate, analyze, *or* ingest into
     DuckDB (its ``CREATE``/``INSERT``) is skipped with a WARNING, never
     aborting the rest of the rebuild — the resulting DB carries the good
-    modules. When *no* module ingests cleanly the build is a no-op (the
-    staging ``.tmp`` is removed and the canonical DB is left untouched);
-    any failure before the atomic swap also removes the ``.tmp`` so a
-    failed rebuild never leaves a stale staging file behind.
+    modules. When *no* module ingests cleanly, the staging ``.tmp`` and any
+    stale canonical DB are removed; any failure before the atomic swap also
+    removes the ``.tmp`` so a failed rebuild never leaves a stale staging file
+    behind.
 
     Args:
         measurements_df: The frame to evaluate. The CLI passes the
@@ -128,66 +135,113 @@ def run_qc(
             folder) from double-joining ``deliverables/``.
 
     Side effects:
-        Writes ``deliverables/qc/qc.duckdb`` (via a ``.tmp`` + atomic
-        replace). Never touches ``review_state.json`` or
-        ``measurements.parquet``.
+        Writes or removes ``deliverables/qc/qc.duckdb`` (via a unique
+        ``.tmp`` + atomic replace for successful rebuilds). Never touches
+        ``review_state.json`` or ``measurements.parquet``.
     """
-    entries = [e for e in pipeline.get_qc() if e.enabled]
-    if not entries:
-        logger.debug("No enabled QC entries; skipping run_qc")
-        return
-
     output_dir = Path(output_dir)
     if qc_output_dir is not None:
         target = Path(qc_output_dir) / QC_DUCKDB
     else:
         target = qc_duckdb_path(output_dir)
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    if tmp.exists():
-        tmp.unlink()
 
-    # Thread `entry` alongside the built frames so the catalog row carries the
-    # real params snapshot (QcTableSpec does not hold params).
-    built: list[tuple[QcRecipeEntry, "QcTableSpec", pd.DataFrame, pd.DataFrame]] = []
-    for entry in entries:
-        result = _run_one_check(entry, measurements_df)
-        if result is not None:
-            spec, table_df, summary_df = result
-            built.append((entry, spec, table_df, summary_df))
-
-    if not built:
-        logger.info("No QC check produced a table; not writing qc.duckdb")
-        return
-
-    # Build the temp DB; on *any* failure (catalog DDL, the per-module
-    # ingest, or the atomic swap) never leave a stale ``.tmp`` behind.
-    try:
-        written = 0
-        con = duckdb.connect(str(tmp))
-        try:
-            _create_catalog(con)
-            for ordinal, (entry, spec, table_df, summary_df) in enumerate(built):
-                if _create_module_tables(
-                    con, entry, spec, table_df, summary_df, ordinal
-                ):
-                    written += 1
-        finally:
-            con.close()
-
-        if written == 0:
-            logger.info("No QC module ingested cleanly; not writing qc.duckdb")
-            if tmp.exists():
-                tmp.unlink()
+    with _writer_lock(target):
+        entries = [e for e in pipeline.get_qc() if e.enabled]
+        if not entries:
+            logger.debug(
+                "No enabled QC entries; removing stale qc.duckdb if present"
+            )
+            _remove_qc_db_if_present(target)
             return
 
-        _atomic_replace_with_retry(tmp, target)
-    except Exception:
-        if tmp.exists():
-            tmp.unlink()
-        raise
+        tmp = _qc_temp_db_path(target)
+
+        # Thread `entry` alongside the built frames so the catalog row carries the
+        # real params snapshot (QcTableSpec does not hold params).
+        built: list[
+            tuple[QcRecipeEntry, "QcTableSpec", pd.DataFrame, pd.DataFrame]
+        ] = []
+        for entry in entries:
+            result = _run_one_check(entry, measurements_df)
+            if result is not None:
+                spec, table_df, summary_df = result
+                built.append((entry, spec, table_df, summary_df))
+
+        if not built:
+            logger.info(
+                "No QC check produced a table; removing stale qc.duckdb"
+            )
+            _remove_qc_db_if_present(target)
+            return
+
+        # Build the temp DB; on *any* failure (catalog DDL, the per-module
+        # ingest, or the atomic swap) never leave a stale ``.tmp`` behind.
+        try:
+            written = 0
+            con = duckdb.connect(str(tmp))
+            try:
+                _create_catalog(con)
+                for ordinal, (entry, spec, table_df, summary_df) in enumerate(
+                    built
+                ):
+                    if _create_module_tables(
+                        con, entry, spec, table_df, summary_df, ordinal
+                    ):
+                        written += 1
+            finally:
+                con.close()
+
+            if written == 0:
+                logger.info(
+                    "No QC module ingested cleanly; removing stale qc.duckdb"
+                )
+                _remove_tmp_if_present(tmp)
+                _remove_qc_db_if_present(target)
+                return
+
+            _atomic_replace_with_retry(tmp, target)
+        except Exception:
+            _remove_tmp_if_present(tmp)
+            raise
 
     logger.info("Wrote QC DuckDB for %d module(s) -> %s", written, target)
+
+
+def _writer_lock(target: Path) -> threading.Lock:
+    resolved = target.resolve()
+    with _WRITER_LOCKS_GUARD:
+        lock = _WRITER_LOCKS.get(resolved)
+        if lock is None:
+            lock = threading.Lock()
+            _WRITER_LOCKS[resolved] = lock
+        return lock
+
+
+def _qc_temp_db_path(target: Path) -> Path:
+    return target.with_name(
+        f"{target.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    )
+
+
+def _remove_tmp_if_present(path: Path) -> None:
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        return
+
+
+def _remove_qc_db_if_present(path: Path) -> None:
+    for attempt in range(5):
+        try:
+            path.unlink()
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.05 * (attempt + 1))
 
 
 def _create_module_tables(
@@ -366,11 +420,13 @@ def _rank_worst_first(
     # Build a sort frame so we can express "NaN last" independently of the
     # metric direction (``sort_values(na_position="last")`` only applies to
     # the last sort key, so isolate NaN-ness into its own leading key).
-    order = pd.DataFrame({
-        "_nan_last": metric.isna().astype(int),  # 0 = finite first
-        "_severity": -severity,                  # higher severity first
-        "_metric": (-metric if higher_is_bad else metric),
-    })
+    order = pd.DataFrame(
+        {
+            "_nan_last": metric.isna().astype(int),  # 0 = finite first
+            "_severity": -severity,  # higher severity first
+            "_metric": (-metric if higher_is_bad else metric),
+        }
+    )
     sorted_index = order.sort_values(
         ["_nan_last", "_severity", "_metric"],
         kind="mergesort",  # stable: preserves group order on exact ties
