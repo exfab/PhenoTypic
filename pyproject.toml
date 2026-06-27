@@ -161,7 +161,7 @@ dev = [
     "types-tqdm>=4.67.3.20260518",
     "types-psutil>=7.2.2.20260518",
 ]
-qt-test = [
+test-qt = [
     # Qt/napari widget tests. pytest-qt imports a Qt binding (PyQt6) at
     # configure time, so both must be present whenever these tests run.
     # The napari extra also pulls pyqt6 via napari[pyqt6]; uv dedupes the

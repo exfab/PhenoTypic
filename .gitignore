@@ -8,6 +8,8 @@
 .claude/*
 !.claude/skills/
 !.claude/skills/**
+# Never commit per-user local settings (permissions, enabled MCP servers, etc.).
+.claude/settings.local.json
 
 # Local environment / per-user secrets (e.g. PHENOTYPIC_TEST_PG_URL for the
 # gated Postgres tests). Never committed — see .env.example. Keeps the suite

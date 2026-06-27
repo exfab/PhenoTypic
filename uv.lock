@@ -3937,7 +3937,7 @@ docs = [
     { name = "sphinxawesome-theme" },
     { name = "sphinxcontrib-napoleon" },
 ]
-qt-test = [
+test-qt = [
     { name = "pyqt6", version = "6.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
     { name = "pyqt6", version = "6.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "pytest-qt" },
@@ -4042,7 +4042,7 @@ docs = [
     { name = "sphinxawesome-theme" },
     { name = "sphinxcontrib-napoleon" },
 ]
-qt-test = [
+test-qt = [
     { name = "pyqt6", specifier = ">=6.9.1" },
     { name = "pytest-qt", specifier = ">=4.5.0" },
 ]
