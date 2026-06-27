@@ -17,6 +17,12 @@ Module-level constant
     The special ``category`` value placed on the center "restore / close"
     wedge. The wedge-click callback checks for it to call
     ``CurationLabels.unmark`` rather than ``mark``.
+
+A wedge click maps to one ``CurationLabels.mark(image_file, label, category)``.
+Category colors come from :func:`phenotypic.gui._design.category_color` (core
+categories = fixed Okabe-Ito slots; custom = cycled palette + a
+``radial-badge--custom`` class). Colony-view wiring lives in
+``colony_view/_callbacks.py``; QC-review wiring in ``_qc_tab/review/_callbacks.py``.
 """
 
 from __future__ import annotations

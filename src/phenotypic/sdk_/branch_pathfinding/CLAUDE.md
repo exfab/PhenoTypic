@@ -1,8 +1,8 @@
 # Branch Pathfinding
 
 Multi-source Dijkstra pathfinding over image cost surfaces. Extracted
-from `FilamentousFungiDetector` and reused by `MeasureRadialExpansion`
-(and any future callers). Algorithm-agnostic: **cost surfaces are the
+from `FilamentousFungiDetector` (radial-expansion reuse is planned, not
+yet present). Algorithm-agnostic: **cost surfaces are the
 caller's responsibility** — assemble your own from whatever image
 features you have (phase congruency, skeletons, distance transforms,
 etc.).
@@ -33,9 +33,9 @@ Otherwise numba may try to reuse a stale signature and throw a
 ## Direction and `delta` conventions
 
 - **Seed** Dijkstra where you want cost-zero (colony interior for fungi
-  detection, core zone for radial expansion).
+  detection, or the core zone of any radial problem).
 - **Backtrack** from the points you want routed (fragment pixels for
-  fungi, skeleton tips for radial expansion).
+  fungi, or skeleton tips for a radial problem).
 - `delta > 0` adds a radial-retreat penalty (wavefronts pay extra for
   steps that move closer to their source centroid). Use a nonzero
   `delta` when the problem has a growth-direction prior; use

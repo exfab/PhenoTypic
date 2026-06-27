@@ -1,6 +1,6 @@
 # PhenoTypic GUI Module Guide
 
-The GUI is a Dash-based hub composed of four mounted sub-apps:
+The GUI is a Dash-based hub: a shell plus six mounted sub-apps:
 
 | Mount        | Module                              | Purpose                                  |
 | ------------ | ----------------------------------- | ---------------------------------------- |
@@ -8,6 +8,9 @@ The GUI is a Dash-based hub composed of four mounted sub-apps:
 | `/builder/`  | `gui/builder/`                      | Pipeline builder (dash-cytoscape graph)  |
 | `/results/`  | `gui/results_viewer/`               | Output viewer (OpenSeadragon + tables)   |
 | `/run/`      | `gui/run_console/`                  | Run console (form + log tail + recents)  |
+| `/analysis/` | `gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
+| `/tune/`     | `gui/tune/`                         | Hyperparameter tuning console            |
+| `/browse/`   | `gui/browse/`                       | File / output browser                    |
 
 Composition lives in [shell/_app.py](shell/_app.py) (`compose_hub`); the
 hub's WSGI seam is a `werkzeug.middleware.dispatcher.DispatcherMiddleware`
@@ -20,7 +23,7 @@ server.
 
 | Need                                     | File                                                  |
 | ---------------------------------------- | ----------------------------------------------------- |
-| New CLI-produced output filename / dirname (consumed by GUI) | [`phenotypic.sdk_._io_constants`](../tools_/_io_constants.py) (`MASTER_MEASUREMENTS_PARQUET`, `DIR_RESULTS`, `JOB_METADATA_JSON`, …) |
+| New CLI-produced output filename / dirname (consumed by GUI) | [`phenotypic.sdk_._io_constants`](../sdk_/_io_constants.py) (`MASTER_MEASUREMENTS_PARQUET`, `DIR_RESULTS`, `JOB_METADATA_JSON`, …) |
 | New CLI default / port / log format      | [_config.py](_config.py) (`DEFAULT_*`, `LOG_FORMAT`)  |
 | New brand color / type / radius / shadow | [_design.py](_design.py) (`COLOR_*`, `TEXT_*`, …)     |
 | New mount prefix                         | [_config.py](_config.py) (`MOUNT_*`) + register in [shell/_app.py](shell/_app.py) |
@@ -88,6 +91,9 @@ from phenotypic.gui._config import (
     MOUNT_BUILDER,          # "/builder/"
     MOUNT_VIEWER,           # "/results/"
     MOUNT_RUN,              # "/run/"
+    MOUNT_ANALYSIS,         # "/analysis/"
+    MOUNT_TUNE,             # "/tune/"
+    MOUNT_BROWSE,           # "/browse/"
     SANDBOX_API_PREFIX,     # "/sandbox/api"
     RUNS_BLUEPRINT_PREFIX,  # "/runs"
 )
@@ -165,7 +171,7 @@ from phenotypic.gui._config import (
     MEASUREMENTS_PARQUET,         # "measurements.parquet"
     ANALYSIS_CSV,                 # "analysis.csv"
     ANALYSIS_PARQUET,             # "analysis.parquet"
-    PIPELINE_JSON,                # "pipeline.json"
+    PIPELINE_JSON,                # "pipeline.json.pht-pipe"
     RESULTS_DIRNAME,              # "results"
     PROGRESS_DIRNAME,             # "progress"
     DELIVERABLES_DIRNAME,         # "deliverables"
@@ -406,104 +412,38 @@ travels with the field annotation.
 
 ## Error-category triage (curation)
 
-The results viewer's per-colony curation is an **error-category radial
-menu**, not a binary remove. The shared component is
-`gui/_shared/_radial.py` (one implementation for both tile surfaces):
+Per-colony curation is an error-**category radial menu** (not a binary remove),
+implemented once for both tile surfaces in `gui/_shared/_radial.py` — see its
+module docstring for the trigger/badge, lazy `dbc.Popover`, `surface` keying,
+wedge→`CurationLabels.mark`/`unmark`, and category colors. Two cross-cutting
+notes not tied to that component:
 
-- **Per-tile trigger** (`build_radial_trigger`) → a `▾` button (or a colored
-  category **badge** when labeled) anchoring a **lazily-populated**
-  `dbc.Popover`. The body ships empty and a `MATCH` populate-on-click callback
-  fills the wedge ring (`build_radial_body`) — mirrors the `_build_stack_popover`
-  pattern so a grid of many tiles stays light.
-- **Surfaces** are keyed by a `surface` arg (`"colony"` / `"qc"`) baked into
-  every id type (`colony-cat-wedge` vs `qc-cat-wedge`, …) so the two tabs'
-  pattern-matched callbacks never collide. Colony wiring lives in
-  `colony_view/_callbacks.py`; QC in `_qc_tab/review/_callbacks.py`.
-- **One wedge click → one `CurationLabels.mark(image_file, label, category)`**;
-  the center node carries `RADIAL_RESTORE_SENTINEL` (`"__restore__"`) → `unmark`.
-  Category colors come from `_design.category_color` (core = fixed OI slot,
-  custom = cycled palette + a `radial-badge--custom` discriminator, decision D).
-- **Grid category channel (decision A):** the grid re-render reads
-  `filtered_state.labels` under `filtered_state._lock` (a server-side snapshot —
-  there is **no** `STORE_LABELS` Dash store) and threads a `category_of` map
-  into `build_grid` / `build_tile_grid`.
-- **On-disk dual ownership:** the GUI writes `deliverables/errors/<category>.parquet`
-  **live** as the user curates (via `CurationLabels._save_locked`), and the CLI
-  **re-emits** them on the next finalize/recompile from the durable
-  `qc/curation_labels.parquet` (which the CLI never wipes). Resolve these paths
-  via `phenotypic.sdk_` helpers (`errors_dir`, `error_category_parquet_path`,
-  `curation_labels_parquet_path`), never by hand-joining names.
+- The grid re-render reads `filtered_state.labels` under `filtered_state._lock`
+  as a **server-side snapshot** — there is **no** `STORE_LABELS` Dash store.
+- On-disk error categories are **dual-owned**: the GUI live-writes
+  `deliverables/errors/<category>.parquet` as the user curates, and the CLI
+  re-emits them on finalize from the durable `qc/curation_labels.parquet`.
+  Resolve every path via `phenotypic.sdk_` helpers, never by hand-joining names.
 
 ---
 
 ## Error-analysis tab
 
-The results viewer's **Error** tab (`results_viewer/_error_tab/`, the 5th
-tab, `TAB_ERROR_ID`) ranks the single measurements that best separate a
-chosen error category from a good baseline, via
-`phenotypic.analysis.ErrorCutoffFinder`. The package splits the usual way:
-`_data.py` (pure good/error frame construction + verified-good resolution),
-`_figure.py` (the pure good-vs-error distribution figure), `_layout.py`
-(the static layout), `_callbacks.py` (the recompute + cutoff-drag wiring),
-and `_ids.py` (all-static component ids, e.g. `error-cutoff-table`,
-`error-distribution-figure`, `error-good-mode-toggle`).
-
-- **Good-baseline toggle (`ERROR_GOOD_MODE_TOGGLE_ID`):** `all_unlabeled`
-  (default — every unlabeled object is good) vs `verified` (the good class
-  is restricted to `verified_good_keys`, the unlabeled members of
-  QC-reviewed groups, derived from `qc/qc.duckdb` (the `qc_modules` catalog +
-  per-module member tables, read via `review/_db.py`) + `qc/review_state.json`;
-  diagnostic-only modules — `supports_object_curation == False` — are skipped).
-  The verified-good count badge (`ERROR_VERIFIED_COUNT_ID`) reports that set's
-  size.
-- **Server-side state, recompute on activation:** the recompute callback
-  reads `filtered_state.labels` under `filtered_state._lock` (the shared
-  `CurationLabels`; there is **no** `STORE_LABELS` Dash store) and builds
-  the error frame by looking the labeled keys up in `output_root.master_df`
-  (the post-applied mirror). It gates on `active_tab == TAB_ERROR_ID` and
-  raises `PreventUpdate` off-tab, so marking a colony on another tab never
-  runs the finder — returning to the Error tab recomputes from the current
-  durable labels store (R2).
-- **Live persistence (focused category):** each recompute writes
-  `deliverables/error_analysis.{parquet,csv}` for the *focused* category
-  (leading `category` column, transient last-viewed-in-session) via
-  `_persist`, and in verified mode writes `deliverables/verified.parquet`
-  via `_persist_verified`. The HTML report is written only on explicit
-  `Save analysis report`. The per-category `deliverables/errors/<category>.parquet`
-  are written by the curation layer (`CurationLabels._save_locked`), not here.
-- **CLI finalize re-emits (all categories):** `reemit_error_deliverables`
-  (`_cli/_cli_error_outputs.py`, called from `finalize_post_master_outputs`)
-  re-runs the finder per labeled category against the clean master and
-  authoritatively rewrites `errors/*` + `error_analysis.*` (columns
-  `[category, *RESULT_COLUMNS]`) from the durable `qc/curation_labels.parquet`,
-  so headless output matches the live GUI. `verified.parquet` is **GUI-only**
-  — finalize never writes it (it would be stale: `review_state.json` is reset
-  on recompile). Resolve every path via `phenotypic.sdk_` helpers
-  (`error_analysis_parquet_path`, `errors_dir`, `verified_parquet_path`, …),
-  never by hand-joining names.
+The results viewer's **Error** tab (`results_viewer/_error_tab/`, 5th tab,
+`TAB_ERROR_ID`) ranks the measurements that best separate a chosen error category
+from a good baseline via `phenotypic.analysis.ErrorCutoffFinder`, recomputing as
+the user marks objects on other tabs. The package splits `_data` / `_figure` /
+`_layout` / `_callbacks` / `_ids`; the good-baseline toggle, server-side state
+(no `STORE_LABELS` store), live persistence, and the CLI re-emit
+(`reemit_error_deliverables`) are documented in the `_error_tab` package
+docstring. Key gotcha: `verified.parquet` is **GUI-only** — finalize never writes
+it.
 
 ## Builder preview cache
 
-The builder's `Run preview` does NOT cache full `Image` instances. Each
-intermediate is rendered to a PNG **at preview-run time** by
-`render_node_preview` (see `builder/_image_renderer.py`) and the resulting
-bytes — together with measurement DataFrames and `PreviewRenderError`
-sentinels — are what live in `IntermediatesCache` (`builder/_session.py`).
-The inspector base64-wraps the bytes for `<img src=…>` and is otherwise
-a no-op on selection.
-
-- **Per-stage rule** (encoded inside `render_node_preview`):
-  - Enhancer → PNG of `detect_mat`.
-  - Detector / Refiner → overlay PNG (`label2rgb` of `objmap` over
-    `detect_mat`, scikit-image-fallback to a tab20 colormap).
-  - Corrector / nested `ImagePipeline` / unknown → PNG of `rgb`.
-- **Why**: pre-baking collapses worst-case resident memory from ~1–2 GB
-  (full Images per node × bounded sessions) to ~10–15 MB of PNG bytes,
-  and makes inspector node-switching effectively free.
-- **Render failures don't kill the preview** — they're caught per-node
-  and stored as `PreviewRenderError(message)` so the inspector can
-  surface the error inline while the rest of the run-preview output
-  remains valid.
-- **Testable seam**: `_callbacks._bake_preview_cache(state, pipeline,
-  result, session_id, cache)` is the unit the integration tests target;
-  `run_preview` itself is a thin Dash-callback adapter around it.
+The builder's `Run preview` caches **PNG bytes, not `Image` instances** — each
+intermediate is rendered to PNG at preview-run time. The per-stage channel rule,
+the memory rationale (~10–15 MB vs ~1–2 GB), `PreviewRenderError` handling, the
+`IntermediatesCache` (`builder/_session.py`), and the `_bake_preview_cache`
+integration-test seam (`builder/_callbacks.py`) are all documented on
+`builder/_image_renderer.py` (`render_node_preview`).

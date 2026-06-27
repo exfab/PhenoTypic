@@ -1,4 +1,4 @@
-# Tools Module
+# SDK Module
 
 Utility mixins, helpers, and constants.
 
@@ -17,7 +17,7 @@ Used by detectors/refiners on gridded plate images.
 Location: `mixin/_grid_inference_mixin.py`.
 
 ### LazyWidgetMixin
-Auto-generates Jupyter widgets for parameter tuning from `__init__` params.
+Auto-generates Jupyter widgets for parameter tuning from the operation's pydantic `model_fields`.
 Included in all `ImageOperation` subclasses automatically.
 Location: `mixin/_lazy_widget_mixin.py`.
 
@@ -30,7 +30,8 @@ Location: `mixin/_clip_control_mixin.py`.
 
 ## Other Utilities
 
-- [`branch_pathfinding/`](branch_pathfinding/CLAUDE.md) — multi-source Dijkstra, cost-surface composition, fragment prescreening, path quality filtering, Voronoi partition. Used by `FilamentousFungiDetector` and `MeasureRadialExpansion`; cost surfaces are the caller's responsibility.
+- [`branch_pathfinding/`](branch_pathfinding/CLAUDE.md) — multi-source Dijkstra, cost-surface composition, fragment prescreening, path quality filtering, Voronoi partition. Used by `FilamentousFungiDetector`; cost surfaces are the caller's responsibility.
+- `register/` — operation self-registration; underpins the `PHENOTYPIC_PRELOAD_MODULES` workflow for resolving custom op classes defined outside the `phenotypic` namespace.
 - `constants_.py` — framework constants for image data (image modes, image
   types, gamma encodings). `ConstantLabels` and framework-config enums
   (`GAMMA_ENCODINGS`, `PIPE_STATUS`) live here; they subclass `MeasurementInfo`,

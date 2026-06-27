@@ -16,9 +16,9 @@
 - `uv run <cmd>` — run commands
 - `uv add <package>` (or `--group dev`) — add dependencies
 - `uv sync` — sync env (after checkout or in new worktrees)
-- `uv sync --group dev --group qt-test --group docs --extra gui --extra napari` — full
+- `uv sync --group dev --group test-qt --group docs --extra gui --extra napari` — full
   dev env
-  (`qt-test` + the `napari` extra are required for the napari/Qt widget tests)
+  (`test-qt` + the `napari` extra are required for the napari/Qt widget tests)
 - `source .venv/bin/activate` — manual venv activation
 
 ### Linting & Type Checking
@@ -78,34 +78,9 @@
 
 #### Adding GUI features
 
-Two ledgers track the GUI surface; both are CI-gated:
-
-- **`src/phenotypic/gui/FEATURES.md`** — every individual user-visible
-  affordance (button, badge, store, callback, route). The
-  `gui-checks` workflow's `features-md-gate` job rejects any PR that
-  touches `src/phenotypic/gui/` without modifying `FEATURES.md`.
-  Pre-commit also validates `Test ref` on `✅ shipping` rows.
-- **`src/phenotypic/gui/WORKFLOWS.md`** — every end-to-end user flow
-  worth a tutorial page. Adding a row here REQUIRES adding a matching
-  `_capture_<id>` function in `scripts/capture_gui_tutorial_screenshots.py`
-  and a walkthrough page under `docs/source/tutorials/gui/`.
-  The `gui-checks` workflow's `workflows-md-gate` job runs
-  `scripts/check_workflows_md.py` (also available as a pre-commit
-  hook) to enforce the round-trip.
-
-Run `uv run python scripts/capture_gui_tutorial_screenshots.py` after
-any visible chrome change and commit the refreshed PNGs alongside the
-source change. The `gui-checks` workflow's `smoke-capture` job
-regenerates them on Ubuntu and uploads as a build artifact for
-spot-checking, but cross-platform font rendering means committed PNGs
-should come from a developer workstation, not CI.
-
-The capture regenerates the **full** screenshot set, so unrelated
-tutorials' PNGs shift by a few bytes (font-rendering noise) on every
-run. **Commit them all — do not cherry-pick or `git checkout --` the
-collateral.** Full regeneration + commit-everything keeps the workflow
-simple and the committed render internally consistent; the accepted
-cost is occasional binary churn in history.
+Two CI-gated ledgers (`FEATURES.md`, `WORKFLOWS.md`) plus the
+tutorial-screenshot capture script must stay in sync when you change GUI
+chrome — see the **`gui-tutorial-capture`** skill.
 
 ---
 
@@ -144,7 +119,7 @@ operations copy data; avoid unnecessary intermediate allocations.
   parameter, declare a typed field; put input normalization and guards in a
   `field_validator`, never an `__init__`. Raw-array params use the reusable
   `NdArrayField` type; operation-valued params use `OperationField` (both in
-  `tools_/typing_.py`).
+  `sdk_/typing_.py`).
 - **Public API:** only `__init__.py` exports are public; `_implementation.py` files are
   private.
 - **Immutability:** operations return copies; never modify `image.rgb`/`image.gray`
@@ -171,7 +146,8 @@ operations copy data; avoid unnecessary intermediate allocations.
   does.
 - Break large functions into smaller, testable helpers with private methods.
 - For batch processing, use the CLI (`python -m phenotypic`) not custom scripts.
-- Import `phenotypic.settings_` before other modules when modifying settings.
+- Toggle integrity validation via `phenotypic.settings` (`VALIDATE_OPS`,
+  `set_validate_ops()`, or the `validation()` context manager).
 
 ---
 
@@ -183,8 +159,7 @@ operations copy data; avoid unnecessary intermediate allocations.
 - [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md) — ABC hierarchy, implementation
 - [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md) — public measurement schema (
   `MeasurementInfo` base + header enums)
-- [tools_/CLAUDE.md](src/phenotypic/sdk_/CLAUDE.md) — mixins, utilities
-- [settings_/CLAUDE.md](src/phenotypic/settings_/CLAUDE.md) — global config
+- [sdk_/CLAUDE.md](src/phenotypic/sdk_/CLAUDE.md) — mixins, utilities
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
 - [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
   constants, `_design.py` tokens
@@ -203,67 +178,12 @@ operations copy data; avoid unnecessary intermediate allocations.
   `_cli_staged_workers.py` — staged GPU engine (local + SLURM);
   see [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md)
 
-## Code Style
+## Closed Value Sets & Operation Parameters
 
-Public parameters with closed value sets: type as `EnumType | Literal["a", "b", ...]`,
-normalize in a `field_validator(mode="before")` with `value = EnumType(value)`, and use
-only enum members internally.
-Define the `Literal` alias once as a `TypeAlias` and reuse. If both `Enum` and `Literal`
-exist, add a test asserting their values match.
-
-**Closed value sets needing user-visible documentation: prefer `MeasurementInfo` /
-`ConstantLabels`** (in `phenotypic.sdk_.constants_`). Each member is a
-`(label, description)` tuple, the description is accessible to callers, and the existing
-pattern (override `category()` classmethod, optionally `__new__` for bare-label values)
-is the project convention. The `MeasurementInfo` base class lives in the public
-`phenotypic.schema` package; framework-config constant enums (`GAMMA_ENCODINGS`,
-`PIPE_STATUS`, `METADATA`) stay in `phenotypic.sdk_.constants_`, while the
-per-feature measurement-column enums live in `phenotypic.schema`. Do not modify these
-classes' internals to satisfy the generic `MyEnum(value)` normalization — their bespoke
-coercion (e.g. `_GAMMA_COERCE` for `GAMMA_ENCODINGS`) is intentional.
-
-For **type-only enforcement** of a closed set with no documentation surface (CLI
-dispatch
-keys, internal mode flags), a `Literal[...]` `TypeAlias` in `tools_/typing_.py` is
-sufficient — no Enum needed. Examples: `FootprintShape`, `DetectMode`, `ExecutionMode`,
-`ImageTypeName`, `ProcessingStatus`.
-
-Pair an Enum with a `Literal` alias only when both forms are used at boundary code
-(string-typed external input + enum-typed internal storage), and add an alignment test
-(`set(get_args(MyLiteral)) == {m.value for m in MyEnum}` — see
-`tests/unit/tools_/test_io_constants.py::TestEnumLiteralAlignment::test_image_type_literal_covers_base_and_grid_enum_values`).
-When the Literal intentionally covers only a subset of the Enum's members (e.g.
-`ImageTypeName` exposes only `BASE` and `GRID`, not the internal-only `CROP`/`OBJECT`/
-`GRID_SECTION`), assert with `issubset` instead and document the partial coverage in
-the test docstring.
-
-Parameterized strings are not enumerations: keep the template as a private `Final[str]`
-and expose a typed render function whose parameters are the public API.
-
-Never accept bare `str` for closed sets, never propagate raw strings past the boundary,
-never derive `Literal` from runtime expressions.
-
-A new numeric (`int`/`float`) field on any `detect/`, `enhance/`, `refine/`, `grid/`, or
-`correction/` operation is pulled into the annotation-coverage gate
-(`tests/unit/tune/test_annotation_coverage.py`) and **must be covered** — by a
-`TuneSpec`
-or a pydantic `Field` bound — or CI fails. Pick the annotation by intent, not just to
-pass
-the gate:
-
-- **Has a fixed, sensible search window** →
-  `Annotated[float, TuneSpec(low, high, log=...)]`.
-- **Should never be tuned** (scene-derived, structural) → `TuneSpec(tunable=False)`.
-- **Worth tuning but the range depends on runtime context** (e.g. a filter cutoff on a
-  measured value whose scale varies by feature) → a **bare `TuneSpec()`** (tunable, no
-  `low`/`high`). It satisfies the gate and declares intent-to-tune, while auto-search
-  deliberately surfaces it as range-less (`_resolve_tune_spec` →
-  `Excluded("non_numeric")`)
-  instead of fabricating a window; the concrete range is supplied per-run in the tune
-  spec.
-  Don't reach for `tunable=False` just to silence the gate when the field is genuinely a
-  knob. Canonical: `refine/_remove_by_feature.py` (`RemoveByFeature`, `min_value`/
-  `max_value`).
+Conventions for closed value sets (`Enum`/`Literal`), `MeasurementInfo` /
+`ConstantLabels`, parameterized strings, and the tune annotation-coverage gate
+live in the **`adding-an-operation`** skill — use it when adding or editing any
+operation parameter.
 
 ## Gotchas
 
@@ -307,60 +227,14 @@ the gate:
   `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use
   `image.num_objects`.
-- **Output location — `deliverables/`:** the user-facing run outputs now
-  live under `<output>/deliverables/` (hard cutover):
-  `deliverables/master_measurements.{csv,parquet}`,
-  `deliverables/measurements.{csv,parquet}`,
-  `deliverables/measurements_by_feature/<feature>.{csv,parquet}`,
-  `deliverables/analysis.{csv,parquet}`, `deliverables/dashboard.html`,
-  `deliverables/analysis.html`, `deliverables/processing_report.html`,
-  `deliverables/README.md`, `deliverables/pipeline.json`, and
-  `deliverables/overlays/<ds>/<stem>.png` (detection overlay PNGs). The
-  **per-image** parquets in `results/<ds>/measurements/` (and the rest
-  of `results/`, `progress/`, `processing_state.json`) stay at the
-  output-dir **root**. The durable **QC + curation state** relocated under
-  `deliverables/qc/` (`qc.duckdb`, `review_state.json`,
-  `curation_labels.parquet`, `custom_categories.json`) so a `deliverables/`
-  bundle is self-contained — the GUI can open such a bundle standalone;
-  `resolve_qc_dir` / `migrate_legacy_qc` still read/move a pre-relocation root
-  `qc/`. `run_qc` writes the single `deliverables/qc/qc.duckdb` (one
-  self-describing table per QC module plus a `qc_modules` catalog, atomic full
-  rebuild); the legacy flat `qc_summary.parquet`/`qc_members.parquet`/
-  `qc_config.json` artifact and its `phenotypic.sdk_` path helpers are gone.
-  Resolve these paths via the `phenotypic.sdk_` helpers (`deliverables_dir`,
-  `master_measurements_parquet_path`, `qc_dir`, `qc_duckdb_path`, etc.), not by
-  hand-joining names.
-- **Master vs. mirror outputs:** `deliverables/master_measurements.{csv,parquet}`
-  is a **clean, pre-post, metadata-free archive** of what per-image runs
-  measured; `deliverables/measurements.{csv,parquet}` is the
-  **post-applied mirror** the GUI viewer reads/curates. Per-image parquets
-  in `results/<ds>/measurements/` are also clean — the CLI calls
-  `pipeline.measure(image, apply_post=False)` on the per-image path.
-  Post is applied once at the end of aggregation against the merged
-  master, and the post-applied frame is what
-  `deliverables/analysis.{csv,parquet}` and
-  `deliverables/measurements_by_feature/<feature>.{csv,parquet}` are
-  derived from. The external `--metadata` CSV inner-join also lands on the
-  post-applied frame (inside `finalize_post_master_outputs`), so the
-  mirror, per-feature splits, and `deliverables/analysis.{csv,parquet}`
-  carry the metadata columns while the master archive stays both post-free
-  and metadata-free. Code paths that need to feed a frame to analysis
-  plugins or dashboards should read `deliverables/measurements.parquet`,
-  not `deliverables/master_measurements.*`.
-- **Finalize via `finalize_post_master_outputs` for FINAL master writes:**
-  any code path that writes `deliverables/master_measurements.{csv,parquet}`
-  *as the run's final output* must immediately call
-  `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
-  output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/`
-  and emits the per-feature splits + analysis chain there too). The
-  `aggregate_measurements` (forward CLI) and `--recompile` worker
-  (`_run_post_master_steps`) callers already do this.
-
-  Mid-run intermediate writers (`_aggregate_chunks_locked` in
-  `_cli_chunk_writer.py`) intentionally bypass
-  `finalize_post_master_outputs`: chunks publish partial results so users
-  can download mid-run, but the post pipeline, per-feature splits,
-  analysis chain, and `pipeline.json` persistence are deferred to the
-  run's final aggregation. Don't add `finalize_post_master_outputs` to
-  the chunk writer — it would re-run expensive finalize work on every
-  checkpoint.
+- **Output layout (`deliverables/`):** user-facing run outputs live under
+  `<output>/deliverables/` (measurements, analysis, dashboards, overlays, and
+  the durable QC + curation state under `deliverables/qc/`); per-image
+  parquets/HDF and run state stay at the output root. `master_measurements.*`
+  is the clean pre-post, metadata-free archive; `measurements.*` is the
+  post-applied mirror the GUI reads/curates — feed analysis and dashboards from
+  the **mirror**, not the master. Always resolve paths via the
+  `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
+  write through `finalize_post_master_outputs`. Full file inventory,
+  master-vs-mirror rules, and the finalize/chunk-writer carve-out are in
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).

@@ -2,6 +2,13 @@
 .worktrees/
 .claude/worktrees
 
+# Claude Code: track shared team skills; keep the rest of .claude/ per-developer.
+# (Overrides a local .git/info/exclude rule that ignores all of .claude/.)
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+
 # Local environment / per-user secrets (e.g. PHENOTYPIC_TEST_PG_URL for the
 # gated Postgres tests). Never committed — see .env.example. Keeps the suite
 # user-agnostic and the DB address out of version control.

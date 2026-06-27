@@ -20,7 +20,8 @@ on a calibration set, and the result is told back to the strategy.
   `ReferenceFreeScorer`/`CompositeScorer`/`GroundTruthMasks`/`CompositeBlend`.
 - `_study/` — study stores + Pareto front / knee point.
 - `_screening.py` — parameter importance (fANOVA vs RF-permutation).
-- `_tune_cli/` — `python -m phenotypic.tune` entry.
+- `_tune_cli/` — `python -m phenotypic.tune` entry (`run` + `auto-space`
+  subcommands; `auto-space` infers a reviewable search space, file-only).
 
 ## Conventions
 
@@ -54,34 +55,24 @@ on a calibration set, and the result is told back to the strategy.
   `SearchSpace`/`Knob`, `TuningEngine`, study/screening/CLI symbols) stays at
   the top level. The inner `_*` modules of both packages remain private.
 
-## Adding a Scorer (the authoring contract)
+## Adding a Scorer
 
-Canonical in the `Scorer` base-class docstring (`score/_scorer.py`) and the
-contributor guide (`docs/source/contrib_guide/contributing.rst`) — keep the
-three copies in sync.
+The full authoring contract is canonical in the `Scorer` base-class docstring
+(`score/_scorer.py`) and the contributor guide
+(`docs/source/contrib_guide/contributing.rst`) — read those rather than
+duplicating them here. The non-obvious parts to keep in mind:
 
-1. Subclass `Scorer`; implement `_score_terms(image, measurements) ->
-   dict[str, float]` returning your **natural** per-term values. Do **not** flip
-   or normalize by hand — a divergence stays a divergence, Dice stays Dice.
-2. Declare `_TERM_SENSE` (`Sense.LOWER_BETTER` if larger = worse, the default;
-   `Sense.HIGHER_BETTER` if larger = better, e.g. Dice/ICC).
-3. Override `_term_anchor` **only** for an unbounded term, returning its
-   half-cost scale (for a QC-backed term, the check's `fail_threshold`). Bounded
-   `[0,1]` terms need nothing.
-4. Do **not** add scalarization parameters — `ε`, `ρ`, normalization, and
-   default weights are framework-derived; a scorer never sets them.
-5. Register: re-export from `tune/score/__init__.py` (the public
-   `phenotypic.tune.score` namespace) and the class registry, or the GUI and
-   `from_json` cannot see it. `_find_class_in_phenotypic`
-   (`_core/_pipeline_parts/_serializable_pipeline.py`) resolves serialized
-   classes **by bare class name** and searches `phenotypic.tune.score` /
-   `phenotypic.tune.strategy`, so a new scorer only needs to be importable from
-   that package.
-
-The base `score_image` template method orients every term via `to_cost`
-(`score/_orient.py`); the framework then robust-aggregates, reduces per child,
-and combines (augmented Tchebycheff). `CompositeScorer` overrides `score_image`
-(it merges already-cost children) — never `_score_terms`.
+- Return **natural** per-term values from `_score_terms` and declare `_TERM_SENSE`;
+  the base `score_image` orients each term via `to_cost` (`score/_orient.py`), so do
+  **not** flip/normalize by hand. Override `_term_anchor` only for an unbounded term.
+- **Never** add scalarization parameters — `ε`, `ρ`, normalization, and default
+  weights are framework-derived. `CompositeScorer` overrides `score_image` (it
+  merges already-cost children), never `_score_terms`.
+- **Register or it's invisible**: re-export from `tune/score/__init__.py` and the
+  class registry. `_find_class_in_phenotypic`
+  (`_core/_pipeline_parts/_serializable_pipeline.py`) resolves serialized classes
+  by bare name across `phenotypic.tune.score` / `phenotypic.tune.strategy`, so a new
+  scorer just needs to be importable from that package.
 
 ## Math & logic doc — keep it in sync
 

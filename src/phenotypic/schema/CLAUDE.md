@@ -79,16 +79,16 @@ this is how the classification surfaces in the Measurements reference (the
 Sphinx extension `docs/source/_extensions/measurements_ref.py` calls `rst_table`).
 
 - `.use_label` → plain text (e.g. `"Direct phenotype (Tier 1)"`); a **frozen
-  contract** (asserted in tests, consumed by `_quality_check.py`). Empty for
-  non-tiered kinds. **Do not change its strings.**
+  contract** (asserted in tests). Empty for non-tiered kinds. **Do not change
+  its strings.**
 - `.use_badge` → the RST badge string for the Type column; covers **every** kind
   (Identity/Quality/Derived included, unlike `use_label`), returns `""` only when
-  a member fails to classify.
+  a member fails to classify. Consumed by `_quality_check.py` for QC column headers.
 - `_BADGE_SPECS` (keyed `(tier, kind)`) maps to `(text, color, anchor)`; colors
   are sphinx-design semantic names (Tier1=`success`, Tier2=`primary`,
   Tier3=`warning`, Quality=`secondary`, Identity=`muted`, Derived=`info`). A
   `test_classification.py` unit test asserts every color is a real sphinx-design
-  `SEMANTIC_COLOR`, so a typo'd color fails fast. The two anchor targets are MyST
+  `SEMANTIC_COLORS`, so a typo'd color fails fast. The two anchor targets are MyST
   `(label)=` anchors in the explanation md (`measurement-tiers` for tier badges,
   `measurement-classification` for the rest); badge xrefs use `reftype="any"`, so
   a typo'd **anchor** only warns at build time and the CI docs build

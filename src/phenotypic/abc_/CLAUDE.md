@@ -48,28 +48,24 @@ Standalone: MeasurementInfo (enum base, now in `phenotypic.schema`; re-exported 
 
 ### Enhancer purpose-groups
 
-Concrete enhancers subclass one of these **marker ABCs** (all in `phenotypic.abc_`,
-all subclass `ImageEnhancer`, none add methods/params) instead of `ImageEnhancer`
-directly. Pick the group by what `_operate` produces:
-
-| Enhancer produces                 | Marker ABC               | Examples                                                          |
-|-----------------------------------|--------------------------|-------------------------------------------------------------------|
-| Noise-estimate-driven restoration | `ImageDenoiser`          | EnhanceBlockMatch, BayesShrinkEnhancer, NonLocalMeansDenoiser     |
-| An edge/ridge response map        | `FocusEdge`              | FocusEdgeSobel, FocusEdgeHessian, FocusEdgeFrangi, FocusEdgePhase |
-| A blob/scale-space response       | `FocusBlob`              | FocusBlobLoG                                                      |
-| Kernel/diffusion blur             | `Smoothing`              | GaussianBlur, MedianFilter, StructureSmoothing                    |
-| A flattened background            | `BackgroundSubtraction`  | SubtractGaussian, SubtractRollingBall, FlattenIllumination        |
-| Small-feature morphology          | `MorphologicalFiltering` | GrayOpening, WhiteTophatEnhance                                   |
-| Remapped intensity/contrast       | `ContrastAdjustment`     | EnhanceLocalContrast, ContrastStretching, ImageInverter           |
-
-The markers are intentionally **not** re-exported from `phenotypic.enhance`, which
-keeps them out of the GUI builder's enhancer dropdown. The taxonomy is pinned by
-`tests/unit/abc_/test_enhancer_taxonomy.py`.
+Concrete enhancers subclass one of the marker ABCs in the hierarchy above
+(`ImageDenoiser`, `FocusEdge`, `FocusBlob`, `Smoothing`, `BackgroundSubtraction`,
+`MorphologicalFiltering`, `ContrastAdjustment`) instead of `ImageEnhancer` directly
+— all subclass `ImageEnhancer`, add no methods/params, and are picked by what
+`_operate` produces. They are intentionally **not** re-exported from
+`phenotypic.enhance` (keeps them out of the GUI builder dropdown). The per-group
+example classes + the pinning test (`tests/unit/abc_/test_enhancer_taxonomy.py`)
+live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
 
 ---
 
 ## Implementation Rules
 
+- **Operations are pydantic v2 models** rooted at `BaseOperation`: keyword-only
+  construction, class-level annotated fields, **no `__init__`**, and `.apply()`
+  (not `__call__`). Normalize inputs in a `field_validator`. For parameter,
+  closed-value-set, and tune-annotation conventions, use the `adding-an-operation`
+  skill.
 - **`_operate()` must be an instance method** (not static); access params via `self`.
   Static `_operate(image, **params)` is deprecated.
   Canonical: [`enhance/_gaussian_blur.py`](../enhance/_gaussian_blur.py).
@@ -77,13 +73,12 @@ keeps them out of the GUI builder's enhancer dropdown. The taxonomy is pinned by
   Operations that need mandatory args (e.g., `ColorCorrector` needs a fitted profile)
   cannot be generically deserialized and must be excluded from round-trip tests.
 - **Tuple attributes survive JSON round-trip** only if you coerce them back: JSON has no
-  tuple type, so tuples become lists on `from_json()`. Add a `__setattr__` that
-  re-coerces lists back to tuples whether set in `__init__` or via `setattr()`.
-  See [
-  `detect/_manual_grid_point_detector.py`](../detect/_manual_grid_point_detector.py),
-  `enhance/_focus_edge_frangi.py`, `enhance/_focus_edge_hessian.py` for the pattern.
+  tuple type, so tuples become lists on `from_json()`. Add a
+  `field_validator(..., mode="before")` that coerces the incoming list back to a tuple.
+  See [`enhance/_focus_edge_frangi.py`](../enhance/_focus_edge_frangi.py) (`_coerce_sigmas`)
+  and `enhance/_focus_edge_hessian.py` for the pattern.
 - **Optional `inspect()` on `MeasureFeatures`** — implementing
-  `def inspect(self, image=None, *, for_save=False, **kwargs)` returning an mpl or
+  `def inspect(self, image=None, base_layer="gray", *, for_save=False)` returning an mpl or
   plotly Figure opts a subclass into the CLI's `--save-inspect` auto-discovery (saves a
   PNG per image under `results/<ds>/inspect/<step>/<stem>.png`). Contract details in the
   `MeasureFeatures` class docstring; reference impl in [
@@ -97,7 +92,8 @@ keeps them out of the GUI builder's enhancer dropdown. The taxonomy is pinned by
 `self._make_footprint(shape, width)`.
 For other ABCs (e.g., `ObjectRefiner`), add it explicitly:
 `class MyOp(FootprintMixin, ObjectRefiner)`.
-See [tools_/CLAUDE.md](../tools_/CLAUDE.md) for the full mixin reference.
+See [sdk_/CLAUDE.md](../sdk_/CLAUDE.md) for the full mixin reference (`FootprintMixin`
+lives in `sdk_/mixin/_footprint_mixin.py`).
 
 ---
 
@@ -118,18 +114,13 @@ See [tools_/CLAUDE.md](../tools_/CLAUDE.md) for the full mixin reference.
 
 ## Docstring Pattern
 
-All ABC class docstrings include: (1) one-line summary → (2) Quick Decision Guide (this
-ABC vs alternatives, 8–15 bullets) → (3) context blocks (purpose, pipeline role, when to
-use) → (4) implementation guide with code template → (5) known implementations → (6)
-formal API → (7) two doctest examples (basic + advanced).
-
-ImageOperation **subclass** docstrings follow: (1) one-line summary → (2)
-Args/Attributes → (3) Returns → (4) Raises → (5) detailed explanation (use cases,
-limitations, parameter effects) → (6) two doctest examples.
-
-- Doctest format (`>>>`); use `load_synth_yeast_plate()` for image examples.
-- Target 100–150 lines per ImageOperation subclass docstring.
-- Canonical: [`detect/_hysteresis_detector.py`](../detect/_hysteresis_detector.py).
+ImageOperation and ABC docstrings follow the canonical **layered
+progressive-disclosure** template — see
+[`docs/source/contrib_guide/docstring_style.md`](../../../docs/source/contrib_guide/docstring_style.md)
+(single source of truth; the `pht-docwriter` agent automates it). ABC base classes
+additionally lead with a Quick Decision Guide (this ABC vs alternatives) plus a
+code template before the formal API. Canonical subclass example:
+[`detect/_hysteresis_detector.py`](../detect/_hysteresis_detector.py).
 
 ---
 
