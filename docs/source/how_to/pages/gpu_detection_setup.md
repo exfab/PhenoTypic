@@ -44,7 +44,10 @@ themselves; the tutorial recipe below uses `pixi` for that.
 > section of the Getting Started tutorial.** In short: `uv add "phenotypic[torch]"`
 > for SAM2, `"phenotypic[foundation]"` for the SAM3/DINO detectors, the `[gpu]`
 > umbrella for all of them, and conda-forge `micro_sam` for `MicroSamDetector`.
-> Gated SAM3/DINOv3 weights need a one-time Hugging Face license handshake.
+> In a source checkout, use `uv sync --extra foundation` to install the same
+> foundation-model dependencies. Gated SAM3/DINOv3 weights need a one-time
+> Hugging Face license handshake (`hf auth login` after accepting the model
+> license on Hugging Face).
 
 `MicroSamDetector` is importable from `phenotypic.detect.nn` even when
 `micro_sam` is missing; the `ImportError` is deferred to the first
@@ -196,7 +199,8 @@ det = DinoSam2Detector(dino_size="base", similarity_thresh=0.5)
 through the DINOv3-License acceptance gate (pre-stage it with the
 `download --model-type dinov3 --accept-license` command from the
 {ref}`Deep Learning Detectors`
-tutorial section).
+tutorial section). The default DINOv3 checkpoint id is
+`dinov3-vitb16-pretrain-lvd1689m`.
 
 Key parameters:
 

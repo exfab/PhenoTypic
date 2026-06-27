@@ -26,6 +26,7 @@ Boot rehydration
     each. Status is read from ``progress/manifest.json`` if present;
     otherwise a sentinel "unknown" status is set.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Literal
 
 from phenotypic.sdk_ import (
+    BundleLayout,
     DashboardManifestKey,
     DashboardManifestSlurmInfoKey,
     resolve_manifest_json_path,
@@ -57,7 +59,9 @@ __all__ = [
 # supersets (via Literal) so the records survive ``json.dumps`` for any
 # future persistence step while gaining static narrowability.
 RunMode = Literal["local", "slurm", "validate", "unknown"]
-RunStatus = Literal["running", "submitting", "complete", "failed", "cancelled", "unknown"]
+RunStatus = Literal[
+    "running", "submitting", "complete", "failed", "cancelled", "unknown"
+]
 
 
 @dataclass
@@ -262,6 +266,7 @@ class RunRegistry:
         limitation of the conventional dotfile-as-hidden semantic.
         """
         stack: list[tuple[Path, int]] = [(sandbox.root, 0)]
+        seen_output_dirs: set[Path] = set()
         while stack:
             current, depth = stack.pop()
             if depth > max_depth:
@@ -278,11 +283,35 @@ class RunRegistry:
                 if not child.is_dir():
                     continue
                 caps = classify(child)
-                if caps.is_cli_output or caps.is_process_only_output:
-                    yield child
+                output_dir: Path | None = None
+                if caps.is_cli_output:
+                    output_dir = self._canonical_cli_output_dir(child)
+                elif caps.is_process_only_output:
+                    output_dir = child
+
+                if output_dir is not None:
+                    key = output_dir.resolve()
+                    if key not in seen_output_dirs:
+                        seen_output_dirs.add(key)
+                        yield output_dir
                 # Recurse regardless — a CLI output may itself contain
                 # nested ones in unusual sandboxes (unlikely but cheap).
                 stack.append((child, depth + 1))
+
+    @staticmethod
+    def _canonical_cli_output_dir(path: Path) -> Path:
+        """Return the run root for openable CLI-output paths.
+
+        The sidebar classifier intentionally marks ``run/deliverables`` as
+        openable so users can launch the Results Viewer from that folder. The
+        recent-runs registry still needs one row per run, so collapse that
+        promoted deliverables path back to its resolved ``output_root``.
+        """
+        try:
+            layout = BundleLayout.detect(path)
+        except FileNotFoundError:
+            return path
+        return layout.output_root if layout.output_root is not None else path
 
     @staticmethod
     def _read_status_from_manifest(
@@ -302,7 +331,9 @@ class RunRegistry:
         except (OSError, json.JSONDecodeError):
             return ("unknown", "unknown", None)
 
-        execution_mode = manifest.get(DashboardManifestKey.EXECUTION_MODE, "unknown")
+        execution_mode = manifest.get(
+            DashboardManifestKey.EXECUTION_MODE, "unknown"
+        )
         is_complete = bool(manifest.get(DashboardManifestKey.IS_COMPLETE))
         failed = int(manifest.get(DashboardManifestKey.FAILED, 0) or 0)
         completed = int(manifest.get(DashboardManifestKey.COMPLETED, 0) or 0)
@@ -324,7 +355,9 @@ class RunRegistry:
             mode = "unknown"
 
         slurm_info = manifest.get(DashboardManifestKey.SLURM_INFO) or {}
-        chunk_job_ids = slurm_info.get(DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS) or {}
+        chunk_job_ids = (
+            slurm_info.get(DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS) or {}
+        )
         # ``chunk_job_ids`` is a dict[str, str] of chunk index -> job id.
         # The "primary" array id is the common prefix of all values when
         # SLURM submits as an array; we just surface the first as a hint.
