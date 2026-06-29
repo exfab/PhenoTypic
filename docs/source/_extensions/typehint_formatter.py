@@ -6,8 +6,8 @@ import re
 
 
 # Pattern that matches top-level phenotypic subpackages whose import names
-# end in a trailing underscore (``phenotypic.sdk_``, ``phenotypic.abc_``,
-# ``phenotypic.settings_``) when they appear in a fully qualified Python path
+# end in a trailing underscore (``phenotypic.sdk_``, ``phenotypic.abc_``)
+# when they appear in a fully qualified Python path
 # (i.e. followed by a dot). docutils reads the trailing underscore as a
 # hyperlink-reference marker (``name_`` -> reference to target ``name``) and
 # emits ``WARNING: Unknown target name: "phenotypic.<pkg>"`` for every

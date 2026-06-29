@@ -14,7 +14,13 @@ from pathlib import Path
 import polars as pl
 
 import phenotypic.sdk_ as tools_
+from phenotypic.sdk_ import BundleLayout
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+
+
+def _layout(tmp_path: Path) -> BundleLayout:
+    """Full-run-style layout rooted at ``tmp_path`` (deliverables under it)."""
+    return BundleLayout(deliverables_base=tmp_path / "deliverables", output_root=tmp_path)
 
 
 def _master(n: int = 6) -> pl.DataFrame:
@@ -35,7 +41,7 @@ def test_write_error_partitions_writes_errors_and_labels_no_mirror(
     tmp_path: Path,
 ) -> None:
     """It writes errors/<cat>.parquet (with Curation_Category) + labels, no mirror."""
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     # Mark across two categories WITHOUT going through mark()/_save_locked, so the
     # mirror is never seeded by the setup — we then assert the new method also
     # does not create it.
@@ -67,7 +73,7 @@ def test_write_error_partitions_writes_errors_and_labels_no_mirror(
 
     # Labels parquet exists and round-trips the full label set on reload.
     assert tools_.curation_labels_parquet_path(tmp_path).exists()
-    reloaded = CurationLabels.load(tmp_path, _master())
+    reloaded = CurationLabels.load(_layout(tmp_path), _master())
     assert reloaded.labels == {
         ("plateA", 1): "debris",
         ("plateA", 2): "debris",
@@ -79,7 +85,7 @@ def test_write_error_partitions_leaves_existing_mirror_untouched(
     tmp_path: Path,
 ) -> None:
     """When a mirror already exists, the call does not rewrite it (mtime stable)."""
-    store = CurationLabels.load(tmp_path, _master())
+    store = CurationLabels.load(_layout(tmp_path), _master())
     # Seed the mirror once via the normal save path.
     store.mark("plateA", 1, "debris")
     mirror = tools_.measurements_parquet_path(tmp_path)

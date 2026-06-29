@@ -27,11 +27,10 @@ Data accessed through accessors (not direct attributes) — ensures consistency,
 
 ### High-Level Accessors
 
-- `image.objects` — iterate detected objects
+- `image.objects` — iterate detected objects (`image.num_objects` for the count); measure features via `image.objects.measure.<feat>()`
 - `image.color` — color space conversions
-- `image.grid` — grid layout/alignment
+- `image.grid` — grid layout/alignment (**GridImage only**)
 - `image.metadata` — EXIF, file info
-- `image.measurements` — extracted features
 - `image.plot` — visualization (interactive views via `image.plot.dash.<name>()`)
 
 ### NumPy Interface

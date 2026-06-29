@@ -39,8 +39,10 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from phenotypic.sdk_ import qc_review_state_path
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +128,8 @@ class ReviewState:
     modules: dict[str, ModuleProgress] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, output_root_path: Path) -> "ReviewState":
-        """Load review progress from ``<output_root_path>/qc/review_state.json``.
+    def load(cls, layout: "BundleLayout") -> "ReviewState":
+        """Load review progress from the bundle's ``qc/review_state.json``.
 
         A missing or corrupt file yields an empty state (the file is
         created lazily on the first :meth:`save`). Corruption is logged at
@@ -135,12 +137,14 @@ class ReviewState:
         recovered by hand.
 
         Args:
-            output_root_path: The results-viewer output root.
+            layout: Resolved bundle topology; the review-state path is
+                ``layout.qc_review_state_path`` so a standalone deliverables
+                bundle reads/writes inside the bundle.
 
         Returns:
             A :class:`ReviewState` ready for in-place mutation.
         """
-        path = qc_review_state_path(Path(output_root_path))
+        path = layout.qc_review_state_path
         if not path.exists():
             return cls(path=path)
 
@@ -197,6 +201,31 @@ class ReviewState:
         progress = self.progress_for(instance_id)
         progress.reviewed.discard(encode_group_key(key))
         self.save()
+
+    def reconcile_to_summary(
+        self, instance_id: str, present_keys: set[str]
+    ) -> None:
+        """Drop reviewed encoded keys whose group no longer exists.
+
+        After a full rebuild the module's group keys may change (a settings
+        edit altered ``groupby`` or thresholds, dropping or renaming groups).
+        Prune any reviewed key not in ``present_keys`` so the worklist's
+        reviewed counter + the verified-good set never reference a vanished
+        group. Persists only when something changed.
+
+        Args:
+            instance_id: The recomputed module.
+            present_keys: Encoded group keys present in the new summary.
+        """
+        progress = self.modules.get(instance_id)
+        if progress is None:
+            return
+        stale = progress.reviewed - present_keys
+        if stale:
+            progress.reviewed -= stale
+            if progress.last in stale:
+                progress.last = None
+            self.save()
 
     def set_last(self, instance_id: str, key: GroupKey | None) -> None:
         """Record the last-visited group for the module and persist.

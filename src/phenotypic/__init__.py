@@ -45,7 +45,7 @@ from . import (
     measure,
     refine,
     schema,
-    settings_,
+    settings,
     sdk_,
     tune,
     util,
@@ -69,6 +69,6 @@ __all__ = [
     "enhance",
     "sdk_",
     "util",
-    "settings_",
+    "settings",
     "tune",
 ]

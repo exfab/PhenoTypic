@@ -10,12 +10,14 @@ use in applications that require set analysis functionality. Only the
 
 from ._set_analyzer import SetAnalyzer
 from ._model_fitter import ModelFitter
+from ._qc_table_spec import QcTableSpec
 from ._quality_check import QualityCheck
 from ._edge_correction import EdgeCorrection
 
 __all__ = [
     "SetAnalyzer",
     "ModelFitter",
+    "QcTableSpec",
     "QualityCheck",
     "EdgeCorrection",
 ]

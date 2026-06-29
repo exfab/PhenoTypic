@@ -28,20 +28,30 @@ Critical invariants (spec §D risk refinements):
 * ``removed_keys`` is read under the ``FilteredMeasurements`` lock so the
   recomputed ``qc/`` reflects a coherent state-at-mark-reviewed.
 * The summary header counts NaN/insufficient groups separately from
-  ``pass`` and uses a robust median (handled in :func:`._data.summary_stats`).
+  ``pass`` and uses a robust median (handled in :func:`._db.summary_stats`).
 """
 
 from __future__ import annotations
 
 import functools
 import logging
+import math
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import dash
 import polars as pl
-from dash import ALL, MATCH, Input, Output, State, callback_context, html, no_update
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    State,
+    callback_context,
+    html,
+    no_update,
+)
 from dash.development.base_component import Component
 from flask import current_app
 
@@ -83,10 +93,18 @@ from phenotypic.gui._shared._triage_callbacks import (
 from phenotypic.gui._shared.tiles import build_tile_grid
 from phenotypic.gui.results_viewer import _ids as viewer_ids
 from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
+    KEY_IMAGE_FILE,
+    KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
 )
 from phenotypic.schema import ErrorCategory
-from phenotypic.gui.results_viewer._qc_tab.review import _data, _ids as rids
+from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
+from phenotypic.gui.results_viewer._qc_tab.review import (
+    _data,
+    _db,
+    _ids as rids,
+)
 from phenotypic.gui.results_viewer._qc_tab.review._layout import (
     _SUMMARY_HEADER_HEIGHT,
     clamp_sidebar_width,
@@ -182,7 +200,9 @@ def _review_radial_trigger_builder(
         A ``remove_button_builder`` closure.
     """
 
-    def _build(image_file: str, label: int, _is_removed: bool) -> list[Component]:
+    def _build(
+        image_file: str, label: int, _is_removed: bool
+    ) -> list[Component]:
         current_category = category_of.get((image_file, label))
         return build_radial_trigger(
             "qc",
@@ -240,7 +260,10 @@ def _render_summary_header(
                 ),
                 html.Div(
                     label,
-                    style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
+                    style={
+                        "color": COLOR_MUTED,
+                        "fontSize": FONT_SIZE_CAPTION,
+                    },
                 ),
             ],
             # ``flex: 0 0 auto`` keeps each tile at its intrinsic width so
@@ -389,7 +412,9 @@ def _render_worklist_row(
         html.Span(label, style={"fontFamily": FONT_FAMILY_MONO}),
         html.Span(
             id=rids.worklist_row_metric_id(instance_id, encoded),
-            children=render_worklist_row_metric_cell(metric, status, moved=moved),
+            children=render_worklist_row_metric_cell(
+                metric, status, moved=moved
+            ),
             style={"marginLeft": "auto"},
         ),
     ]
@@ -400,11 +425,15 @@ def _render_worklist_row(
         id=rids.worklist_row_id(instance_id, encoded),
         n_clicks=0,
         className="qc-worklist-row d-flex align-items-center w-100",
-        style=_worklist_row_style(is_selected=is_selected, is_reviewed=is_reviewed),
+        style=_worklist_row_style(
+            is_selected=is_selected, is_reviewed=is_reviewed
+        ),
     )
 
 
-def _worklist_row_style(*, is_selected: bool, is_reviewed: bool) -> dict[str, str]:
+def _worklist_row_style(
+    *, is_selected: bool, is_reviewed: bool
+) -> dict[str, str]:
     """Return the visual state for a Review worklist row."""
     return {
         "gap": "0.4rem",
@@ -470,7 +499,9 @@ def _render_detail_header(
     if before is not None and after is not None:
         metric_node: Component = html.Span(
             [
-                html.Span(_format_metric(before), style={"color": COLOR_MUTED}),
+                html.Span(
+                    _format_metric(before), style={"color": COLOR_MUTED}
+                ),
                 html.Span(" → "),
                 html.Span(_format_metric(after), style={"fontWeight": 600}),
             ]
@@ -482,13 +513,22 @@ def _render_detail_header(
 
     return html.Div(
         [
-            html.Span(label, className="fw-semibold me-3",
-                      style={"fontFamily": FONT_FAMILY_MONO}),
-            dbc.Badge(status, color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
-                      className="me-3"),
+            html.Span(
+                label,
+                className="fw-semibold me-3",
+                style={"fontFamily": FONT_FAMILY_MONO},
+            ),
+            dbc.Badge(
+                status,
+                color=_BADGE_COLOR_BY_STATUS.get(status, "secondary"),
+                className="me-3",
+            ),
             html.Span(["metric: ", metric_node], className="me-3"),
-            html.Span(f"n={n_members}", className="me-3",
-                      style={"color": COLOR_MUTED}),
+            html.Span(
+                f"n={n_members}",
+                className="me-3",
+                style={"color": COLOR_MUTED},
+            ),
             html.Span(f"removed={n_removed}", style={"color": COLOR_MUTED}),
         ],
         style={
@@ -505,7 +545,7 @@ def _render_faceted_gallery(
     removed: set[tuple[str, int]],
     crop_size: int,
     display_size: int,
-    has_overlay,
+    has_image_source,
     dim_alpha: float = 0.0,
     selected: set[tuple[str, int]] | None = None,
     category_of: dict[tuple[str, int], str] | None = None,
@@ -521,7 +561,7 @@ def _render_faceted_gallery(
         removed: ``(image_file, label)`` keys currently removed.
         crop_size: Server crop side length, in pixels.
         display_size: CSS render size, in pixels, for each tile.
-        has_overlay: ``(dataset, image_file) -> bool`` overlay probe.
+        has_image_source: ``(dataset, image_file) -> bool`` HDF/overlay probe.
         dim_alpha: Tile-spotlight strength threaded onto each crop URL as
             ``&dim=`` via a :func:`functools.partial` over
             :func:`_qc_crop_url`. ``0.0`` (default) keeps the full-context
@@ -548,7 +588,7 @@ def _render_faceted_gallery(
             removed=removed,
             crop_size=crop_size,
             display_size=display_size,
-            has_overlay=has_overlay,
+            has_image_source=has_image_source,
             remove_button_builder=remove_button_builder,
         )
         if single_facet:
@@ -558,7 +598,9 @@ def _render_faceted_gallery(
                 html.Div(
                     [
                         html.Div(
-                            f"t = {timepoint}" if timepoint is not None else "t = ?",
+                            f"t = {timepoint}"
+                            if timepoint is not None
+                            else "t = ?",
                             style={
                                 "fontFamily": FONT_FAMILY_MONO,
                                 "fontSize": FONT_SIZE_CAPTION,
@@ -647,36 +689,335 @@ def _load_review_state() -> ReviewState:
     output_root = _output_root()
     if output_root is None:
         return ReviewState(path=Path("review_state.json"))
-    return ReviewState.load(output_root.root)
+    return ReviewState.load(output_root.layout)
+
+
+def _module_picker_options(output_root) -> list[dict[str, str]]:
+    """Build the module-picker options from the DuckDB catalog (recipe order).
+
+    Each option's ``label`` is ``"<Class> (<short-id>)"`` and its ``value``
+    is the full ``instance_id``. Order follows the catalog's ``ordinal``
+    (recipe order). Empty when ``qc.duckdb`` is absent.
+
+    Args:
+        output_root: The active output root (or ``None``).
+
+    Returns:
+        A list of ``{"label", "value"}`` dicts (empty when no modules).
+    """
+    if output_root is None:
+        return []
+    return [
+        {
+            "label": f"{m.cls_name} ({m.instance_id.rsplit('-', 1)[-1]})",
+            "value": m.instance_id,
+        }
+        for m in _db.list_modules(output_root)
+    ]
+
+
+def _review_empty_state_children(output_root) -> Component:
+    """Return the Review empty-state content for the active output root."""
+    if output_root is not None:
+        cutover_message = _db.legacy_qc_cutover_message(output_root)
+        if cutover_message is not None:
+            return html.Div(
+                [
+                    html.Div(
+                        "Legacy QC parquet artifacts found.",
+                        className="fw-semibold",
+                    ),
+                    html.Div(
+                        cutover_message,
+                        style={
+                            "color": COLOR_MUTED,
+                            "fontSize": FONT_SIZE_CAPTION,
+                        },
+                    ),
+                    html.Div(
+                        "`python -m phenotypic --mode recompile --output <output>`",
+                        style={
+                            "color": COLOR_MUTED,
+                            "fontFamily": FONT_FAMILY_MONO,
+                            "fontSize": FONT_SIZE_CAPTION,
+                        },
+                    ),
+                ]
+            )
+    return html.Div(
+        [
+            html.Div("No QC review queue yet.", className="fw-semibold"),
+            html.Div(
+                "Configure a quality check, then re-run "
+                "`python -m phenotypic --mode recompile --output <output>` "
+                "(or pick a module above if a qc/ artifact already exists).",
+                style={"color": COLOR_MUTED, "fontSize": FONT_SIZE_CAPTION},
+            ),
+        ]
+    )
+
+
+def _module_for(output_root, instance_id: str | None) -> "_db.QcModule | None":
+    """Return the catalog descriptor for ``instance_id``, or ``None``."""
+    if output_root is None or not instance_id:
+        return None
+    return next(
+        (
+            m
+            for m in _db.list_modules(output_root)
+            if m.instance_id == instance_id
+        ),
+        None,
+    )
+
+
+def _summary_row_for_key(
+    module_summary: pl.DataFrame | None,
+    groupby_cols: list[str],
+    key_values: tuple[Any, ...],
+) -> dict[str, Any] | None:
+    """Return one group's worklist row (first match) as a dict, or ``None``.
+
+    Filters a module's ``module_summary`` (already single-module, worst-first)
+    to the group key. Null/NaN group keys route through ``is_null`` so a
+    ``groupby(dropna=False)`` null key stays selectable.
+
+    Args:
+        module_summary: The module's worklist frame (from
+            :func:`._db.module_summary`).
+        groupby_cols: The module's group-key column names.
+        key_values: The group-key value tuple aligned to ``groupby_cols``.
+
+    Returns:
+        The matching row as a ``{column: value}`` dict, or ``None``.
+    """
+    if module_summary is None or module_summary.is_empty():
+        return None
+    filtered = module_summary
+    for col, value in zip(groupby_cols, key_values):
+        if col not in filtered.columns:
+            continue
+        if value is None or (isinstance(value, float) and math.isnan(value)):
+            filtered = filtered.filter(pl.col(col).is_null())
+        else:
+            filtered = filtered.filter(
+                pl.col(col).cast(pl.String) == str(value)
+            )
+    if filtered.is_empty():
+        return None
+    return filtered.head(1).to_dicts()[0]
+
+
+def _member_keys_from_frame(
+    members: pl.DataFrame, module: "_db.QcModule"
+) -> list[tuple[str, str, int]]:
+    """Resolve the ``(dataset, image_file, label)`` tiles for a member frame.
+
+    The data table now carries ``Metadata_Dataset`` context (when present),
+    so the dataset is read straight off each member row instead of joining a
+    master-derived map. Members whose dataset is unknown are dropped (logged)
+    rather than rendered with a bogus crop URL.
+
+    Args:
+        members: The module's data rows for one group (from
+            :func:`._db.module_members`).
+        module: The module's catalog descriptor.
+
+    Returns:
+        ``(dataset, image_file, label)`` tuples in member order.
+    """
+    if members.is_empty():
+        return []
+    if (
+        KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
+        return []
+    has_dataset = KEY_DATASET in members.columns
+    keys: list[tuple[str, str, int]] = []
+    for row in members.iter_rows(named=True):
+        image_file = row.get(KEY_IMAGE_FILE)
+        label = row.get(KEY_OBJECT_LABEL)
+        if image_file is None or label is None:
+            continue
+        dataset = row.get(KEY_DATASET) if has_dataset else None
+        if dataset is None:
+            logger.debug(
+                "QC member %r has no dataset in the table; skipping tile",
+                image_file,
+            )
+            continue
+        keys.append((str(dataset), str(image_file), int(label)))
+    return keys
+
+
+def _time_by_key_from_members(
+    members: pl.DataFrame, module: "_db.QcModule"
+) -> dict[tuple[str, int], Any]:
+    """Build a ``(image_file, label) -> timepoint`` map from the member frame.
+
+    Empty when the module is not a time-course (``module.time_col is None``)
+    or the table lacks the time column, which makes
+    :func:`_facet_keys_by_timepoint` fall back to a single unfaceted gallery.
+    """
+    time_col = module.time_col
+    if (
+        time_col is None
+        or members.is_empty()
+        or time_col not in members.columns
+    ):
+        return {}
+    if (
+        KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
+        return {}
+    out: dict[tuple[str, int], Any] = {}
+    for row in members.iter_rows(named=True):
+        image_file = row.get(KEY_IMAGE_FILE)
+        label = row.get(KEY_OBJECT_LABEL)
+        if image_file is None or label is None:
+            continue
+        out[(str(image_file), int(label))] = row.get(time_col)
+    return out
+
+
+def _facet_keys_by_timepoint(
+    keys: list[tuple[str, str, int]],
+    time_by_key: dict[tuple[str, int], Any],
+) -> list[tuple[Any, list[tuple[str, str, int]]]]:
+    """Group a flat tile-key list into per-timepoint facet rows.
+
+    For time-course checks the detail gallery shows one row per timepoint.
+    Each tile's timepoint is looked up by its ``(image_file, label)`` key.
+    When no timepoint is known for any tile, a single ``(None, keys)`` facet
+    is returned so the caller renders one unfaceted gallery.
+
+    Args:
+        keys: ``(dataset, image_file, label)`` tuples for the group.
+        time_by_key: ``(image_file, label) -> timepoint`` map.
+
+    Returns:
+        A list of ``(timepoint, keys)`` facet rows, ordered by timepoint
+        (``None`` timepoints sort last). A single ``(None, keys)`` row when
+        no timepoints are available.
+    """
+    if not time_by_key:
+        return [(None, keys)]
+
+    facets: dict[Any, list[tuple[str, str, int]]] = {}
+    any_known = False
+    for dataset, image_file, label in keys:
+        timepoint = time_by_key.get((image_file, label))
+        if timepoint is not None:
+            any_known = True
+        facets.setdefault(timepoint, []).append((dataset, image_file, label))
+
+    if not any_known:
+        return [(None, keys)]
+
+    def _sort_key(item: tuple[Any, Any]) -> tuple[int, str]:
+        tp = item[0]
+        return (1, "") if tp is None else (0, _time_sort_token(tp))
+
+    return sorted(facets.items(), key=_sort_key)
+
+
+def _time_sort_token(value: Any) -> str:
+    """Zero-pad numeric timepoints so they sort numerically as strings."""
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return f"{float(value):020.6f}"
+    return str(value)
 
 
 def _metric_for_group(
-    summary_df: pl.DataFrame | None,
-    instance_id: str,
+    module_summary: pl.DataFrame | None,
     groupby_cols: list[str],
     key_values: tuple[Any, ...],
 ) -> Any:
-    """Read one group's metric from a (re)loaded summary frame, or ``None``."""
-    if summary_df is None:
-        return None
-    record = _data.group_record(summary_df, instance_id, groupby_cols, key_values)
+    """Read one group's metric from a (re)loaded module summary, or ``None``."""
+    record = _summary_row_for_key(module_summary, groupby_cols, key_values)
     return None if record is None else record.get("metric")
 
 
 def _metric_status_for_group(
-    summary_df: pl.DataFrame | None,
-    instance_id: str,
+    module_summary: pl.DataFrame | None,
     groupby_cols: list[str],
     key_values: tuple[Any, ...],
 ) -> tuple[Any, str | None]:
-    """Read one group's ``(metric, status)`` from a (re)loaded summary frame."""
-    if summary_df is None:
-        return None, None
-    record = _data.group_record(summary_df, instance_id, groupby_cols, key_values)
+    """Read one group's ``(metric, status)`` from a (re)loaded module summary."""
+    record = _summary_row_for_key(module_summary, groupby_cols, key_values)
     if record is None:
         return None, None
     status = record.get("status")
     return record.get("metric"), None if status is None else str(status)
+
+
+def _recompute_full_rebuild(output_root, pipeline, removed) -> bool:
+    """Atomically (re)build ``qc.duckdb`` from the curated post-applied frame.
+
+    Shared by BOTH live recompute triggers — per-group curation and the
+    settings-edit rebuild. Reads the curated post-applied frame
+    (:func:`._data.build_recompute_frame`, minus the live removal set) and
+    runs ``run_qc`` (only — never ``finalize_*``, which would wipe
+    ``review_state.json``). A full rebuild: ``run_qc`` re-derives every
+    module's tables + catalog from the synced pipeline.
+
+    Args:
+        output_root: The active output root (``None`` → no-op).
+        pipeline: The pipeline whose ``qc`` entries drive the rebuild. The
+            caller MUST have synced it from the live recipe first (the
+            settings-edit path calls ``pipeline.set_qc(recipe.entries)``).
+        removed: The curated ``(image_file, label)`` removal set.
+
+    Returns:
+        ``True`` when ``run_qc`` ran (or no-oped cleanly), ``False`` on a
+        missing root / pipeline / empty recipe or a rebuild exception.
+    """
+    if output_root is None or pipeline is None or not pipeline.get_qc():
+        return False
+
+    from phenotypic.sdk_._qc_recipe._runner import run_qc
+
+    frame = _data.build_recompute_frame(output_root, removed)
+    try:
+        # Write directly into the bundle's resolved qc dir so a standalone
+        # deliverables bundle (root == deliverables folder) never double-joins.
+        run_qc(
+            frame,
+            pipeline,
+            Path(output_root.root),
+            qc_output_dir=output_root.layout.qc_dir,
+        )
+    except Exception:  # noqa: BLE001 - recompute failure must not crash curation
+        logger.warning(
+            "In-session QC recompute (full rebuild) failed", exc_info=True
+        )
+        return False
+    return True
+
+
+def reconcile_review_state_after_rebuild(output_root) -> None:
+    """Prune review progress against the just-rebuilt ``qc.duckdb`` groups.
+
+    For every module in the rebuilt catalog, drop any reviewed encoded
+    group key whose group no longer exists in the new summary (a settings
+    edit may have changed ``groupby`` or thresholds). Modules absent from
+    the catalog are left untouched (their progress is orphaned, not pruned).
+
+    Args:
+        output_root: The active output root (``None`` → no-op).
+    """
+    if output_root is None:
+        return
+    state = ReviewState.load(output_root.layout)
+    for module in _db.list_modules(output_root):
+        summary = _db.module_summary(output_root, module.instance_id)
+        present = {
+            encode_group_key(tuple(r.get(c) for c in module.groupby_cols))
+            for r in summary.iter_rows(named=True)
+        }
+        state.reconcile_to_summary(module.instance_id, present)
 
 
 def _recompute_after_curation(
@@ -687,10 +1028,10 @@ def _recompute_after_curation(
 ) -> dict[str, Any] | None:
     """Run an in-session per-group recompute and return its before→after delta.
 
-    Reads the curated post-applied frame, runs ``run_qc`` (only — never
-    ``finalize_*``, which would wipe ``review_state.json``), reloads the
-    rewritten summary, and reports this group's new metric. Returns
-    ``None`` (no-op) when no pipeline is available.
+    Reads the curated post-applied frame, runs the shared full rebuild
+    (:func:`_recompute_full_rebuild`), reloads the rewritten summary, and
+    reports this group's new metric. Returns ``None`` (no-op) when no
+    pipeline is available.
 
     Args:
         instance_id: The module being recomputed.
@@ -706,22 +1047,13 @@ def _recompute_after_curation(
     """
     output_root = _output_root()
     pipeline = current_app.config.get(CFG_QC_PIPELINE)
-    if output_root is None or pipeline is None or not pipeline.get_qc():
-        return None
-
-    from phenotypic.sdk_._qc_recipe._runner import run_qc
-
     removed = _removed_keys_locked()
-    frame = _data.build_recompute_frame(output_root, removed)
-    try:
-        run_qc(frame, pipeline, Path(output_root.root))
-    except Exception:  # noqa: BLE001 - recompute failure must not crash curation
-        logger.warning("In-session QC recompute failed", exc_info=True)
+    if not _recompute_full_rebuild(output_root, pipeline, removed):
         return None
 
-    new_summary = _data.load_qc_summary(output_root)
+    new_summary = _db.module_summary(output_root, instance_id)
     metric_after, status_after = _metric_status_for_group(
-        new_summary, instance_id, groupby_cols, key_values
+        new_summary, groupby_cols, key_values
     )
     moved = not _metrics_equal(metric_before, metric_after)
     return {
@@ -767,15 +1099,16 @@ def register_review_callbacks(app: dash.Dash) -> None:
     def _populate_module_picker(
         _revision: int | None, current: str | None
     ) -> tuple[list[dict[str, str]], str | None]:
-        """Populate the module picker from the committed qc_summary artifact."""
+        """Populate the module picker from the DuckDB catalog (recipe order)."""
         output_root = _output_root()
         if output_root is None:
             return [], None
-        summary = _data.load_qc_summary(output_root)
-        options = _data.module_options(summary)
+        options = _module_picker_options(output_root)
         values = {opt["value"] for opt in options}
-        value = current if current in values else (
-            options[0]["value"] if options else None
+        value = (
+            current
+            if current in values
+            else (options[0]["value"] if options else None)
         )
         return options, value
 
@@ -789,10 +1122,15 @@ def register_review_callbacks(app: dash.Dash) -> None:
         Output(rids.STORE_QC_WORKLIST_ORDER, "data"),
         Output(rids.STORE_QC_SELECTED_GROUP, "data"),
         Output(rids.QC_REVIEW_EMPTY_STATE_ID, "style"),
+        Output(rids.QC_REVIEW_EMPTY_STATE_ID, "children"),
         Output(rids.QC_REVIEW_MODULE_CHIPS_ID, "children"),
         Input(rids.QC_REVIEW_MODULE_PICKER_ID, "value"),
         Input(rids.QC_REVIEW_RESORT_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_SHOW_FILTER_ID, "value"),
+        # A settings-edit full rebuild ticks this store after rewriting
+        # qc.duckdb, so the worklist + header re-render off the fresh DB
+        # even when the selected module's instance_id is unchanged.
+        Input(qc_tab_ids.STORE_QC_RECOMPUTE_DONE, "data"),
         State(rids.STORE_QC_SELECTED_GROUP, "data"),
         State(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
     )
@@ -800,21 +1138,31 @@ def register_review_callbacks(app: dash.Dash) -> None:
         instance_id: str | None,
         _resort_clicks: int | None,
         show_filter: str,
+        _recompute_done: int | None,
         selected_encoded: str | None,
         deltas: dict[str, dict[str, Any]] | None,
     ):
         output_root = _output_root()
-        if output_root is None or not instance_id:
-            return [], [], [], None, {"display": "block", "padding": "2rem",
-                                      "textAlign": "center"}, []
+        module = _module_for(output_root, instance_id)
+        if module is None:
+            empty_style = {
+                "display": "block",
+                "padding": "2rem",
+                "textAlign": "center",
+            }
+            return (
+                [],
+                [],
+                [],
+                None,
+                empty_style,
+                _review_empty_state_children(output_root),
+                [],
+            )
 
-        summary = _data.load_qc_summary(output_root)
-        if summary is None:
-            return [], [], [], None, {"display": "block", "padding": "2rem",
-                                      "textAlign": "center"}, []
-
-        groupby_cols = _data.groupby_cols_for(summary, instance_id)
-        worklist = _data.module_worklist(summary, instance_id)
+        instance_id = module.instance_id  # narrow str | None → str
+        groupby_cols = module.groupby_cols
+        worklist = _db.module_summary(output_root, instance_id)
         review_state = _load_review_state()
         deltas = deltas or {}
 
@@ -831,22 +1179,33 @@ def register_review_callbacks(app: dash.Dash) -> None:
             selected_encoded = order[0] if order else None
 
         rows = _render_worklist_rows(
-            visible, instance_id, groupby_cols, review_state, deltas,
+            visible,
+            instance_id,
+            groupby_cols,
+            review_state,
+            deltas,
             selected_encoded,
         )
 
-        stats = _data.summary_stats(_data.module_worklist(summary, instance_id))
+        stats = _db.summary_stats(worklist)
         removed = _removed_keys_locked()
-        members = _data.load_qc_members(output_root)
         colonies_removed = _count_removed_in_module(
-            members, instance_id, removed
+            output_root, module, removed
         )
         header = _render_summary_header(
             stats, review_state.reviewed_count(instance_id), colonies_removed
         )
-        chips = _module_chips(summary, instance_id, groupby_cols)
+        chips = _module_chips(module, groupby_cols)
         empty_style = {"display": "none"}
-        return rows, header, order, selected_encoded, empty_style, chips
+        return (
+            rows,
+            header,
+            order,
+            selected_encoded,
+            empty_style,
+            no_update,
+            chips,
+        )
 
     # -----------------------------------------------------------------
     # C. Group selection → detail header + faceted gallery.
@@ -865,7 +1224,10 @@ def register_review_callbacks(app: dash.Dash) -> None:
             allow_duplicate=True,
         ),
         Output(rids.STORE_QC_GALLERY_ORDER, "data"),
-        Input({"type": "qc-worklist-row", "instance": ALL, "key": ALL}, "n_clicks"),
+        Input(
+            {"type": "qc-worklist-row", "instance": ALL, "key": ALL},
+            "n_clicks",
+        ),
         Input(rids.STORE_QC_SELECTED_GROUP, "data"),
         Input(viewer_ids.STORE_TILE_DIM_ALPHA, "data"),
         Input(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -905,29 +1267,40 @@ def register_review_callbacks(app: dash.Dash) -> None:
             # group leaves the store unchanged and so never echoes, so we
             # still fall through and render to refresh it.)
             if clicked_key != selected_encoded:
-                return no_update, no_update, clicked_key, skip_styles, no_update
+                return (
+                    no_update,
+                    no_update,
+                    clicked_key,
+                    skip_styles,
+                    no_update,
+                )
             selected_encoded = clicked_key
         if not instance_id or not selected_encoded:
             return [], [], no_update, skip_styles, no_update
 
         output_root = _output_root()
-        summary = _data.load_qc_summary(output_root)
-        members = _data.load_qc_members(output_root)
-        if summary is None or members is None:
+        module = _module_for(output_root, instance_id)
+        if module is None:
             return [], [], selected_encoded, skip_styles, no_update
 
-        groupby_cols = _data.groupby_cols_for(summary, instance_id)
+        groupby_cols = module.groupby_cols
         key_values = decode_group_key(selected_encoded)
-        record = _data.group_record(summary, instance_id, groupby_cols, key_values)
+        summary = _db.module_summary(output_root, instance_id)
+        record = _summary_row_for_key(summary, groupby_cols, key_values)
         if record is None:
             return [], [], selected_encoded, skip_styles, no_update
 
-        dataset_by_image = _data.dataset_by_image_map(output_root)
-        keys = _data.group_member_keys(
-            members, instance_id, groupby_cols, key_values, dataset_by_image
-        )
-        time_by_key = _data.time_by_key_map(output_root)
-        facets = _data.facet_keys_by_timepoint(keys, time_by_key)
+        # Diagnostic-only modules (group-level, no per-object rows) hide the
+        # curation radial + tile gallery: render the header only.
+        if module.supports_object_curation:
+            members = _db.module_members(output_root, instance_id, key_values)
+            keys = _member_keys_from_frame(members, module)
+            facets = _facet_keys_by_timepoint(
+                keys, _time_by_key_from_members(members, module)
+            )
+        else:
+            keys = []
+            facets = []
 
         removed = _removed_keys_locked()
         n_removed = sum(1 for _ds, im, lbl in keys if (im, lbl) in removed)
@@ -953,7 +1326,7 @@ def register_review_callbacks(app: dash.Dash) -> None:
             removed=removed,
             crop_size=_crop_size_for(keys, output_root),
             display_size=120,
-            has_overlay=output_root.has_overlay,
+            has_image_source=output_root.has_image_source,
             dim_alpha=alpha,
             selected=selected,
             category_of=category_of,
@@ -1042,39 +1415,46 @@ def _apply_show_filter(
 
 
 def _count_removed_in_module(
-    members: pl.DataFrame | None,
-    instance_id: str,
+    output_root,
+    module: "_db.QcModule",
     removed: set[tuple[str, int]],
 ) -> int:
-    """Count distinct removed colonies that belong to this module's members."""
-    if members is None or members.is_empty() or not removed:
+    """Count distinct removed colonies that belong to this module's members.
+
+    Reads the module's whole data table (empty group-key tuple → no filter)
+    and counts the distinct ``(image_file, label)`` members in the live
+    removal set. Diagnostic-only modules (no per-object rows) contribute 0.
+    """
+    if not module.supports_object_curation or not removed:
         return 0
-    slice_df = members.filter(pl.col("instance_id") == instance_id)
-    count = 0
+    members = _db.module_members(output_root, module.instance_id, ())
+    if (
+        members.is_empty()
+        or KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
+        return 0
     seen: set[tuple[str, int]] = set()
     for image_file, label in zip(
-        slice_df.get_column("Metadata_ImageFile").to_list(),
-        slice_df.get_column("Object_Label").to_list(),
+        members.get_column(KEY_IMAGE_FILE).to_list(),
+        members.get_column(KEY_OBJECT_LABEL).to_list(),
     ):
+        if image_file is None or label is None:
+            continue
         key = (str(image_file), int(label))
-        if key in removed and key not in seen:
+        if key in removed:
             seen.add(key)
-            count += 1
-    return count
+    return len(seen)
 
 
 def _module_chips(
-    summary: pl.DataFrame, instance_id: str, groupby_cols: list[str]
+    module: "_db.QcModule", groupby_cols: list[str]
 ) -> list[Component]:
     """Render the read-only ``class`` + ``groupby`` chips for the module."""
-    record = summary.filter(pl.col("instance_id") == instance_id).head(1)
-    cls = (
-        str(record.get_column("class")[0])
-        if not record.is_empty()
-        else "?"
-    )
     chips: list[Component] = [
-        dbc.Badge(cls, color="light", text_color="dark", className="me-1")
+        dbc.Badge(
+            module.cls_name, color="light", text_color="dark", className="me-1"
+        )
     ]
     if groupby_cols:
         chips.append(
@@ -1346,7 +1726,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
             "children",
         ),
         Output(
-            viewer_ids.STORE_CATEGORY_VOCAB_REVISION, "data", allow_duplicate=True
+            viewer_ids.STORE_CATEGORY_VOCAB_REVISION,
+            "data",
+            allow_duplicate=True,
         ),
         Input(
             {
@@ -1425,7 +1807,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
     # selects on a single surface at a time, so sharing the selection store
     # is safe (decision C).
     @app.callback(
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Input(rids.STORE_QC_GALLERY_SELECTION_DELTA, "data"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
         State(rids.STORE_QC_GALLERY_ORDER, "data"),
@@ -1453,7 +1837,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Input(rids.QC_REVIEW_BULK_REMOVE_BTN_ID, "n_clicks"),
         Input(rids.QC_REVIEW_BULK_RESTORE_BTN_ID, "n_clicks"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -1499,7 +1885,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
 
     @app.callback(
         Output(viewer_ids.STORE_REMOVED_KEYS, "data", allow_duplicate=True),
-        Output(viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True),
+        Output(
+            viewer_ids.STORE_COLONY_SELECTION, "data", allow_duplicate=True
+        ),
         Output(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
         Input(rids.QC_REVIEW_BULK_MARK_DROPDOWN_ID, "value"),
         State(viewer_ids.STORE_COLONY_SELECTION, "data"),
@@ -1523,7 +1911,9 @@ def _register_curation_callbacks(app: dash.Dash) -> None:
         try:
             payload = bulk_mark(filtered, selected, category)
         except ValueError:
-            logger.warning("QC bulk-mark rejected unknown category %r", category)
+            logger.warning(
+                "QC bulk-mark rejected unknown category %r", category
+            )
             return no_update, no_update, None
         return payload, {"selected": []}, None
 
@@ -1578,11 +1968,9 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         if output_root is None:
             return no_update, no_update
 
-        summary = _data.load_qc_summary(output_root)
-        groupby_cols = (
-            _data.groupby_cols_for(summary, instance_id) if summary is not None
-            else []
-        )
+        module = _module_for(output_root, instance_id)
+        groupby_cols = module.groupby_cols if module is not None else []
+        summary = _db.module_summary(output_root, instance_id)
         key_values = decode_group_key(selected_encoded)
         review_state = _load_review_state()
 
@@ -1601,7 +1989,7 @@ def _register_review_progress_callbacks(app: dash.Dash) -> None:
         # Recompute only when changes were made (spec §D.5).
         if curated:
             metric_before = _metric_for_group(
-                summary, instance_id, groupby_cols, key_values
+                summary, groupby_cols, key_values
             )
             delta = _recompute_after_curation(
                 instance_id, groupby_cols, key_values, metric_before
@@ -1626,15 +2014,23 @@ def _group_has_removed_members(
     key_values: tuple[Any, ...],
 ) -> bool:
     """Return ``True`` if any of the group's member colonies are removed."""
-    members = _data.load_qc_members(output_root)
-    if members is None:
+    members = _db.module_members(output_root, instance_id, key_values)
+    if (
+        members.is_empty()
+        or KEY_IMAGE_FILE not in members.columns
+        or KEY_OBJECT_LABEL not in members.columns
+    ):
         return False
-    dataset_by_image = _data.dataset_by_image_map(output_root)
-    keys = _data.group_member_keys(
-        members, instance_id, groupby_cols, key_values, dataset_by_image
-    )
     removed = _removed_keys_locked()
-    return any((im, lbl) in removed for _ds, im, lbl in keys)
+    member_keys = {
+        (str(image_file), int(label))
+        for image_file, label in zip(
+            members.get_column(KEY_IMAGE_FILE).to_list(),
+            members.get_column(KEY_OBJECT_LABEL).to_list(),
+        )
+        if image_file is not None and label is not None
+    }
+    return any(key in removed for key in member_keys)
 
 
 def _next_unreviewed(
@@ -1723,7 +2119,11 @@ def _register_worklist_row_metric_callback(app: dash.Dash) -> None:
 
     @app.callback(
         Output(
-            {"type": "qc-worklist-row-metric", "instance": MATCH, "key": MATCH},
+            {
+                "type": "qc-worklist-row-metric",
+                "instance": MATCH,
+                "key": MATCH,
+            },
             "children",
         ),
         Input(rids.STORE_QC_RECOMPUTE_DELTAS, "data"),
@@ -1853,5 +2253,6 @@ __all__ = [
     "render_worklist_row_metric_cell",
     "worklist_row_metric_update",
     "_previous_group",
+    "_recompute_full_rebuild",
+    "reconcile_review_state_after_rebuild",
 ]
-

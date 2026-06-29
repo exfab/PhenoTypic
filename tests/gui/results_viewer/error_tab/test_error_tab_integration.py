@@ -18,17 +18,21 @@ import numpy as np
 import polars as pl
 import pytest
 
+from phenotypic import ImagePipeline
+from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.gui.results_viewer._error_tab import (
     build_error_tab_body,
     register_error_callbacks,
 )
 from phenotypic.gui.results_viewer._error_tab import _callbacks, _ids as ids
-from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+    ReviewState,
+)
+from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
     error_analysis_parquet_path,
-    qc_members_parquet_path,
-    qc_summary_parquet_path,
     verified_parquet_path,
 )
 
@@ -40,10 +44,19 @@ KEY_OBJECT_LABEL = "Object_Label"
 
 @dataclass
 class FakeOutputRoot:
-    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df``."""
+    """Minimal OutputRoot stand-in exposing ``.root`` + ``.master_df`` + ``.layout``."""
 
     root: Path
     master_df: pl.DataFrame
+
+    @property
+    def layout(self):
+        """Full-run-style :class:`BundleLayout` rooted at ``self.root``."""
+        from phenotypic.sdk_ import BundleLayout
+
+        return BundleLayout(
+            deliverables_base=self.root / "deliverables", output_root=self.root
+        )
 
     @property
     def clean_master_df(self) -> pl.DataFrame:
@@ -76,9 +89,18 @@ def seeded_root(tmp_path: Path) -> FakeOutputRoot:
     return FakeOutputRoot(root=tmp_path, master_df=master)
 
 
+def _layout(root: Path):
+    """Full-run-style :class:`BundleLayout` rooted at ``root``."""
+    from phenotypic.sdk_ import BundleLayout
+
+    return BundleLayout(
+        deliverables_base=root / "deliverables", output_root=root
+    )
+
+
 def _label_errors(root: Path, master: pl.DataFrame, n: int) -> CurationLabels:
     """Label the first ``n`` (small-area) objects as ``debris``."""
-    state = CurationLabels.load(root, master)
+    state = CurationLabels.load(_layout(root), master)
     keys = [("img1", lbl) for lbl in range(1, n + 1)]
     state.mark_many(keys, "debris")
     return state
@@ -99,7 +121,7 @@ def test_build_error_tab_body_contains_table_and_figure():
 def test_register_error_callbacks_registers_without_raising(seeded_root):
     app = dash.Dash(__name__, suppress_callback_exceptions=True)
     app.layout = build_error_tab_body(seeded_root, MagicMock())
-    filtered = CurationLabels.load(seeded_root.root, seeded_root.master_df)
+    filtered = CurationLabels.load(seeded_root.layout, seeded_root.master_df)
     register_error_callbacks(app, seeded_root, filtered)
     # At least one callback now writes the chips/table/figure.
     outputs = "".join(app.callback_map.keys())
@@ -145,33 +167,33 @@ def test_recompute_empty_state_when_insufficient(seeded_root):
 # ---------------------------------------------------------------------------
 
 
-def _write_qc_one_group(root: Path, good_labels: list[int]) -> None:
-    """Write a qc artifact whose single reviewed group holds ``good_labels``."""
-    instance_id = "qc-SE-aaaa"
-    qc_summary_parquet_path(root).parent.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame(
-        {
-            "instance_id": [instance_id],
-            "class": ["SE"],
-            "plate": ["A"],
-            "metric": [0.9],
-            "status": ["fail"],
-            "flag": [True],
-            "n_members": [len(good_labels)],
-            "n_flagged": [0],
-            "rank": [0],
-        }
-    ).write_parquet(qc_summary_parquet_path(root))
-    pl.DataFrame(
-        {
-            "instance_id": [instance_id] * len(good_labels),
-            "plate": ["A"] * len(good_labels),
-            KEY_IMAGE_FILE: ["img1"] * len(good_labels),
-            KEY_OBJECT_LABEL: good_labels,
-            "member_value": [0.0] * len(good_labels),
-        }
-    ).write_parquet(qc_members_parquet_path(root))
-    state = ReviewState.load(root)
+def _write_qc_one_group(
+    root: Path, master: pl.DataFrame, good_labels: list[int]
+) -> None:
+    """Seed qc.duckdb whose single reviewed group ("A") holds ``good_labels``.
+
+    Tags ``good_labels`` with a synthetic ``plate == "A"`` group (the rest
+    "B"), runs the real :class:`MaxModifiedZScore` writer grouped by
+    ``plate``, then marks group "A" reviewed — so the reviewed group's
+    members are exactly the ``good_labels`` objects on ``img1``.
+    """
+    instance_id = "qc-ZMax-aaaa"
+    good = set(good_labels)
+    df = master.to_pandas()
+    df["plate"] = ["A" if lbl in good else "B" for lbl in df[KEY_OBJECT_LABEL]]
+    pipe = ImagePipeline()
+    pipe.set_qc(
+        [
+            QcRecipeEntry(
+                cls=MaxModifiedZScore,
+                params={"on": "Size_Area", "groupby": ["plate"]},
+                instance_id=instance_id,
+                enabled=True,
+            )
+        ]
+    )
+    run_qc(df, pipe, root)
+    state = ReviewState.load(_layout(root))
     state.mark_reviewed(instance_id, ("A",))
 
 
@@ -179,7 +201,9 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     # Label the 10 small-area objects as errors; the 10 large-area objects
     # (labels 11..20) are the good pool and all reviewed in one QC group.
     filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
-    _write_qc_one_group(seeded_root.root, list(range(11, 21)))
+    _write_qc_one_group(
+        seeded_root.root, seeded_root.master_df, list(range(11, 21))
+    )
 
     all_unlabeled = _callbacks._recompute(
         seeded_root, filtered, "debris", "all_unlabeled"
@@ -193,6 +217,22 @@ def test_recompute_verified_mode_writes_verified_parquet(seeded_root):
     assert verified.good_n <= all_unlabeled.good_n
     # verified.parquet written only in the non-degenerate verified branch (R4).
     assert verified_parquet_path(seeded_root.root).is_file()
+
+
+def test_recompute_verified_mode_explains_legacy_qc_parquet_cutover(
+    seeded_root,
+):
+    filtered = _label_errors(seeded_root.root, seeded_root.master_df, 10)
+    qc_dir = seeded_root.layout.qc_dir
+    qc_dir.mkdir(parents=True, exist_ok=True)
+    (qc_dir / "qc_summary.parquet").write_bytes(b"legacy summary")
+    (qc_dir / "qc_members.parquet").write_bytes(b"legacy members")
+
+    result = _callbacks._recompute(seeded_root, filtered, "debris", "verified")
+
+    assert result.empty_state
+    assert "qc.duckdb" in result.empty_message
+    assert "recompile" in result.empty_message.lower()
 
 
 def test_recompute_all_unlabeled_does_not_write_verified_parquet(seeded_root):

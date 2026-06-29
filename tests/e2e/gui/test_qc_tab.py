@@ -227,8 +227,8 @@ def fake_sandbox(tmp_path: Path) -> Path:
     """Function-scoped sandbox seeded with a real master measurements frame.
 
     Overrides the module-scoped ``fake_sandbox`` so each QC tab test
-    gets a clean output directory it can mutate freely (writing
-    ``qc_recipe.json``, dropping ``qc.parquet`` on export, etc.).
+    gets a clean output directory it can mutate freely (writing the QC
+    recipe into ``pipeline.json``, curation state, etc.).
     """
     sandbox = _build_sandbox(tmp_path)
     _seed_real_output(sandbox)
@@ -1005,69 +1005,6 @@ def test_mark_flagged_pushes_to_removed_keys(
     )
 
 
-def test_export_emits_qc_parquet_and_summary(
-    page: Page,
-    hub_url: str,
-    output_rel: str,
-    output_dir: Path,
-) -> None:
-    """Clicking Export writes ``qc.parquet`` + ``qc_summary.json``.
-
-    Spec line 1220. Both files must exist and the parquet must carry
-    ``QC_Check_Class`` + ``QC_Check_Instance_Id`` as the two leading
-    discriminator columns.
-    """
-    csv_path = _write_count_metadata(output_dir)
-    se_id = "qc-SE-export001"
-    count_id = "qc-Count-export"
-    _seed_qc_recipe(
-        output_dir,
-        {
-            "version": 1,
-            "checks": [
-                _se_entry(instance_id=se_id),
-                _count_entry(instance_id=count_id, metadata_path=str(csv_path)),
-            ],
-        },
-    )
-    _hand_off_viewer(page, hub_url, output_rel)
-    _navigate_to_qc_tab(page, hub_url)
-    page.wait_for_selector("#qc-export-btn", timeout=10_000)
-    # Wait for the export button to enable.
-    page.wait_for_function(
-        "() => {"
-        "  const b = document.getElementById('qc-export-btn');"
-        "  return b && !b.disabled;"
-        "}",
-        timeout=10_000,
-    )
-    _dismiss_qc_modal_if_open(page)
-    page.locator("#qc-export-btn").click(force=True)
-
-    parquet_path = output_dir / "qc.parquet"
-    summary_path = output_dir / "qc_summary.json"
-    import time as _time
-
-    deadline = _time.monotonic() + 10.0
-    while _time.monotonic() < deadline:
-        if parquet_path.is_file() and summary_path.is_file():
-            break
-        _time.sleep(0.1)
-    assert parquet_path.is_file(), "qc.parquet was not written"
-    assert summary_path.is_file(), "qc_summary.json was not written"
-
-    df = pl.read_parquet(parquet_path)
-    assert list(df.columns[:2]) == [
-        "QC_Check_Class",
-        "QC_Check_Instance_Id",
-    ], f"leading columns mismatch: {list(df.columns[:2])}"
-    payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert isinstance(payload, list)
-    instance_ids = {entry["instance_id"] for entry in payload}
-    assert se_id in instance_ids
-    assert count_id in instance_ids
-
-
 def test_load_warning_banner(
     page: Page,
     hub_url: str,
@@ -1102,60 +1039,4 @@ def test_load_warning_banner(
     text = page.locator(banner_selector).text_content() or ""
     assert "invalid JSON" in text or "__file__" in text, (
         f"Banner text missing the corrupt-JSON cue: {text!r}"
-    )
-
-
-def test_export_button_disabled_when_no_checks(
-    page: Page,
-    hub_url: str,
-    output_rel: str,
-    output_dir: Path,
-) -> None:
-    """Export button is disabled until at least one check is enabled.
-
-    Edge case derived from spec lines 838-840 ("Button is disabled when
-    no checks are configured."). Writes an empty recipe and asserts
-    the button is disabled on first mount; after adding an entry via
-    the on-disk API the button becomes enabled.
-    """
-    _seed_qc_recipe(output_dir, {"version": 1, "checks": []})
-    _hand_off_viewer(page, hub_url, output_rel)
-    _navigate_to_qc_tab(page, hub_url)
-    page.wait_for_selector("#qc-export-btn", timeout=10_000)
-    disabled_initial = page.evaluate(
-        "() => document.getElementById('qc-export-btn').disabled"
-    )
-    assert disabled_initial is True, "Export should be disabled with no checks"
-
-    # Add one entry on disk and reload so the card-list-render
-    # callback picks up the new state. (The viewer's QcRecipe is
-    # loaded at create_app() and lives on app.server.config; the
-    # easiest path is to hand off again, which rebuilds the viewer.)
-    from phenotypic.sdk_._qc_recipe import QcRecipe
-    from phenotypic.analysis import ReplicateAgreement
-
-    recipe = QcRecipe.load(output_dir)
-    recipe.add(
-        ReplicateAgreement,
-        {
-            "on": "Size_Area",
-            "groupby": ["Metadata_ImageFile"],
-            "time_label": "Metadata_Time",
-            "min_replicates": 2,
-        },
-    )
-    _hand_off_viewer(page, hub_url, output_rel)
-    _navigate_to_qc_tab(page, hub_url)
-    page.wait_for_function(
-        "() => {"
-        "  const b = document.getElementById('qc-export-btn');"
-        "  return b && !b.disabled;"
-        "}",
-        timeout=10_000,
-    )
-    disabled_after = page.evaluate(
-        "() => document.getElementById('qc-export-btn').disabled"
-    )
-    assert disabled_after is False, (
-        "Export should be enabled after adding a check"
     )

@@ -1,8 +1,9 @@
 # CLI Execution (`_cli/`)
 
-The batch-processing engine behind `python -m phenotypic`. `phenotypicCLI.py`
-parses options into an `ExecutionConfig` (`_cli_types.py`, a mutable
-`@dataclass`), then `create_execution_strategy(config, output_manager)`
+The batch-processing engine behind `python -m phenotypic`. `../phenotypicCLI.py`
+(at the package root, not in `_cli/`) parses options into an `ExecutionConfig`
+(`_cli_types.py`, a mutable `@dataclass`), then
+`create_execution_strategy(config, output_manager)`
 (`_cli_execution_strategies.py`) dispatches to one strategy.
 
 ## Execution strategies (the dispatch)
@@ -94,14 +95,55 @@ trio.
 - **GPU detectors stage automatically in the CLI** — `op.apply(image)` in a
   notebook is unchanged; a `GpuDetector` in a *CLI* run triggers the staged
   engine, not per-image processing.
-- **Output layout** — per-image parquets/HDF stay at the output root
-  (`results/`); user-facing deliverables live under `deliverables/`. Resolve
-  paths via the `phenotypic.sdk_` helpers, never by hand-joining names.
-- **HPCC SLURM heterogeneity (polars build)** — the cluster has pre-AVX2 nodes
-  (`abu_dhabi` c01–30, `ivy` h01–06). The stock `polars` wheel has an AVX2 baseline
-  with no runtime fallback and SIGILLs ("Illegal instruction") there, so the project
-  **ships `polars-lts-cpu` by default** (baseline-ISA build that runs everywhere).
-  numpy/scipy use runtime SIMD dispatch and are unaffected. On AVX2 nodes you can swap
-  in the faster stock `polars` (`docs/source/how_to/pages/polars_cpu_build.md`), or pin
-  jobs to AVX2 partitions/constraints. Stage 2's GPU work runs on GPU nodes, which are
-  consistent.
+- **Output layout** — see the **Output layout & deliverables** section below for
+  the full inventory and master-vs-mirror rules.
+- **HPCC SLURM heterogeneity (polars build)** — the cluster has pre-AVX2 nodes where the
+  stock `polars` wheel SIGILLs ("Illegal instruction"). The project depends on
+  `polars[rtcompat]` (a runtime-CPU-dispatch build that runs on pre-AVX2 nodes without a
+  per-node wheel swap); numpy/scipy use runtime SIMD dispatch and are unaffected. See
+  `docs/source/how_to/pages/polars_cpu_build.md`. Stage 2's GPU work runs on GPU nodes.
+
+---
+
+## Output layout & deliverables
+
+User-facing run outputs live under `<output>/deliverables/` (hard cutover):
+`master_measurements.{csv,parquet}`, `measurements.{csv,parquet}`,
+`measurements_by_feature/<feature>.{csv,parquet}`, `analysis.{csv,parquet}`,
+`dashboard.html`, `analysis.html`, `processing_report.html`, `README.md`,
+`pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+**per-image** parquets in `results/<ds>/measurements/` (and the rest of `results/`,
+`progress/`, `processing_state.json`) stay at the output-dir **root**. The durable
+**QC + curation state** lives under `deliverables/qc/` (`qc.duckdb`,
+`review_state.json`, `curation_labels.parquet`, `custom_categories.json`) so a
+`deliverables/` bundle is self-contained and GUI-openable standalone; `resolve_qc_dir`
+/ `migrate_legacy_qc` still read/move a pre-relocation root `qc/`. `run_qc` writes the
+single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus a
+`qc_modules` catalog, atomic full rebuild). Resolve these paths via the
+`phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
+`qc_dir`, `qc_duckdb_path`, …), never by hand-joining names.
+
+**Master vs. mirror.** `master_measurements.{csv,parquet}` is a clean, pre-post,
+metadata-free archive of what per-image runs measured; `measurements.{csv,parquet}` is
+the post-applied mirror the GUI reads/curates. Per-image parquets in
+`results/<ds>/measurements/` are also clean — the CLI calls
+`pipeline.measure(image, apply_post=False)` on the per-image path. Post is applied once
+at the end of aggregation against the merged master, and the post-applied frame is what
+`analysis.{csv,parquet}` and `measurements_by_feature/<feature>.{csv,parquet}` derive
+from. The external `--metadata` CSV inner-join also lands on the post-applied frame
+(inside `finalize_post_master_outputs`), so the mirror, per-feature splits, and
+`analysis.*` carry metadata while the master archive stays post-free and metadata-free.
+Feed analysis plugins/dashboards from `measurements.parquet`, not
+`master_measurements.*`.
+
+**Finalize for FINAL master writes.** Any code path that writes
+`deliverables/master_measurements.{csv,parquet}` *as the run's final output* must
+immediately call `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
+output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/` and emits the
+per-feature splits + analysis chain). The `aggregate_measurements` (forward CLI) and
+`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run
+intermediate writers (`_aggregate_chunks_locked` in `_cli_chunk_writer.py`)
+intentionally bypass it — chunks publish partial results for mid-run download, but the
+post pipeline, per-feature splits, analysis chain, and `pipeline.json` persistence are
+deferred to final aggregation. Don't add `finalize_post_master_outputs` to the chunk
+writer — it would re-run expensive finalize work on every checkpoint.

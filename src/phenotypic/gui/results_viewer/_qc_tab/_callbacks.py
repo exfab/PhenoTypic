@@ -21,18 +21,16 @@ Five primary callbacks plus the modal open/save/cancel flow:
   buttons.
 * :func:`_mark_flagged_for_removal` — push a card's flagged keys onto
   :data:`STORE_REMOVED_KEYS`.
-* :func:`_on_export_click` — write ``qc.parquet`` +
-  ``qc_summary.json`` under :attr:`OutputRoot.root`; show a toast.
 
-See spec lines 842-987 for the UX, lines 893-911 for the callback
-split, and lines 818-840 for the export format.
+See spec lines 842-987 for the UX and lines 893-911 for the callback
+split. QC analysis artifacts are now written to ``deliverables/qc/qc.duckdb``
+by ``run_qc`` (CLI finalize + the in-session recompute paths), not by a
+GUI export button.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-from pathlib import Path
 from typing import Any, Iterable, Iterator, Literal
 
 import dash
@@ -48,6 +46,7 @@ from phenotypic.gui._config import (
     CFG_OPERATION_REGISTRY,
     CFG_OUTPUT_ROOT,
     CFG_QC_AUGMENTED_FRAME,
+    CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
 )
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION, OI_VERMILION_TEXT
@@ -416,6 +415,76 @@ def _columns_provider(source: str) -> list[str]:
         return []
 
 
+def _removed_keys_locked(filtered: Any) -> set[tuple[str, int]]:
+    """Snapshot the curation removal set under the state lock.
+
+    Reading under the lock gives the recompute a coherent
+    state-at-settings-edit rather than a set mid-mutated by a concurrent
+    curation callback.
+    """
+    if filtered is None:
+        return set()
+    with filtered._lock:
+        return set(filtered.removed_keys)
+
+
+def _run_settings_edit_recompute(
+    output_root: Any,
+    recipe: QcRecipe | None,
+    pipeline: Any,
+    removed: set[tuple[str, int]],
+) -> bool:
+    """Durably rebuild ``qc.duckdb`` after a QC settings edit (spec §D.8).
+
+    ``CFG_QC_PIPELINE`` is loaded once at app boot and is **not**
+    auto-updated when :meth:`QcRecipe.update` mutates ``CFG_QC_RECIPE``, so
+    this MUST sync it (``pipeline.set_qc(recipe.entries)``) before
+    rebuilding — otherwise ``run_qc`` rebuilds from stale boot-time entries
+    and the edit is invisible. After a full rebuild, review progress is
+    reconciled against the new group set so reviewed keys for vanished
+    groups are pruned.
+
+    All-disabled edge: ``run_qc`` no-ops without clearing a pre-existing
+    ``qc.duckdb`` when nothing is enabled, so this removes the stale DB
+    directly to empty the worklist.
+
+    Args:
+        output_root: The active ``OutputRoot`` (``None`` → no-op).
+        recipe: The live, just-saved :class:`QcRecipe`.
+        pipeline: The boot-time ``CFG_QC_PIPELINE`` to sync + rebuild from.
+        removed: The curated ``(image_file, label)`` removal set.
+
+    Returns:
+        ``True`` when the rebuild (or the all-disabled clear) ran.
+    """
+    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+        _recompute_full_rebuild,
+        reconcile_review_state_after_rebuild,
+    )
+
+    if output_root is None or recipe is None or pipeline is None:
+        return False
+    pipeline.set_qc(list(recipe.entries))  # reflect the just-saved recipe
+
+    if not any(e.enabled for e in recipe.entries):
+        # run_qc no-ops (without clearing) when nothing is enabled; remove
+        # the stale DB so the worklist empties.
+        db_path = output_root.layout.qc_duckdb
+        try:
+            db_path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning(
+                "Failed to clear stale qc.duckdb at %s", db_path, exc_info=True
+            )
+        reconcile_review_state_after_rebuild(output_root)
+        return True
+
+    if not _recompute_full_rebuild(output_root, pipeline, removed):
+        return False
+    reconcile_review_state_after_rebuild(output_root)
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Registration entry point
 # ---------------------------------------------------------------------------
@@ -438,19 +507,16 @@ def register_qc_callbacks(app: dash.Dash) -> None:
     # -----------------------------------------------------------------
     @app.callback(
         Output(ids.QC_CARDS_CONTAINER_ID, "children"),
-        Output(ids.QC_EXPORT_BTN_ID, "disabled"),
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "children"),
         Output(ids.QC_LOAD_WARNING_BANNER_ID, "style"),
         Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
     )
-    def _render_card_shells(_revision: int | None) -> tuple[Any, bool, Any, dict[str, str]]:
+    def _render_card_shells(_revision: int | None) -> tuple[Any, Any, dict[str, str]]:
         """Rebuild the cards-container children list on every revision tick."""
         recipe = _get_recipe()
         shells = [build_check_card(entry) for entry in recipe.entries if entry.enabled]
-        export_disabled = not any(e.enabled for e in recipe.entries)
         return (
             shells,
-            export_disabled,
             _render_load_warnings(recipe.load_warnings),
             _banner_style(recipe.load_warnings),
         )
@@ -919,46 +985,6 @@ def register_qc_callbacks(app: dash.Dash) -> None:
         return _merge_removed_keys(current or [], new_keys)
 
     # -----------------------------------------------------------------
-    # Callback H: Export QC report
-    # -----------------------------------------------------------------
-    @app.callback(
-        Output(ids.QC_EXPORT_TOAST_ID, "is_open"),
-        Output(ids.QC_EXPORT_TOAST_ID, "children"),
-        Output(ids.QC_EXPORT_TOAST_ID, "icon"),
-        Input(ids.QC_EXPORT_BTN_ID, "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def _on_export_click(
-        n_clicks: int | None,
-    ) -> tuple[bool, Any, str]:
-        """Write ``qc.parquet`` + ``qc_summary.json`` and surface a toast."""
-        if not n_clicks:
-            raise PreventUpdate
-        recipe = _get_recipe()
-        filtered = current_app.config.get(CFG_FILTERED_STATE)
-        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
-        if filtered is None or output_root is None:
-            return True, "Output root unavailable.", "danger"
-
-        try:
-            parquet_path, summary_path = _export_qc_report(
-                recipe=recipe,
-                filtered=filtered,
-                output_root=output_root,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("QC export failed: %s", exc, exc_info=True)
-            return True, f"Export failed: {exc!s}", "danger"
-
-        body = html.Div(
-            [
-                html.Div(f"Wrote {parquet_path}"),
-                html.Div(f"Wrote {summary_path}"),
-            ]
-        )
-        return True, body, "success"
-
-    # -----------------------------------------------------------------
     # Callback G: Configure | Review sub-view toggle
     # -----------------------------------------------------------------
     @app.callback(
@@ -986,117 +1012,36 @@ def register_qc_callbacks(app: dash.Dash) -> None:
             review_ids.QC_SUBVIEW_REVIEW if review else review_ids.QC_SUBVIEW_CONFIGURE,
         )
 
+    # -----------------------------------------------------------------
+    # Callback I: durable settings-edit recompute
+    # -----------------------------------------------------------------
+    # Fires on every recipe-revision tick (modal submit / card lifecycle
+    # action). Syncs the boot-time CFG_QC_PIPELINE from the just-saved
+    # recipe, full-rebuilds qc.duckdb, and reconciles review progress.
+    # ``allow_duplicate`` + ``prevent_initial_call`` keep it off the boot
+    # render and clear of the other STORE_QC_RECIPE_REVISION listeners.
+    @app.callback(
+        Output(ids.STORE_QC_RECOMPUTE_DONE, "data", allow_duplicate=True),
+        Input(viewer_ids.STORE_QC_RECIPE_REVISION, "data"),
+        prevent_initial_call=True,
+    )
+    def _recompute_qc_on_settings_edit(revision: int | None) -> Any:
+        """Durably rebuild qc.duckdb after a QC settings edit (spec §D.8)."""
+        output_root = current_app.config.get(CFG_OUTPUT_ROOT)
+        recipe = current_app.config.get(CFG_QC_RECIPE)
+        pipeline = current_app.config.get(CFG_QC_PIPELINE)
+        filtered = current_app.config.get(CFG_FILTERED_STATE)
+        removed = _removed_keys_locked(filtered)
+        if not _run_settings_edit_recompute(
+            output_root, recipe, pipeline, removed
+        ):
+            return no_update
+        return (revision or 0) + 1
+
     # Review sub-view owns its own callback bundle (worklist, detail,
     # curation, recompute, review-state). Registered here so the QC tab's
     # single ``register_qc_callbacks`` entry wires both sub-views.
     register_review_callbacks(app)
-
-
-# ---------------------------------------------------------------------------
-# Export helper
-# ---------------------------------------------------------------------------
-
-
-def _export_qc_report(
-    *,
-    recipe: QcRecipe,
-    filtered: Any,
-    output_root: Any,
-) -> tuple[Path, Path]:
-    """Write ``qc.parquet`` and ``qc_summary.json`` under the output root.
-
-    Args:
-        recipe: The active QC recipe.
-        filtered: The :class:`FilteredMeasurements` curation state.
-        output_root: The :class:`OutputRoot` exposing ``master_df`` and
-            ``root``.
-
-    Returns:
-        ``(parquet_path, summary_path)`` — absolute file paths written
-        to disk.
-    """
-    root = Path(output_root.root)
-    parquet_path = root / "qc.parquet"
-    summary_path = root / "qc_summary.json"
-
-    pandas_frame = get_curated_frame(filtered, output_root).to_pandas()
-    instances = dict(recipe.instantiate())
-
-    parts: list[pd.DataFrame] = []
-    summary_entries: list[dict[str, Any]] = []
-    for entry in recipe.entries:
-        if not entry.enabled:
-            continue
-        check = instances.get(entry.instance_id)
-        if check is None:
-            continue
-        try:
-            result = check.analyze(pandas_frame)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "QC export: analyze failed for %s (%s): %s",
-                entry.instance_id,
-                entry.cls.__name__,
-                exc,
-            )
-            continue
-        out = result.copy()
-        # Leading discriminator columns — spec lines 820-829.
-        out.insert(0, "QC_Check_Class", entry.cls.__name__)
-        out.insert(1, "QC_Check_Instance_Id", entry.instance_id)
-        parts.append(out)
-
-        summary_frame = check.summary()
-        status_counts: dict[str, int] = {"pass": 0, "warn": 0, "fail": 0}
-        if "qc_status" in summary_frame.columns:
-            for s, cnt in summary_frame["qc_status"].value_counts().items():
-                key = str(s)
-                if key in status_counts:
-                    status_counts[key] = int(cnt)
-        summary_entries.append(
-            {
-                "instance_id": entry.instance_id,
-                "class": entry.cls.__name__,
-                "params": dict(entry.params),
-                "num_rows": int(len(result)),
-                "num_flagged": int(
-                    summary_frame["qc_n_flagged"].fillna(0).astype(int).sum()
-                )
-                if "qc_n_flagged" in summary_frame.columns
-                else 0,
-                "max_severity": (
-                    float(
-                        pd.to_numeric(
-                            summary_frame.get(
-                                "qc_worst_metric", pd.Series(dtype=float)
-                            ),
-                            errors="coerce",
-                        ).max()
-                    )
-                    if "qc_worst_metric" in summary_frame.columns
-                    and not summary_frame.empty
-                    else float("nan")
-                ),
-                "status_counts": status_counts,
-            }
-        )
-
-    if parts:
-        combined = pd.concat(parts, axis=0, ignore_index=True, sort=False)
-    else:
-        combined = pd.DataFrame(
-            columns=["QC_Check_Class", "QC_Check_Instance_Id"]
-        )
-
-    # Write parquet via polars to keep the writer footprint consistent
-    # with the rest of the viewer's IO surface.
-    pl.from_pandas(combined).write_parquet(parquet_path)
-    summary_path.write_text(
-        json.dumps(summary_entries, indent=2, sort_keys=False),
-        encoding="utf-8",
-    )
-
-    return parquet_path, summary_path
 
 
 # Re-exports for test access.

@@ -83,6 +83,7 @@ _PLACEHOLDER_CAPS = Capabilities(
     is_image_dir=False,
     has_pipeline_json=False,
     is_cli_output=False,
+    is_deliverables_bundle=False,
     has_dashboard=False,
     is_process_only_output=False,
     is_tune_output=False,

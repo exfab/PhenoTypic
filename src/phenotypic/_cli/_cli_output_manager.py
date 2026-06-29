@@ -33,6 +33,8 @@ from phenotypic.sdk_ import (
     DIR_LOGS,
     DIR_HDF,
     DIR_INSPECT,
+    ANALYSIS_CSV,
+    ANALYSIS_PARQUET,
     DATASET_AGGREGATED_PARQUET,
     EnvVar,
     analysis_csv_path,
@@ -366,6 +368,8 @@ def _emit_analysis_outputs(
     output_dir: Path,
     df: "pl.DataFrame",
     pipeline: "ImagePipeline",
+    *,
+    deliverables_base: Optional[Path] = None,
 ) -> Optional[tuple[Path, int]]:
     """Run ``pipeline.analyze`` and atomic-write ``analysis.{csv,parquet}``.
 
@@ -375,7 +379,10 @@ def _emit_analysis_outputs(
     the master/measurement outputs are not affected.
 
     Args:
-        output_dir: Output root directory.
+        output_dir: Output root directory. Used to resolve the
+            ``analysis.{csv,parquet}`` write location via
+            ``deliverables_dir(output_dir)`` UNLESS ``deliverables_base`` is
+            supplied.
         df: The frame to analyze (polars). The CLI passes the
             post-applied frame seeded into ``measurements.parquet`` here
             via :func:`finalize_post_master_outputs`, not the clean
@@ -384,6 +391,11 @@ def _emit_analysis_outputs(
             before calling this.
         pipeline: Pipeline whose ``model`` (and optional ``filters``)
             define the analysis chain.
+        deliverables_base: When given, write ``analysis.{csv,parquet}``
+            directly into this folder instead of ``deliverables_dir(output_dir)``.
+            The GUI analysis sub-app passes ``layout.deliverables_base`` here so a
+            standalone deliverables bundle (where the viewer ``root`` IS the
+            deliverables folder) does not double-join ``deliverables/``.
 
     Returns:
         ``(analysis_parquet_path, row_count)`` on success — the GUI's
@@ -408,8 +420,12 @@ def _emit_analysis_outputs(
         )
         return None
 
-    csv_path = analysis_csv_path(output_dir)
-    pq_path = analysis_parquet_path(output_dir)
+    if deliverables_base is not None:
+        csv_path = deliverables_base / ANALYSIS_CSV
+        pq_path = deliverables_base / ANALYSIS_PARQUET
+    else:
+        csv_path = analysis_csv_path(output_dir)
+        pq_path = analysis_parquet_path(output_dir)
 
     try:
         _atomic_write(csv_path, fit_pl.write_csv)
@@ -588,6 +604,10 @@ def finalize_post_master_outputs(
         than the clean master. Equal to *master_df* when no post ops
         are configured and no metadata CSV is supplied.
     """
+    from phenotypic.sdk_ import migrate_legacy_qc
+
+    migrate_legacy_qc(output_dir)
+
     # Metadata join runs first so PostMeasurement ops can reference joined
     # columns (e.g. ``EdgeCorrector(groupby="Metadata_Strain")``). The
     # master archive on disk is already written by the caller and stays

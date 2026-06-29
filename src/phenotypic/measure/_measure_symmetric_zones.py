@@ -1,10 +1,9 @@
 """Mask-based radial expansion and symmetry measurement operator.
 
-Implements :class:`MeasureSymmetricZones`, a branch-free alternative to
-:class:`MeasureRadialExpansion` that answers two colony-level questions
-directly from the binary object mask: how far has growth progressed past
-the inoculum, and out to what radius does that growth remain angularly
-uniform?
+Implements :class:`MeasureSymmetricZones`, a branch-free operator that answers
+two colony-level questions directly from the binary object mask: how far has
+growth progressed past the inoculum, and out to what radius does that growth
+remain angularly uniform?
 """
 
 from __future__ import annotations
@@ -111,8 +110,7 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
     ``SymmetricRadius``, the first radius past the inoculum core at which the
     per-annulus circular mean resultant length of mask-boundary pixels drops
     below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on
-    the radial density profile, identical algorithm to
-    :class:`MeasureRadialExpansion`) anchors the measurement; ``MeanExpansion``
+    the radial density profile) anchors the measurement; ``MeanExpansion``
     and ``MaxExpansion`` summarise how far growth reached past that core.
 
     Zone segmentation (core / dense / sparse) uses a 1D per-annulus
@@ -220,9 +218,6 @@ class MeasureSymmetricZones(MeasureFeatures, FigureProvider):
           extent is informative.
 
     Consider Also:
-        - :class:`MeasureRadialExpansion` when you need per-branch
-          statistics (branch counts, outlier runner detection) rather
-          than a single symmetry scalar.
         - :class:`MeasureShape` for general morphological descriptors
           (circularity, eccentricity) that do not require radial analysis.
         - :class:`MeasureBounds` for lightweight bounding-box data

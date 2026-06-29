@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd  # type: ignore[import-untyped]
@@ -30,7 +29,7 @@ from dash import (
     no_update,
 )
 
-from phenotypic.sdk_ import ModulePath, measurements_parquet_path
+from phenotypic.sdk_ import ModulePath
 
 from phenotypic.gui._config import (
     CFG_MEASUREMENT_SCHEMA,
@@ -49,6 +48,8 @@ from phenotypic.gui.analysis._render import render_plot
 
 if TYPE_CHECKING:
     import dash
+
+    from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
@@ -402,7 +403,7 @@ def register_callbacks(app: "dash.Dash") -> None:
             return html.Span(
                 "No model configured.", style={"color": OI_VERMILION_TEXT}
             )
-        return _run_inline(recipe, Path(output_root.root))
+        return _run_inline(recipe, output_root.layout)
 
     # ----- Plotting-preference store ----- #
     # Plotting widgets carry pattern-matching ids; any edit merges its
@@ -461,7 +462,10 @@ def register_callbacks(app: "dash.Dash") -> None:
         if node is None:
             return _preview_error("Section no longer exists -- reload the page.")
 
-        measurements = measurements_parquet_path(Path(output_root.root))
+        # Route through the layout's mirror path, never ``output_root.root``: a
+        # standalone bundle's ``root`` IS the deliverables folder, so
+        # ``measurements_parquet_path(root)`` would double-join ``deliverables/``.
+        measurements = output_root.layout.mirror_parquet
         if not measurements.exists():
             return _preview_error(
                 f"Curated measurements not found at {measurements}."
@@ -667,11 +671,17 @@ def _filter_kwargs_to_signature(cls: type, kwargs: dict[str, Any]) -> dict[str, 
     return out
 
 
-def _run_inline(recipe: Any, output_dir: Path) -> Any:
-    """Read measurements.parquet, run analyze, atomic-write outputs."""
+def _run_inline(recipe: Any, layout: "BundleLayout") -> Any:
+    """Read measurements.parquet, run analyze, atomic-write outputs.
+
+    Resolves both the read (the post-applied mirror) and the write
+    (``analysis.{csv,parquet}``) through ``layout`` rather than a bare
+    output root, so a standalone deliverables bundle — whose viewer ``root`` IS
+    the deliverables folder — never double-joins ``deliverables/``.
+    """
     from phenotypic._cli._cli_output_manager import _emit_analysis_outputs
 
-    measurements = measurements_parquet_path(output_dir)
+    measurements = layout.mirror_parquet
     if not measurements.exists():
         return html.Span(
             f"Curated measurements not found at {measurements}.",
@@ -684,7 +694,15 @@ def _run_inline(recipe: Any, output_dir: Path) -> Any:
     except Exception as exc:  # noqa: BLE001
         return html.Span(f"Read failed: {exc}", style={"color": OI_VERMILION_TEXT})
 
-    result = _emit_analysis_outputs(output_dir, master_pl, recipe.pipeline)
+    output_root = (
+        layout.output_root if layout.output_root is not None else layout.deliverables_base
+    )
+    result = _emit_analysis_outputs(
+        output_root,
+        master_pl,
+        recipe.pipeline,
+        deliverables_base=layout.deliverables_base,
+    )
     duration = time.time() - start
 
     if result is None:

@@ -16,6 +16,10 @@ that spills past the image edge so the result is always exactly
 
 from __future__ import annotations
 
-from phenotypic.gui._shared.tiles import _load_overlay_rgb, crop_overlay
+from phenotypic.gui._shared.tiles import (
+    _load_overlay_rgb,
+    crop_colony,
+    crop_overlay,
+)
 
-__all__ = ["crop_overlay", "_load_overlay_rgb"]
+__all__ = ["crop_overlay", "crop_colony", "_load_overlay_rgb"]

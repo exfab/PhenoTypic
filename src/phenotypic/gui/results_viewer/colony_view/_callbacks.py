@@ -26,7 +26,7 @@ serialisation through ``dcc.Store``.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, get_args
 
 import dash
 from dash import ALL, MATCH, Input, Output, State, callback_context, no_update
@@ -41,6 +41,7 @@ from phenotypic.gui._config import (
     stepped_alpha_from_trigger,
 )
 from phenotypic.gui._shared._radial import build_radial_body
+from phenotypic.gui._shared.tiles import DEFAULT_LAYER, LayerName
 from phenotypic.gui._shared._triage_callbacks import (
     apply_wedge_mark,
     bulk_mark,
@@ -75,6 +76,28 @@ logger = logging.getLogger(__name__)
 # Empty selection payload — used by Clear, layout-change reset, and the
 # post-bulk-action emission. Module-level so all three sites agree.
 _EMPTY_SELECTION: dict[str, Any] = {"anchor": None, "selected": []}
+
+
+def _normalize_layer_value(value: Any) -> LayerName:
+    """Coerce a raw layer-toggle / store value to a valid :data:`LayerName`.
+
+    The layer rides through Dash as a ``dcc.Store`` payload (a plain JSON
+    string) so it can arrive as ``None`` (store not yet seeded, or the toggle
+    hidden in a standalone bundle) or — defensively — as any other value. Any
+    value outside ``{"rgb", "detect_mat", "objmap"}`` collapses to ``"rgb"`` so
+    a stray value renders the finished RGB plate rather than 500-ing the crop
+    route. Extracted to a module-level helper so the toggle→store→URL wiring is
+    unit-testable without a live Dash app (the callback below is a thin adapter).
+
+    Args:
+        value: The raw store/toggle value (``str | None`` in practice).
+
+    Returns:
+        One of ``"rgb"`` / ``"detect_mat"`` / ``"objmap"``.
+    """
+    if value in get_args(LayerName):
+        return value  # type: ignore[return-value]  # narrowed by the membership test
+    return DEFAULT_LAYER
 
 
 # These pure helpers now live in the shared triage module so the colony and
@@ -120,6 +143,7 @@ def register_callbacks(
         Input(ids.COLONY_BTN_REFRESH_ID, "n_clicks"),
         Input(ids.STORE_COLONY_TILE_SIZE, "data"),
         Input(ids.STORE_TILE_DIM_ALPHA, "data"),
+        Input(ids.STORE_ACTIVE_LAYER, "data"),
         Input(ids.TABS_ID, "active_tab"),
     )
     def _render_colony_grid(
@@ -130,6 +154,7 @@ def register_callbacks(
         refresh_clicks: int | None,
         tile_size: int | None,
         dim_alpha: float | None,
+        active_layer: Any,
         active_tab: str | None,
     ) -> tuple[Any, Any, Any]:
         """Rebuild the grid whenever any of its data inputs change.
@@ -170,6 +195,7 @@ def register_callbacks(
         display_size = min(requested_size, max_size)
         removed_keys = set(decode_removed_keys_payload(removed_payload))
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
+        layer = _normalize_layer_value(active_layer)
 
         # Decision A: read the per-object category map straight off the
         # durable store under its lock (a server-side snapshot — there is
@@ -193,6 +219,7 @@ def register_callbacks(
             display_size=display_size,
             dim_alpha=alpha,
             category_of=category_of,
+            layer=layer,
         )
         info = (
             f"crop {max_size}px → {display_size}px "
@@ -616,6 +643,7 @@ def register_callbacks(
             dim_alpha = float(data.get("dim_alpha") or 0.0)
         except (TypeError, ValueError):
             dim_alpha = 0.0
+        layer = _normalize_layer_value(data.get("layer"))
         removed_keys = set(decode_removed_keys_payload(removed_payload))
         return build_stack_popover_rows(
             members,
@@ -623,6 +651,7 @@ def register_callbacks(
             display_size=display_size,
             removed_keys=removed_keys,
             dim_alpha=dim_alpha,
+            layer=layer,
         )
 
     # ----------------------------------------------------------------------
@@ -897,6 +926,26 @@ def register_callbacks(
         alpha = TILE_DIM_DEFAULT if dim_alpha is None else float(dim_alpha)
         text = f"dim {alpha:.2f}"
         return text, text
+
+    # ----------------------------------------------------------------------
+    # 11. Pixel-layer toggle → active-layer store
+    # ----------------------------------------------------------------------
+    #
+    # Thin adapter over the pure, Dash-free :func:`_normalize_layer_value`
+    # helper. The store value is threaded into every crop URL as ``&layer=``
+    # by the grid-render callback above. Only mounted/fired in a full run —
+    # in a standalone bundle the toggle is hidden and (with
+    # ``suppress_callback_exceptions``) this callback simply never fires, so
+    # the store keeps its default ``rgb``.
+
+    @app.callback(
+        Output(ids.STORE_ACTIVE_LAYER, "data"),
+        Input(ids.LAYER_TOGGLE, "value"),
+        prevent_initial_call=True,
+    )
+    def _sync_active_layer(layer_value: Any) -> LayerName:
+        """Mirror the segmented layer toggle into the active-layer store."""
+        return _normalize_layer_value(layer_value)
 
 
 __all__ = ["register_callbacks"]

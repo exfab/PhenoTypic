@@ -18,6 +18,7 @@ What lives here:
 * :func:`classify_at_cutoff` — recall / specificity / good-flagged for an
   arbitrary dragged cutoff, NaN-safe.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,12 +28,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import polars as pl
 
-from phenotypic.gui.results_viewer._qc_tab.review._data import (
-    _eq_or_null,
-    groupby_cols_for,
-    load_qc_members,
-    load_qc_summary,
-)
+from phenotypic.gui.results_viewer._qc_tab.review import _db
 from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     decode_group_key,
@@ -106,15 +102,16 @@ def verified_good_keys(
 ) -> set[LabelKey]:
     """Return the unlabeled objects in ≥1 reviewed QC group (any module).
 
-    Reads ``qc_summary``/``qc_members``/``review_state`` from ``<root>/qc``.
-    For each module ``instance_id`` with a non-empty reviewed set, recover
-    its groupby columns (:func:`groupby_cols_for`) and, for each reviewed
-    encoded key, decode it and filter ``qc_members`` to those
-    ``(image_file, label)`` members. Union across all modules yields the
+    Reads the QC catalog (``qc.duckdb``) + ``review_state.json``. For each
+    module with a non-empty reviewed set, decode each reviewed group key and
+    resolve its ``(image_file, label)`` members via
+    :func:`._db.module_members`. Diagnostic-only modules
+    (``supports_object_curation == False``) carry no curatable objects, so
+    they are skipped. Union across all curation-supporting modules yields the
     reviewed-member keys; subtracting ``labeled_keys`` yields the
     verified-good set (spec §7, resolved any-module, good-only).
 
-    Empty set when the QC artifacts are absent (logged once).
+    Empty set when the QC database is absent / has no catalog.
 
     Args:
         output_root: The active results-viewer output root.
@@ -123,71 +120,41 @@ def verified_good_keys(
     Returns:
         The verified-good ``(image_file, object_label)`` key set.
     """
-    summary_df = load_qc_summary(output_root)
-    members_df = load_qc_members(output_root)
-    if summary_df is None or members_df is None:
-        logger.info(
-            "QC summary/members absent; verified-good set is empty for %s",
-            getattr(output_root, "root", "<unknown>"),
-        )
-        return set()
-
-    state = ReviewState.load(output_root.root)
+    state = ReviewState.load(output_root.layout)
+    modules = {m.instance_id: m for m in _db.list_modules(output_root)}
     reviewed_members: set[LabelKey] = set()
     for instance_id, progress in state.modules.items():
-        if not progress.reviewed:
+        mod = modules.get(instance_id)
+        # Skip modules that vanished from the catalog or are diagnostic-only
+        # (no curatable per-object rows), and groups never reviewed.
+        if (
+            mod is None
+            or not mod.supports_object_curation
+            or not progress.reviewed
+        ):
             continue
-        reviewed_members |= _module_reviewed_member_keys(
-            members_df, summary_df, instance_id, progress.reviewed
-        )
+        for encoded in progress.reviewed:
+            key = decode_group_key(encoded)
+            members = _db.module_members(output_root, instance_id, key)
+            if (
+                members.is_empty()
+                or KEY_IMAGE_FILE not in members.columns
+                or KEY_OBJECT_LABEL not in members.columns
+            ):
+                continue
+            for img, lbl in zip(
+                members.get_column(KEY_IMAGE_FILE).to_list(),
+                members.get_column(KEY_OBJECT_LABEL).to_list(),
+            ):
+                if img is None or lbl is None:
+                    continue
+                reviewed_members.add((str(img), int(lbl)))
     return reviewed_members - labeled_keys
 
 
-def _module_reviewed_member_keys(
-    members_df: pl.DataFrame,
-    summary_df: pl.DataFrame,
-    instance_id: str,
-    reviewed_encoded: set[str],
-) -> set[LabelKey]:
-    """Resolve the member keys of one module's reviewed groups.
-
-    Reuses :func:`groupby_cols_for` to recover the module's group-key
-    columns and the shared :func:`_eq_or_null` predicate (R7) so the
-    null/NaN group-key handling never drifts from the QC layer.
-
-    Args:
-        members_df: The full ``qc_members`` frame.
-        summary_df: The full ``qc_summary`` frame.
-        instance_id: The QC module whose reviewed groups are resolved.
-        reviewed_encoded: The module's reviewed encoded group keys.
-
-    Returns:
-        The ``(image_file, label)`` members of every reviewed group.
-    """
-    out: set[LabelKey] = set()
-    # Guard: an instance with reviewed keys but absent from the summary is
-    # stale (e.g. a re-detect changed the recipe). Its groupby columns are
-    # unrecoverable, so the predicate would collapse to ``instance_id`` only
-    # and select *every* member — drop the stale keys instead. A legitimate
-    # no-groupby check IS in the summary (cols == [] but the slice is
-    # non-empty), so it correctly selects its single group's members.
-    if summary_df.filter(pl.col("instance_id") == instance_id).is_empty():
-        return out
-    cols = groupby_cols_for(summary_df, instance_id)
-    for encoded in reviewed_encoded:
-        key_values = decode_group_key(encoded)
-        predicate = pl.col("instance_id") == instance_id
-        for col, value in zip(cols, key_values):
-            if col not in members_df.columns:
-                continue
-            predicate = predicate & _eq_or_null(col, value)
-        sl = members_df.filter(predicate)
-        for img, lbl in zip(
-            sl.get_column(KEY_IMAGE_FILE).to_list(),
-            sl.get_column(KEY_OBJECT_LABEL).to_list(),
-        ):
-            out.add((str(img), int(lbl)))
-    return out
+def legacy_qc_cutover_message(output_root: "OutputRoot") -> str | None:
+    """Return the hard-cutover message for legacy parquet-only QC outputs."""
+    return _db.legacy_qc_cutover_message(output_root)
 
 
 # ---------------------------------------------------------------------------
@@ -335,5 +302,6 @@ __all__ = [
     "category_counts",
     "classify_at_cutoff",
     "default_category",
+    "legacy_qc_cutover_message",
     "verified_good_keys",
 ]

@@ -11,6 +11,7 @@ from pydantic import Field, model_validator
 
 from phenotypic.schema import OBJECT, QUALITY_CHECK
 
+from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer
 
 
@@ -88,6 +89,18 @@ class QualityCheck(SetAnalyzer, ABC):
     _HIGHER_IS_BAD: ClassVar[bool]
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass: ClassVar[type | None] = None
+
+    #: Whether this check's rows map to curatable detected objects. False for
+    #: diagnostic-only checks (e.g. GridOccupancy) — the Review tab hides the
+    #: curation radial + tile gallery and verified-good skips them.
+    supports_object_curation: ClassVar[bool] = True
+
+    #: Per-object curation-key columns. Empty tuple when the check has no
+    #: per-object key. Subclasses may narrow this.
+    member_key_cols: ClassVar[tuple[str, ...]] = (
+        "Metadata_ImageFile",
+        str(OBJECT.LABEL),
+    )
 
     warn_threshold: float = 0.05
     fail_threshold: float = 0.10
@@ -366,6 +379,79 @@ class QualityCheck(SetAnalyzer, ABC):
     def results(self) -> pd.DataFrame:
         """Return the augmented frame stored by the most recent analyze()."""
         return self._latest_measurements
+
+    def to_table(self) -> pd.DataFrame:
+        """Return the module's self-describing frame to persist to DuckDB.
+
+        Precondition: :meth:`analyze` has run (this reads
+        :attr:`_latest_measurements`). The default is member-level: the
+        augmented frame projected to group-key + member-key + ``on`` + every
+        ``QC_<name>_*`` column (metric/flag/status AND check-specific extras)
+        + context columns (``Metadata_Dataset`` and the column named by
+        ``self.time_label``) when those columns are present.
+
+        Diagnostic-only checks override to return a group-level frame.
+
+        Returns:
+            The projected DataFrame; columns vary per check (self-describing).
+        """
+        df = self._latest_measurements
+        qc_cols = [c for c in df.columns if c.startswith(f"QC_{self.name}_")]
+        context = [
+            c
+            for c in ("Metadata_Dataset", getattr(self, "time_label", None))
+            if c and c in df.columns
+        ]
+        keep: list[str] = []
+        for col in [
+            *self.groupby,
+            *self.member_key_cols,
+            self.on,
+            *context,
+            *qc_cols,
+        ]:
+            if col in df.columns and col not in keep:
+                keep.append(col)
+        return df[keep].copy()
+
+    def table_spec(self, instance_id: str) -> QcTableSpec:
+        """Return the catalog descriptor for this analyzed check.
+
+        Precondition: :meth:`analyze` has run. Reads column roles from the
+        class + instance config and derives ``extra_cols`` from the augmented
+        frame.
+
+        Args:
+            instance_id: The recipe entry id this check was built from.
+
+        Returns:
+            A populated :class:`QcTableSpec`.
+        """
+        df = self._latest_measurements
+        generic = {self.metric_col(), self.flag_col(), self.status_col()}
+        extra = [
+            c
+            for c in df.columns
+            if c.startswith(f"QC_{self.name}_") and c not in generic
+        ]
+        time_col = getattr(self, "time_label", None)
+        return QcTableSpec(
+            instance_id=instance_id,
+            cls_name=type(self).__name__,
+            name=self.name,
+            groupby_cols=list(self.groupby),
+            metric_col=self.metric_col(),
+            status_col=self.status_col(),
+            flag_col=self.flag_col(),
+            on_col=self.on,
+            member_key_cols=list(self.member_key_cols),
+            supports_object_curation=self.supports_object_curation,
+            time_col=time_col if (time_col and time_col in df.columns) else None,
+            higher_is_bad=self._HIGHER_IS_BAD,
+            extra_cols=extra,
+            warn_threshold=float(self.warn_threshold),
+            fail_threshold=float(self.fail_threshold),
+        )
 
     @staticmethod
     def _apply2group_func(group: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:

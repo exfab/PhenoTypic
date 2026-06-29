@@ -2,8 +2,7 @@
 
 Top-level shape (vertical stack):
 
-1. Top strip — ``+ Add check`` and ``Export QC report`` buttons plus a
-   ``dbc.Toast`` for success/failure announcements.
+1. Top strip — the ``+ Add check`` button.
 2. Load-warning banner — shown only when
    :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings` is
    non-empty at boot.
@@ -50,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_top_strip() -> Component:
-    """Build the top strip: add / export buttons + success toast."""
+    """Build the top strip: the ``+ Add check`` button."""
     add_button = dbc.Button(
         "+ Add check",
         id=ids.QC_ADD_CHECK_BTN_ID,
@@ -59,36 +58,13 @@ def _build_top_strip() -> Component:
         className="me-2",
         style={"background": COLOR_NAVY, "borderColor": COLOR_NAVY},
     )
-    export_button = dbc.Button(
-        "Export QC report",
-        id=ids.QC_EXPORT_BTN_ID,
-        color="secondary",
-        outline=True,
-        n_clicks=0,
-        disabled=True,
-    )
-    toast = dbc.Toast(
-        id=ids.QC_EXPORT_TOAST_ID,
-        header="QC export",
-        is_open=False,
-        dismissable=True,
-        duration=8000,
-        style={
-            "position": "fixed",
-            "top": "1rem",
-            "right": "1rem",
-            "zIndex": 1080,
-            "minWidth": "320px",
-        },
-    )
     return html.Div(
         [
             html.Div(
-                [add_button, export_button],
+                [add_button],
                 className="d-flex align-items-center",
                 style={"gap": "0.5rem"},
             ),
-            toast,
         ],
         style={
             "padding": "0.75rem 1rem",
@@ -332,6 +308,13 @@ def build_qc_tab_body(recipe: QcRecipe) -> Component:
     return html.Div(
         [
             _build_subview_toggle(),
+            # Ticked by the settings-edit recompute callback after a full
+            # ``run_qc`` rebuild; the Review worklist subscribes to it.
+            dcc.Store(
+                id=ids.STORE_QC_RECOMPUTE_DONE,
+                data=0,
+                storage_type="memory",
+            ),
             _build_configure_view(recipe),
             html.Div(
                 children=build_review_view(),

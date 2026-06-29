@@ -2,8 +2,7 @@
 
 The QC tab body composes:
 
-* a top strip with ``+ Add check`` / ``Export QC report`` buttons and a
-  success toast;
+* a top strip with the ``+ Add check`` button;
 * a load-warning banner mounted via :data:`QC_LOAD_WARNING_BANNER_ID`
   (visibility toggled by the layout factory based on
   :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings`);
@@ -33,15 +32,6 @@ QC_CARDS_CONTAINER_ID: str = "qc-cards-container"
 #: ``+ Add check`` button on the top strip. Opens the shared QC modal in
 #: "add" mode (``STORE_QC_EDITING_INSTANCE`` is reset to ``None``).
 QC_ADD_CHECK_BTN_ID: str = "qc-add-check-btn"
-
-#: ``Export QC report`` button on the top strip. Disabled when no checks
-#: are enabled; writes ``qc.parquet`` + ``qc_summary.json`` under the
-#: active ``OutputRoot.root`` on click.
-QC_EXPORT_BTN_ID: str = "qc-export-btn"
-
-#: Success/failure toast displayed after the export button completes.
-#: The body carries the absolute paths written.
-QC_EXPORT_TOAST_ID: str = "qc-export-toast"
 
 #: Banner ``<div>`` rendered above the cards container when the recipe
 #: failed to resolve one or more entries at load time. Visibility (via
@@ -83,6 +73,13 @@ QC_MODAL_CANCEL_BTN_ID: str = "qc-add-check-cancel"
 #: callback reads this to decide between :meth:`QcRecipe.add` and
 #: :meth:`QcRecipe.update`.
 STORE_QC_EDITING_INSTANCE: str = "store-qc-editing-instance"
+
+#: Hidden ``dcc.Store`` ticked by the settings-edit recompute callback
+#: after a full ``run_qc`` rebuild of ``qc.duckdb``. The Review worklist
+#: subscribes to it so the worklist + summary header re-render off the
+#: freshly-rewritten database whenever a check's settings change (even when
+#: the selected module's ``instance_id`` is unchanged).
+STORE_QC_RECOMPUTE_DONE: str = "store-qc-recompute-done"
 
 
 # ---------------------------------------------------------------------------
@@ -205,8 +202,6 @@ def qc_card_status_badge_id(instance_id: str) -> Dict[str, str]:
 __all__ = [
     "QC_CARDS_CONTAINER_ID",
     "QC_ADD_CHECK_BTN_ID",
-    "QC_EXPORT_BTN_ID",
-    "QC_EXPORT_TOAST_ID",
     "QC_LOAD_WARNING_BANNER_ID",
     "QC_MODAL_ID",
     "QC_MODAL_TITLE_ID",
@@ -215,6 +210,7 @@ __all__ = [
     "QC_MODAL_SUBMIT_BTN_ID",
     "QC_MODAL_CANCEL_BTN_ID",
     "STORE_QC_EDITING_INSTANCE",
+    "STORE_QC_RECOMPUTE_DONE",
     "qc_card_root_id",
     "qc_card_figure_id",
     "qc_card_summary_id",

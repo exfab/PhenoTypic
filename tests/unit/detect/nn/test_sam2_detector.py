@@ -29,6 +29,12 @@ class TestSam2DetectorConstruction:
         assert det.pred_iou_thresh == 0.7
         assert det.stability_score_thresh == 0.92
         assert det.min_mask_region_area == 100
+        # Native SAM2 crop knobs default to upstream AMG values (sliding
+        # window off → stock single full-image pass).
+        assert det.crop_n_layers == 0
+        assert det.crop_nms_thresh == 0.7
+        assert det.crop_overlap_ratio == 512 / 1500
+        assert det.crop_n_points_downscale_factor == 1
         assert det.device == "auto"
         assert det.checkpoint is None
         assert det.config is None
@@ -52,6 +58,19 @@ class TestSam2DetectorConstruction:
         assert det.device == "cpu"
         assert det.checkpoint == "/tmp/custom.pt"
         assert det.config == "custom.yaml"
+
+    def test_crop_sliding_window_parameters(self):
+        """Native SAM2 crop knobs are settable for sliding-window inference."""
+        det = Sam2Detector(
+            crop_n_layers=1,
+            crop_nms_thresh=0.6,
+            crop_overlap_ratio=0.4,
+            crop_n_points_downscale_factor=2,
+        )
+        assert det.crop_n_layers == 1
+        assert det.crop_nms_thresh == 0.6
+        assert det.crop_overlap_ratio == 0.4
+        assert det.crop_n_points_downscale_factor == 2
 
     def test_empty_constructor_for_serialization(self):
         """Detector can be built with defaults for deserialization paths."""
@@ -102,6 +121,8 @@ class TestSam2DetectorSerialization:
             pred_iou_thresh=0.8,
             stability_score_thresh=0.95,
             min_mask_region_area=200,
+            crop_n_layers=1,
+            crop_n_points_downscale_factor=2,
             device="cpu",
         )
         pipeline = ImagePipeline(ops=[original])
@@ -115,6 +136,8 @@ class TestSam2DetectorSerialization:
         assert restored.pred_iou_thresh == 0.8
         assert restored.stability_score_thresh == 0.95
         assert restored.min_mask_region_area == 200
+        assert restored.crop_n_layers == 1
+        assert restored.crop_n_points_downscale_factor == 2
         assert restored.device == "cpu"
 
     def test_generator_not_in_json(self):

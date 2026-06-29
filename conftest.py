@@ -7,7 +7,7 @@ import pytest
 
 # The shared fixtures plugin (tests/unit/test_fixtures.py) imports numpy and
 # walks the entire ``phenotypic`` package at import time, and ``pytest_configure``
-# below imports ``phenotypic.settings_``. Both require the project and its full
+# below imports ``phenotypic.settings``. Both require the project and its full
 # dependency stack to be installed. Guard on that so dependency-light pytest
 # invocations -- notably the packaging-integrity CI job, which runs the
 # build-artifact tests in a bare ``pytest``-only env (``uv run --no-project
@@ -48,9 +48,9 @@ def pytest_configure(config):
     if not _PHENOTYPIC_AVAILABLE:
         return
 
-    import phenotypic.settings_
+    import phenotypic.settings as settings
 
-    phenotypic.settings_.VALIDATE_OPS = True
+    settings.set_validate_ops(True)
 
     # Enable specific loggers
     logging.getLogger("ImagePipeline").setLevel(logging.DEBUG)

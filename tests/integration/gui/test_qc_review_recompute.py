@@ -35,15 +35,33 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
+    BundleLayout,
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,
-    qc_summary_parquet_path,
 )
 
-from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
+from tests._output_layout import (
+    write_master,
+    write_measurements_mirror,
+    write_pipeline_json,
+)
 
 _INSTANCE_ID = "qc-SE-aaaa1111"
+
+
+def _layout(tmp_path: Path) -> BundleLayout:
+    """Full-run-style layout rooted at ``tmp_path`` (deliverables under it)."""
+    return BundleLayout(
+        deliverables_base=tmp_path / "deliverables", output_root=tmp_path
+    )
+
+
+class _FakeRoot:
+    """Minimal output-root stand-in exposing ``.layout`` for ``_db`` reads."""
+
+    def __init__(self, layout: BundleLayout) -> None:
+        self.layout = layout
 
 
 def _build_pipeline() -> ImagePipeline:
@@ -87,11 +105,15 @@ def output_root(tmp_path: Path) -> OutputRoot:
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
 
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlays = tmp_path / "deliverables" / "overlays" / "d1"
     overlays.mkdir(parents=True)
     for stem in ("img-1", "img-2"):
-        PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlays / f"{stem}.png")
+        PILImage.new("RGB", (120, 120), (200, 0, 0)).save(
+            overlays / f"{stem}.png"
+        )
 
     pipeline = _build_pipeline()
     write_pipeline_json(tmp_path, pipeline)
@@ -117,7 +139,9 @@ def test_create_app_boots_with_review_and_qc_crop_route(output_root) -> None:
     assert resp.mimetype == "image/png"
 
 
-def test_configure_recipe_is_pipeline_backed(output_root, tmp_path: Path) -> None:
+def test_configure_recipe_is_pipeline_backed(
+    output_root, tmp_path: Path
+) -> None:
     """The Configure recipe edits pipeline.json's qc array (not the sidecar)."""
     app = create_app(output_root)
     recipe = app.server.config.get(CFG_QC_RECIPE)
@@ -126,21 +150,23 @@ def test_configure_recipe_is_pipeline_backed(output_root, tmp_path: Path) -> Non
     assert recipe.entries[0].cls is ReplicateAgreement
 
 
-def test_recompute_matches_cli_for_identical_removals(output_root, tmp_path: Path) -> None:
+def test_recompute_matches_cli_for_identical_removals(
+    output_root, tmp_path: Path
+) -> None:
     """GUI in-session recompute == CLI run_qc on the same curated frame.
 
     Remove the wild outlier (img-2, label 3) and recompute via the GUI's
     data path; the rewritten qc_summary metric for img-2 must equal a
     direct CLI-style run_qc on measurements.parquet minus that key.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review import _data
+    from phenotypic.gui.results_viewer._qc_tab.review import _data, _db
 
     removed = {("img-2", 3)}
 
     # GUI path: build the curated frame the Review recompute would feed run_qc.
     gui_frame = _data.build_recompute_frame(output_root, removed)
     run_qc(gui_frame, _build_pipeline(), tmp_path)
-    gui_summary = pl.read_parquet(qc_summary_parquet_path(tmp_path))
+    gui_summary = _db.module_summary(output_root, _INSTANCE_ID)
 
     # CLI-equivalent path: post-applied mirror minus the same key.
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
@@ -154,23 +180,32 @@ def test_recompute_matches_cli_for_identical_removals(output_root, tmp_path: Pat
     cli_dir = tmp_path / "_cli_check"
     cli_dir.mkdir()
     run_qc(cli_frame, _build_pipeline(), cli_dir)
-    cli_summary = pl.read_parquet(qc_summary_parquet_path(cli_dir))
+    cli_root = _FakeRoot(
+        BundleLayout(
+            deliverables_base=cli_dir / "deliverables", output_root=cli_dir
+        )
+    )
+    cli_summary = _db.module_summary(cli_root, _INSTANCE_ID)
 
     def _img2_metric(summary: pl.DataFrame) -> float:
         row = summary.filter(pl.col("Metadata_ImageFile") == "img-2")
         return float(row.get_column("metric")[0])
 
-    assert _img2_metric(gui_summary) == pytest.approx(_img2_metric(cli_summary))
+    assert _img2_metric(gui_summary) == pytest.approx(
+        _img2_metric(cli_summary)
+    )
 
 
-def test_recompute_does_not_touch_review_state(output_root, tmp_path: Path) -> None:
+def test_recompute_does_not_touch_review_state(
+    output_root, tmp_path: Path
+) -> None:
     """``run_qc`` (the only recompute call) must never clear review_state.json."""
     from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
         ReviewState,
     )
 
     # GUI marks a group reviewed.
-    state = ReviewState.load(tmp_path)
+    state = ReviewState.load(_layout(tmp_path))
     state.mark_reviewed(_INSTANCE_ID, ("img-1",))
     assert qc_review_state_path(tmp_path).exists()
 
@@ -182,7 +217,7 @@ def test_recompute_does_not_touch_review_state(output_root, tmp_path: Path) -> N
     )
 
     # review_state.json survives the recompute.
-    reloaded = ReviewState.load(tmp_path)
+    reloaded = ReviewState.load(_layout(tmp_path))
     assert reloaded.is_reviewed(_INSTANCE_ID, ("img-1",))
 
 
@@ -206,10 +241,14 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     )
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
-    (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "results" / "d1" / "measurements").mkdir(
+        parents=True, exist_ok=True
+    )
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True, exist_ok=True)
-    PILImage.new("RGB", (120, 120), (200, 0, 0)).save(overlay_dir / "img-1.png")
+    PILImage.new("RGB", (120, 120), (200, 0, 0)).save(
+        overlay_dir / "img-1.png"
+    )
     write_pipeline_json(tmp_path, ImagePipeline(name="no-qc"))
     sidecar_dir = tmp_path / ".viewer_cache"
     sidecar_dir.mkdir()
@@ -239,11 +278,15 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     # The migrated entry now lives in the pipeline-backed recipe.
     assert any(e.instance_id == _INSTANCE_ID for e in recipe.entries)
     # And it landed in pipeline.json's qc array.
-    payload = json.loads(pipeline_json_path(tmp_path).read_text(encoding="utf-8"))
+    payload = json.loads(
+        pipeline_json_path(tmp_path).read_text(encoding="utf-8")
+    )
     assert any(e["instance_id"] == _INSTANCE_ID for e in payload.get("qc", []))
 
 
-def test_recompute_delta_carries_after_status(output_root, tmp_path: Path) -> None:
+def test_recompute_delta_carries_after_status(
+    output_root, tmp_path: Path
+) -> None:
     """The in-session recompute delta carries the recomputed ``status_after``.
 
     Regression guard for the worklist-row-stale-metric/badge fix (spec
@@ -253,19 +296,22 @@ def test_recompute_delta_carries_after_status(output_root, tmp_path: Path) -> No
     just the number. Removing the wild img-2 outlier tightens the group,
     so its metric moves and the delta reports a concrete ``status_after``.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _data
+    from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _db
 
     app = create_app(output_root)
     filtered = app.server.config[CFG_FILTERED_STATE]
     filtered.remove_many([("img-2", 3)])
 
-    groupby_cols = _data.groupby_cols_for(
-        _data.load_qc_summary(output_root), _INSTANCE_ID
+    module = next(
+        m
+        for m in _db.list_modules(output_root)
+        if m.instance_id == _INSTANCE_ID
     )
-    summary_before = _data.load_qc_summary(output_root)
-    metric_before = _data.group_record(
-        summary_before, _INSTANCE_ID, groupby_cols, ("img-2",)
-    )["metric"]
+    groupby_cols = module.groupby_cols
+    summary_before = _db.module_summary(output_root, _INSTANCE_ID)
+    metric_before = summary_before.filter(
+        pl.col("Metadata_ImageFile") == "img-2"
+    ).get_column("metric")[0]
 
     with app.server.app_context():
         delta = _callbacks._recompute_after_curation(
@@ -285,7 +331,9 @@ def test_recompute_delta_carries_after_status(output_root, tmp_path: Path) -> No
     assert badge.children == delta["status_after"]
 
 
-def test_review_per_tile_curation_contract(output_root, tmp_path: Path) -> None:
+def test_review_per_tile_curation_contract(
+    output_root, tmp_path: Path
+) -> None:
     """Per-tile + bulk curation write the shared removal set correctly.
 
     Regression guard for the ``mutate_and_payload(action)`` contract — the
@@ -294,13 +342,17 @@ def test_review_per_tile_curation_contract(output_root, tmp_path: Path) -> None:
     this drives the extracted mutation helpers directly so the contract is
     caught without a browser.
     """
-    from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+    from phenotypic.gui.results_viewer._filtered_state import (
+        FilteredMeasurements,
+    )
     from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
         bulk_review_curation,
         toggle_review_tile,
     )
 
-    filtered = FilteredMeasurements.load(output_root.root, output_root.master_df)
+    filtered = FilteredMeasurements.load(
+        output_root.root, output_root.master_df
+    )
 
     # Per-tile toggle removes, then restores.
     payload = toggle_review_tile(filtered, "img-2", 3)
@@ -365,7 +417,7 @@ def test_qc_gallery_threads_dim_alpha_into_tile_urls(output_root) -> None:
             removed=set(),
             crop_size=48,
             display_size=120,
-            has_overlay=output_root.has_overlay,
+            has_image_source=output_root.has_image_source,
             dim_alpha=alpha,
         )
 
@@ -392,10 +444,105 @@ def test_qc_gallery_default_dim_alpha_is_zero(output_root) -> None:
             removed=set(),
             crop_size=48,
             display_size=120,
-            has_overlay=output_root.has_overlay,
+            has_image_source=output_root.has_image_source,
         )
 
     srcs = _collect_img_srcs(gallery)
     assert srcs
     for src in srcs:
         assert "&dim=0.0" in src
+
+
+# ---------------------------------------------------------------------------
+# T9: durable settings-edit recompute + review-state reconciliation
+# ---------------------------------------------------------------------------
+
+
+def test_settings_edit_durably_rewrites_db(
+    output_root, tmp_path: Path
+) -> None:
+    """A QC settings edit rewrites qc.duckdb so the worklist reflects it.
+
+    The agreeing group (img-1) passes under the default thresholds. Tighten
+    the thresholds (a settings edit) and run the durable recompute; the
+    rewritten catalog summary must report img-1 as ``fail`` (not the stale
+    ``pass``), proving the in-memory pipeline was synced from the recipe
+    before the rebuild.
+    """
+    from phenotypic.gui.results_viewer._qc_tab import (
+        _callbacks as qc_callbacks,
+    )
+    from phenotypic.gui.results_viewer._qc_tab.review import _db
+
+    app = create_app(output_root)
+    recipe = app.server.config[CFG_QC_RECIPE]
+    pipeline = app.server.config[CFG_QC_PIPELINE]
+
+    before = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_before = before.filter(
+        pl.col("Metadata_ImageFile") == "img-1"
+    ).get_column("status")[0]
+    assert img1_before == "pass"
+
+    # Settings edit: tighten thresholds so the agreeing group now fails.
+    assert recipe.update(
+        _INSTANCE_ID,
+        params={
+            "on": "Size_Area",
+            "groupby": ["Metadata_ImageFile"],
+            "min_replicates": 2,
+            "warn_threshold": 0.001,
+            "fail_threshold": 0.002,
+        },
+    )
+
+    with app.server.app_context():
+        assert qc_callbacks._run_settings_edit_recompute(
+            output_root, recipe, pipeline, set()
+        )
+
+    after = _db.module_summary(output_root, _INSTANCE_ID)
+    img1_after = after.filter(
+        pl.col("Metadata_ImageFile") == "img-1"
+    ).get_column("status")[0]
+    assert img1_after == "fail"
+
+
+def test_settings_edit_all_disabled_empties_worklist(
+    output_root, tmp_path: Path
+) -> None:
+    """Disabling every check clears the stale qc.duckdb (empty worklist)."""
+    from phenotypic.gui.results_viewer._qc_tab import (
+        _callbacks as qc_callbacks,
+    )
+    from phenotypic.gui.results_viewer._qc_tab.review import _db
+
+    app = create_app(output_root)
+    recipe = app.server.config[CFG_QC_RECIPE]
+    pipeline = app.server.config[CFG_QC_PIPELINE]
+
+    assert _db.list_modules(output_root)  # seeded module present
+
+    recipe.update(_INSTANCE_ID, enabled=False)
+    with app.server.app_context():
+        assert qc_callbacks._run_settings_edit_recompute(
+            output_root, recipe, pipeline, set()
+        )
+
+    # The stale DB is removed → empty module list (worklist degrades empty).
+    assert not output_root.layout.qc_duckdb.exists()
+    assert _db.list_modules(output_root) == []
+
+
+def test_reconcile_drops_vanished_reviewed_keys(tmp_path: Path) -> None:
+    from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+        ReviewState,
+        encode_group_key,
+    )
+
+    state = ReviewState(path=tmp_path / "review_state.json")
+    state.mark_reviewed("qc-ZMax-1", ("P1",))
+    state.mark_reviewed("qc-ZMax-1", ("P_GONE",))
+    state.reconcile_to_summary("qc-ZMax-1", {encode_group_key(("P1",))})
+    assert state.is_reviewed("qc-ZMax-1", ("P1",))
+    assert not state.is_reviewed("qc-ZMax-1", ("P_GONE",))

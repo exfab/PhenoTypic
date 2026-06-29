@@ -97,8 +97,8 @@ class ImageEnhancer(FootprintMixin, ImageOperation, ABC):
     3. Recalculates signatures **after** operation completes
     4. Raises ``OperationIntegrityError`` if any protected component was modified
 
-    **Note:** Integrity validation only runs if the ``VALIDATE_OPS=True`` environment variable
-    is set (development-time safety; disabled in production for performance).
+    **Note:** Integrity validation only runs if ``phenotypic.settings.VALIDATE_OPS`` is true
+    (development-time safety; disabled in production for performance).
 
     **Implementing a Custom ImageEnhancer**
 

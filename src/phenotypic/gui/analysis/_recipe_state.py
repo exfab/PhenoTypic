@@ -41,6 +41,7 @@ from phenotypic.sdk_ import (
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,12 @@ class RecipeState:
     #: these so the user can manually re-add a replacement; the file on
     #: disk is left untouched until the next user-driven save.
     load_warnings: List[PipelineLoadWarning] = field(default_factory=list)
+    #: Resolved bundle topology this recipe was built from, when constructed
+    #: via :meth:`from_layout`. ``None`` for the legacy ``output_dir``-rooted
+    #: :meth:`load` path. When set, :meth:`reload` re-resolves through it so a
+    #: standalone bundle (``root`` IS the deliverables folder) never
+    #: double-joins ``deliverables/`` on a staleness refresh.
+    layout: Optional["BundleLayout"] = None
     _lock: threading.RLock = field(
         default_factory=threading.RLock, repr=False
     )
@@ -101,10 +108,66 @@ class RecipeState:
             A :class:`RecipeState` ready for in-place mutation +
             :meth:`save`.
         """
-        from phenotypic._core._image_pipeline import ImagePipeline
-
         pipeline_path = pipeline_json_path(output_dir)
         read_path = resolve_pipeline_config_path(output_dir)
+        return cls._load_from_paths(
+            read_path, pipeline_path, name_hint=output_dir.name
+        )
+
+    @classmethod
+    def from_layout(cls, layout: "BundleLayout") -> "RecipeState":
+        """Load (or seed) the recipe state from a resolved :class:`BundleLayout`.
+
+        The :class:`BundleLayout`-aware sibling of :meth:`load`, mirroring
+        :meth:`phenotypic.sdk_._qc_recipe._recipe.QcRecipe.from_layout`. Anchors
+        the pipeline config on ``layout.deliverables_base`` directly (with the
+        same legacy plain-``pipeline.json`` fallback ``resolve_pipeline_config_path``
+        provides), so a standalone deliverables bundle — whose
+        ``layout.output_root is None`` and whose viewer ``root`` is already the
+        deliverables folder — resolves ``pipeline.json`` *inside the bundle*
+        rather than via ``pipeline_json_path(output_root)``, which would
+        double-join ``deliverables/``.
+
+        The resolved ``layout`` is retained on :attr:`layout` so
+        :meth:`reload` re-resolves through it instead of the ``output_dir``
+        heuristic.
+
+        Args:
+            layout: Resolved bundle topology.
+
+        Returns:
+            A :class:`RecipeState` ready for in-place mutation + :meth:`save`.
+        """
+        name_root = (
+            layout.output_root
+            if layout.output_root is not None
+            else layout.deliverables_base
+        )
+        return cls._load_from_paths(
+            layout.resolved_pipeline_config_path,
+            layout.pipeline_config_path,
+            name_hint=name_root.name,
+            layout=layout,
+        )
+
+    @classmethod
+    def _load_from_paths(
+        cls,
+        read_path: Path,
+        pipeline_path: Path,
+        *,
+        name_hint: str,
+        layout: "BundleLayout | None" = None,
+    ) -> "RecipeState":
+        """Build a recipe from explicit read + canonical-write paths.
+
+        Shared core of :meth:`load` and :meth:`from_layout`. ``read_path`` is the
+        existing config to parse (canonical typed or legacy ``.json``);
+        ``pipeline_path`` is the canonical typed path future writes target.
+        ``name_hint`` seeds the empty-pipeline name when no config exists.
+        """
+        from phenotypic._core._image_pipeline import ImagePipeline
+
         load_warnings: List[PipelineLoadWarning] = []
 
         if read_path.exists():
@@ -126,7 +189,7 @@ class RecipeState:
                     ", ".join(w.class_name for w in load_warnings),
                 )
         else:
-            pipeline = ImagePipeline(name=f"analysis-{output_dir.name}")
+            pipeline = ImagePipeline(name=f"analysis-{name_hint}")
             mtime = None
 
         return cls(
@@ -135,6 +198,7 @@ class RecipeState:
             seed_mtime_ns=mtime,
             source_path=read_path if read_path != pipeline_path else None,
             load_warnings=load_warnings,
+            layout=layout,
         )
 
     def is_stale(self) -> bool:
@@ -216,10 +280,15 @@ class RecipeState:
         """Re-read the on-disk pipeline, replacing :attr:`pipeline`.
 
         Used after :meth:`is_stale` returns ``True`` to pick up a fresh
-        CLI seed before resuming edits.
+        CLI seed before resuming edits. When this state was built via
+        :meth:`from_layout`, re-resolve through the retained layout so a
+        standalone bundle never double-joins ``deliverables/`` here.
         """
         with self._lock:
-            fresh = type(self).load(self._output_root())
+            if self.layout is not None:
+                fresh = type(self).from_layout(self.layout)
+            else:
+                fresh = type(self).load(self._output_root())
             self.pipeline = fresh.pipeline
             self.seed_mtime_ns = fresh.seed_mtime_ns
             self.source_path = fresh.source_path

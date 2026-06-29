@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Iterator
 
 from dash import dcc
@@ -107,7 +108,9 @@ def test_heatmap_picker_strip_renders_icon_image_navigation_buttons() -> None:
 
 
 def test_colony_layout_replaces_tile_size_slider_with_stepper() -> None:
-    body = colony_layout.layout(object())  # type: ignore[arg-type]
+    # has_results=False → no per-image HDFs, so build_layer_toggle returns None
+    # and the colony layout under test (tile-size stepper) builds without it.
+    body = colony_layout.layout(SimpleNamespace(has_results=False))  # type: ignore[arg-type]
     minus = _find_by_id(body, ids.COLONY_TILE_SIZE_MINUS)
     readout = _find_by_id(body, ids.COLONY_TILE_SIZE_READOUT)
     plus = _find_by_id(body, ids.COLONY_TILE_SIZE_PLUS)
@@ -183,7 +186,7 @@ def test_header_no_longer_contains_filters_toggle(tmp_path) -> None:
 
 def test_app_layout_keeps_filters_toggle_near_tabs(tmp_path) -> None:
     out = _make_output(tmp_path)
-    state = CurationLabels.load(out.root, out.clean_master_df)
+    state = CurationLabels.load(out.layout, out.clean_master_df)
     layout = build_app_layout(out, state)
     all_ids = _ids_in(layout)
     assert ids.BTN_FILTERS_TOGGLE in all_ids

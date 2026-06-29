@@ -19,15 +19,16 @@ import polars as pl
 
 from phenotypic.gui._config import (
     DIR_MEASUREMENTS,
-    RESULTS_DIRNAME,
     VIEWER_CACHE_DIRNAME,
 )
-from phenotypic.gui.results_viewer._filtered_state import KEY_DATASET, KEY_IMAGE_FILE
+from phenotypic.gui.results_viewer._filtered_state import (
+    KEY_DATASET,
+    KEY_IMAGE_FILE,
+)
 from phenotypic.sdk_ import (
-    dataset_overlays_dir,
-    master_measurements_parquet_path,
-    measurements_parquet_path,
-    resolve_pipeline_config_path,
+    DIR_OVERLAYS,
+    BundleLayout,
+    migrate_legacy_qc,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,13 @@ class OutputRoot:
     one-line pipeline label parsed from ``pipeline.json``.
 
     Attributes:
-        root: Absolute path of the output directory.
+        root: Absolute path of the run output directory for a full run, or
+            the deliverables folder itself for a standalone bundle (where
+            ``layout.output_root is None``). Prefer routing path resolution
+            through :attr:`layout` rather than re-joining ``root``.
+        layout: The resolved :class:`~phenotypic.sdk_.BundleLayout` topology
+            (deliverables base + optional output root) backing this handle.
+            All deliverables/qc/error path resolution goes through it.
         master_df: The viewer's display frame — the post-applied
             ``measurements.parquet`` mirror when present (so the filter
             sidebar reflects post ops), falling back to the clean master
@@ -74,6 +81,7 @@ class OutputRoot:
     """
 
     root: Path
+    layout: BundleLayout
     master_df: pl.DataFrame
     clean_master_df: pl.DataFrame
     column_value_sets: Mapping[str, list[str]]
@@ -87,54 +95,56 @@ class OutputRoot:
 
     @classmethod
     def discover(cls, root: Path) -> OutputRoot:
-        """Validate the output layout and assemble an ``OutputRoot``.
+        """Classify the on-disk topology and assemble an ``OutputRoot``.
 
-        The expected layout is:
+        Accepts either a full ``python -m phenotypic`` output directory
+        (with per-image ``results/`` + machine state) **or** a standalone,
+        portable ``deliverables/`` bundle (master + mirror + overlays only).
+        :class:`~phenotypic.sdk_.BundleLayout` resolves which, and every
+        deliverables/qc/error path is anchored on it so the standalone bundle
+        is self-contained::
 
-            <root>/deliverables/master_measurements.parquet
-            <root>/deliverables/overlays/<dataset>/<image_stem>.png
-            <root>/deliverables/pipeline.json     # optional
+            <deliverables>/master_measurements.parquet
+            <deliverables>/overlays/<dataset>/<image_stem>.png
+            <deliverables>/pipeline.json          # optional
+            <output_root>/results/<dataset>/...    # full runs only
 
         Args:
-            root: Path to a CLI output directory.
+            root: Path to a CLI output directory or a deliverables bundle.
 
         Returns:
             A populated, frozen ``OutputRoot``.
 
         Raises:
-            FileNotFoundError: If ``master_measurements.parquet`` is
-                missing, or if the ``results/`` directory is missing
-                or contains no dataset directories.
-            ValueError: If the master DataFrame lacks either
-                ``Metadata_Dataset`` or ``Metadata_ImageFile``.
+            FileNotFoundError: If neither a deliverables bundle nor a run
+                output directory can be located at ``root`` (no
+                ``master_measurements.parquet``), or no datasets are found.
+            ValueError: If the master DataFrame lacks ``Metadata_ImageFile``
+                (or the ``Metadata_ImageName`` fallback), or lacks
+                ``Metadata_Dataset`` with no ``results/`` to recover it from.
         """
-        root = Path(root).resolve()
+        layout = BundleLayout.detect(Path(root))
+        if layout.output_root is not None:
+            migrate_legacy_qc(layout.output_root)
 
-        master_path = master_measurements_parquet_path(root)
+        master_path = layout.master_parquet
         if not master_path.is_file():
             raise FileNotFoundError(
-                f"Master measurements parquet not found at {master_path!s} "
-                "(now under the deliverables/ subdirectory). "
-                "Run `python -m phenotypic` to produce a CLI output directory "
-                "before launching the results viewer."
+                f"Master measurements parquet not found at {master_path!s}. "
+                "Point the viewer at a `python -m phenotypic` output dir or a "
+                "deliverables/ bundle."
             )
 
         # Prefer the post-applied mirror seeded by ``_seed_measurements``
         # so filter sidebars, image picker, and column-value sets reflect
-        # whatever ``PostMeasurement`` ops the user configured. Master is
-        # the discovery sentinel and the archival source of truth, but a
-        # CLI run that adds/renames columns via post should be visible to
-        # the viewer. Falls back to master mid-run (when the chunk writer
-        # has produced master_measurements.parquet but finalize hasn't yet
-        # seeded measurements.parquet) and on legacy outputs from before
-        # the clean-master split.
-        # The clean (pre-post) master is the FULL object set — including
-        # objects the curated mirror removes. Curation re-keying + the Error
-        # tab read it so labels survive a reload (the mirror alone would drop
-        # them). The discovery sentinel above already proved it is present.
+        # whatever ``PostMeasurement`` ops the user configured. The clean
+        # (pre-post) master is the FULL object set — including objects the
+        # curated mirror removes — read so curation re-keying + the Error tab
+        # keep labels resolvable across a viewer reload. Falls back to master
+        # mid-run / on legacy outputs without the mirror.
         clean_master_df = pl.read_parquet(master_path)
 
-        mirror_path = measurements_parquet_path(root)
+        mirror_path = layout.mirror_parquet
         if mirror_path.is_file():
             logger.info(
                 "Loading post-applied measurements mirror from %s", mirror_path
@@ -148,32 +158,23 @@ class OutputRoot:
             )
             master_df = clean_master_df
 
-        results_dir = root / RESULTS_DIRNAME
-        if not results_dir.is_dir():
-            raise FileNotFoundError(
-                f"Expected results directory not found at {results_dir!s}. "
-                "The viewer requires a layout with per-image results under "
-                "<root>/results/<dataset>/ and overlays under "
-                "<root>/deliverables/overlays/<dataset>/<image_stem>.png, "
-                "produced by `python -m phenotypic`."
-            )
-
-        datasets = sorted(
-            entry.name for entry in results_dir.iterdir() if entry.is_dir()
-        )
+        # Datasets are data-driven: the master frame is authoritative, unioned
+        # with overlay subdirs (and results/ when present) to catch a dataset
+        # that has overlays but no surviving rows.
+        datasets = _discover_datasets(master_df, layout)
         if not datasets:
             raise FileNotFoundError(
-                f"No dataset directories found under {results_dir!s}. "
-                "Expected at least one <root>/results/<dataset>/ directory "
-                "produced by `python -m phenotypic`."
+                f"No datasets found in {layout.deliverables_base!s}. Expected a "
+                "Metadata_Dataset column or deliverables/overlays/<dataset>/ dirs."
             )
 
-        master_df = _ensure_required_columns(master_df, results_dir, datasets)
+        master_df = _ensure_required_columns(master_df, layout, datasets)
         clean_master_df = _ensure_required_columns(
-            clean_master_df, results_dir, datasets
+            clean_master_df, layout, datasets
         )
+
         datasets_with_overlays = [
-            ds for ds in datasets if dataset_overlays_dir(root, ds).is_dir()
+            ds for ds in datasets if layout.overlays_dir(ds).is_dir()
         ]
         if datasets_with_overlays:
             logger.info(
@@ -191,14 +192,27 @@ class OutputRoot:
 
         column_value_sets = _build_column_value_sets(master_df)
 
-        cache_dir = root / _CACHE_RELATIVE
-        cache_dir.mkdir(parents=True, exist_ok=True)
+        # Cache root: the output root for full runs, else inside the bundle.
+        # Read-only-mount fallback (spec Section 2 / review C5): if the chosen
+        # location is not writable, fall back to a per-session temp dir keyed
+        # by the bundle path so the viewer still boots off a read-only mount.
+        cache_root = (
+            layout.output_root
+            if layout.output_root is not None
+            else layout.deliverables_base
+        )
+        cache_dir = _resolve_cache_dir(cache_root, layout.deliverables_base)
 
-        pipeline_summary = _read_pipeline_summary(resolve_pipeline_config_path(root))
-        overlay_index = _scan_overlay_index(root, datasets_with_overlays)
+        pipeline_summary = _read_pipeline_summary(layout.pipeline_config_path)
+        overlay_index = _scan_overlay_index(layout, datasets_with_overlays)
 
         return cls(
-            root=root,
+            root=(
+                layout.deliverables_base
+                if layout.output_root is None
+                else layout.output_root
+            ),
+            layout=layout,
             master_df=master_df,
             clean_master_df=clean_master_df,
             column_value_sets=column_value_sets,
@@ -208,9 +222,31 @@ class OutputRoot:
         )
 
     @property
-    def results_dir(self) -> Path:
-        """Path to ``<root>/results``."""
-        return self.root / RESULTS_DIRNAME
+    def has_results(self) -> bool:
+        """Whether per-image ``results/`` are available (full run, not a bundle)."""
+        return self.layout.has_results
+
+    def hdf_path(self, dataset: str, stem: str) -> Path | None:
+        """Full-res per-image HDF path, or ``None`` for a standalone bundle."""
+        return self.layout.hdf_path(dataset, stem)
+
+    @property
+    def results_dir(self) -> Path | None:
+        """Path to ``results/``, or ``None`` for a standalone bundle.
+
+        Callers MUST guard for ``None`` before joining a dataset onto it.
+        """
+        return self.layout.results_dir
+
+    @property
+    def viewer_cache_dir(self) -> Path:
+        """The cache *root* (parent of the ``dzi/`` subdir held by :attr:`cache_dir`).
+
+        Thumb routes and any non-DZI cache write under here so the standalone
+        path stays inside the bundle (review Q2 — distinct from
+        ``cache_dir = .../dzi``).
+        """
+        return self.cache_dir.parent
 
     def overlay_path(self, dataset: str, stem: str) -> Path:
         """Return the absolute path of an overlay PNG.
@@ -221,11 +257,10 @@ class OutputRoot:
                 its extension).
 
         Returns:
-            ``<root>/deliverables/overlays/<dataset>/<stem>.png``. The
-            returned path is not checked for existence; use
-            :meth:`has_overlay` for that.
+            ``<deliverables>/overlays/<dataset>/<stem>.png``. The returned
+            path is not checked for existence; use :meth:`has_overlay`.
         """
-        return dataset_overlays_dir(self.root, dataset) / f"{stem}.png"
+        return self.layout.overlay_path(dataset, stem)
 
     def has_overlay(self, dataset: str, stem: str) -> bool:
         """Return ``True`` if the overlay PNG exists on disk.
@@ -243,6 +278,12 @@ class OutputRoot:
             ``True`` if the overlay PNG was present at discovery time.
         """
         return (dataset, stem) in self.overlay_index
+
+    def has_image_source(self, dataset: str, stem: str) -> bool:
+        """Return ``True`` when a crop/DZI source exists for this image."""
+        return self.hdf_path(dataset, stem) is not None or self.has_overlay(
+            dataset, stem
+        )
 
     def image_pairs(self, df: pl.DataFrame) -> list[tuple[str, str]]:
         """Extract unique ``(dataset, image_stem)`` pairs from a frame.
@@ -295,9 +336,80 @@ class OutputRoot:
         return _all_parse_as_float(self.column_value_sets.get(column, []))
 
 
+def _resolve_cache_dir(cache_root: Path, deliverables_base: Path) -> Path:
+    """Return a writable DZI cache dir, falling back to session temp if needed."""
+    cache_dir = cache_root / _CACHE_RELATIVE
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if _cache_dir_is_writable(cache_dir):
+            return cache_dir
+    except OSError:
+        pass
+
+    import hashlib
+    import tempfile
+
+    key = hashlib.sha1(str(deliverables_base).encode()).hexdigest()[:12]
+    fallback = (
+        Path(tempfile.gettempdir())
+        / f"phenotypic-viewer-{key}"
+        / _CACHE_RELATIVE
+    )
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def _cache_dir_is_writable(cache_dir: Path) -> bool:
+    """Probe writability with a create/delete operation, not permission bits."""
+    probe = cache_dir / ".write-test"
+    try:
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError:
+        return False
+    return True
+
+
+def _discover_datasets(
+    master_df: pl.DataFrame, layout: BundleLayout
+) -> list[str]:
+    """Enumerate dataset names from the master frame, overlays, and results/.
+
+    Datasets are data-driven: the master frame's ``Metadata_Dataset`` values
+    are authoritative, unioned with the ``overlays/<dataset>/`` subdirs (a
+    standalone bundle has no ``results/``) and the ``results/<dataset>/`` subdirs
+    when present (full run), so a dataset with overlays but no surviving rows is
+    still discovered.
+
+    Args:
+        master_df: The loaded display frame.
+        layout: Resolved bundle topology.
+
+    Returns:
+        Sorted unique dataset names.
+    """
+    names: set[str] = set()
+    if KEY_DATASET in master_df.columns:
+        names.update(
+            str(v)
+            for v in master_df.get_column(KEY_DATASET)
+            .drop_nulls()
+            .unique()
+            .to_list()
+        )
+    overlays_root = layout.deliverables_base / DIR_OVERLAYS
+    if overlays_root.is_dir():
+        names.update(e.name for e in overlays_root.iterdir() if e.is_dir())
+    if layout.results_dir is not None:
+        names.update(
+            e.name for e in layout.results_dir.iterdir() if e.is_dir()
+        )
+    return sorted(names)
+
+
 def _ensure_required_columns(
     df: pl.DataFrame,
-    results_dir: Path,
+    layout: BundleLayout,
     datasets: list[str],
 ) -> pl.DataFrame:
     """Backfill ``Metadata_Dataset`` and ``Metadata_ImageFile`` if missing.
@@ -305,19 +417,22 @@ def _ensure_required_columns(
     Real-world masters produced by older runs or by aggregators that
     skip ``include_dataset_column`` may lack one or both of these
     columns. The dataset is recoverable from the on-disk layout
-    (``results/<dataset>/measurements/<stem>.parquet``); the image
-    stem can fall back to ``Metadata_ImageName`` when present.
+    (``results/<dataset>/measurements/<stem>.parquet``) when a full-run
+    ``results/`` is present; the image stem can fall back to
+    ``Metadata_ImageName`` when present.
 
     Args:
         df: Loaded master DataFrame.
-        results_dir: ``<root>/results``.
+        layout: Resolved bundle topology (``layout.results_dir`` is ``None``
+            for a standalone bundle, which makes dataset backfill impossible).
         datasets: Dataset directory names already discovered.
 
     Returns:
         The DataFrame with both required columns guaranteed present.
 
     Raises:
-        ValueError: If neither column can be derived.
+        ValueError: If neither column can be derived (e.g. a standalone bundle
+            whose master lacks ``Metadata_Dataset``).
     """
     if KEY_IMAGE_FILE not in df.columns and _IMAGENAME_COL in df.columns:
         logger.info(
@@ -339,10 +454,19 @@ def _ensure_required_columns(
     if KEY_DATASET in df.columns:
         return df
 
+    if layout.results_dir is None:
+        raise ValueError(
+            "Master measurements parquet is missing column 'Metadata_Dataset' and "
+            "this is a standalone deliverables bundle (no results/ to recover it "
+            "from). Recompile the run with the current version: "
+            "`python -m phenotypic --mode recompile --output <dir>`."
+        )
+    results_root = layout.results_dir
+
     stem_to_dataset: dict[str, str] = {}
     collisions: set[str] = set()
     for dataset in datasets:
-        meas_dir = results_dir / dataset / DIR_MEASUREMENTS
+        meas_dir = results_root / dataset / DIR_MEASUREMENTS
         if not meas_dir.is_dir():
             continue
         for entry in meas_dir.iterdir():
@@ -359,7 +483,7 @@ def _ensure_required_columns(
         raise ValueError(
             f"Master measurements parquet is missing column {KEY_DATASET!r} "
             "and no per-image parquets were found under "
-            f"{results_dir!s}/<dataset>/measurements/ to recover it from."
+            f"{results_root!s}/<dataset>/measurements/ to recover it from."
         )
 
     if collisions:
@@ -397,12 +521,13 @@ def _ensure_required_columns(
 
 
 def _scan_overlay_index(
-    root: Path, datasets_with_overlays: list[str]
+    layout: BundleLayout, datasets_with_overlays: list[str]
 ) -> frozenset[tuple[str, str]]:
     """Snapshot every ``(dataset, stem)`` whose overlay PNG exists on disk.
 
     Args:
-        root: The CLI output root directory.
+        layout: The resolved bundle topology (overlays anchor on its
+            deliverables base).
         datasets_with_overlays: Dataset names known to have a
             ``deliverables/overlays/<dataset>/`` directory; pre-filtered
             by the discovery scan to avoid an extra ``is_dir`` check.
@@ -413,7 +538,7 @@ def _scan_overlay_index(
     """
     pairs: set[tuple[str, str]] = set()
     for dataset in datasets_with_overlays:
-        for entry in dataset_overlays_dir(root, dataset).iterdir():
+        for entry in layout.overlays_dir(dataset).iterdir():
             if entry.suffix.lower() == ".png" and entry.is_file():
                 pairs.add((dataset, entry.stem))
     return frozenset(pairs)
@@ -509,5 +634,9 @@ def _read_pipeline_summary(pipeline_json: Path) -> str | None:
                     return value.strip()
         return None
     except Exception:
-        logger.debug("Failed to parse %s for pipeline_summary", pipeline_json, exc_info=True)
+        logger.debug(
+            "Failed to parse %s for pipeline_summary",
+            pipeline_json,
+            exc_info=True,
+        )
         return None

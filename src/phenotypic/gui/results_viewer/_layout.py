@@ -27,7 +27,6 @@ ends up as a thin orchestrator.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import dash
@@ -53,7 +52,10 @@ from phenotypic.gui._design import (
     COLOR_NAVY,
     COLOR_RULE,
     COLOR_SURFACE,
+    FONT_SIZE_CAPTION,
     FONT_SIZE_LABEL,
+    OI_ORANGE,
+    OI_ORANGE_TEXT,
 )
 from phenotypic.gui.results_viewer import _filter_panel, _ids as ids, colony_view
 from phenotypic.gui.results_viewer._error_tab import build_error_tab_body
@@ -108,6 +110,50 @@ def _build_filters_toggle() -> Component:
         outline=True,
         size="sm",
         n_clicks=0,
+    )
+
+
+def build_mode_badge(output_root: OutputRoot) -> Component:
+    """Build the header mode badge: "Full run" vs "Standalone bundle".
+
+    Reads :attr:`OutputRoot.has_results` (the only attribute touched, so a
+    lightweight duck-typed stand-in works in unit tests). A full
+    ``python -m phenotypic`` run carries per-image ``results/`` HDFs and shows
+    **Full run**; a portable, deliverables-only bundle (master + mirror +
+    overlays, no ``results/``) shows **Standalone bundle** so the user knows
+    the per-image pixel-layer toggle is unavailable.
+
+    Args:
+        output_root: The active output handle (or any object exposing a
+            boolean ``has_results`` attribute).
+
+    Returns:
+        A pill-shaped :class:`dbc.Badge`. Colours come from
+        :mod:`phenotypic.gui._design` tokens (navy for a full run; a darkened
+        Okabe-Ito orange text variant for a bundle, AA-legible on white per
+        DESIGN.md "05 — Badges").
+    """
+    full_run = bool(getattr(output_root, "has_results", False))
+    if full_run:
+        text = "Full run"
+        fg, bg, border = COLOR_NAVY, f"{COLOR_NAVY}12", f"{COLOR_NAVY}2e"
+    else:
+        text = "Standalone bundle"
+        fg, bg, border = OI_ORANGE_TEXT, f"{OI_ORANGE}1f", f"{OI_ORANGE}45"
+    return dbc.Badge(
+        text,
+        id=ids.HEADER_MODE_BADGE_ID,
+        className="me-3 results-viewer-mode-badge",
+        style={
+            "color": fg,
+            "background": bg,
+            "border": f"1px solid {border}",
+            "borderRadius": "9999px",
+            "fontSize": FONT_SIZE_CAPTION,
+            "fontWeight": 500,
+            "letterSpacing": "0.04em",
+            "padding": "0.2rem 0.6rem",
+        },
     )
 
 
@@ -179,6 +225,7 @@ def _build_header(output_root: OutputRoot, *, url_prefix: str = MOUNT_HOME) -> C
             logo,
             title,
             pipeline_chip,
+            build_mode_badge(output_root),
             html.Div(style={"flex": "1 1 auto"}),  # spacer
             lock_switch,
         ],
@@ -396,7 +443,7 @@ def _resolve_measurement_schema(output_root: OutputRoot) -> MeasurementSchema:
     Dash app factory in :mod:`._app` is responsible for the stash so
     construction stays a layout-time concern.
     """
-    return MeasurementSchema(output_root=Path(output_root.root))
+    return MeasurementSchema.from_layout(output_root.layout)
 
 
 def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
@@ -415,7 +462,7 @@ def _resolve_qc_recipe(output_root: OutputRoot) -> QcRecipe:
             return recipe
     except RuntimeError:
         pass  # No application context (test harness, etc.).
-    return QcRecipe.load(Path(output_root.root))
+    return QcRecipe.from_layout(output_root.layout)
 
 
 # ---------------------------------------------------------------------------
@@ -670,4 +717,4 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
         return bool(value)
 
 
-__all__ = ["build_app_layout", "register_callbacks"]
+__all__ = ["build_app_layout", "build_mode_badge", "register_callbacks"]

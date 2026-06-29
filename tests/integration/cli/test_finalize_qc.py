@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 import polars as pl
 import pytest
@@ -22,10 +23,21 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
-from phenotypic.sdk_ import measurements_parquet_path
+from phenotypic.sdk_ import measurements_parquet_path, qc_duckdb_path
 from phenotypic._cli._cli_output_manager import finalize_post_master_outputs
 
 from tests._output_layout import write_master
+
+
+def _qc_module_instance_ids(output_dir: Path) -> set[str]:
+    """Return the ``instance_id`` set from the ``qc.duckdb`` catalog."""
+    con = duckdb.connect(str(qc_duckdb_path(output_dir)), read_only=True)
+    try:
+        return {r[0] for r in con.execute(
+            "SELECT instance_id FROM qc_modules"
+        ).fetchall()}
+    finally:
+        con.close()
 
 
 def _master() -> pl.DataFrame:
@@ -70,16 +82,13 @@ class TestFinalizeWritesQc:
         _write_master_files(tmp_path, _master())
         finalize_post_master_outputs(tmp_path, _master(), _qc_pipeline())
 
-        assert (tmp_path / "qc" / "qc_summary.parquet").exists()
-        assert (tmp_path / "qc" / "qc_members.parquet").exists()
-        assert (tmp_path / "qc" / "qc_config.json").exists()
-        summ = pd.read_parquet(tmp_path / "qc" / "qc_summary.parquet")
-        assert set(summ["instance_id"]) == {"qc-SE-fin"}
+        assert qc_duckdb_path(tmp_path).exists()
+        assert _qc_module_instance_ids(tmp_path) == {"qc-SE-fin"}
 
     def test_no_qc_when_pipeline_has_no_entries(self, tmp_path: Path) -> None:
         _write_master_files(tmp_path, _master())
         finalize_post_master_outputs(tmp_path, _master(), ImagePipeline())
-        assert not (tmp_path / "qc").exists()
+        assert not qc_duckdb_path(tmp_path).exists()
 
 
 class TestNoQcFlag:
@@ -88,7 +97,7 @@ class TestNoQcFlag:
         finalize_post_master_outputs(
             tmp_path, _master(), _qc_pipeline(), no_qc=True
         )
-        assert not (tmp_path / "qc" / "qc_summary.parquet").exists()
+        assert not qc_duckdb_path(tmp_path).exists()
 
     def test_no_qc_true_still_writes_mirror(self, tmp_path: Path) -> None:
         # The authoritative measurements mirror must still be seeded.
@@ -112,7 +121,7 @@ class TestResetOnRerun:
         # A fresh CLI run resets review progress.
         assert not review.exists()
         # ...but the freshly-computed qc artifact is present.
-        assert (tmp_path / "qc" / "qc_summary.parquet").exists()
+        assert qc_duckdb_path(tmp_path).exists()
 
     def test_review_state_reset_even_with_no_qc(self, tmp_path: Path) -> None:
         _write_master_files(tmp_path, _master())

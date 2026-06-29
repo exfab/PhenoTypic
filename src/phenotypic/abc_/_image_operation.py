@@ -97,7 +97,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     3. **Calls your _operate() instance method** with the image
     4. **Validates integrity** (subclass-specific via ``@validate_operation_integrity``)
        - Detects unexpected modifications to protected image components
-       - Only enabled if ``VALIDATE_OPS=True`` in environment
+       - Only enabled if ``phenotypic.settings.VALIDATE_OPS`` is true
 
     Your subclass only needs to implement ``_operate(self, image) -> Image``.
 
@@ -180,7 +180,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
     3. Recalculates signatures **after** operation completes
     4. Raises ``OperationIntegrityError`` if any protected component changed
 
-    Only enabled if ``VALIDATE_OPS=True`` in environment (for performance).
+    Only enabled if ``phenotypic.settings.VALIDATE_OPS`` is true (for performance).
 
     **Operation chaining and pipelines**
 
@@ -253,7 +253,7 @@ class ImageOperation(BaseOperation, LazyWidgetMixin, ABC):
           platform-specific. Code must gracefully handle missing optional dependencies.
 
         - **Integrity validation is optional:** The ``@validate_operation_integrity``
-          decorator only runs if ``VALIDATE_OPS=True`` in environment. This provides
+          decorator only runs if ``phenotypic.settings.VALIDATE_OPS`` is true. This provides
           development-time safety without production overhead.
 
     Examples:

@@ -202,7 +202,7 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
         (overlay_dir / f"{stem}.png").touch()
 
     output_root = OutputRoot.discover(tmp_path)
-    state = CurationLabels.load(output_root.root, output_root.clean_master_df)
+    state = CurationLabels.load(output_root.layout, output_root.clean_master_df)
     app = dash.Dash(__name__)
     _filter_panel.register_callbacks(app, output_root, state)
 

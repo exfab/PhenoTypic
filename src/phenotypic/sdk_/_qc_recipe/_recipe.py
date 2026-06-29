@@ -46,10 +46,13 @@ import secrets
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from phenotypic.analysis.abc_ import QualityCheck
 from phenotypic.sdk_ import DIR_DELIVERABLES
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +329,37 @@ class QcRecipe:
 
         pipeline_path = pipeline_json_path(Path(output_root_path))
         read_path = resolve_pipeline_config_path(Path(output_root_path))
+        return cls._load_from_paths(read_path, pipeline_path)
 
+    @classmethod
+    def from_layout(cls, layout: "BundleLayout") -> "QcRecipe":
+        """Load the ``qc`` array from a resolved :class:`BundleLayout`.
+
+        The :class:`BundleLayout`-aware sibling of :meth:`load`. Anchors the
+        pipeline config on ``layout.deliverables_base`` directly, so a
+        standalone deliverables bundle (whose ``output_root is None``) resolves
+        ``pipeline.json`` *inside the bundle* rather than via
+        ``deliverables_dir(output_root)`` — which would double-join when the
+        viewer's ``root`` is already the deliverables folder.
+
+        Args:
+            layout: Resolved bundle topology.
+
+        Returns:
+            A :class:`QcRecipe` ready for in-place mutation.
+        """
+        return cls._load_from_paths(
+            layout.resolved_pipeline_config_path, layout.pipeline_config_path
+        )
+
+    @classmethod
+    def _load_from_paths(cls, read_path: Path, pipeline_path: Path) -> "QcRecipe":
+        """Build a recipe from explicit read + canonical-write paths.
+
+        Shared core of :meth:`load` and :meth:`from_layout`. ``read_path`` is
+        the existing config to parse (canonical typed or legacy ``.json``);
+        ``pipeline_path`` is the canonical typed path future writes target.
+        """
         if not read_path.exists():
             return cls(path=pipeline_path)
 

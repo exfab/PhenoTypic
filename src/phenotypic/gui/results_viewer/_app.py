@@ -195,7 +195,7 @@ def create_app(
     _tile_routes.register(app, output_root)
     timeline_thumb_routes.register(app, output_root)
 
-    filtered_state = CurationLabels.load(output_root.root, output_root.master_df)
+    filtered_state = CurationLabels.load(output_root.layout, output_root.master_df)
     app.server.config[CFG_FILTERED_STATE] = filtered_state
     colony_crop_routes.register(app, output_root)
     # QC Review tab serves the same centered crops under its own segment
@@ -207,8 +207,8 @@ def create_app(
     # clobber an existing instance e.g. when the analysis sub-app has
     # already populated the key.
     if app.server.config.get(CFG_MEASUREMENT_SCHEMA) is None:
-        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema(
-            output_root=Path(output_root.root)
+        app.server.config[CFG_MEASUREMENT_SCHEMA] = MeasurementSchema.from_layout(
+            output_root.layout
         )
     # QC tab's augmented-frame cache starts empty; Wave E's QC writer
     # fills it on its first card refresh. The heatmap render callback
@@ -234,9 +234,13 @@ def create_app(
     # recompute via ``run_qc``). The per-revision instance cache is keyed
     # on the recipe revision counter so a stale entry can never serve a
     # moved configuration.
-    QcRecipe.migrate_from_sidecar(Path(output_root.root))
-    app.server.config[CFG_QC_RECIPE] = QcRecipe.load(Path(output_root.root))
-    app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(Path(output_root.root))
+    # Legacy ``.viewer_cache/qc_recipe.json`` sidecar migration only applies to
+    # full runs (the sidecar lived at the *output root*). A standalone bundle
+    # (``layout.output_root is None``) never has one, so skip it (review W6).
+    if output_root.layout.output_root is not None:
+        QcRecipe.migrate_from_sidecar(output_root.layout.output_root)
+    app.server.config[CFG_QC_RECIPE] = QcRecipe.from_layout(output_root.layout)
+    app.server.config[CFG_QC_PIPELINE] = _load_qc_pipeline(output_root)
     app.server.config.setdefault(CFG_QC_INSTANCES_CACHE, {})
 
     app.layout = build_app_layout(output_root, filtered_state, url_prefix=url_prefix)
@@ -245,7 +249,7 @@ def create_app(
     return configure_url_prefix_routing(app, url_prefix)
 
 
-def _load_qc_pipeline(output_root_path: Path):
+def _load_qc_pipeline(output_root: OutputRoot):
     """Deserialize the output root's ``pipeline.json`` for QC recompute.
 
     The QC Review tab's per-group recompute hands this pipeline to
@@ -255,17 +259,22 @@ def _load_qc_pipeline(output_root_path: Path):
     ``None`` when the file is absent or unreadable — recompute then no-ops
     rather than raising.
 
+    Resolves the config through :attr:`OutputRoot.layout` via
+    ``layout.resolved_pipeline_config_path``: the canonical typed config, else
+    the legacy plain ``pipeline.json`` inside the bundle, anchored on the
+    deliverables base so a standalone bundle (``output_root is None``) never
+    double-joins ``deliverables/`` (mirroring ``QcRecipe.from_layout``).
+
     Args:
-        output_root_path: The results-viewer output root.
+        output_root: The results-viewer output root handle.
 
     Returns:
         The deserialized ``ImagePipeline``, or ``None`` when no usable
         ``pipeline.json`` exists.
     """
     from phenotypic._core._image_pipeline import ImagePipeline
-    from phenotypic.sdk_ import resolve_pipeline_config_path
 
-    pipeline_path = resolve_pipeline_config_path(output_root_path)
+    pipeline_path = output_root.layout.resolved_pipeline_config_path
     if not pipeline_path.exists():
         return None
     try:
@@ -280,6 +289,48 @@ def _load_qc_pipeline(output_root_path: Path):
             exc_info=True,
         )
         return None
+
+
+def _handoff_banner_state(
+    selection: "dict | None",
+) -> "tuple[dict, str, bool]":
+    """Return the empty-state hand-off banner's ``(style, label, disabled)``.
+
+    Pure helper behind the selection-store callback (extracted so the
+    Open-button gate is unit-testable). The Open button is enabled when the
+    sidebar selection is viewer-openable — either a full CLI output
+    (``is_cli_output``) **or** a standalone deliverables bundle
+    (``is_deliverables_bundle``); both boot the viewer.
+
+    Args:
+        selection: The :data:`SHELL_SIDEBAR_SELECTION_STORE` payload (or
+            ``None``/non-dict before any selection).
+
+    Returns:
+        A ``(style, label, disabled)`` triple for the banner's style,
+        path label, and Open-button ``disabled`` flag.
+    """
+    hidden = {"display": "none"}
+    visible = {
+        "display": "flex",
+        "alignItems": "center",
+        "gap": "0.5rem",
+        "marginTop": "1rem",
+        "padding": "0.5rem 0.75rem",
+        "background": COLOR_SURFACE,
+        "border": f"1px solid {COLOR_BLUE}",
+        "borderRadius": "6px",
+    }
+    if not selection or not isinstance(selection, dict):
+        return hidden, "(none)", True
+    path = selection.get("path") or ""
+    if not path:
+        return hidden, "(none)", True
+    caps = selection.get("capabilities") or {}
+    openable = bool(caps.get("is_cli_output")) or bool(
+        caps.get("is_deliverables_bundle")
+    )
+    return visible, path, not openable
 
 
 def _register_empty_state_callbacks(
@@ -314,25 +365,7 @@ def _register_empty_state_callbacks(
     def _populate_handoff_banner(
         selection: "dict | None",
     ) -> "tuple":
-        hidden = {"display": "none"}
-        visible = {
-            "display": "flex",
-            "alignItems": "center",
-            "gap": "0.5rem",
-            "marginTop": "1rem",
-            "padding": "0.5rem 0.75rem",
-            "background": COLOR_SURFACE,
-            "border": f"1px solid {COLOR_BLUE}",
-            "borderRadius": "6px",
-        }
-        if not selection or not isinstance(selection, dict):
-            return hidden, "(none)", True
-        path = selection.get("path") or ""
-        if not path:
-            return hidden, "(none)", True
-        caps = selection.get("capabilities") or {}
-        is_cli_output = bool(caps.get("is_cli_output"))
-        return visible, path, not is_cli_output
+        return _handoff_banner_state(selection)
 
     # Clientside POST + navigate. Uses ``window.fetch`` with the prefix
     # so it works under any DispatcherMiddleware mount. On success the

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyphae Detection — Method Tree by Mechanism Class</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font-body:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+  --bg:#f4f6f8;
+  --surface:#ffffff;
+  --surface-2:#eef2f5;
+  --border:rgba(15,40,60,.10);
+  --border-bright:rgba(15,40,60,.20);
+  --text:#10222e;
+  --text-dim:#5a6b78;
+  --line:rgba(15,40,60,.18);
+  --accent:#0f766e;
+  --accent-dim:rgba(15,118,110,.10);
+  --gold:#b45309;
+  --gold-dim:rgba(180,83,9,.12);
+  --repo:#0e7c4a;  --repo-dim:rgba(14,124,74,.12);
+  --pip:#0f766e;   --pip-dim:rgba(15,118,110,.12);
+  --warn:#b45309;  --warn-dim:rgba(180,83,9,.14);
+  --gap:#b4283a;   --gap-dim:rgba(180,40,58,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0b1014;
+    --surface:#131b22;
+    --surface-2:#1a242d;
+    --border:rgba(150,180,200,.10);
+    --border-bright:rgba(150,180,200,.20);
+    --text:#e7eef3;
+    --text-dim:#90a2af;
+    --line:rgba(150,180,200,.22);
+    --accent:#2dd4bf;
+    --accent-dim:rgba(45,212,191,.12);
+    --gold:#fbbf24;
+    --gold-dim:rgba(251,191,36,.14);
+    --repo:#34d399;  --repo-dim:rgba(52,211,153,.14);
+    --pip:#2dd4bf;   --pip-dim:rgba(45,212,191,.14);
+    --warn:#fbbf24;  --warn-dim:rgba(251,191,36,.14);
+    --gap:#fb7185;   --gap-dim:rgba(251,113,133,.14);
+  }
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;font-family:var(--font-body);color:var(--text);
+  background:var(--bg);
+  background-image:radial-gradient(ellipse at 50% -5%,var(--accent-dim) 0%,transparent 55%);
+  line-height:1.55;overflow-wrap:break-word;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 28px 90px;}
+.grid-min>*{min-width:0;}
+
+.hero{margin-bottom:30px;}
+.hero__kicker{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:12px;}
+.hero h1{font-size:clamp(26px,3.4vw,40px);line-height:1.1;letter-spacing:-.5px;margin:0 0 12px;font-weight:700;}
+.hero p{font-size:16px;color:var(--text-dim);max-width:78ch;margin:0 0 4px;}
+.hero strong{color:var(--text);font-weight:600;}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:26px 0 14px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.kpi__v{font-size:30px;font-weight:700;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums;}
+.kpi__l{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1.3px;color:var(--text-dim);margin-top:8px;}
+
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin:14px 0 8px;}
+.legend__t{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:1.3px;color:var(--text-dim);margin-right:4px;}
+.legend__note{font-size:12px;color:var(--text-dim);flex-basis:100%;margin-top:2px;}
+
+.av{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.3px;}
+.av::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.av--repo{background:var(--repo-dim);color:var(--repo);}
+.av--pip{background:var(--pip-dim);color:var(--pip);}
+.av--warn{background:var(--warn-dim);color:var(--warn);}
+.av--gap{background:var(--gap-dim);color:var(--gap);}
+
+.tag{font-family:var(--font-mono);font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--text-dim);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+.tag--base{background:var(--accent-dim);color:var(--accent);}
+.tag--stage{background:var(--gold-dim);color:var(--gold);}
+
+.phase{margin-top:30px;}
+.phase__head{display:flex;align-items:flex-start;gap:16px;padding:16px 20px;border-radius:14px;background:var(--surface);border:1px solid var(--border-bright);box-shadow:0 2px 10px rgba(0,0,0,.05);position:relative;overflow:hidden;}
+.phase__head::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--ph,var(--accent));}
+.phase__num{font-family:var(--font-mono);font-weight:700;font-size:26px;color:var(--ph,var(--accent));line-height:1;min-width:54px;}
+.phase__txt h2{margin:0 0 4px;font-size:19px;font-weight:700;letter-spacing:-.3px;}
+.phase__txt p{margin:0;font-size:13.5px;color:var(--text-dim);}
+
+.classes{position:relative;margin:6px 0 0 26px;padding-top:4px;}
+.classes::before{content:'';position:absolute;left:0;top:0;bottom:34px;width:2px;background:var(--line);}
+.class{position:relative;padding-left:30px;margin-top:18px;}
+.class::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--line);}
+.class:last-child::before{bottom:auto;height:30px;}
+.class::after{content:'';position:absolute;left:0;top:30px;width:18px;height:2px;background:var(--line);}
+
+.class__card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px 20px 8px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.class__hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:6px;}
+.class__name{font-size:16px;font-weight:700;letter-spacing:-.2px;}
+.class__mech{font-size:13.5px;color:var(--text-dim);margin:2px 0 12px;max-width:94ch;}
+.class__mech b{color:var(--text);font-weight:600;}
+
+.leaves{position:relative;margin:0;padding:0;list-style:none;}
+.leaf{position:relative;padding:12px 0 12px 28px;}
+.leaf::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--line);}
+.leaf:last-child::before{bottom:auto;height:20px;}
+.leaf::after{content:'';position:absolute;left:8px;top:20px;width:14px;height:2px;background:var(--line);}
+.leaf__hd{display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px;}
+.leaf__name{font-weight:600;font-size:14px;}
+.leaf__name code{font-family:var(--font-mono);font-size:12px;}
+.leaf__body{font-size:13px;color:var(--text-dim);margin-top:5px;max-width:96ch;}
+.leaf__body b{color:var(--text);font-weight:600;}
+.leaf__math{font-family:var(--font-mono);font-size:11.5px;line-height:1.55;color:var(--text);background:var(--surface-2);border-radius:7px;padding:7px 11px;margin-top:8px;border-left:2px solid var(--accent);overflow-x:auto;max-width:100%;}
+.leaf__math .mk{display:inline-block;color:var(--accent);text-transform:uppercase;letter-spacing:1px;font-size:8.5px;font-weight:600;margin-right:9px;vertical-align:1px;}
+.leaf__math b{color:var(--accent);font-weight:600;}
+.leaf__how{font-size:12.5px;line-height:1.6;color:var(--text-dim);margin-top:8px;padding:2px 0 2px 12px;border-left:2px solid var(--gold);max-width:98ch;}
+.leaf__how .hk{display:inline-block;color:var(--gold);text-transform:uppercase;letter-spacing:1px;font-size:8.5px;font-weight:600;margin-right:9px;font-family:var(--font-mono);vertical-align:1px;}
+.leaf__how b{color:var(--text);font-weight:600;}
+.leaf__how .step{color:var(--gold);font-weight:600;}
+.leaf__impl{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:8px;display:block;}
+.leaf__impl code{background:var(--accent-dim);color:var(--accent);padding:1px 6px;border-radius:4px;}
+.leaf--base .leaf__name{color:var(--accent);}
+
+.callout{padding:14px 18px;border-radius:10px;border-left:4px solid var(--accent);background:var(--accent-dim);margin:22px 0 0;font-size:13.5px;}
+.callout b{font-weight:600;}
+.footer{margin-top:40px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:16px;}
+a{color:var(--accent);}
+
+@media (max-width:760px){
+  .wrap{padding:28px 16px 60px;}
+  .phase__head{flex-direction:column;gap:8px;}
+  .classes{margin-left:14px;}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+.leaf__use{font-size:12px;line-height:1.5;color:var(--text-dim);margin-top:7px;padding-left:2px;}
+.leaf__use .uk{display:inline-block;color:var(--gold);text-transform:uppercase;letter-spacing:1px;font-size:8.5px;font-weight:600;margin-right:9px;font-family:var(--font-mono);vertical-align:1px;}
+.leaf__use b{color:var(--text);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap grid-min">
+
+  <header class="hero">
+    <div class="hero__kicker">PhenoTypic · Filamentous-Fungi Hyphae Segmentation</div>
+    <h1>Detection Methods by Mechanism Class</h1>
+    <p>A brainstorm tree of every surveyed algorithm for masking thin, branching hyphal ridges on macroscopic RGB agar plates — grouped by the <strong>mechanism</strong> they share, with a <strong>math overview</strong>, a step-by-step <strong>how-it-works</strong>, and <strong>how each innovates on its class base</strong>, tagged with <strong>Python-implementation availability</strong>.</p>
+    <p style="margin-top:10px">Sorted top-to-bottom by <strong>recommended try-sequence</strong>: start with what's already in the repo as a diagnostic control, then cheap training-free classical experiments, then reconnection swaps for Dijkstra, and finally the learned path once labels/synthetic data exist. <em>This is a brainstorm map, not a committed decision path.</em></p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="kpi__v">4</div><div class="kpi__l">Try-sequence phases</div></div>
+    <div class="kpi"><div class="kpi__v">13</div><div class="kpi__l">Mechanism classes</div></div>
+    <div class="kpi"><div class="kpi__v">~65</div><div class="kpi__l">Algorithms mapped</div></div>
+    <div class="kpi"><div class="kpi__v">12</div><div class="kpi__l">Already in PhenoTypic</div></div>
+  </div>
+
+  <div class="legend">
+    <span class="legend__t">Availability</span>
+    <span class="av av--repo">IN REPO</span>
+    <span class="av av--pip">PIP · OSS</span>
+    <span class="av av--warn">CAVEAT</span>
+    <span class="av av--gap">PORT IT</span>
+    <span class="legend__note">
+      <b>IN REPO</b> = already wrapped in PhenoTypic (zero new deps) ·
+      <b>PIP · OSS</b> = pip-installable, permissive (BSD/MIT/Apache), maintained ·
+      <b>CAVEAT</b> = installable but stale / needs C++ build / GPL or non-commercial / trivial DIY ·
+      <b>PORT IT</b> = no clean Python (MATLAB / C++ binary — port it yourself).
+      <span class="tag tag--base" style="margin-left:6px">BASE</span> = class canonical the others innovate on.
+      <span class="tag tag--stage" style="margin-left:4px">S0–S3</span> = pipeline stage (S0 upstream · S1 enhancer · S2 detector · S3 reconnection).
+      Each leaf carries a <span style="font-family:var(--font-mono);color:var(--accent)">MATH</span> operator and a <span style="font-family:var(--font-mono);color:var(--gold)">HOW</span> step-by-step procedure.
+    </span>
+  </div>
+
+  <!-- ================= PHASE 0 ================= -->
+  <section class="phase" style="--ph:var(--repo)">
+    <div class="phase__head">
+      <div class="phase__num">0</div>
+      <div class="phase__txt">
+        <h2>Start here — baseline &amp; diagnostic control</h2>
+        <p>Already in the repo, zero new dependencies. Run these first to <b>bucket the baseline's failures</b> (faint-miss vs. junction-break vs. colour-fringe) — the experiment that tells you which regime dominates and where to spend the next slot.</p>
+      </div>
+    </div>
+    <div class="classes">
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Phase congruency &amp; contrast-invariant</span><span class="tag tag--stage">S2 · baseline</span></div>
+          <p class="class__mech"><b>Mechanism:</b> finds features where Fourier components are maximally <b>in phase</b>, giving a dimensionless 0–1 ridge measure that is <b>contrast-invariant</b> — faint hyphae register without per-image intensity tuning. The current detector's front end.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Phase congruency (Kovesi)</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Log-Gabor quadrature bank → local energy / Σ-amplitude, with a Rayleigh-noise threshold. The reference front end of the baseline detector.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>PC</b> = E / (Σ<sub>n</sub> A<sub>n</sub> + ε); local energy E = √[(Σ A<sub>n</sub>cosφ<sub>n</sub>)² + (Σ A<sub>n</sub>sinφ<sub>n</sub>)²] over a log-Gabor bank (n scales × m orientations); PC2 adds a noise floor T and phase-deviation weighting W.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> convolve with the log-Gabor quadrature bank → <span class="step">2</span> per orientation compute local energy and mean phase, subtract the estimated Rayleigh noise floor T → <span class="step">3</span> sum the weighted, phase-deviation-penalized congruency over orientations and normalize by total amplitude → <span class="step">4</span> threshold / non-max-suppress the 0–1 map.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Image-quality metrics</b> (FSIM/feature similarity), illumination-invariant edge &amp; corner detection in CV research; PhenoTypic's hyphae front end.</div>
+              <span class="leaf__impl"><code>enhance/_focus_edge_phase.py</code> (own phasecong3) · ext: <code>phasepack</code> (inactive 2016)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Monogenic / Riesz PC</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> swaps the oriented log-Gabor sweep for an isotropic bandpass × the <b>Riesz transform</b> → amplitude/phase/<b>orientation for free</b>, lower compute &amp; memory, better localization.</div>
+              <div class="leaf__math"><span class="mk">math</span>monogenic signal (f, R<sub>x</sub>f, R<sub>y</sub>f) via Riesz kernel (u,v)/|(u,v)|; amplitude A = √(f²+R<sub>x</sub>²+R<sub>y</sub>²), phase φ, orientation θ analytic per scale; <b>PC</b> = E/(ΣA+ε).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> bandpass-filter at several scales (no orientation sweep) → <span class="step">2</span> apply the Riesz transform for the two odd channels → <span class="step">3</span> read per-scale amplitude / phase / orientation analytically → <span class="step">4</span> accumulate congruency across scales and normalize.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Medical image registration &amp; ultrasound</b> local-phase analysis; rotation-covariant feature extraction.</div>
+              <span class="leaf__impl"><code>phasepack.phasecongmono</code> · unmaintained</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Colour / multichannel PC (CMPCM)</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> computes phase congruency <b>jointly across RGB</b> in a conformal-monogenic frame → colour-native edge detection with better noise suppression. <em>(CA relevance is our extrapolation — the source paper claims edge localization, not chromatic-aberration removal.)</em></div>
+              <div class="leaf__math"><span class="mk">math</span>lift RGB into a conformal (stereographic) monogenic / geometric-algebra signal; congruency computed jointly over channels; edges = maxima of the <b>conformal-monogenic PC</b> response.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> map the colour signal into the conformal monogenic framework → <span class="step">2</span> compute per-scale conformal-monogenic phase &amp; amplitude jointly across channels → <span class="step">3</span> locate PC maxima → <span class="step">4</span> threshold; channel-consistent ridges survive, single-channel fringes do not.</div>
+              <div class="leaf__use"><span class="uk">used in</span> Colour edge-detection <b>research</b> (benchmarked on Pratt's Figure of Merit); not in production pipelines.</div>
+              <span class="leaf__impl">no maintained impl — paper only</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Hessian / 2nd-derivative ridge geometry</span><span class="tag tag--stage">S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> eigenvalues of the Gaussian-smoothed Hessian — a ridge gives one near-zero eigenvalue (along) and one large (across); the eigenvector is orientation. <b>Junction weakness:</b> at a crossing both eigenvalues grow large, so vesselness collapses to ~0.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Frangi vesselness</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Blobness × structureness on Hessian eigenvalues, max over σ. The canonical tubularity filter — the control that confirms junction-suppression on your data.</div>
+              <div class="leaf__math"><span class="mk">math</span>eigenvalues |λ₁|≤|λ₂|; <b>V</b> = exp(−R<sub>β</sub>²/2β²)·(1−exp(−S²/2c²)), R<sub>β</sub>=|λ₁|/|λ₂|, S=√(λ₁²+λ₂²); V=0 if λ₂&gt;0 (bright ridge); max over σ.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> smooth at scale σ → <span class="step">2</span> build the Hessian and eigendecompose → <span class="step">3</span> map the blobness ratio R<sub>β</sub> and structureness S to a [0,1] score → <span class="step">4</span> take the max across σ to span hyphal widths → threshold.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Clinical vessel enhancement</b> — retinal fundus, CT/MR angiography, lung &amp; liver vasculature; shipped in ITK / scikit-image.</div>
+              <span class="leaf__impl"><code>enhance/_focus_edge_frangi.py</code> · <code>skimage.filters.frangi</code> (BSD)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Sato tubularity</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body"><b>Innovates:</b> asymmetric cross-eigenvalue weighting → handles <b>low contrast</b> better than Frangi (same junction weakness).</div>
+              <div class="leaf__math"><span class="mk">math</span>line measure on sorted eigenvalues (λ₁≈0 along; λ_c&lt;0 across) with separate factors <b>α₁,α₂</b> for the λ_c&lt;0 vs λ_c&gt;0 regimes; scales integrated with per-σ noise equalization.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> Gaussian-smooth → <span class="step">2</span> Hessian + eigendecompose, identify the cross-section plane → <span class="step">3</span> score "lineness" with asymmetric α-weighting (tolerant of contrast variation) → <span class="step">4</span> integrate scales with noise equalization.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>3D vessel, airway &amp; bronchus enhancement</b> in CT; medical visualization (ITK).</div>
+              <span class="leaf__impl"><code>enhance/_focus_edge_sato.py</code> · <code>skimage.filters.sato</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Meijering neuriteness</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a modified eigenvalue tuned for <b>low-SNR, intensity-inhomogeneous</b> filaments.</div>
+              <div class="leaf__math"><span class="mk">math</span>modified eigenvalue <b>λ′ = λ + α·λ<sub>⊥</sub></b> (α=−⅓ in 2D); neuriteness = λ′/λ′<sub>min</sub> normalized over the image; max over σ.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> Hessian at σ → <span class="step">2</span> form the modified eigenvalue via the α-combination → <span class="step">3</span> normalize by the most-negative modified eigenvalue in the image → <span class="step">4</span> max over σ.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Neurite / filament tracing</b> in fluorescence microscopy (ImageJ/Fiji, scikit-image).</div>
+              <span class="leaf__impl"><code>enhance/_focus_edge_meijering.py</code> · <code>skimage.filters.meijering</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Jerman enhancement</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> an eigenvalue <b>ratio</b> (not products) → <b>reinforces bifurcations</b>, single τ knob.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>V</b> = λ₂²·(λ_ρ−λ₂)·[3/(λ₂+λ_ρ)]³, with λ_ρ = λ₂ clamped to a fraction <b>τ</b>·max|λ₂|; normalized to [0,1], max over σ.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> multiscale Hessian eigenvalues → <span class="step">2</span> regularize the 2nd eigenvalue against τ·max|λ₂| (lifts response at edges/junctions) → <span class="step">3</span> compute the ratio-based vesselness → <span class="step">4</span> max over scales.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Vascular enhancement</b> for aneurysm / bifurcation angiography (research).</div>
+              <span class="leaf__impl">~30-line skimage-Hessian DIY · ref MATLAB <code>timjerman/JermanEnhancementFilter</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Steger unbiased line detector</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> sub-pixel centerline + <b>marks junctions and splits lines into a connected graph</b> rather than erasing crossings. Closest classical fit to the brief; same hysteresis idiom as the baseline.</div>
+              <div class="leaf__math"><span class="mk">math</span>Hessian eigenvector <b>n</b> = line normal; sub-pixel line point where the 2nd directional derivative along n is extremal (1st deriv along n = 0, Taylor test); link by upper/lower <b>hysteresis</b>; split at claimed points = junctions.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> convolve with Gaussian-derivative kernels (σ ≳ line-width/√3) → <span class="step">2</span> form H, take the max-|λ| eigenvector as the normal, solve the Taylor test for the sub-pixel ridge point → <span class="step">3</span> link points by hysteresis double-threshold on the 2nd directional derivative → <span class="step">4</span> where a point is already claimed, mark a junction and split → connected lines-and-junctions graph.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Industrial machine vision</b> — sub-pixel road-marking, laser-line / weld-seam, fibre &amp; DNA measurement (ships in MVTec Halcon).</div>
+              <span class="leaf__impl"><code>pip install ridge-detector</code> (active 2024)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Optimally Oriented Flux (+antisymmetry)</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> flux through a local <b>sphere boundary</b> (not a solid Hessian) → resolves adjacent hyphae, recovers weak low-SNR ridges, no large-σ smoothing.</div>
+              <div class="leaf__math"><span class="mk">math</span>oriented-flux matrix <b>Q<sub>r</sub>(x)</b> = image 2nd-derivatives convolved with a sphere-<i>surface</i> kernel of radius r; eigenvalues λ₁≤λ₂ of flux; pick r* maximizing response. Antisym = odd flux term flags edge/fringe steps.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> for each candidate radius r build the oriented-flux matrix Q<sub>r</sub>(x) (gradient flux through a sphere of radius r) → <span class="step">2</span> eigendecompose Q<sub>r</sub> → <span class="step">3</span> combine eigenvalues into a vesselness-like response and pick the radius maximizing it → <span class="step">4</span> down-weight locations flagged by the antisymmetric (edge) response, threshold.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Multiscale vessel &amp; airway segmentation</b> research (neuro / vascular CT).</div>
+              <span class="leaf__impl"><code>fepegar/optimally-oriented-flux</code> (3D-leaning, stale, no PyPI)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Bowler-hat transform</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> oriented <b>line structuring elements</b> instead of eigenvalues — a long line SE still fits across a junction, so crossings are <b>enhanced as brightly as the limbs joining them</b>.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>B</b> = max<sub>scale d</sub> [ max<sub>θ</sub> open(I, line<sub>d,θ</sub>) − open(I, disk<sub>d</sub>) ] — pixels where an aligned line SE survives but a disk SE does not.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> open with growing disks (kills thin structure) → <span class="step">2</span> open with matching oriented line SEs at many θ (preserves aligned thin structure) → <span class="step">3</span> take the per-scale line−disk difference → <span class="step">4</span> combine across scales/orientations into the enhancement map, threshold.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Retinal &amp; micro-vascular enhancement</b> research; plant-root and vessel networks.</div>
+              <span class="leaf__impl"><code>CigdemSazak/bowler-hat-2d</code> (stale) — numpy DIY feasible</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PHASE 1 ================= -->
+  <section class="phase" style="--ph:var(--pip)">
+    <div class="phase__head">
+      <div class="phase__num">1</div>
+      <div class="phase__txt">
+        <h2>Cheap classical experiments — training-free, mostly pip</h2>
+        <p>Low-commitment, reversible. These stack with the existing front end (S1 enhancers) or A/B against phase congruency (S2 detectors). Lead with whichever regime the Phase-0 buckets surfaced.</p>
+      </div>
+    </div>
+    <div class="classes">
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Oriented templates / matched / steerable</span><span class="tag tag--stage">S1·S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> correlate an oriented template (or synthesise oriented response from a basis) and take the max over orientation. <b>Integrates evidence along the line</b> → the canonical low-SNR booster.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Matched filters (Chaudhuri)</span><span class="tag tag--base">BASE</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body">Rotated Gaussian-cross-section template bank, max response. The original along-line low-SNR detector; fixed profile blurs junctions.</div>
+              <div class="leaf__math"><span class="mk">math</span>zero-mean (DC-removed) Gaussian-profile template; bank of K rotations (classically 12 @ 15°); response = <b>max<sub>θ</sub> (I ∗ kernel<sub>θ</sub>)</b>, then threshold (MF-FDOG / hysteresis).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> design one Gaussian-profile, zero-mean (DC-removed) template the width of a hypha → <span class="step">2</span> rotate it into a 12-orientation bank → <span class="step">3</span> correlate each with the image → <span class="step">4</span> take the per-pixel max over orientations and threshold (often paired with a first-derivative MF-FDOG gate).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Retinal vessel segmentation</b> (classic DRIVE pipelines); known-profile template detection.</div>
+              <span class="leaf__impl">no pkg — trivial rotated-Gaussian kernel bank (numpy/scipy)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Template / normalized cross-correlation</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> generalises the matched filter to <b>any</b> elongated template via normalized cross-correlation; no extra deps.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>NCC</b> = Σ(f−f̄)(t−t̄) / √[Σ(f−f̄)²·Σ(t−t̄)²] ∈ [−1,1]; slide template, max over rotations.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> pick an elongated reference template → <span class="step">2</span> slide it over the image computing normalized cross-correlation at each location (contrast/brightness-invariant) → <span class="step">3</span> repeat over template rotations and take the max → <span class="step">4</span> threshold the correlation peaks.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Ubiquitous</b> — defect inspection, object localization, particle picking, stereo matching (OpenCV / skimage everywhere).</div>
+              <span class="leaf__impl"><code>skimage.feature.match_template</code> (BSD)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Steerable filters (Freeman–Adelson)</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> response at <b>any</b> angle in closed form from a small basis → continuous per-pixel orientation without re-filtering.</div>
+              <div class="leaf__math"><span class="mk">math</span>1st order: <b>G<sub>θ</sub> = cosθ·G<sub>x</sub> + sinθ·G<sub>y</sub></b> (higher orders add G2 ridge + Hilbert pair H2); θ-response interpolated analytically; arg-max θ = orientation, quadrature energy = ridge strength.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> convolve once per basis filter (a small fixed set) → <span class="step">2</span> interpolate the response at any angle θ in closed form → <span class="step">3</span> solve analytically for the orientation maximizing response → <span class="step">4</span> take that oriented quadrature energy as ridge strength, threshold.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Orientation &amp; texture analysis</b>, adaptive anisotropic filtering, image pyramids (computational-vision research).</div>
+              <span class="leaf__impl"><code>pyrtools</code> (MIT, pyramid) / <code>cvsteer</code> (direct G2/H2, stale)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Gabor / log-Gabor banks</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> oriented sinusoid × Gaussian envelope; log-Gabor removes DC and covers high frequencies → tunable oriented bandpass.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>g</b> = exp(−(x′²+γ²y′²)/2σ²)·cos(2πx′/λ+ψ), (x′,y′) rotated by θ; feature = magnitude/energy pooled over a θ×scale bank.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build a kernel bank over orientations × scales → <span class="step">2</span> convolve the image with each → <span class="step">3</span> take magnitude and reduce per pixel (max or energy across the bank) → <span class="step">4</span> threshold the energy map (orientation = arg-max kernel).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Production biometrics</b> — fingerprint &amp; iris enhancement (AFIS), texture classification, OCR.</div>
+              <span class="leaf__impl"><code>skimage.filters.gabor</code> (BSD) — note: log-Gabor pkg is GPL</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">B-COSFIRE</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> AND-like collinear pooling fires only on co-occurring evidence (grain suppression); configured from one prototype, bifurcation variant.</div>
+              <div class="leaf__math"><span class="mk">math</span>configure DoG subunits at (ρ<sub>i</sub>,φ<sub>i</sub>) along a prototype; response = <b>weighted geometric mean</b> r = (Π<sub>i</sub> s<sub>i</sub><sup>w<sub>i</sub></sup>)<sup>1/Σw</sup> of blurred shifted DoG; max over rotations.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> present one prototype line to auto-configure DoG subunit positions (ρ<sub>i</sub>,φ<sub>i</sub>) → <span class="step">2</span> blur and shift each DoG response toward the support centre → <span class="step">3</span> combine by weighted geometric mean (strong only where collinear evidence co-occurs) → <span class="step">4</span> max over rotations, threshold (symmetric "bar" variant for bifurcations).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Retinal vessel delineation</b> (DRIVE / STARE benchmarks, research).</div>
+              <span class="leaf__impl"><code>Brains-for-hire/bcosfire_python</code> (stale; MATLAB orig non-commercial)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Morphology / path-operators / multiscale transforms</span><span class="tag tag--stage">S1·S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> select structures by the <b>length of an admissible path</b> through them (not local curvature), or by sparse anisotropic frames. Avoids the local-neighbourhood analysis that breaks Hessian filters at junctions.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Grayscale top-hat (oriented line SE)</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Opening residual → cheap background subtraction + thin-bright enhancement. Already used in the repo.</div>
+              <div class="leaf__math"><span class="mk">math</span>white top-hat <b>WTH(f) = f − (f ∘ B)</b> (∘ = opening); for oriented thin structure, max over rotated linear SEs: max<sub>θ</sub> WTH(f, line<sub>θ</sub>).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> open the image with a structuring element B sized just larger than a hypha (removes thin bright features) → <span class="step">2</span> subtract the opening from the original (the residual isolates structures thinner than B) → <span class="step">3</span> optionally repeat over rotated linear SEs and take the per-pixel max → <span class="step">4</span> threshold / hysteresis.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Ubiquitous preprocessing</b> — uneven-illumination correction + small-bright-feature extraction (microscopy spot/colony detection, OCR, defect inspection).</div>
+              <span class="leaf__impl"><code>enhance/_subtract_opening.py</code>, <code>_white_tophat_enhance.py</code> · <code>skimage</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Path openings / closings</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a <b>flexible near-straight path</b> SE → keeps tortuous ridges; incomplete-path variant <b>bridges gaps inline</b> at linear cost.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>PO<sub>L</sub>(f)(x)</b> = max over admissible paths π∋x with |π|≥L of (min<sub>y∈π</sub> f(y)) on an oriented adjacency graph; single length knob L.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build the oriented adjacency DAG (per direction) → <span class="step">2</span> per orientation compute, in linear time, the longest admissible path length through each pixel → <span class="step">3</span> keep pixels whose path length ≥ L (the single knob) → <span class="step">4</span> max over orientations (incomplete-path variant tolerates short gaps along the path).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Crack, road &amp; fibre filtering</b>; thin-structure extraction in remote sensing (morphology toolkits).</div>
+              <span class="leaf__impl">bundled in <code>path-openings/RORPO</code> (C++/CMake build)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">RORPO</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a rank-gap across orientations → line-likeness <b>without local Hessian collapse</b>; reported up to +8% TP / −50% FP vs Frangi/OOF.</div>
+              <div class="leaf__math"><span class="mk">math</span>path-open along ~4 (2D)/7 (3D) orientations, sort responses PO<sup>θ1</sup>≥…≥PO<sup>θN</sup>; indicator <b>RORPO = PO<sup>θ1</sup> − PO<sup>θk</sup></b> (line → bright in few orientations → large gap).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> path-open the image along each discrete orientation → <span class="step">2</span> at each pixel sort the per-orientation responses → <span class="step">3</span> difference the highest vs a lower rank (true line = bright in few orientations → large gap; blob = bright in many → ~0) → <span class="step">4</span> threshold / hysteresis the line-likeness map.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>3D vascular filtering</b> research (liver / brain vessels); curvilinear remote sensing.</div>
+              <span class="leaf__impl"><code>path-openings/RORPO</code> (pybind11, CeCILL) — compile required</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Curvelet transform</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> anisotropic tight frame → sparse oriented multiscale <b>denoise + ridge enhancement</b> (twin of CT-FIRE front end).</div>
+              <div class="leaf__math"><span class="mk">math</span>coefficients <b>c(j,ℓ,k) = ⟨f, φ<sub>j,ℓ,k</sub>⟩</b>, needle atoms with <b>parabolic scaling</b> (width ≈ length²); shrink/threshold by per-angle coherence, reconstruct.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> apply the fast discrete curvelet transform (FDCT) → <span class="step">2</span> keep fine-scale coefficients with locally coherent orientation, shrink/threshold the rest → <span class="step">3</span> reconstruct the denoised/enhanced image (or read dominant orientation + magnitude as a ridge map) → <span class="step">4</span> threshold.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Seismic denoising</b> (geophysics production), MRI/CT denoising, collagen-fibre analysis (CT-FIRE).</div>
+              <span class="leaf__impl"><code>curvelets</code> (UDCT, pure-Python, MIT, active) — CurveLab variant non-commercial</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Shearlet transform</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a <b>shear</b> (not rotation) gives lattice-exact directionality, GPU-able.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>ψ<sub>a,s,t</sub>(x) = a<sup>−3/4</sup>ψ(A<sub>a</sub><sup>−1</sup>S<sub>s</sub><sup>−1</sup>(x−t))</b>, shear S<sub>s</sub>=[[1,s],[0,1]], parabolic scaling A<sub>a</sub>; orientation = maximizing shear; ridge = coefficient persistence across scale.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> apply the discrete shearlet transform → <span class="step">2</span> at fine scales locate persistent large coefficients (edge/ridge points), reading the maximizing shear as orientation → <span class="step">3</span> build an oriented-response enhancement or denoise by thresholding coefficients → <span class="step">4</span> threshold / hysteresis.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Image denoising / inpainting</b>, edge analysis, CT reconstruction (research).</div>
+              <span class="leaf__impl"><code>pyshearlab</code> / <code>pytorch_shearlets</code> — GPL</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Voting / transform accumulators</span><span class="tag tag--stage">S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> accumulate evidence in a <b>parameter space</b> (orientation, ρ–θ) so a faint coherent line beats the per-pixel noise floor — plus statistical false-alarm control.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Radon / Hough line</span><span class="tag tag--base">BASE</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body">Line integrals / accumulator voting → peaks are lines. The canonical integration operator (too coarse alone for curved hyphae).</div>
+              <div class="leaf__math"><span class="mk">math</span><b>R(ρ,θ)</b> = ∬ f·δ(ρ − x cosθ − y sinθ) dx dy (Radon); discrete dual = Hough accumulator voting each edge pixel into its sinusoid ρ = x cosθ + y sinθ; peaks → lines.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build an edge/feature map → <span class="step">2</span> each feature votes its sinusoid into the (ρ,θ) accumulator (or integrate intensity along every line) → <span class="step">3</span> find accumulator maxima → <span class="step">4</span> back-project the peaks to line segments.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>CT reconstruction</b> (Radon is the core operator), lane/line detection (ADAS), barcode &amp; document deskew.</div>
+              <span class="leaf__impl"><code>skimage.transform.radon</code> / <code>hough_line</code> (BSD)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Rolling Hough Transform (RHT)</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> windowed Hough on a bitmask → <b>per-pixel orientation of faint diffuse lines</b> below the noise floor, single knob Z.</div>
+              <div class="leaf__math"><span class="mk">math</span>unsharp-mask → binary bitmask; within a circular window D<sub>W</sub> run a Hough restricted to <b>ρ=0</b>; record θ iff ≥ <b>Z·D<sub>W</sub></b> on-bits lie along θ.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> unsharp-mask (subtract a disk-smoothed copy) and threshold to a binary bitmask → <span class="step">2</span> roll a circular window of diameter D<sub>W</sub> over the image → <span class="step">3</span> in each window accumulate a 1-D Hough of orientation at ρ=0 → <span class="step">4</span> threshold by the fraction Z to emit a per-pixel orientation field (optionally back-project to a mask).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Radio astronomy</b> — interstellar HI / ISM filament &amp; magnetic-field-orientation mapping (FilFinder / astro pipelines).</div>
+              <span class="leaf__impl"><code>pip install fil-finder</code> (MIT, active) — feed it a ridge map</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Line Segment Detector (LSD)</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> region-grow + statistical validation → <b>parameter-free</b> segments. Splits at junctions (curved hyphae fragment).</div>
+              <div class="leaf__math"><span class="mk">math</span>level-line angle field → region-grow same-orientation "line-support regions" → fit rectangle → accept iff <b>NFA = (NM)<sup>5/2</sup>·γ·B(n,k,p) ≤ ε</b> (B = binomial tail of aligned pixels).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute the level-line (gradient-tangent) angle per pixel → <span class="step">2</span> region-grow connected pixels whose orientations agree within tolerance into line-support regions → <span class="step">3</span> fit a rectangle and count aligned points → <span class="step">4</span> keep only segments with NFA ≤ ε (a-contrario validation).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>SLAM / visual odometry</b> real-time line detection, document &amp; architectural analysis, calibration (OpenCV ecosystem).</div>
+              <span class="leaf__impl"><code>pylsd-nova</code> · <code>cv2.ximgproc</code> FastLineDetector (Canny-based, not true NFA-LSD; LSD was removed from OpenCV ≥4.1)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">A-contrario / NFA validation</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> Helmholtz null model → a threshold-free <b>FDR layer</b> over agar grain &amp; fringe; one knob ε.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>NFA = N<sub>tests</sub>·P<sub>H0</sub>(≥k of n aligned) ≤ ε</b>; under noise the expected number of ε-meaningful detections ≤ ε (Helmholtz principle).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> define a null/noise model H0 (e.g. uniform-random gradient orientations) → <span class="step">2</span> enumerate candidate structures and their test multiplicity N<sub>tests</sub> → <span class="step">3</span> compute the tail probability of the observed alignment under H0 → <span class="step">4</span> accept only candidates with NFA ≤ ε (it is a validation layer wrapped around a detector).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Detection validation</b> in CV research — alignments, vanishing points, change detection (statistical, threshold-free).</div>
+              <span class="leaf__impl">only bundled inside LSD (no standalone Python)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Tensor voting</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> votes through a decaying field → <b>bridges gaps AND flags junctions</b> (ball tensor) that Hessian filters suppress.</div>
+              <div class="leaf__math"><span class="mk">math</span>token tensor <b>T = (λ₁−λ₂)·ê₁ê₁ᵀ + λ₂·(ê₁ê₁ᵀ+ê₂ê₂ᵀ)</b>; orientation-weighted votes cast through a curvature-penalizing decaying field, tensor-summed; λ₁−λ₂≫0 = curve, λ₁≈λ₂ = junction.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> encode each token (ridge point) as a 2nd-order symmetric tensor → <span class="step">2</span> each token casts stick/ball votes to neighbours through a distance- and curvature-decaying field → <span class="step">3</span> tensor-sum the votes at every site → <span class="step">4</span> re-decompose: large stick saliency = on-a-curve (gaps filled), large ball saliency = junction.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Perceptual grouping / gap-filling</b> research; point-cloud surface inference, curve completion.</div>
+              <span class="leaf__impl">no maintained Python — port from MATLAB/Java</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Diffusion / structure-tensor enhancement</span><span class="tag tag--stage">S1</span></div>
+          <p class="class__mech"><b>Mechanism:</b> an anisotropic PDE steered by the local orientation field smooths <b>along</b> the structure to close interrupted lines; the structure tensor itself supplies the orientation/coherence field every oriented method downstream consumes. (Chromatic-aberration rejection is now its own class below.)</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Coherence-enhancing diffusion (Weickert)</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Diffuses along the dominant orientation → <b>closes interrupted line-like structures</b>, single coherence knob. Already implemented.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>∂<sub>t</sub>u = div(D∇u)</b>, D shares structure-tensor J<sub>ρ</sub> eigenvectors; λ₁=α (small, across), λ₂=α+(1−α)·exp(−C/κ²) (large, along), coherence κ=(μ₁−μ₂)².</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute the structure tensor J<sub>ρ</sub> and eigendecompose → <span class="step">2</span> set the diffusion tensor D to diffuse strongly along v₂ (the coherence direction), weakly across → <span class="step">3</span> evolve the PDE a few iterations → <span class="step">4</span> read out the smoothed, gap-closed image (an enhancer, not a binarizer).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Fingerprint / coherent-texture restoration</b>, fibre &amp; flow-line imaging (research, some forensic).</div>
+              <span class="leaf__impl"><code>enhance/_structure_smoothing.py</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Structure-tensor orientation + coherence</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body"><b>Innovates (as primitive):</b> orientation field + coherence that <b>flags junctions</b> (coherence → 0). Feeds diffusion and reconnection.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>J = G<sub>ρ</sub> ∗ (∇I∇Iᵀ)</b>; θ = ½·atan2(2J<sub>xy</sub>, J<sub>xx</sub>−J<sub>yy</sub>), coherence c = ((μ₁−μ₂)/(μ₁+μ₂))² ∈ [0,1]; eigenvector v₂ = line direction.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute smoothed gradient outer-products ∇I∇Iᵀ → <span class="step">2</span> Gaussian-average over a scale ρ → <span class="step">3</span> eigendecompose the 2×2 tensor per pixel → <span class="step">4</span> emit an orientation field + coherence map (coherence → 0 flags junctions/isotropic regions).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Ubiquitous primitive</b> — fibre/material orientation mapping (OrientationJ), optic flow, corner detection.</div>
+              <span class="leaf__impl">used in <code>_structure_smoothing.py</code> · ext <code>structure-tensor</code> (MIT)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Vesselness / PCT-enhancing diffusion</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> gates the diffusion by a vesselness/phase-congruency tensor → tubular-aware closing (inherits Hessian junction ambiguity). PCT validated on fungal networks.</div>
+              <div class="leaf__math"><span class="mk">math</span>vesselness V (Frangi λ₁,λ₂ — or a <b>Phase Congruency Tensor</b> from log-Gabor phase energy) sets the diffusivity and direction of the anisotropic-diffusion tensor; iterate to lengthen ridges.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute multi-orientation phase congruency → <span class="step">2</span> build the Phase Congruency Tensor and eigen-analyze for orientation + (contrast-independent) vesselness → <span class="step">3</span> diffuse along the vessel direction scaled by vesselness → <span class="step">4</span> iterate to lengthen/close ridges before thresholding.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Fungal / mycelial network analysis</b> (the original Obara application) and vessel-enhancement research.</div>
+              <span class="leaf__impl">combine repo vesselness + CED (no packaged coupled scheme)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Fingerprint ridge-flow</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> orientation-field-steered Gabor enhancement → ridge sharpening (binary-ridge bias; low coherence at crossings).</div>
+              <div class="leaf__math"><span class="mk">math</span>structure-tensor <b>orientation field θ(x)</b> → steer a per-pixel oriented Gabor (frequency = ridge spacing) aligned to θ → contrast-enhanced ridge map.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> estimate the per-pixel orientation field from the structure tensor → <span class="step">2</span> estimate the local ridge frequency/spacing → <span class="step">3</span> apply a per-pixel Gabor filter tuned to (orientation, frequency) → <span class="step">4</span> binarize the enhanced, regularized ridge map.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Production fingerprint / AFIS enhancement</b> (forensics, biometric authentication).</div>
+              <span class="leaf__impl"><code>fingerprint-enhancer</code> (BSD-2, low activity)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Chromatic-aberration rejection</span><span class="tag tag--stage">S0 · upstream</span></div>
+          <p class="class__mech"><b>Mechanism:</b> chromatic aberration paints coloured fringes along high-contrast edges that <b>structurally mimic thin coloured filaments</b> — the one confounder <b>no single-channel ridge operator handles</b>. Correct or reject it <b>upstream (S0)</b>, before any oriented analysis runs; a parallel workstream triggered when the Phase-0 buckets show colour-fringe false positives.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Chromatic-aberration correction</span><span class="tag tag--base">BASE</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body">Registers the colour channels (R,B → G) to remove the <b>lateral colour fringe</b> that mimics thin coloured filaments. Runs before everything.</div>
+              <div class="leaf__math"><span class="mk">math</span>per-channel radial warp to green: <b>Δr = a·r + b·r³ + c·r⁵</b> (radial-polynomial from optical centre), or a dense R↔G/B↔G registration; resample R,B onto G via sub-pixel interpolation.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> detect high-contrast edges / keypoints across channels → <span class="step">2</span> fit a radial-polynomial (or dense) R→G and B→G displacement model from the optical centre → <span class="step">3</span> warp/resample R and B onto G's grid by sub-pixel interpolation → <span class="step">4</span> residual desaturation of remaining fringe (runs before any ridge detection).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Camera &amp; lens pipelines</b> — Lightroom / DxO / lensfun, microscopy, photogrammetry (production).</div>
+              <span class="leaf__impl"><code>lensfunpy</code> (LGPL, needs lens profile) / OpenCV per-channel registration DIY</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Cross-channel fringe suppression</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> kills purple/longitudinal CA where channels disagree, preserving achromatic hyphal ridges.</div>
+              <div class="leaf__math"><span class="mk">math</span>flag fringe where colour gradient is large but cross-channel-<i>inconsistent</i> with luminance (<b>∇C·∇G small</b>) → desaturate toward G / shearlet-domain LUT re-align R,B to G; leave consistent edges.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute per-channel gradients and chroma → <span class="step">2</span> flag pixels where the colour gradient is strong but inconsistent with the luminance/green gradient (the CA signature) → <span class="step">3</span> desaturate toward G or re-align R,B to G there → <span class="step">4</span> leave cross-channel-consistent (genuine) edges untouched.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Purple-fringe removal</b> in consumer photo software (Lightroom defringe) and camera ISPs.</div>
+              <span class="leaf__impl">no maintained pkg — small NumPy defringe DIY</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PHASE 2 ================= -->
+  <section class="phase" style="--ph:var(--gold)">
+    <div class="phase__head">
+      <div class="phase__num">2</div>
+      <div class="phase__txt">
+        <h2>Reconnection — feed or replace the Dijkstra step</h2>
+        <p>Attacks the dense-overlap→gaps regime directly. These consume the baseline's fragment endpoints + orientation field and either bridge gaps locally (predict-and-track) or extract a connected skeleton globally (persistence).</p>
+      </div>
+    </div>
+    <div class="classes">
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Predict-and-track / graph linking</span><span class="tag tag--stage">S3</span></div>
+          <p class="class__mech"><b>Mechanism:</b> follow a hypothesised path through dropouts using the <b>local ridge orientation</b>, gating each step, and link fragments into a graph. Training-free, seeds from baseline endpoints.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Dijkstra least-cost reconnection</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Multisource least-cost path on a composite cost surface. The existing reconnection these alternatives are measured against.</div>
+              <div class="leaf__math"><span class="mk">math</span>path = <b>argmin<sub>π</sub> Σ<sub>x∈π</sub> c(x)</b> on a composite cost c = f(phase energy, anisotropy, orientation coherence, local MAD) with gap/border penalties; multisource frontier.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build the composite cost surface from phase energy, anisotropy, orientation coherence and local MAD → <span class="step">2</span> set sources at fragment endpoints → <span class="step">3</span> run a multisource least-cost frontier (Dijkstra) → <span class="step">4</span> trace the minimal-cost paths that bridge gaps and merge them into the objmap.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Neuron / vessel tracing reconnection</b> (Vaa3D, Simple Neurite Tracer), seam carving, route planning; PhenoTypic's current reconnector.</div>
+              <span class="leaf__impl"><code>sdk_/branch_pathfinding/</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">GWDT / APP2 neurite tracing</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a grey-weighted distance transform feeds the cost surface → closest drop-in upgrade for the existing Dijkstra.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>grey-weighted distance transform</b> GWDT (intensity-weighted geodesic distance) → shortest-path tree (Dijkstra/MST) from seeds; APP2 prunes the over-complete tree by coverage.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute the grey-weighted distance transform (distance weighted by inverse intensity) from a root → <span class="step">2</span> backtrace a shortest-path tree over all foreground voxels → <span class="step">3</span> prune the over-complete tree by a coverage/redundancy criterion (APP2) → <span class="step">4</span> emit the centerline graph.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Automated neuron reconstruction</b> (Vaa3D / BigNeuron) in connectomics.</div>
+              <span class="leaf__impl"><code>gwdt</code> (DT primitive) / <code>rivuletpy</code> (BSD)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Kalman track finding</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> predict/update with a gate → coast through gaps along the orientation field, single gate-size knob (the dominant HEP track-finder).</div>
+              <div class="leaf__math"><span class="mk">math</span>predict x̂⁻=Fx̂, P⁻=FPFᵀ+Q; associate hits inside the <b>Mahalanobis gate d² = νᵀS⁻¹ν ≤ χ²</b>; update; coast (predict-only) when no hit → bridges gaps.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> seed the state at a fragment endpoint + its orientation → <span class="step">2</span> predict the next position and its covariance → <span class="step">3</span> search for ridge measurements inside the Mahalanobis gate; update if found, else coast (predict-only) through the gap → <span class="step">4</span> continue until termination, then link the tracks.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>HEP track reconstruction</b> (ATLAS/CMS production), radar/target tracking, sensor fusion, guidewire tracking.</div>
+              <span class="leaf__impl"><code>filterpy</code> (MIT) — primitive; you write predict-and-coast</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">dMRI tractography</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> integrates <b>streamlines</b> over an orientation/ODF field → crossing-aware following.</div>
+              <div class="leaf__math"><span class="mk">math</span>streamline integration <b>x<sub>t+1</sub> = x<sub>t</sub> + Δs·v(x<sub>t</sub>)</b>, v sampled from the local orientation/ODF (deterministic or probabilistic); stop on low FA/angle.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build a per-pixel orientation / ODF field (the hyphal-direction surrogate) → <span class="step">2</span> place seeds → <span class="step">3</span> integrate a streamline step-by-step along the local direction (Euler/RK), re-sampling direction each step → <span class="step">4</span> stop on low anisotropy or sharp turn; collect the streamlines.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Clinical &amp; research white-matter mapping</b> and neurosurgical planning (DIPY / MRtrix).</div>
+              <span class="leaf__impl"><code>dipy</code> (BSD, active) — heavyweight MRI framing</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Ant-colony oriented voting</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> stigmergic walk → <b>jointly denoises and reconnects</b>; multi-attribute (per-channel) front end is a CA lead.</div>
+              <div class="leaf__math"><span class="mk">math</span>agents walk a graph depositing pheromone τ; transition probability ∝ <b>τ<sup>α</sup>·η<sup>β</sup></b> (η = local orientation consistency); reinforced coherent ridges survive, noise evaporates.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> initialize pheromone and drop agents at ridge seeds → <span class="step">2</span> each agent steps probabilistically preferring high pheromone × local orientation consistency → <span class="step">3</span> deposit pheromone on traversed coherent ridges, evaporate elsewhere → <span class="step">4</span> threshold the pheromone map and thin to a binary mask.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Seismic fault interpretation</b> — Schlumberger Petrel 'ant-tracking', production in oil &amp; gas.</div>
+              <span class="leaf__impl"><code>acopy</code> (Apache-2.0, generic) — adapt pheromone-on-grid</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Cellular-automaton track finder</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> collinear chain-growth → <b>enumerates branches in parallel</b> (handles forks Kalman alone misses).</div>
+              <div class="leaf__math"><span class="mk">math</span>segments = cells with a state counter; each iteration a cell increments if it has a collinear neighbour one state lower; long monotone chains = track candidates, evolved in parallel.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build a segment graph from neighbouring ridge points → <span class="step">2</span> iterate the CA rule: a cell's state increments when it has a collinear neighbour one state lower (all cells updated in parallel) → <span class="step">3</span> after convergence, walk the longest descending-state chains backward → <span class="step">4</span> output the track candidates (forks enumerated naturally).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Online HEP track finding</b> in triggers (CBM / ALICE / STAR).</div>
+              <span class="leaf__impl">no reusable lib (lives in HEP frameworks) — implement cell rule</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Persistence / Morse skeleton topology</span><span class="tag tag--stage">S3</span></div>
+          <p class="class__mech"><b>Mechanism:</b> extract a globally connected skeleton via topological <b>persistence</b> or steepest descent — a single persistence/significance knob instead of local pathfinding. Junctions appear as saddle points.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">FilFinder</span><span class="tag tag--base">BASE</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body">Adaptive mask → medial-axis skeleton graph with length/width/curvature. The off-the-shelf 2D option.</div>
+              <div class="leaf__math"><span class="mk">math</span>adaptive local-threshold mask (after an arctan brightness-flattening step) → <b>medial-axis skeletonization</b> → skeleton graph, prune spurs by length/intensity → fit transverse (Gaussian/Plummer) radial profile for width.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build an adaptive-threshold mask of bright structure → <span class="step">2</span> reduce it to a 1-pixel medial-axis skeleton → <span class="step">3</span> convert to a graph and prune short/faint spur branches → <span class="step">4</span> fit a transverse radial profile per spine for width and position angle.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Astronomy</b> — Herschel dust-filament skeleton &amp; width characterization (deployed astro tool).</div>
+              <span class="leaf__impl"><code>pip install fil-finder</code> (MIT)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">PH / Morse libraries (GUDHI)</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> the persistence + cubical-complex <b>engine</b> for an in-Python DisPerSE-style pipeline (these libs give the persistence pairs; Morse-Smale skeleton extraction must be built on top).</div>
+              <div class="leaf__math"><span class="mk">math</span>sublevel-set <b>filtration</b> of the intensity field → persistence diagram of (β₀ components, β₁ loops) with birth/death pairs; cancel low-persistence pairs (denoise). NB: GUDHI/ripser give persistence, not the Morse-Smale filament geometry — that is DisPerSE territory or extra code.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build a sublevel-set filtration / cubical complex from the intensity field → <span class="step">2</span> compute persistence pairs (birth/death of components and loops) → <span class="step">3</span> cancel low-persistence pairs (topological denoising) → <span class="step">4</span> build the Morse-Smale 1-skeleton (saddle→maximum arcs) on top — the libs supply the persistence pairs, you supply the filament-extraction step.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Topological data analysis</b> across ML, materials &amp; neuroscience; persistence-based features (research, growing).</div>
+              <span class="leaf__impl"><code>gudhi</code>, <code>ripser</code>, <code>scikit-tda</code> (active)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">DisPerSE</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> Morse-Smale + persistence Nσ → <b>self-thresholding</b> filament network with explicit saddle junctions.</div>
+              <div class="leaf__math"><span class="mk">math</span>density as a discrete Morse function → Morse-Smale complex; filaments = <b>ascending 1-manifolds</b> (2-saddle → maximum); significance via <b>persistence (death−birth) ≥ Nσ</b>.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build the Morse-Smale complex from the discrete gradient of the (smoothed) density → <span class="step">2</span> pair critical points and compute persistence → <span class="step">3</span> cancel pairs below the Nσ threshold (topological denoising) → <span class="step">4</span> keep the ascending 1-manifolds (saddle→maximum) as the filament skeleton.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Cosmology</b> — cosmic-web / ISM filament extraction in large-scale-structure surveys.</div>
+              <span class="leaf__impl"><code>thierry-sousbie/DisPerSE</code> (C++/CeCILL) — compile + file I/O</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">D8 flow accumulation</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> a <b>connected tree</b> from the ridge map treated as an inverted DEM.</div>
+              <div class="leaf__math"><span class="mk">math</span>each cell drains to the steepest of its 8 neighbours; <b>flow accumulation A(x)</b> = #cells draining through x; keep the network where A ≥ τ (a connected, rooted tree).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> treat the (inverted) ridge map as a DEM and fill spurious pits → <span class="step">2</span> assign each cell the steepest-descent direction to one of its 8 neighbours → <span class="step">3</span> accumulate upstream cell counts along the flow directions → <span class="step">4</span> threshold accumulation (A ≥ τ) to extract the connected drainage/ridge network.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Hydrology / GIS</b> drainage-network &amp; watershed delineation (ArcGIS, GRASS — production).</div>
+              <span class="leaf__impl"><code>pysheds</code> / <code>richdem</code> — GPL</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Active contours / level sets</span><span class="tag tag--stage">S2·S3</span></div>
+          <p class="class__mech"><b>Mechanism:</b> evolve a curve under internal smoothness + a ridge force, integrating evidence along the contour. The cytoskeleton "closest twin" treats junctions as first-class objects — but the best tools are non-Python.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">Chan–Vese / level sets</span><span class="tag tag--base">BASE</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body">Implicit φ evolution with automatic split/merge topology. Region-based; already wrapped as a detector.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>∂φ/∂t = |∇φ|(α·κ + V<sub>ext</sub>)</b>, curvature κ = div(∇φ/|∇φ|); Chan–Vese region speed V from (I−c₁)²−(I−c₂)²; mask = {φ ≤ 0}.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> initialize φ from a seed/threshold → <span class="step">2</span> compute the speed from region statistics (Chan–Vese) or edges (geodesic) → <span class="step">3</span> iterate the level-set PDE with periodic reinitialization (topology splits/merges automatically) → <span class="step">4</span> take {φ ≤ 0} (or a thin-tube variant) as the mask.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Medical region segmentation</b> (cardiac, tumour) and general region/edge seg (ITK / skimage); PhenoTypic detector.</div>
+              <span class="leaf__impl"><code>detect/_chan_vese_detector.py</code> · <code>skimage</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">SOAX (stretching open active contours)</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> open snakes that <b>construct, cluster and splice T-junctions</b> and reconnect by orientation/smoothness — the closest twin to dense mycelium. (C++/ITK GUI binary.)</div>
+              <div class="leaf__math"><span class="mk">math</span>minimize <b>E = ∫[α|v′|² + β|v″|²]ds + ∫E<sub>ext</sub>(v)ds</b> with a stretch force k<sub>str</sub> growing the open snake along the ridge centerline; detect collisions → cut/splice at T-junctions.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> seed open snakes on intensity ridges (threshold τ) → <span class="step">2</span> evolve each under internal smoothness + ridge force + an elongation/stretch force that grows it along the centerline → <span class="step">3</span> detect snake collisions and construct/cluster/splice T-junctions → <span class="step">4</span> output the centerline network, dilate to a mask.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Cytoskeletal network quantification</b> — actin / microtubule analysis in biophysics labs.</div>
+              <span class="leaf__impl"><code>tix209/SOAX</code> — drive via CLI + parse text output</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">CT-FIRE</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> curvelet denoise + FIRE distance-transform trace → collagen fibre quantification.</div>
+              <div class="leaf__math"><span class="mk">math</span>curvelet-domain denoise → <b>FIRE</b>: nucleate at distance-transform maxima, extend fibres along the DT ridge, link, prune by length/angle.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> denoise/enhance in the curvelet domain → <span class="step">2</span> compute the distance transform and nucleate fibre seeds at its maxima → <span class="step">3</span> extend fibres along the DT ridge and link collinear segments → <span class="step">4</span> prune by length/angle and report fibre geometry.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Collagen-fibre quantification</b> in tumour / tissue pathology (widely used in cancer imaging research).</div>
+              <span class="leaf__impl">MATLAB; <code>PyFibre</code> reimplements FIRE only (no curvelet step)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">SIFNE</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> oriented-filter fragments + global <b>pairing optimization</b> → dense filament networks.</div>
+              <div class="leaf__math"><span class="mk">math</span>oriented-filter transform detects short fragments + tip orientations → <b>global fragment-pairing optimization</b> (cost on distance + orientation continuity) → linked network.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> apply an oriented-filter transform to detect short filament fragments and their tip orientations → <span class="step">2</span> build a pairing cost from inter-tip distance + orientation continuity → <span class="step">3</span> solve the global fragment-pairing optimization → <span class="step">4</span> link paired fragments into the dense network.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Dense cytoskeletal filament extraction</b> from microscopy (research).</div>
+              <span class="leaf__impl">MATLAB only</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PHASE 3 ================= -->
+  <section class="phase" style="--ph:var(--gap)">
+    <div class="phase__head">
+      <div class="phase__num">3</div>
+      <div class="phase__txt">
+        <h2>Learned — deferred until labels / synthetic data exist</h2>
+        <p>Highest ceiling, highest commitment (a labelling campaign or synthetic pipeline is a sunk cost). Lead with the decoder-only SAM2 fine-tune defended by a centerline topology loss; bake CA &amp; agar-grain robustness into synthetic pretraining.</p>
+      </div>
+    </div>
+    <div class="classes">
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">CNN segmenters &amp; imbalance losses</span><span class="tag tag--stage">S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> an encoder–decoder learns the mask end-to-end; for an extreme-minority target <b>the loss is the design decision</b>, not the architecture.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">U-Net / Attention U-Net</span><span class="tag tag--base">BASE</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body">Skip-connected encoder–decoder; attention gates up-weight sparse ridges. The reference biomedical segmenter.</div>
+              <div class="leaf__math"><span class="mk">math</span>encoder conv→pool, decoder up-conv→<b>concat(skip)</b>→conv, 1×1 conv + sigmoid; loss = CE / soft-Dice. Attention gate: <b>α = σ(ψᵀ·σ(W<sub>x</sub>x + W<sub>g</sub>g))</b>, x̂ = α·x before concat.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> contract: conv→pool down to coarse semantic features → <span class="step">2</span> expand: up-conv and concatenate the same-resolution encoder skip (attention gate optionally re-weights it first) → <span class="step">3</span> conv-decode to per-pixel probability → <span class="step">4</span> threshold; train on small data with heavy augmentation.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>The default biomedical segmentation backbone</b> — deployed across clinical &amp; research imaging.</div>
+              <span class="leaf__impl"><code>segmentation-models-pytorch</code> (MIT) / <code>monai</code> (Apache)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">nnU-Net</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> self-configures the whole pipeline from a dataset fingerprint → turnkey (heavy, medical-oriented).</div>
+              <div class="leaf__math"><span class="mk">math</span>no new operator — rule-based + empirical mapping of a dataset <b>fingerprint</b> (spacing, shape, intensity histogram, class ratios) + GPU budget → patch/batch, depth/pooling, normalization; 5-fold CV ensemble + component postproc.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> extract the dataset fingerprint → <span class="step">2</span> derive preprocessing + network topology under the hardware budget → <span class="step">3</span> train with deep supervision, heavy augmentation and 5-fold cross-validation → <span class="step">4</span> auto-select the best config/ensemble and apply connected-component postprocessing.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>SOTA turnkey medical segmentation</b> — challenge-winning, clinical-research pipelines.</div>
+              <span class="leaf__impl"><code>pip install nnunetv2</code> (Apache)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Tversky / Focal loss</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> asymmetric weighting recovers faint false-negative branches → attacks thin-structure class imbalance.</div>
+              <div class="leaf__math"><span class="mk">math</span>Tversky <b>TI = TP/(TP + α·FP + β·FN)</b>, loss (1−TI)<sup>γ</sup> (β&gt;α favours recall); Focal <b>FL = −α<sub>t</sub>(1−p<sub>t</sub>)<sup>γ</sup>·log p<sub>t</sub></b> down-weights easy background.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> compute soft TP/FP/FN (or per-pixel p<sub>t</sub>) from the prediction → <span class="step">2</span> apply asymmetric weighting (β ≫ α to punish missed foreground) and/or the focal exponent γ → <span class="step">3</span> backprop, emphasizing faint false-negative branches and hard pixels → used alongside (not instead of) a topology loss.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Standard imbalance-loss library</b> for lesion segmentation &amp; dense detection (smp / MONAI).</div>
+              <span class="leaf__impl"><code>smp.losses</code> / <code>monai</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">DeepCrack</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> multi-scale deep-supervised fusion for <b>thin cracks</b> — the closest analog to oriented ridges.</div>
+              <div class="leaf__math"><span class="mk">math</span>SegNet encoder–decoder with side outputs at 5 scales, encoder/decoder features pairwise fused; <b>L = Σ<sub>s</sub> w<sub>s</sub>·BCE(side<sub>s</sub>, y) + BCE(fused, y)</b> (deep supervision).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> encode through the SegNet backbone → <span class="step">2</span> at each of 5 scales fuse the paired encoder + decoder features into a side-output crack map → <span class="step">3</span> deeply supervise every side output → <span class="step">4</span> fuse all scales into the final map (fine maps catch tips, coarse maps the topology).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Infrastructure inspection</b> — pavement &amp; concrete crack monitoring (research / industry).</div>
+              <span class="leaf__impl"><code>yhlleo/DeepSegmentor</code> (PyTorch port) — research code</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">D-LinkNet</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> dilated bottleneck → long-line receptive field for road networks.</div>
+              <div class="leaf__math"><span class="mk">math</span>ResNet-34 encoder + a <b>cascade + parallel of dilated convolutions</b> (rates 1,2,4,8) in the centre block (enlarges receptive field without resolution loss) + LinkNet decoder; BCE+Dice.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> encode with ResNet-34 → <span class="step">2</span> pass features through a cascade of dilated convolutions in the bottleneck (large receptive field, full resolution) → <span class="step">3</span> decode with LinkNet skip-adds → <span class="step">4</span> sigmoid + threshold the long-line road/ridge map.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Aerial / satellite road extraction</b> (DeepGlobe winner; remote-sensing mapping).</div>
+              <span class="leaf__impl">research repo / <code>smp.Linknet</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Bbox-crop two-stage</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> localize → crop → segment → raises the foreground ratio for small high-res targets (a pattern, compose-yourself).</div>
+              <div class="leaf__math"><span class="mk">math</span>Stage 1 detector → boxes b=(x,y,w,h); Stage 2 fine segmenter on the cropped (optionally upsampled) patch <b>x[b]</b>, raising the FG/BG ratio; stitch back.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> Stage 1: coarse-localize colony/mycelium ROIs (detector or low-res seg) → <span class="step">2</span> crop and optionally upsample each ROI → <span class="step">3</span> Stage 2: run the fine segmenter at high effective resolution on the crop → <span class="step">4</span> stitch the crop masks back into the full image.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Small-object high-res segmentation</b> — medical ROI cropping, nnU-Net cascade (standard pattern).</div>
+              <span class="leaf__impl">Detectron2 (Apache) or Ultralytics (AGPL) → smp</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Topaz</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> positive-unlabeled CNN + U-Net denoiser → learns from <b>sparse labels</b> (cryo-EM).</div>
+              <div class="leaf__math"><span class="mk">math</span><b>positive-unlabeled (PU)</b> learning: a CNN classifier trained from a few positives + unlabeled pool with a class-prior π; paired with a U-Net denoiser (Noise2Noise-style).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> label a few positive locations, treat the rest as unlabeled → <span class="step">2</span> train the PU CNN classifier with a class-prior π → <span class="step">3</span> optionally denoise micrographs with the paired U-Net → <span class="step">4</span> score the image and NMS-pick detections.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Cryo-EM particle picking + denoising</b> (deployed in structural biology; RELION / cryoSPARC ecosystem).</div>
+              <span class="leaf__impl"><code>topaz-em</code> — GPL-3</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">crYOLO (filament mode)</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> grid detector + line fit through picks → filament picking (but junction-omitting).</div>
+              <div class="leaf__math"><span class="mk">math</span>YOLO single-shot grid: per cell predict box + objectness; <b>filament mode fits a line</b> through closely-spaced box centres and resamples picks along it.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> train the YOLO grid detector on labeled boxes (~40 images) → <span class="step">2</span> per grid cell predict a box + objectness in one shot → <span class="step">3</span> in filament mode, fit a line through closely-spaced box centres → <span class="step">4</span> resample picks evenly along the fitted line.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Cryo-EM particle / filament picking</b> (production in SPHIRE / structural-biology labs).</div>
+              <span class="leaf__impl"><code>cryolo</code> — non-commercial license</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">FaultSeg3D</span><span class="av av--gap">PORT IT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> trains on <b>synthetic-only</b> data with balanced CE (concept transfers; 3D Keras/TF1).</div>
+              <div class="leaf__math"><span class="mk">math</span>3D U-Net trained purely on <b>procedurally-synthesized</b> fault volumes; <b>balanced binary cross-entropy</b> (single fault class, rare-positive vs background reweighted) handles the thin-fault minority.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> procedurally synthesize fault volumes with exact labels → <span class="step">2</span> train a 3D U-Net with balanced cross-entropy (inverse-frequency class weights) → <span class="step">3</span> apply to real volumes (no real labels needed) → <span class="step">4</span> threshold the per-voxel fault probability.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Seismic fault interpretation</b> (geophysics; synthetic-trained, oil &amp; gas research).</div>
+              <span class="leaf__impl"><code>xinwucwp/faultSeg</code></span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Topology-aware losses &amp; tracing nets</span><span class="tag tag--stage">S2·S3</span></div>
+          <p class="class__mech"><b>Mechanism:</b> penalize <b>topological</b> errors (breaks/merges), not just per-pixel overlap — the learned analog of junction preservation. Drop-in riders on any segmenter.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">clDice / soft-clDice</span><span class="tag tag--base">BASE</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body">Overlap of soft <b>skeletons</b> → provably preserves topology up to homotopy, recovers gap false-negatives. Drop-in differentiable loss.</div>
+              <div class="leaf__math"><span class="mk">math</span>soft skeletons S=skel(V) via iterated min/max-pool; <b>T<sub>prec</sub>=|S<sub>P</sub>∩V<sub>L</sub>|/|S<sub>P</sub>|</b>, T<sub>sens</sub>=|S<sub>L</sub>∩V<sub>P</sub>|/|S<sub>L</sub>|; clDice = 2·T<sub>prec</sub>·T<sub>sens</sub>/(T<sub>prec</sub>+T<sub>sens</sub>); L=(1−α)L<sub>Dice</sub>+α(1−clDice).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> differentiably skeletonize both prediction and label (iterated soft min/max-pool morphology) → <span class="step">2</span> measure each skeleton inside the opposite mask (topology precision &amp; sensitivity) → <span class="step">3</span> harmonic-mean them into the clDice connectivity score → <span class="step">4</span> blend with soft-Dice via α and backprop.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Connectivity-aware vessel / road / neuron segmentation</b> (research; adopted in topology-aware pipelines).</div>
+              <span class="leaf__impl"><code>jocpae/clDice</code> (MIT, git-install)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Skeleton Recall Loss</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body"><b>Innovates:</b> CPU skeleton target → &gt;90% cheaper than clDice, multi-class scalable.</div>
+              <div class="leaf__math"><span class="mk">math</span>GT skeleton S<sub>L</sub> (CPU thinning) dilated by a radius-2 diamond → tube T; soft recall <b>L<sub>SR</sub> = 1 − (Σ<sub>T</sub> p·g)/(Σ<sub>T</sub> g)</b> (topology compute moved off-GPU).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> skeletonize the GT once on CPU (morphological thinning) → <span class="step">2</span> dilate the skeleton to a thin tubular band → <span class="step">3</span> compute the soft recall of the prediction inside that band → <span class="step">4</span> add it to the base loss (no GPU soft-skeleton, hence cheap).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Tubular / thin-structure segmentation</b> training as an nnU-Net plugin (recent adoption).</div>
+              <span class="leaf__impl"><code>MIC-DKFZ/Skeleton-Recall</code> (Apache, active)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Persistent-homology / Betti loss</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> matches persistence diagrams → spatially-localized β₀/β₁ penalty (most principled, higher cost).</div>
+              <div class="leaf__math"><span class="mk">math</span>sublevel filtration → persistence diagram (β₀, β₁, birth/death); optimally match pred↔GT diagrams; <b>L<sub>topo</sub> = Σ (persistence of unmatched critical features)²</b>, backprop through critical pixels.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> build a filtration of the likelihood map and extract its persistence diagram (β₀ components, β₁ loops) → <span class="step">2</span> compute the GT diagram and optimally match features → <span class="step">3</span> penalize unmatched/short-lived (topologically wrong) features → <span class="step">4</span> backprop through the responsible critical pixels.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Topology-enforced segmentation</b> research — membranes, vessels.</div>
+              <span class="leaf__impl"><code>HuXiaoling/TopoLoss</code> / Betti-Matching · backend <code>torch_topological</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Homotopy Warping</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> works on the <b>binary mask</b> (not noisy likelihood), O(n); beats clDice on DRIVE Betti error.</div>
+              <div class="leaf__math"><span class="mk">math</span>warp pred↔GT through topology-preserving <b>simple-point</b> flips, identify critical pixels C via distance transform; <b>L<sub>warp</sub> = Σ<sub>x∈C</sub> BCE(p<sub>x</sub>, g<sub>x</sub>)</b>, O(n).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> warp the predicted binary mask toward GT (and vice versa) through topology-preserving simple-point flips → <span class="step">2</span> identify the topologically-critical pixels that had to flip (via distance transform, O(n)) → <span class="step">3</span> apply a focused BCE penalty only on those pixels → <span class="step">4</span> blend with the overlap loss.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Connectivity-aware curvilinear segmentation</b> research.</div>
+              <span class="leaf__impl"><code>HuXiaoling/Warping</code> (research)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">Orientation-aware tracing nets</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> emit a centerline graph instead of a pixel mask (repo analog: <code>branch_pathfinding</code>).</div>
+              <div class="leaf__math"><span class="mk">math</span>next-direction head <b>θ<sub>t+1</sub> = f<sub>φ</sub>(patch(x<sub>t</sub>), θ<sub>t</sub>)</b> (softmax over angles / von Mises) + step ℓ; x<sub>t+1</sub> = x<sub>t</sub> + ℓ(cosθ, sinθ); spawn new tracers at branch points.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> seed tracers at endpoints / high-evidence pixels → <span class="step">2</span> crop a local oriented patch and predict the next direction + stop probability → <span class="step">3</span> step forward (integrating evidence along the line), spawning new tracers at branch points → <span class="step">4</span> repeat until stop, yielding an explicit connected graph.</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Road-network graph extraction</b> from aerial imagery; vessel / neuron centerline-graph research.</div>
+              <span class="leaf__impl"><code>mitroadmaps/roadtracer</code> (iterative agent) · <code>anilbatra2185/road_connectivity</code> (MIT — per-pixel orientation, not iterative)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="class">
+        <div class="class__card">
+          <div class="class__hd"><span class="class__name">Foundation segmenters</span><span class="tag tag--stage">S2</span></div>
+          <p class="class__mech"><b>Mechanism:</b> a large pretrained promptable ViT; zero-shot fails on thin branching structure, so the route is <b>small-data adaptation</b>. PhenoTypic already wraps SAM2/SAM3.</p>
+          <ul class="leaves">
+            <li class="leaf leaf--base">
+              <div class="leaf__hd"><span class="leaf__name">SAM (Segment Anything)</span><span class="tag tag--base">BASE</span><span class="av av--pip">PIP · OSS</span></div>
+              <div class="leaf__body">Promptable ViT decoder. Zero-shot fragments faint thin vessels — the training-free end is foreclosed.</div>
+              <div class="leaf__math"><span class="mk">math</span>frozen ViT image embedding F + prompt embeddings → two-way transformer cross-attends output/mask tokens → <b>M = upsample(F) · MLP(token)</b> + IoU head; loss = focal + Dice.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> the heavy ViT encodes the image once → <span class="step">2</span> encode a point/box/mask prompt → <span class="step">3</span> the lightweight two-way decoder fuses prompt + image tokens into 3 candidate masks + IoU scores → <span class="step">4</span> automatic mode tiles a point grid (but fragments faint thin ridges).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>General promptable segmentation</b> — annotation tooling, interactive cutout, dataset labeling (widely deployed).</div>
+              <span class="leaf__impl"><code>facebookresearch/segment-anything</code> (Apache)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">SAM2 (decoder-only fine-tune)</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body"><b>Innovates:</b> freeze the hiera encoder, train the decoder only → robust small-data transfer, Colab-scale, "matches leading tools". The verified learned path.</div>
+              <div class="leaf__math"><span class="mk">math</span>same focal+Dice objective, but <b>encoder + prompt encoder frozen, only θ<sub>dec</sub> updated</b> — parameter delta = the decoder head; train on tens–hundreds of masks.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> freeze the hiera encoder + prompt encoder → <span class="step">2</span> feed a small labeled set with point/box prompts → <span class="step">3</span> backprop focal+Dice through the decoder only (single-notebook, no cluster) → <span class="step">4</span> infer with the same prompting interface, now domain-tuned (degrades on finest branches).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Promptable image + video segmentation</b>; annotation / tracking pipelines and domain fine-tunes (microscopy &mu;SAM); in PhenoTypic.</div>
+              <span class="leaf__impl"><code>detect/nn/_sam2_detector.py</code> · <code>sam2</code> (Apache)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">SAM3 / Medical SAM3</span><span class="av av--repo">IN REPO</span></div>
+              <div class="leaf__body"><b>Innovates:</b> text → spatial query DETR detector → prompt classes by name (gated weights via the license hook).</div>
+              <div class="leaf__math"><span class="mk">math</span>a <b>DETR-based detector + SAM2-style tracker sharing one vision encoder</b> (~848M params); open-vocabulary <b>Promptable Concept Segmentation</b> — a text/exemplar prompt → all matching instances. (Real model, released 2025-11-19; Medical-SAM3 fine-tunes it.)</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> aggregate corpora with mask + text pairs → <span class="step">2</span> fully fine-tune the encoder + decoder + text path → <span class="step">3</span> the semantic-alignment objective turns text embeddings into spatial queries → <span class="step">4</span> at inference a text prompt ("hyphae") yields the mask with no clicking (no thin-ridge prior).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Open-vocabulary text-promptable concept segmentation</b> (newest; annotation + concept retrieval); in PhenoTypic.</div>
+              <span class="leaf__impl"><code>detect/nn/_sam3_detector.py</code></span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">MedSAM</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> box-prompt decoder fine-tune on 1.57M medical pairs (box-only, grayscale bias).</div>
+              <div class="leaf__math"><span class="mk">math</span>freeze encoders, fine-tune the mask decoder (focal+Dice) over 1.57M (image, <b>box</b>, mask) triples; box b=(x₁,y₁,x₂,y₂) → positional embedding replaces point ambiguity.</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> freeze the encoders → <span class="step">2</span> train the mask decoder on 1.57M (image, box, mask) triples → <span class="step">3</span> at inference draw one box → <span class="step">4</span> the decoder emits a single binary mask within it (poor container for a plate-spanning network).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Box-prompted universal medical segmentation</b> (research + annotation acceleration).</div>
+              <span class="leaf__impl"><code>bowang-lab/MedSAM</code> (Apache)</span>
+            </li>
+            <li class="leaf">
+              <div class="leaf__hd"><span class="leaf__name">LoRA-SAM / VesselSAM / TopoLoRA</span><span class="av av--warn">CAVEAT</span></div>
+              <div class="leaf__body"><b>Innovates:</b> low-rank adapters + tubular/connectivity priors → thin-structure SAM adaptation with a clDice rider.</div>
+              <div class="leaf__math"><span class="mk">math</span><b>LoRA: W′ = W + BA</b>, B∈ℝ<sup>d×r</sup>, A∈ℝ<sup>r×d</sup>, r≪d (&lt;5% of params); add a tubular/connectivity prior — e.g. <b>VesselSAM</b> = Atrous-Attention + LoRA; <b>TPNet</b>'s Morphology-Driven Region-Growing (MDRG) is a separate few-shot line — with an imbalance-aware loss (BCE+Dice / Focal-Tversky).</div>
+              <div class="leaf__how"><span class="hk">how</span><span class="step">1</span> freeze the SAM backbone → <span class="step">2</span> inject LoRA low-rank adapters into encoder + decoder (and/or a tubular connectivity module) → <span class="step">3</span> train &lt;5% of params on a small labeled set with an imbalance-aware loss → <span class="step">4</span> infer a mask leveraging the learned tubular priors (add clDice for the finest branches).</div>
+              <div class="leaf__use"><span class="uk">used in</span> <b>Parameter-efficient SAM adaptation</b> to specialized / thin-structure domains (research, emerging clinical).</div>
+              <span class="leaf__impl"><code>salimkhazem/Seglab</code>, <code>JamesQFreeman/Sam_LoRA</code></span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="callout">
+    <b>Reading the tree as a plan.</b> The stages <b>compose</b> across phases — a defensible end-state is <em>oriented-Gaussian/CED enhancement (Ph 1, S1) → Steger ridge graph (Ph 0/1, S2) → Kalman or GWDT reconnection (Ph 2, S3)</em>, with chromatic-aberration correction (Ph 1, S0) upstream throughout, and the learned path (Ph 3) reserved for once a small labelled or synthetic set exists. Two pricing corrections from the implementation search: <b>SOAX</b> and <b>tensor voting</b> (high-ranked on mechanism) are <span class="av av--gap" style="font-size:9.5px">PORT IT</span> — costlier than they looked — while <b>Steger, RHT and LSD</b> are <span class="av av--pip" style="font-size:9.5px">PIP · OSS</span> — cheaper than they looked.
+  </div>
+
+  <div class="footer">
+    PhenoTypic · feature-gui/deliverable-standalone · generated 2026-06-26 · sources: docs/superpowers/reports/filamentous-fungi-detection/{breadth-survey,recommendations}.md + implementation-availability search. Math &amp; how-it-works are condensed from the breadth survey; availability flags reflect a point-in-time search — re-verify license, maintenance, and formulae before adopting. Cross-checked by 12 independent per-family verification agents (2026-06-26); their corrections are folded in — fingerprint-enhancer (BSD-2), acopy (Apache-2.0), GUDHI persistence-vs-Morse-Smale scope, the iterative-tracing repo (RoadTracer), and the VesselSAM-vs-TPNet split. Math/how-it-works verdicts came back overwhelmingly correct, with minor precision notes (Frangi β-symbol reuse, Meijering negative-λ′ gating, B-COSFIRE typically 2 prototypes) left as-is.
+  </div>
+
+</div>
+</body>
+</html>

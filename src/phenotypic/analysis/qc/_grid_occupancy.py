@@ -115,6 +115,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
     _HIGHER_IS_BAD: ClassVar[bool] = False
     _exposes_agg_func: ClassVar[bool] = False
     _measurement_infoclass: ClassVar[type | None] = QUALITY_OCCUPANCY
+    supports_object_curation: ClassVar[bool] = False
 
     warn_threshold: float = 0.95
     fail_threshold: float = 0.90
@@ -177,6 +178,47 @@ class GridOccupancy(ExpectedVsDetectedCount):
         out[str(QUALITY_OCCUPANCY.VACANT)] = max(expected - filled, 0)
         out[self.metric_col()] = float(metric)
         return out
+
+    def to_table(self) -> pd.DataFrame:
+        """Return one group-level row per group (occupancy is per-plate).
+
+        Occupancy reports filled-vs-expected counts broadcast across a
+        group's rows, so per-colony rows carry no extra signal. Collapse to
+        one row per group: the base ``summary()`` (renamed to the generic
+        QC columns) plus the occupancy-specific counts.
+
+        Returns:
+            A group-level frame: ``[*groupby, QC_Occupancy_Filled,
+            QC_Occupancy_Expected, QC_Occupancy_Vacant, QC_Occupancy_Metric,
+            QC_Occupancy_Status, QC_Occupancy_Flag]``.
+        """
+        df = self._latest_measurements
+        occ_cols = [
+            str(QUALITY_OCCUPANCY.FILLED),
+            str(QUALITY_OCCUPANCY.EXPECTED),
+            str(QUALITY_OCCUPANCY.VACANT),
+        ]
+        first = (
+            df.groupby(self.groupby, dropna=False)[
+                [c for c in occ_cols if c in df.columns]
+            ]
+            .first()
+            .reset_index()
+        )
+        summary = self.summary().rename(
+            columns={
+                "qc_worst_metric": self.metric_col(),
+                "qc_status": self.status_col(),
+            }
+        )
+        merged = first.merge(
+            summary[[*self.groupby, self.metric_col(), self.status_col()]],
+            on=list(self.groupby),
+            how="left",
+        )
+        # Group-level flag: any member flagged → fail-status drives the flag.
+        merged[self.flag_col()] = merged[self.status_col()] == "fail"
+        return merged
 
     def dash(self, **kwargs: Any) -> go.Figure:
         """Render a horizontal bar of per-group occupancy, colored by status.

@@ -13,6 +13,17 @@ cost.
 
 The builder pre-bakes one PNG per intermediate at preview-run time so the
 inspector never re-encodes on selection (see :func:`render_node_preview`).
+
+Per stage, :func:`render_node_preview` picks the channel: enhancer → ``detect_mat``;
+detector / refiner → objmap overlay (``label2rgb`` of ``objmap`` over ``detect_mat``,
+falling back to a tab20 colormap); corrector / nested ``ImagePipeline`` / unknown →
+``rgb``. The baked bytes — together with measurement DataFrames and
+``PreviewRenderError`` sentinels for per-node render failures (caught per node so one
+bad node never aborts the rest of the preview) — live in ``IntermediatesCache``
+(``builder/_session.py``). Caching PNG bytes rather than full ``Image`` instances
+keeps a bounded session's resident memory at ~10–15 MB instead of ~1–2 GB. The
+cache-baking unit ``_bake_preview_cache`` (``builder/_callbacks.py``) is the
+integration-test seam; ``run_preview`` is a thin Dash adapter over it.
 """
 
 from __future__ import annotations

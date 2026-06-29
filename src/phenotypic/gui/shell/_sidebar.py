@@ -249,8 +249,11 @@ def build_badges(caps: Capabilities) -> list[html.Span]:
     """Translate a :class:`Capabilities` summary to badge spans.
 
     Returns one or more ``html.Span`` elements suitable for inline placement
-    next to a sidebar entry's label. ``img``/``cfg``/``out`` are positive
-    capability badges; ``?`` surfaces ``bad_perms``.
+    next to a sidebar entry's label. ``img``/``cfg``/``out``/``bundle`` are
+    positive capability badges; ``?`` surfaces ``bad_perms``. A standalone
+    deliverables bundle (``deliverables/master`` but no ``results/``) gets the
+    distinct ``bundle`` badge so it is recognizable as a viewer-openable output
+    even though it is not a full ``out`` run.
     """
     out: list[html.Span] = []
     if caps.bad_perms:
@@ -265,6 +268,10 @@ def build_badges(caps: Capabilities) -> list[html.Span]:
         out.append(html.Span("cfg", className="shell-badge shell-badge-cfg"))
     if caps.is_cli_output:
         out.append(html.Span("out", className="shell-badge shell-badge-out"))
+    elif caps.is_deliverables_bundle:
+        out.append(
+            html.Span("bundle", className="shell-badge shell-badge-bundle")
+        )
     return out
 
 

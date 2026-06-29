@@ -34,12 +34,13 @@ def _master() -> pl.DataFrame:
 
 
 def _store(tmp_path: Path) -> CurationLabels:
+    from phenotypic.sdk_ import BundleLayout
     from tests._output_layout import write_master, write_measurements_mirror
 
     master = _master()
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
-    return CurationLabels.load(tmp_path, master)
+    return CurationLabels.load(BundleLayout.detect(tmp_path), master)
 
 
 # ---------------------------------------------------------------------------

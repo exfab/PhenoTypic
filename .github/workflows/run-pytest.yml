@@ -144,7 +144,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Cache testmon data
         uses: actions/cache@v5

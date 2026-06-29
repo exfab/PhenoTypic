@@ -70,6 +70,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Iterable, Optional
@@ -279,22 +280,12 @@ _PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}
 # QC artifact filenames (live inside DIR_QC)
 # ---------------------------------------------------------------------------
 
-#: Per-group QC summary written by
-#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`. One row per
-#: ``(instance_id, groupby key)``: the worst-direction metric, tri-state
-#: status, flag, member/flagged counts, and a worst-first ``rank``.
-QC_SUMMARY_PARQUET: Final[str] = "qc_summary.parquet"
-
-#: Per-group member colonies written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
-#: One row per ``(instance_id, group member)`` carrying the curation key
-#: (``Metadata_ImageFile`` + ``Object_Label``) plus the member's
-#: contributing value, so the Review gallery can render each group's tiles.
-QC_MEMBERS_PARQUET: Final[str] = "qc_members.parquet"
-
-#: Snapshot of the ``qc`` config entries (``instance_id``/``class``/
-#: ``enabled``/``params``) that produced the current ``qc/`` artifact.
-#: Written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.
-QC_CONFIG_JSON: Final[str] = "qc_config.json"
+#: DuckDB QC analysis database filename: ``<output>/deliverables/qc/qc.duckdb``.
+#: The sole QC artifact written by
+#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`: one self-describing table
+#: per QC module (worst-direction metric, tri-state status, flag, member rows,
+#: worst-first ``rank``) plus a ``qc_modules`` catalog describing each table.
+QC_DUCKDB: Final[str] = "qc.duckdb"
 
 #: Per-module GUI review progress (``instance_id`` -> reviewed group keys +
 #: last position). Written **only** by the results-viewer QC Review tab;
@@ -423,10 +414,12 @@ DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 #: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
-#: QC artifact subdirectory: ``<output>/qc/``. Holds
-#: :data:`QC_SUMMARY_PARQUET`, :data:`QC_MEMBERS_PARQUET`,
-#: :data:`QC_CONFIG_JSON` (written by ``run_qc``), and
-#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab).
+#: QC artifact subdirectory: ``<output>/deliverables/qc/``. Holds
+#: :data:`QC_DUCKDB` (written by ``run_qc``) and
+#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated
+#: under ``deliverables/`` so a bundle is self-contained;
+#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy
+#: pre-relocation root ``<output>/qc/``.
 DIR_QC: Final[str] = "qc"
 
 #: ``<output>/deliverables/`` — all user-facing run outputs collected in one
@@ -447,12 +440,13 @@ DIR_DELIVERABLES: Final[str] = "deliverables"
 #: via ``reemit_error_deliverables`` — so headless == live.
 DIR_ERRORS: Final[str] = "errors"
 
-#: Durable curation-labels store: ``<output>/qc/curation_labels.parquet``.
+#: Durable curation-labels store: ``<output>/deliverables/qc/curation_labels.parquet``.
 #: The source of truth for categorized removals; the CLI re-keys but never
 #: wipes it (contrast :data:`QC_REVIEW_STATE_JSON`).
 CURATION_LABELS_PARQUET: Final[str] = "curation_labels.parquet"
 
-#: Ordered custom-category registry sidecar: ``<output>/qc/custom_categories.json``.
+#: Ordered custom-category registry sidecar:
+#: ``<output>/deliverables/qc/custom_categories.json``.
 CUSTOM_CATEGORIES_JSON: Final[str] = "custom_categories.json"
 
 #: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;
@@ -747,6 +741,32 @@ def migrate_legacy_machine_state(output_dir: Path) -> bool:
                 # moving (or has moved) this artifact — safe to skip.
                 pass
     return moved
+
+
+def migrate_legacy_qc(output_dir: Path) -> bool:
+    """Move a pre-relocation run's ``<output>/qc/`` into ``deliverables/qc/``.
+
+    Hard cutover (MOVE, no duplication), mirroring
+    :func:`migrate_legacy_machine_state`. A no-op when there is no legacy ``qc/``
+    or when the canonical ``deliverables/qc/`` already exists (the move is
+    whole-directory; we never merge a half-written canonical with legacy).
+
+    Returns:
+        ``True`` if this call moved the directory, else ``False``.
+    """
+    import shutil
+
+    legacy = _legacy_qc_dir(output_dir)
+    canonical = qc_dir(output_dir)
+    if not legacy.is_dir() or canonical.exists():
+        return False
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.move(str(legacy), str(canonical))
+    except (FileNotFoundError, shutil.Error):
+        # Lost a race with a concurrent migrator; safe to skip.
+        return False
+    return True
 
 
 def clear_machine_state(output_dir: Path) -> bool:
@@ -1266,31 +1286,42 @@ def slurm_scripts_dir(output_dir: Path) -> Path:
 
 
 def qc_dir(output_dir: Path) -> Path:
-    """Return ``<output>/qc/``.
+    """Return ``<output>/deliverables/qc/`` — durable QC + curation state.
 
-    Pure path expression; ``run_qc`` is responsible for ``mkdir`` when it
-    writes into it (via :func:`_atomic_write`).
+    Relocated under ``deliverables/`` so a deliverables bundle is self-contained
+    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy
+    root ``<output>/qc/`` layout of pre-relocation runs.
     """
+    return deliverables_dir(output_dir) / DIR_QC
+
+
+def _legacy_qc_dir(output_dir: Path) -> Path:
+    """Pre-relocation location: ``<output>/qc/``."""
     return output_dir / DIR_QC
 
 
-def qc_summary_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_summary.parquet``."""
-    return qc_dir(output_dir) / QC_SUMMARY_PARQUET
+def resolve_qc_dir(output_dir: Path) -> Path:
+    """Return the qc dir that exists, preferring ``deliverables/qc/``.
+
+    Read-only resolver: deliverables/qc if present, else legacy root qc if
+    present, else the canonical deliverables/qc (for fresh writes).
+    """
+    new = qc_dir(output_dir)
+    if new.exists():
+        return new
+    legacy = _legacy_qc_dir(output_dir)
+    if legacy.exists():
+        return legacy
+    return new
 
 
-def qc_members_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_members.parquet``."""
-    return qc_dir(output_dir) / QC_MEMBERS_PARQUET
-
-
-def qc_config_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/qc_config.json``."""
-    return qc_dir(output_dir) / QC_CONFIG_JSON
+def qc_duckdb_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/qc/qc.duckdb``."""
+    return qc_dir(output_dir) / QC_DUCKDB
 
 
 def qc_review_state_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/review_state.json`` (GUI-owned review progress)."""
+    """Return ``<output>/deliverables/qc/review_state.json`` (GUI-owned review progress)."""
     return qc_dir(output_dir) / QC_REVIEW_STATE_JSON
 
 
@@ -1331,12 +1362,12 @@ def verified_parquet_path(output_dir: Path) -> Path:
 
 
 def curation_labels_parquet_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/curation_labels.parquet`` (durable labels store)."""
+    """Return ``<output>/deliverables/qc/curation_labels.parquet`` (durable labels store)."""
     return qc_dir(output_dir) / CURATION_LABELS_PARQUET
 
 
 def custom_categories_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/qc/custom_categories.json`` (custom-category registry)."""
+    """Return ``<output>/deliverables/qc/custom_categories.json`` (custom-category registry)."""
     return qc_dir(output_dir) / CUSTOM_CATEGORIES_JSON
 
 
@@ -1618,3 +1649,253 @@ def load_image_from_hdf(
         cls_attr = cls_attr.decode("utf-8", errors="replace")
     image_cls = GridImage if cls_attr == IMAGE_TYPES.GRID.value else Image
     return image_cls.load_hdf5(hdf_path)
+
+
+# ---------------------------------------------------------------------------
+# BundleLayout — resolved on-disk topology value object
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class BundleLayout:
+    """Resolved on-disk topology of a run output or a standalone deliverables bundle.
+
+    Separates the *deliverables base* (the folder directly holding
+    ``master_measurements.parquet``) from the optional *output root* (the parent
+    that also holds ``results/`` and ``.phenotypic/``). A standalone bundle has
+    ``output_root is None``; deliverables-internal artefacts always resolve from
+    ``deliverables_base`` so the bundle is portable.
+
+    Attributes:
+        deliverables_base: Folder containing ``master_measurements.parquet``.
+        output_root: Parent run directory holding ``results/`` + machine state,
+            or ``None`` for a standalone (deliverables-only) bundle.
+    """
+
+    deliverables_base: Path
+    output_root: Optional[Path]
+
+    @classmethod
+    def detect(cls, path: Path) -> "BundleLayout":
+        """Classify ``path`` as a run output dir or a standalone deliverables bundle.
+
+        Case 1 — ``path`` directly holds ``master_measurements.parquet``: treat it
+        as the deliverables base. Promote ``path.parent`` to ``output_root`` ONLY
+        when ``path`` is literally named ``deliverables`` AND a sibling ``results/``
+        exists (the "pointed at the deliverables subdir of a full run" case); this
+        guard stops a renamed standalone bundle from adopting an unrelated sibling
+        ``results/``.
+
+        Case 2 — ``path`` contains ``deliverables/master_measurements.parquet``:
+        ``deliverables_base = path/deliverables`` and ``output_root = path``.
+
+        Args:
+            path: Either a run output directory (containing a ``deliverables/``
+                subdirectory) or a standalone deliverables folder (directly
+                containing ``master_measurements.parquet``).
+
+        Returns:
+            A :class:`BundleLayout` with resolved ``deliverables_base`` and
+            ``output_root``.
+
+        Raises:
+            FileNotFoundError: ``path`` is neither a run output directory nor a
+                deliverables bundle.
+        """
+        path = Path(path).resolve()
+        if (path / MASTER_MEASUREMENTS_PARQUET).is_file():
+            output_root: Optional[Path] = None
+            if path.name == DIR_DELIVERABLES and (path.parent / DIR_RESULTS).is_dir():
+                output_root = path.parent
+            return cls(deliverables_base=path, output_root=output_root)
+        if (path / DIR_DELIVERABLES / MASTER_MEASUREMENTS_PARQUET).is_file():
+            return cls(deliverables_base=path / DIR_DELIVERABLES, output_root=path)
+        raise FileNotFoundError(
+            f"{path} is neither a deliverables bundle nor a run output directory "
+            f"containing {DIR_DELIVERABLES}/{MASTER_MEASUREMENTS_PARQUET}. Point the "
+            "viewer at a `python -m phenotypic` output dir or a deliverables/ folder."
+        )
+
+    # -- capability ---------------------------------------------------------
+
+    @property
+    def has_results(self) -> bool:
+        """Return ``True`` when a ``results/`` directory exists under the output root."""
+        return self.output_root is not None and (self.output_root / DIR_RESULTS).is_dir()
+
+    @property
+    def results_dir(self) -> Optional[Path]:
+        """Return the ``results/`` directory, or ``None`` for a standalone bundle."""
+        if self.output_root is None:
+            return None
+        results = self.output_root / DIR_RESULTS
+        return results if results.is_dir() else None
+
+    def hdf_path(self, dataset: str, stem: str) -> Optional[Path]:
+        """Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.
+
+        Args:
+            dataset: Dataset name (subdirectory under ``results/``).
+            stem: Image stem (filename without extension).
+
+        Returns:
+            Resolved ``.h5`` path if the file exists, otherwise ``None``.
+        """
+        if self.output_root is None:
+            return None
+        candidate = dataset_hdf_dir(self.output_root, dataset) / f"{stem}.h5"
+        return candidate if candidate.is_file() else None
+
+    # -- deliverables-anchored artefacts ------------------------------------
+
+    @property
+    def master_parquet(self) -> Path:
+        """Return path to ``master_measurements.parquet`` in the deliverables base."""
+        return self.deliverables_base / MASTER_MEASUREMENTS_PARQUET
+
+    @property
+    def master_csv(self) -> Path:
+        """Return path to ``master_measurements.csv`` in the deliverables base."""
+        return self.deliverables_base / MASTER_MEASUREMENTS_CSV
+
+    @property
+    def mirror_parquet(self) -> Path:
+        """Return path to ``measurements.parquet`` (post-applied mirror)."""
+        return self.deliverables_base / MEASUREMENTS_PARQUET
+
+    @property
+    def mirror_csv(self) -> Path:
+        """Return path to ``measurements.csv`` (post-applied mirror)."""
+        return self.deliverables_base / MEASUREMENTS_CSV
+
+    @property
+    def pipeline_config_path(self) -> Path:
+        """Return path to ``pipeline.json`` in the deliverables base."""
+        return self.deliverables_base / PIPELINE_JSON
+
+    @property
+    def resolved_pipeline_config_path(self) -> Path:
+        """Return the best existing pipeline config path inside the bundle.
+
+        Mirrors :func:`resolve_pipeline_config_path`'s precedence but anchored
+        on :attr:`deliverables_base` (so a standalone bundle resolves *inside
+        itself* without double-joining ``deliverables/``): the canonical typed
+        config when present, else the legacy plain ``pipeline.json`` when
+        present, else the canonical path (so writers naturally create typed
+        config files).
+        """
+        canonical = self.pipeline_config_path
+        if canonical.exists():
+            return canonical
+        legacy = self.deliverables_base / _LEGACY_PIPELINE_JSON
+        if legacy.exists():
+            return legacy
+        return canonical
+
+    @property
+    def qc_dir(self) -> Path:
+        """Return the QC directory, resolving legacy ``<output>/qc/`` layouts.
+
+        Prefers ``deliverables/qc/`` when it exists. Falls back to the
+        legacy root ``<output>/qc/`` when only that exists (pre-relocation
+        runs). Returns the canonical ``deliverables/qc/`` path for fresh
+        writes when neither is present.
+        """
+        canonical = self.deliverables_base / DIR_QC
+        if canonical.exists():
+            return canonical
+        if self.output_root is not None:
+            legacy = self.output_root / DIR_QC
+            if legacy.exists():
+                return legacy
+        return canonical
+
+    @property
+    def qc_duckdb(self) -> Path:
+        """Return path to ``qc/qc.duckdb`` (the QC analysis database)."""
+        return self.qc_dir / QC_DUCKDB
+
+    @property
+    def qc_review_state_path(self) -> Path:
+        """Return path to ``deliverables/qc/review_state.json`` (GUI-owned review progress)."""
+        return self.qc_dir / QC_REVIEW_STATE_JSON
+
+    @property
+    def curation_labels_parquet(self) -> Path:
+        """Return path to ``deliverables/qc/curation_labels.parquet`` (durable labels store)."""
+        return self.qc_dir / CURATION_LABELS_PARQUET
+
+    @property
+    def custom_categories_json(self) -> Path:
+        """Return path to ``deliverables/qc/custom_categories.json`` (custom-category registry)."""
+        return self.qc_dir / CUSTOM_CATEGORIES_JSON
+
+    @property
+    def errors_dir(self) -> Path:
+        """Return path to the ``errors/`` directory under the deliverables base."""
+        return self.deliverables_base / DIR_ERRORS
+
+    @property
+    def error_analysis_parquet(self) -> Path:
+        """Return path to ``error_analysis.parquet`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_PARQUET
+
+    @property
+    def error_analysis_csv(self) -> Path:
+        """Return path to ``error_analysis.csv`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_CSV
+
+    @property
+    def error_analysis_html(self) -> Path:
+        """Return path to ``error_analysis.html`` in the deliverables base."""
+        return self.deliverables_base / ERROR_ANALYSIS_HTML
+
+    @property
+    def verified_parquet(self) -> Path:
+        """Return path to ``verified.parquet`` (GUI-written verified-good archive)."""
+        return self.deliverables_base / VERIFIED_PARQUET
+
+    @property
+    def analysis_parquet(self) -> Path:
+        """Return path to ``analysis.parquet`` in the deliverables base."""
+        return self.deliverables_base / ANALYSIS_PARQUET
+
+    @property
+    def analysis_csv(self) -> Path:
+        """Return path to ``analysis.csv`` in the deliverables base."""
+        return self.deliverables_base / ANALYSIS_CSV
+
+    def error_category_parquet(self, category: str) -> Path:
+        """Return path to ``errors/<category>.parquet``.
+
+        Args:
+            category: Bare, already-sanitized category token
+                (e.g. ``"background_noise"``).
+
+        Returns:
+            Path to the per-category error parquet file.
+        """
+        return self.errors_dir / f"{category}.parquet"
+
+    def overlays_dir(self, dataset: str) -> Path:
+        """Return path to ``overlays/<dataset>/``.
+
+        Args:
+            dataset: Dataset name.
+
+        Returns:
+            Directory path for overlay PNGs of the given dataset.
+        """
+        return self.deliverables_base / DIR_OVERLAYS / dataset
+
+    def overlay_path(self, dataset: str, stem: str) -> Path:
+        """Return path to ``overlays/<dataset>/<stem>.png``.
+
+        Args:
+            dataset: Dataset name.
+            stem: Image stem (filename without extension).
+
+        Returns:
+            Path to the overlay PNG for the given image.
+        """
+        return self.overlays_dir(dataset) / f"{stem}.png"

@@ -12,7 +12,7 @@ import mmh3
 from functools import wraps
 
 from phenotypic.sdk_.exceptions_ import OperationIntegrityError
-from phenotypic.settings_ import VALIDATE_OPS
+import phenotypic.settings as settings
 
 # this is a dummy variable so annotation's in ImageOperation, MeasureFeatures classes don't cause integrity check to throw an exception
 Image: Any
@@ -135,7 +135,7 @@ def validate_operation_integrity(*targets: str):
 
             # Step 4: Calculate hash values for all target arrays before function execution
             # This creates a dictionary mapping each target to its hash value
-            if VALIDATE_OPS:
+            if settings.VALIDATE_OPS:
                 pre_hashes = {
                     tgt: murmur3_array_signature(_get_array(bound, tgt))
                     for tgt in eff_targets
@@ -146,7 +146,7 @@ def validate_operation_integrity(*targets: str):
 
             # Step 6: Verify integrity by comparing hash values after function execution
             # For each target, calculate a new hash and compare with the original
-            if VALIDATE_OPS:
+            if settings.VALIDATE_OPS:
                 for tgt, old_hash in pre_hashes.items():
                     parts = tgt.split(".")
                     # Start with the result object returned by the function
@@ -231,7 +231,7 @@ def validate_measure_integrity(*targets: str):
             bound.apply_defaults()
 
             # hash each target before the call
-            if VALIDATE_OPS:
+            if settings.VALIDATE_OPS:
                 pre_hashes = {
                     tgt: murmur3_array_signature(_get_array(bound, tgt))
                     for tgt in eff_targets
@@ -241,7 +241,7 @@ def validate_measure_integrity(*targets: str):
             result = func(*args, **kwargs)
 
             # re-hash and compare
-            if VALIDATE_OPS:
+            if settings.VALIDATE_OPS:
                 for tgt, old in pre_hashes.items():
                     new = murmur3_array_signature(_get_array(bound, tgt))
                     if new != old:

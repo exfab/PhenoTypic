@@ -29,15 +29,7 @@ from typing import Literal
 import polars as pl
 
 from phenotypic.schema import CURATION, OBJECT, ErrorCategory
-from phenotypic.sdk_ import (
-    curation_labels_parquet_path,
-    custom_categories_json_path,
-    error_category_parquet_path,
-    errors_dir,
-    master_measurements_parquet_path,
-    measurements_csv_path,
-    measurements_parquet_path,
-)
+from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +140,10 @@ class CurationLabels:
     """In-memory categorized curation state plus its durable on-disk mirrors.
 
     Attributes:
-        root: Output root directory.
+        _layout: Resolved :class:`~phenotypic.sdk_.BundleLayout` topology;
+            all durable paths (labels parquet, custom-category registry,
+            curated mirror, per-category error parquets) resolve from it, so
+            a standalone deliverables bundle writes inside the bundle.
         labels: Mapping ``(image_file, object_label) -> category token``.
         fingerprints: Mapping key -> ``(center_rr, center_cc)`` captured at mark
             time, used to re-key across re-detections.
@@ -168,7 +163,7 @@ class CurationLabels:
             clear it.
     """
 
-    root: Path
+    _layout: BundleLayout
     labels: dict[LabelKey, str]
     fingerprints: dict[LabelKey, tuple[float, float]]
     custom_categories: list[str]
@@ -195,19 +190,19 @@ class CurationLabels:
     # -- paths ---------------------------------------------------------------
     @property
     def labels_path(self) -> Path:
-        return curation_labels_parquet_path(self.root)
+        return self._layout.curation_labels_parquet
 
     @property
     def custom_path(self) -> Path:
-        return custom_categories_json_path(self.root)
+        return self._layout.custom_categories_json
 
     @property
     def measurements_parquet(self) -> Path:
-        return measurements_parquet_path(self.root)
+        return self._layout.mirror_parquet
 
     @property
     def measurements_csv(self) -> Path:
-        return measurements_csv_path(self.root)
+        return self._layout.mirror_csv
 
     # -- vocabulary ----------------------------------------------------------
     def categories(self) -> list[str]:
@@ -244,16 +239,20 @@ class CurationLabels:
 
     # -- load ----------------------------------------------------------------
     @classmethod
-    def load(cls, root: Path, master_df: pl.DataFrame) -> "CurationLabels":
+    def load(cls, layout: BundleLayout, master_df: pl.DataFrame) -> "CurationLabels":
         """Build the store from disk, re-keyed onto ``master_df``.
 
-        Reads the custom-category registry and (Task 5) the labels parquet,
+        Reads the custom-category registry and the labels parquet,
         re-attaching each stored label to the current master via fingerprint.
-        A missing labels parquet yields an empty label set (migration from a
-        legacy ``measurements.parquet`` is added in Task 5).
+        A missing labels parquet yields an empty label set.
 
         Args:
-            root: Output root directory.
+            layout: Resolved bundle topology. Durable paths (labels parquet,
+                custom registry, curated mirror, per-category error parquets)
+                all resolve from it, so a standalone deliverables bundle
+                curates inside the bundle. The GUI passes
+                ``output_root.layout``; the CLI passes
+                ``BundleLayout.detect(output_dir)``.
             master_df: The viewer's display frame — the **post-applied
                 measurements mirror** (``OutputRoot.master_df``). Re-keying is
                 done against the CLEAN ``master_measurements.parquet`` read here
@@ -264,7 +263,7 @@ class CurationLabels:
         Returns:
             A ready-to-mutate :class:`CurationLabels`.
         """
-        custom = cls._read_custom_registry(custom_categories_json_path(root))
+        custom = cls._read_custom_registry(layout.custom_categories_json)
         labels: dict[LabelKey, str] = {}
         fingerprints: dict[LabelKey, tuple[float, float]] = {}
         report = RekeyReport()
@@ -272,9 +271,9 @@ class CurationLabels:
         # Re-key against the CLEAN master (all objects), never the curated
         # mirror — a labeled object is absent from the mirror, so re-keying
         # against the mirror would drop every label on reload.
-        clean_master = cls._read_clean_master(root, master_df)
+        clean_master = cls._read_clean_master(layout, master_df)
 
-        labels_path = curation_labels_parquet_path(root)
+        labels_path = layout.curation_labels_parquet
         if labels_path.exists():
             stored = cls._read_labels_parquet(labels_path)
             labels, fingerprints, report = cls._rekey(stored, clean_master)
@@ -289,11 +288,11 @@ class CurationLabels:
 
         # Capture the mtime of the curated mirror so _save_locked can detect
         # an external re-seed (e.g. CLI measure mode) while the session is open.
-        mirror = measurements_parquet_path(root)
+        mirror = layout.mirror_parquet
         seed_mtime: int | None = mirror.stat().st_mtime_ns if mirror.exists() else None
 
         return cls(
-            root=root,
+            _layout=layout,
             labels=labels,
             fingerprints=fingerprints,
             custom_categories=custom,
@@ -304,7 +303,7 @@ class CurationLabels:
         )
 
     @staticmethod
-    def _read_clean_master(root: Path, fallback: pl.DataFrame) -> pl.DataFrame:
+    def _read_clean_master(layout: BundleLayout, fallback: pl.DataFrame) -> pl.DataFrame:
         """Return the clean (pre-post) master frame for re-keying.
 
         Reads ``deliverables/master_measurements.parquet`` — the full,
@@ -313,7 +312,7 @@ class CurationLabels:
         ``fallback`` (the passed mirror) only mid-run / on legacy outputs where
         the clean master is absent.
         """
-        path = master_measurements_parquet_path(root)
+        path = layout.master_parquet
         if path.is_file():
             try:
                 return pl.read_parquet(path)
@@ -668,7 +667,7 @@ class CurationLabels:
             logger.exception("Failed to write curated CSV mirror at %s", self.measurements_csv)
 
     def _write_category_parquets(self) -> None:
-        errs_dir = errors_dir(self.root)
+        errs_dir = self._layout.errors_dir
         errs_dir.mkdir(parents=True, exist_ok=True)
         # Group keys by category.
         by_cat: dict[str, list[LabelKey]] = {}
@@ -689,7 +688,7 @@ class CurationLabels:
             if frame.is_empty():
                 continue
             present.add(token)
-            _atomic_write_parquet(frame, error_category_parquet_path(self.root, token))
+            _atomic_write_parquet(frame, self._layout.error_category_parquet(token))
         # Clean up stale category files — restrict sweep to the KNOWN vocabulary
         # only, so unrelated files in errors/ are never touched (FIX-2).
         known_filenames = {f"{sanitize_category(c)}.parquet" for c in self.categories()}

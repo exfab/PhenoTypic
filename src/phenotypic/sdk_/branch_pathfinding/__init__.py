@@ -9,9 +9,8 @@ quality.
 
 Cost surfaces are the caller's responsibility — this subpackage is
 algorithm-agnostic and does not know about phase congruency, skeletons,
-or any other domain concept. Callers (e.g. the fungi detector or
-:class:`~phenotypic.measure.MeasureRadialExpansion`) assemble their own
-cost surface from whatever image features they have on hand.
+or any other domain concept. Callers (e.g. the fungi detector) assemble
+their own cost surface from whatever image features they have on hand.
 """
 
 from ._cost_surface import (

@@ -31,7 +31,7 @@ from phenotypic.gui._config import (
 from phenotypic.sdk_ import deliverables_dir
 
 if TYPE_CHECKING:
-    from phenotypic.sdk_ import ColumnSource
+    from phenotypic.sdk_ import BundleLayout, ColumnSource
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +53,43 @@ class MeasurementSchema:
             ``deliverables/`` subdirectory holds
             ``measurements.{parquet,csv}`` and / or
             ``master_measurements.{parquet,csv}``.
+        _deliverables_base: When set (via :meth:`from_layout`), the
+            deliverables folder is used *directly* instead of
+            ``deliverables_dir(output_root)``. This is what keeps a standalone
+            bundle — where ``output_root`` is already the deliverables folder —
+            from double-joining ``deliverables/``.
     """
 
     output_root: Path
+    #: Resolved deliverables folder override; ``None`` means resolve via
+    #: ``deliverables_dir(output_root)`` (the full-run path).
+    _deliverables_base: Path | None = None
     #: ``source -> (sentinel mtime_ns, columns)``. The sentinel is the
     #: highest mtime observed across the parquet+csv pair so a CSV-only
     #: refresh still invalidates the cache.
     _cache: dict[str, tuple[int, list[str]]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    @classmethod
+    def from_layout(cls, layout: "BundleLayout") -> "MeasurementSchema":
+        """Build a cache anchored on a resolved :class:`BundleLayout`.
+
+        Resolves measurements from ``layout.deliverables_base`` directly, so a
+        standalone deliverables bundle (``layout.output_root is None``) reads
+        the column schema from inside the bundle rather than via
+        ``deliverables_dir(output_root)`` (which would double-join).
+
+        Args:
+            layout: Resolved bundle topology.
+
+        Returns:
+            A :class:`MeasurementSchema` reading from the bundle's deliverables.
+        """
+        base = layout.deliverables_base
+        return cls(
+            output_root=layout.output_root if layout.output_root is not None else base,
+            _deliverables_base=base,
+        )
 
     def columns_for(self, source: "ColumnSource | str") -> list[str]:
         """Return the column list for ``source``.
@@ -92,7 +121,11 @@ class MeasurementSchema:
             logger.warning("Unknown column source %r; returning []", source_str)
             return []
 
-        deliverables = deliverables_dir(self.output_root)
+        deliverables = (
+            self._deliverables_base
+            if self._deliverables_base is not None
+            else deliverables_dir(self.output_root)
+        )
         parquet_path = deliverables / files[0]
         csv_path = deliverables / files[1]
         sentinel = _max_mtime_ns(parquet_path, csv_path)
