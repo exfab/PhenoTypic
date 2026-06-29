@@ -615,6 +615,8 @@
 <span class="c1"># this is a dummy variable so annotation&#39;s in ImageOperation, MeasureFeatures classes don&#39;t cause integrity check to throw an exception</span>
 <span class="n">Image</span><span class="p">:</span> <span class="n">Any</span>
 
+<span class="n">_ABSENT_ARRAY</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
 
 <div class="viewcode-block" id="is_binary_mask">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask">[docs]</a>
@@ -670,6 +672,37 @@
     <span class="k">return</span> <span class="n">mmh3</span><span class="o">.</span><span class="n">mmh3_x64_128_digest</span><span class="p">(</span><span class="nb">memoryview</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_integrity_target</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">func_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">object</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve an integrity target to an array or an intentionally absent RGB marker.&quot;&quot;&quot;</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">root</span>
+    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">attr</span> <span class="o">==</span> <span class="s2">&quot;rgb&quot;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">&quot;isempty&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">_ABSENT_ARRAY</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">value</span><span class="p">[:]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39; is not a NumPy array&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_integrity_signature</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="nb">object</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hash an integrity target while preserving intentionally absent RGB state.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">_ABSENT_ARRAY</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_ABSENT_ARRAY</span>
+    <span class="k">return</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_integrity_changed</span><span class="p">(</span><span class="n">old_signature</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="nb">object</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True when an integrity target changed, including absent/present flips.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">old_signature</span> <span class="ow">is</span> <span class="n">_ABSENT_ARRAY</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">_ABSENT_ARRAY</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">_ABSENT_ARRAY</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="n">old_signature</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_operation_integrity</span><span class="p">(</span><span class="o">*</span><span class="n">targets</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decorator to ensure that key NumPy arrays on the &#39;image&#39; argument</span>
@@ -706,8 +739,8 @@
             <span class="c1"># Default attributes to check on the image object</span>
             <span class="n">eff_targets</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;image.objmap&quot;</span><span class="p">]</span>
 
-        <span class="c1"># Helper function to retrieve a NumPy array from an object by attribute path</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">_get_array</span><span class="p">(</span><span class="n">bound_args</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="c1"># Helper function to retrieve an integrity target from an object by attribute path</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_get_target</span><span class="p">(</span><span class="n">bound_args</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">object</span><span class="p">:</span>
             <span class="c1"># Split the target path (e.g., &#39;image.rgb&#39; -&gt; [&#39;image&#39;, &#39;rgb&#39;])</span>
             <span class="n">parts</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
             <span class="c1"># Get the root object from function arguments</span>
@@ -717,18 +750,7 @@
                         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: parameter &#39;</span><span class="si">{</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; not found&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
 
-            <span class="c1"># Navigate through the attribute chain to get the final rgb</span>
-            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-                <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">()</span> <span class="ow">and</span> <span class="n">attr</span> <span class="o">==</span> <span class="s2">&quot;rgb&quot;</span><span class="p">:</span>
-                    <span class="k">pass</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)[:]</span>  <span class="c1"># Use [:] to get a view of the rgb</span>
-            <span class="c1"># Ensure the result is a NumPy rgb</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39; is not a NumPy array&quot;</span><span class="p">,</span>
-                <span class="p">)</span>
-            <span class="k">return</span> <span class="n">obj</span>
+            <span class="k">return</span> <span class="n">_resolve_integrity_target</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
 
         <span class="c1"># The actual wrapper function that will replace the decorated function</span>
         <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
@@ -741,7 +763,7 @@
             <span class="c1"># This creates a dictionary mapping each target to its hash value</span>
             <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
+                    <span class="n">tgt</span><span class="p">:</span> <span class="n">_integrity_signature</span><span class="p">(</span><span class="n">_get_target</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
                     <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
                 <span class="p">}</span>
 
@@ -752,23 +774,9 @@
             <span class="c1"># For each target, calculate a new hash and compare with the original</span>
             <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">tgt</span><span class="p">,</span> <span class="n">old_hash</span> <span class="ow">in</span> <span class="n">pre_hashes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="n">parts</span> <span class="o">=</span> <span class="n">tgt</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-                    <span class="c1"># Start with the result object returned by the function</span>
                     <span class="n">obj</span> <span class="o">=</span> <span class="n">result</span>
-                    <span class="c1"># Navigate through the attribute chain on the result object</span>
-                    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
-                        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
-                            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">obj</span><span class="si">}</span><span class="s2"> has no attribute &#39;</span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-                        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)[:]</span>
-                    <span class="c1"># Ensure the attribute is still a NumPy array</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-                        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">tgt</span><span class="si">}</span><span class="s2">&#39; is not a NumPy rgb on result&quot;</span><span class="p">,</span>
-                        <span class="p">)</span>
-                    <span class="c1"># Calculate new hash and compare with original</span>
-                    <span class="n">new_hash</span> <span class="o">=</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-                    <span class="c1"># If hashes don&#39;t match, the array was modified - raise an error</span>
-                    <span class="k">if</span> <span class="n">new_hash</span> <span class="o">!=</span> <span class="n">old_hash</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">_resolve_integrity_target</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">tgt</span><span class="p">,</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">_integrity_changed</span><span class="p">(</span><span class="n">old_hash</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
                         <span class="k">raise</span> <span class="n">OperationIntegrityError</span><span class="p">(</span>
                                 <span class="n">opname</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                                 <span class="n">component</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tgt</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -814,20 +822,14 @@
                 <span class="p">)</span>
             <span class="n">eff_targets</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;image.rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;image.gray&quot;</span><span class="p">,</span> <span class="s2">&quot;image.detect_mat&quot;</span><span class="p">,</span> <span class="s2">&quot;image.objmap&quot;</span><span class="p">]</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">_get_array</span><span class="p">(</span><span class="n">bound_args</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_get_target</span><span class="p">(</span><span class="n">bound_args</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">object</span><span class="p">:</span>
             <span class="c1"># e.g. target = &#39;image.rgb&#39;</span>
             <span class="n">obj</span> <span class="o">=</span> <span class="n">bound_args</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">OperationIntegrityError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: cannot find parameter &#39;</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
-            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">target</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]:</span>
-                <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">)[:]</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="n">OperationIntegrityError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39; is not a NumPy array&quot;</span>
-                <span class="p">)</span>
-            <span class="k">return</span> <span class="n">obj</span>
+            <span class="k">return</span> <span class="n">_resolve_integrity_target</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
 
         <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
         <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -837,7 +839,7 @@
             <span class="c1"># hash each target before the call</span>
             <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span>
-                    <span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
+                    <span class="n">tgt</span><span class="p">:</span> <span class="n">_integrity_signature</span><span class="p">(</span><span class="n">_get_target</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
                     <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
                 <span class="p">}</span>
 
@@ -847,8 +849,8 @@
             <span class="c1"># re-hash and compare</span>
             <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">tgt</span><span class="p">,</span> <span class="n">old</span> <span class="ow">in</span> <span class="n">pre_hashes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="n">new</span> <span class="o">=</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
-                    <span class="k">if</span> <span class="n">new</span> <span class="o">!=</span> <span class="n">old</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">_get_target</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">_integrity_changed</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
                         <span class="k">raise</span> <span class="n">OperationIntegrityError</span><span class="p">(</span>
                                 <span class="n">opname</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">component</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tgt</span><span class="si">}</span><span class="s2">&quot;</span>
                         <span class="p">)</span>
