@@ -49,7 +49,7 @@ jobs:
             python-version: "3.12"
 
     runs-on: ${{ matrix.os }}
-    # Headless Qt: the ``qt-test`` group (and the napari extra) pull PyQt6,
+    # Headless Qt: the ``test-qt`` group (and the napari extra) pull PyQt6,
     # whose QtGui is imported by pytest-qt at configure time; ``offscreen``
     # lets the qtbot widget tests run on the displayless Linux runner.
     env:
@@ -79,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
@@ -115,7 +115,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install chromium
@@ -150,7 +150,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Run tests (full, slow included)
         run: |
