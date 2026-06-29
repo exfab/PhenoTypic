@@ -25,7 +25,7 @@ name: gui-checks
 
 on:
   push:
-    branches: [main, dev]
+    branches: [ main, dev ]
     paths:
       - 'src/phenotypic/gui/**'
       - 'src/phenotypic/_cli/_dashboard/**'
@@ -39,7 +39,7 @@ on:
       - 'pyproject.toml'
       - '.github/workflows/gui-checks.yml'
   pull_request:
-    branches: [main, dev]
+    branches: [ main, dev ]
     paths:
       - 'src/phenotypic/gui/**'
       - 'src/phenotypic/_cli/_dashboard/**'
@@ -189,7 +189,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
@@ -243,7 +243,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv lock
-          uv sync --group dev --group qt-test --all-extras
+          uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
