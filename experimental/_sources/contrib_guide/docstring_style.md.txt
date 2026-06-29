@@ -50,6 +50,13 @@ class ExampleDetector(ObjectDetector):
     Raises:
         ValueError: When [condition].
 
+    Examples:
+        >>> from phenotypic import load_synth_yeast_plate
+        >>> plate = load_synth_yeast_plate()
+        >>> result = ExampleDetector().apply(plate)
+        >>> result.num_objects > 0
+        True
+
     References:
         [1] A. Author, "Paper title," *Journal*, vol. X, no. Y,
         pp. Z--Z, Month Year.
@@ -222,24 +229,27 @@ Raises:
 
 ### Examples
 
-Do **not** include usage examples in docstrings. Image processing operations
-produce visual results that cannot be meaningfully demonstrated in text-only
-doctest output. Instead, link to the relevant user guide page where interactive
-Plotly visualizations show the operation in context.
-
-Use the `See Also` section to point readers to tutorials, how-to guides, or
-example notebooks where the operation is demonstrated visually:
+Include a runnable **doctest** ``Examples`` section. Every example must execute
+against the bundled ``load_synth_yeast_plate()`` fixture so the docstrings run
+under ``pytest --doctest-modules``. Keep output deterministic (assert a boolean
+or a small invariant rather than printing arrays), and use microbiology context
+(colony visibility, edge sharpness, mask quality). Place the section after
+``Raises`` and before ``References``.
 
 ```python
-See Also:
-    :doc:`/tutorials/notebooks/detecting_colonies` for a visual walkthrough
-    of this detector on real plate images.
-    :doc:`/explanation/detection_strategies` for a comparison of thresholding
-    methods and their failure modes.
+Examples:
+    >>> from phenotypic import load_synth_yeast_plate
+    >>> from phenotypic.detect import OtsuDetector
+    >>> plate = load_synth_yeast_plate()
+    >>> detected = OtsuDetector().apply(plate)
+    >>> detected.num_objects > 0
+    True
 ```
 
-If a minimal smoke-test doctest is needed for automated testing purposes (not
-documentation), place it in the test suite, not the docstring.
+For visual, interactive demonstrations that text output cannot convey, **also**
+point readers to a tutorial/how-to via `See Also` — but the runnable doctest
+stays in the docstring. Do not move examples into separate notebooks or example
+files; examples live in the docstring.
 
 ### References
 
@@ -267,9 +277,10 @@ References:
 
 ### See Also
 
-Link to relevant user guide pages and Explanation pages. This section replaces
-in-docstring examples and algorithm descriptions by directing readers to
-interactive visual demonstrations and conceptual deep-dives.
+Link to relevant user guide pages and Explanation pages. This section
+complements the in-docstring example and the algorithm discussion on Explanation
+pages by directing readers to interactive visual demonstrations and conceptual
+deep-dives.
 
 **Rules:**
 
@@ -359,10 +370,10 @@ documentation.
 deviation" is insufficient. Include the typical range and the effect of adjusting
 the parameter.
 
-**Putting usage examples in the docstring.** Image processing operations produce
-visual results that text-only doctest output cannot convey. Link to user guide
-tutorials and how-to notebooks where the operation is demonstrated with
-interactive Plotly visualizations instead.
+**Omitting the runnable doctest example.** Every operation docstring needs an
+``Examples`` section that executes against ``load_synth_yeast_plate()`` under
+``pytest --doctest-modules``. Link to user guide tutorials for the *visual*
+walkthrough via `See Also`, but keep the runnable example in the docstring.
 
 ## Worked Example: OtsuDetector
 
@@ -410,6 +421,14 @@ class OtsuDetector(ThresholdDetector):
 
     Raises:
         ValueError: If the threshold computation fails on a uniform image.
+
+    Examples:
+        >>> from phenotypic import load_synth_yeast_plate
+        >>> from phenotypic.detect import OtsuDetector
+        >>> plate = load_synth_yeast_plate()
+        >>> detected = OtsuDetector().apply(plate)
+        >>> detected.num_objects > 0
+        True
 
     References:
         [1] N. Otsu, "A threshold selection method from gray-level

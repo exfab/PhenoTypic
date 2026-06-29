@@ -859,6 +859,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
@@ -872,11 +873,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_report_html_path.html">phenotypic.sdk_.processing_report_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_state_path.html">phenotypic.sdk_.processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.progress_dir.html">phenotypic.sdk_.progress_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_config_json_path.html">phenotypic.sdk_.qc_config_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_dir.html">phenotypic.sdk_.qc_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_members_parquet_path.html">phenotypic.sdk_.qc_members_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_duckdb_path.html">phenotypic.sdk_.qc_duckdb_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_review_state_path.html">phenotypic.sdk_.qc_review_state_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_summary_parquet_path.html">phenotypic.sdk_.qc_summary_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.readme_md_path.html">phenotypic.sdk_.readme_md_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
@@ -888,6 +887,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html">phenotypic.sdk_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html">phenotypic.sdk_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html">phenotypic.sdk_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html">phenotypic.sdk_.resolve_qc_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html">phenotypic.sdk_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html">phenotypic.sdk_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html">phenotypic.sdk_.resolve_tuning_spec_path</a></li>
@@ -919,6 +919,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1380,6 +1381,12 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_SE_Me
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.summary" title="phenotypic.analysis.ReplicateAgreement.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a></p></td>
 <td><p>Return a one-row-per-group summary of the most recent analyze.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.table_spec" title="phenotypic.analysis.ReplicateAgreement.table_spec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">table_spec</span></code></a></p></td>
+<td><p>Return the catalog descriptor for this analyzed check.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.to_table" title="phenotypic.analysis.ReplicateAgreement.to_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_table</span></code></a></p></td>
+<td><p>Return the module's self-describing frame to persist to DuckDB.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.update_forward_refs" title="phenotypic.analysis.ReplicateAgreement.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
@@ -1392,23 +1399,29 @@ check adds <code class="docutils literal notranslate"><span class="pre">QC_SE_Me
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_computed_fields" title="phenotypic.analysis.ReplicateAgreement.model_computed_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_computed_fields</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.member_key_cols" title="phenotypic.analysis.ReplicateAgreement.member_key_cols"><code class="xref py py-obj docutils literal notranslate"><span class="pre">member_key_cols</span></code></a></p></td>
+<td><p>Per-object curation-key columns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_computed_fields" title="phenotypic.analysis.ReplicateAgreement.model_computed_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_computed_fields</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_config" title="phenotypic.analysis.ReplicateAgreement.model_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_config</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_config" title="phenotypic.analysis.ReplicateAgreement.model_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_config</span></code></a></p></td>
 <td><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_extra" title="phenotypic.analysis.ReplicateAgreement.model_extra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_extra</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_extra" title="phenotypic.analysis.ReplicateAgreement.model_extra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_extra</span></code></a></p></td>
 <td><p>Get extra fields set during validation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_fields" title="phenotypic.analysis.ReplicateAgreement.model_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_fields" title="phenotypic.analysis.ReplicateAgreement.model_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_fields_set" title="phenotypic.analysis.ReplicateAgreement.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.model_fields_set" title="phenotypic.analysis.ReplicateAgreement.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
 <td><p>Returns the set of fields that have been explicitly set on this model instance.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.name" title="phenotypic.analysis.ReplicateAgreement.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.name" title="phenotypic.analysis.ReplicateAgreement.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.supports_object_curation" title="phenotypic.analysis.ReplicateAgreement.supports_object_curation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_object_curation</span></code></a></p></td>
+<td><p>Whether this check's rows map to curatable detected objects.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.warn_threshold" title="phenotypic.analysis.ReplicateAgreement.warn_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">warn_threshold</span></code></a></p></td>
 <td><p></p></td>
@@ -1707,7 +1720,7 @@ In that case, it will be called later, when the model is rebuilt automatically o
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.analyze">
-<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.analyze" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.analyze" title="Link to this definition">#</a></dt>
 <dd><p>Run the check on every group and return the augmented frame.</p>
 <p>Iterates over <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False)</span></code>,
 delegates per-group computation to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_compute()</span></code>, and adds
@@ -1727,7 +1740,7 @@ A <code class="docutils literal notranslate"><span class="pre">NaN</span></code>
 <code class="xref py py-attr docutils literal notranslate"><span class="pre">_latest_measurements</span></code> and returned.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – Input measurement frame. Must contain <code class="docutils literal notranslate"><span class="pre">self.on</span></code> and
+<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>pandas.DataFrame</em></a>) – Input measurement frame. Must contain <code class="docutils literal notranslate"><span class="pre">self.on</span></code> and
 every column in <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1739,7 +1752,7 @@ plus whatever <code class="docutils literal notranslate"><span class="pre">_comp
     missing from <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1903,6 +1916,13 @@ when the curation key columns are absent.</p>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.member_key_cols">
+<span class="sig-name descname"><span class="pre">member_key_cols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('Metadata_ImageFile',</span> <span class="pre">'Object_Label')</span></em><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.member_key_cols" title="Link to this definition">#</a></dt>
+<dd><p>Per-object curation-key columns. Empty tuple when the check has no
+per-object key. Subclasses may narrow this.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2341,11 +2361,11 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.results">
-<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.results" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.results" title="Link to this definition">#</a></dt>
 <dd><p>Return the augmented frame stored by the most recent analyze().</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2420,7 +2440,7 @@ right method.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.summary">
-<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.summary" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.summary" title="Link to this definition">#</a></dt>
 <dd><p>Return a one-row-per-group summary of the most recent analyze.</p>
 <p>The aggregate columns are <strong>prefixed with ``qc_``</strong> so they can
 never collide with a <code class="docutils literal notranslate"><span class="pre">groupby</span></code> column on <code class="docutils literal notranslate"><span class="pre">reset_index</span></code> — a
@@ -2438,7 +2458,56 @@ direction across the group: <code class="docutils literal notranslate"><span cla
 wins over <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> which wins over <code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.supports_object_curation">
+<span class="sig-name descname"><span class="pre">supports_object_curation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.supports_object_curation" title="Link to this definition">#</a></dt>
+<dd><p>Whether this check’s rows map to curatable detected objects. False for
+diagnostic-only checks (e.g. GridOccupancy) — the Review tab hides the
+curation radial + tile gallery and verified-good skips them.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.table_spec">
+<span class="sig-name descname"><span class="pre">table_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instance_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">QcTableSpec</span></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.table_spec" title="Link to this definition">#</a></dt>
+<dd><p>Return the catalog descriptor for this analyzed check.</p>
+<p>Precondition: <a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.analyze" title="phenotypic.analysis.ReplicateAgreement.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> has run. Reads column roles from the
+class + instance config and derives <code class="docutils literal notranslate"><span class="pre">extra_cols</span></code> from the augmented
+frame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>instance_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The recipe entry id this check was built from.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A populated <code class="xref py py-class docutils literal notranslate"><span class="pre">QcTableSpec</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>QcTableSpec</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.analysis.ReplicateAgreement.to_table">
+<span class="sig-name descname"><span class="pre">to_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.ReplicateAgreement.to_table" title="Link to this definition">#</a></dt>
+<dd><p>Return the module’s self-describing frame to persist to DuckDB.</p>
+<p>Precondition: <a class="reference internal" href="#phenotypic.analysis.ReplicateAgreement.analyze" title="phenotypic.analysis.ReplicateAgreement.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> has run (this reads
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">_latest_measurements</span></code>). The default is member-level: the
+augmented frame projected to group-key + member-key + <code class="docutils literal notranslate"><span class="pre">on</span></code> + every
+<code class="docutils literal notranslate"><span class="pre">QC_&lt;name&gt;_*</span></code> column (metric/flag/status AND check-specific extras)
++ context columns (<code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code> and the column named by
+<code class="docutils literal notranslate"><span class="pre">self.time_label</span></code>) when those columns are present.</p>
+<p>Diagnostic-only checks override to return a group-level frame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The projected DataFrame; columns vary per check (self-describing).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2550,6 +2619,7 @@ wins over <code class="docutils literal notranslate"><span class="pre">&quot;war
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.from_orm"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.from_orm()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.group_members"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.group_members()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.json"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.json()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.member_key_cols"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.member_key_cols</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.metric_col"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.metric_col()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.model_computed_fields"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.model_computed_fields</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.model_config"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.model_config</span></code></a></li>
@@ -2576,6 +2646,9 @@ wins over <code class="docutils literal notranslate"><span class="pre">&quot;war
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.show"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.show()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.status_col"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.status_col()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.summary"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.summary()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.supports_object_curation"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.supports_object_curation</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.table_spec"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.table_spec()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.to_table"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.to_table()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.update_forward_refs"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.update_forward_refs()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.validate"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.validate()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.analysis.ReplicateAgreement.unmatched_groups"><code class="docutils literal notranslate"><span class="pre">ReplicateAgreement.unmatched_groups</span></code></a></li>

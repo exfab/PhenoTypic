@@ -48,6 +48,8 @@ phenotypic.analysis.TukeyOutlierFraction
       ~TukeyOutlierFraction.show
       ~TukeyOutlierFraction.status_col
       ~TukeyOutlierFraction.summary
+      ~TukeyOutlierFraction.table_spec
+      ~TukeyOutlierFraction.to_table
       ~TukeyOutlierFraction.update_forward_refs
       ~TukeyOutlierFraction.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.TukeyOutlierFraction
 
    .. autosummary::
    
+      ~TukeyOutlierFraction.member_key_cols
       ~TukeyOutlierFraction.model_computed_fields
       ~TukeyOutlierFraction.model_config
       ~TukeyOutlierFraction.model_extra
       ~TukeyOutlierFraction.model_fields
       ~TukeyOutlierFraction.model_fields_set
       ~TukeyOutlierFraction.name
+      ~TukeyOutlierFraction.supports_object_curation
       ~TukeyOutlierFraction.warn_threshold
       ~TukeyOutlierFraction.fail_threshold
       ~TukeyOutlierFraction.time_label

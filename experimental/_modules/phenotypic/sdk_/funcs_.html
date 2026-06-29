@@ -610,7 +610,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">wraps</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.exceptions_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationIntegrityError</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.settings_</span><span class="w"> </span><span class="kn">import</span> <span class="n">VALIDATE_OPS</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.settings</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">settings</span>
 
 <span class="c1"># this is a dummy variable so annotation&#39;s in ImageOperation, MeasureFeatures classes don&#39;t cause integrity check to throw an exception</span>
 <span class="n">Image</span><span class="p">:</span> <span class="n">Any</span>
@@ -739,7 +739,7 @@
 
             <span class="c1"># Step 4: Calculate hash values for all target arrays before function execution</span>
             <span class="c1"># This creates a dictionary mapping each target to its hash value</span>
-            <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
                     <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
@@ -750,7 +750,7 @@
 
             <span class="c1"># Step 6: Verify integrity by comparing hash values after function execution</span>
             <span class="c1"># For each target, calculate a new hash and compare with the original</span>
-            <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">tgt</span><span class="p">,</span> <span class="n">old_hash</span> <span class="ow">in</span> <span class="n">pre_hashes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="n">parts</span> <span class="o">=</span> <span class="n">tgt</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
                     <span class="c1"># Start with the result object returned by the function</span>
@@ -835,7 +835,7 @@
             <span class="n">bound</span><span class="o">.</span><span class="n">apply_defaults</span><span class="p">()</span>
 
             <span class="c1"># hash each target before the call</span>
-            <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="n">pre_hashes</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="n">tgt</span><span class="p">:</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
                     <span class="k">for</span> <span class="n">tgt</span> <span class="ow">in</span> <span class="n">eff_targets</span>
@@ -845,7 +845,7 @@
             <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
             <span class="c1"># re-hash and compare</span>
-            <span class="k">if</span> <span class="n">VALIDATE_OPS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">VALIDATE_OPS</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">tgt</span><span class="p">,</span> <span class="n">old</span> <span class="ow">in</span> <span class="n">pre_hashes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="n">new</span> <span class="o">=</span> <span class="n">murmur3_array_signature</span><span class="p">(</span><span class="n">_get_array</span><span class="p">(</span><span class="n">bound</span><span class="p">,</span> <span class="n">tgt</span><span class="p">))</span>
                     <span class="k">if</span> <span class="n">new</span> <span class="o">!=</span> <span class="n">old</span><span class="p">:</span>

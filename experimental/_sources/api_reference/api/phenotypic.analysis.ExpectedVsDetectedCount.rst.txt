@@ -48,6 +48,8 @@ phenotypic.analysis.ExpectedVsDetectedCount
       ~ExpectedVsDetectedCount.show
       ~ExpectedVsDetectedCount.status_col
       ~ExpectedVsDetectedCount.summary
+      ~ExpectedVsDetectedCount.table_spec
+      ~ExpectedVsDetectedCount.to_table
       ~ExpectedVsDetectedCount.update_forward_refs
       ~ExpectedVsDetectedCount.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.ExpectedVsDetectedCount
 
    .. autosummary::
    
+      ~ExpectedVsDetectedCount.member_key_cols
       ~ExpectedVsDetectedCount.model_computed_fields
       ~ExpectedVsDetectedCount.model_config
       ~ExpectedVsDetectedCount.model_extra
       ~ExpectedVsDetectedCount.model_fields
       ~ExpectedVsDetectedCount.model_fields_set
       ~ExpectedVsDetectedCount.name
+      ~ExpectedVsDetectedCount.supports_object_curation
       ~ExpectedVsDetectedCount.warn_threshold
       ~ExpectedVsDetectedCount.fail_threshold
       ~ExpectedVsDetectedCount.on

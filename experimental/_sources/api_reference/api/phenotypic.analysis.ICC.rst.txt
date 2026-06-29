@@ -48,6 +48,8 @@ phenotypic.analysis.ICC
       ~ICC.show
       ~ICC.status_col
       ~ICC.summary
+      ~ICC.table_spec
+      ~ICC.to_table
       ~ICC.update_forward_refs
       ~ICC.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.ICC
 
    .. autosummary::
    
+      ~ICC.member_key_cols
       ~ICC.model_computed_fields
       ~ICC.model_config
       ~ICC.model_extra
       ~ICC.model_fields
       ~ICC.model_fields_set
       ~ICC.name
+      ~ICC.supports_object_curation
       ~ICC.warn_threshold
       ~ICC.fail_threshold
       ~ICC.subject_label

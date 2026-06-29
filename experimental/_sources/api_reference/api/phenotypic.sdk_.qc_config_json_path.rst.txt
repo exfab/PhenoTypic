@@ -1,6 +1,0 @@
-phenotypic.sdk\_.qc\_config\_json\_path
-=======================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: qc_config_json_path

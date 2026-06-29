@@ -859,6 +859,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
@@ -872,11 +873,9 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.processing_report_html_path.html">phenotypic.sdk_.processing_report_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.processing_state_path.html">phenotypic.sdk_.processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.progress_dir.html">phenotypic.sdk_.progress_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_config_json_path.html">phenotypic.sdk_.qc_config_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_dir.html">phenotypic.sdk_.qc_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_members_parquet_path.html">phenotypic.sdk_.qc_members_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_duckdb_path.html">phenotypic.sdk_.qc_duckdb_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_review_state_path.html">phenotypic.sdk_.qc_review_state_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.qc_summary_parquet_path.html">phenotypic.sdk_.qc_summary_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.readme_md_path.html">phenotypic.sdk_.readme_md_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
@@ -888,6 +887,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_pipeline_config_path.html">phenotypic.sdk_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_processing_state_path.html">phenotypic.sdk_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_progress_dir.html">phenotypic.sdk_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_qc_dir.html">phenotypic.sdk_.resolve_qc_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_split_assignment_path.html">phenotypic.sdk_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_study_db_path.html">phenotypic.sdk_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.resolve_tuning_spec_path.html">phenotypic.sdk_.resolve_tuning_spec_path</a></li>
@@ -919,6 +919,7 @@
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="api/phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="api/phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1148,32 +1149,29 @@
                   
   <section id="configuration-reference">
 <h1>Configuration Reference<a class="headerlink" href="#configuration-reference" title="Link to this heading">#</a></h1>
-<p>PhenoTypic’s behavior can be configured through the <code class="docutils literal notranslate"><span class="pre">phenotypic.settings_</span></code>
-module. Import settings before other PhenoTypic modules when modifying them.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.settings_</span>
-<span class="c1"># Modify settings here, before importing other modules</span>
+<p>PhenoTypic exposes process-wide runtime switches through the
+<code class="docutils literal notranslate"><span class="pre">phenotypic.settings</span></code> module. These settings are intentionally narrow:
+algorithm defaults and pipeline parameters are serialized on the operation
+models themselves, not stored in global settings.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic.settings</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">settings</span>
+
+<span class="n">settings</span><span class="o">.</span><span class="n">set_validate_ops</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">settings</span><span class="o">.</span><span class="n">validation</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
+    <span class="o">...</span>  <span class="c1"># temporarily disable operation integrity validation</span>
 </pre></div>
 </div>
 <section id="global-settings">
 <h2>Global Settings<a class="headerlink" href="#global-settings" title="Link to this heading">#</a></h2>
-<p>Settings are accessed via the <code class="docutils literal notranslate"><span class="pre">phenotypic.settings_</span></code> module. Key
-configuration options include:</p>
-<p><strong>Image Defaults</strong></p>
+<p>Settings are accessed via the <code class="docutils literal notranslate"><span class="pre">phenotypic.settings</span></code> module.</p>
+<p><strong>Validation</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">default_bit_depth</span></code> — Default bit depth for new images (8 or 16)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">default_gamma</span></code> — Default gamma encoding (<code class="docutils literal notranslate"><span class="pre">GAMMA_ENCODINGS.SRGB</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">default_illuminant</span></code> — Default illuminant (<code class="docutils literal notranslate"><span class="pre">&quot;D65&quot;</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS</span></code> — Enables operation and measurement integrity checks in the
+current Python process. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_validate_ops(enabled)</span></code> — Sets <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS</span></code> explicitly.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validation(enabled)</span></code> — Context manager for temporary validation changes.</p></li>
 </ul>
-<p><strong>Processing</strong></p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">detect_mode</span></code> — Default detection matrix source channel (<code class="docutils literal notranslate"><span class="pre">&quot;gray&quot;</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">n_jobs</span></code> — Default parallelism for batch operations</p></li>
-</ul>
-<p><strong>Visualization</strong></p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">plotly_template</span></code> — Default Plotly template for <code class="docutils literal notranslate"><span class="pre">.dash()</span></code> figures</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">matplotlib_backend</span></code> — Matplotlib backend selection</p></li>
-</ul>
+<p>The legacy <code class="docutils literal notranslate"><span class="pre">phenotypic.settings_</span></code> import path has been removed.</p>
 </section>
 <section id="constants">
 <h2>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h2>

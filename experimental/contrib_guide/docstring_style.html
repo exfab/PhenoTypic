@@ -684,6 +684,13 @@ the reader’s time – every line should earn its place.</p>
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: When [condition].</span>
 
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; result = ExampleDetector().apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; result.num_objects &gt; 0</span>
+<span class="sd">        True</span>
+
 <span class="sd">    References:</span>
 <span class="sd">        [1] A. Author, &quot;Paper title,&quot; *Journal*, vol. X, no. Y,</span>
 <span class="sd">        pp. Z--Z, Month Year.</span>
@@ -846,21 +853,25 @@ characteristics. Do not document internal assertion errors.</p>
 </section>
 <section id="examples">
 <h3>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h3>
-<p>Do <strong>not</strong> include usage examples in docstrings. Image processing operations
-produce visual results that cannot be meaningfully demonstrated in text-only
-doctest output. Instead, link to the relevant user guide page where interactive
-Plotly visualizations show the operation in context.</p>
-<p>Use the <code class="docutils literal notranslate"><span class="pre">See</span> <span class="pre">Also</span></code> section to point readers to tutorials, how-to guides, or
-example notebooks where the operation is demonstrated visually:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">See</span> <span class="n">Also</span><span class="p">:</span>
-    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">tutorials</span><span class="o">/</span><span class="n">notebooks</span><span class="o">/</span><span class="n">detecting_colonies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">visual</span> <span class="n">walkthrough</span>
-    <span class="n">of</span> <span class="n">this</span> <span class="n">detector</span> <span class="n">on</span> <span class="n">real</span> <span class="n">plate</span> <span class="n">images</span><span class="o">.</span>
-    <span class="p">:</span><span class="n">doc</span><span class="p">:</span><span class="err">`</span><span class="o">/</span><span class="n">explanation</span><span class="o">/</span><span class="n">detection_strategies</span><span class="err">`</span> <span class="k">for</span> <span class="n">a</span> <span class="n">comparison</span> <span class="n">of</span> <span class="n">thresholding</span>
-    <span class="n">methods</span> <span class="ow">and</span> <span class="n">their</span> <span class="n">failure</span> <span class="n">modes</span><span class="o">.</span>
+<p>Include a runnable <strong>doctest</strong> <code class="docutils literal notranslate"><span class="pre">Examples</span></code> section. Every example must execute
+against the bundled <code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code> fixture so the docstrings run
+under <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--doctest-modules</span></code>. Keep output deterministic (assert a boolean
+or a small invariant rather than printing arrays), and use microbiology context
+(colony visibility, edge sharpness, mask quality). Place the section after
+<code class="docutils literal notranslate"><span class="pre">Raises</span></code> and before <code class="docutils literal notranslate"><span class="pre">References</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Examples</span><span class="p">:</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">plate</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">detected</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+    <span class="o">&gt;&gt;&gt;</span> <span class="n">detected</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="kc">True</span>
 </pre></div>
 </div>
-<p>If a minimal smoke-test doctest is needed for automated testing purposes (not
-documentation), place it in the test suite, not the docstring.</p>
+<p>For visual, interactive demonstrations that text output cannot convey, <strong>also</strong>
+point readers to a tutorial/how-to via <code class="docutils literal notranslate"><span class="pre">See</span> <span class="pre">Also</span></code> — but the runnable doctest
+stays in the docstring. Do not move examples into separate notebooks or example
+files; examples live in the docstring.</p>
 </section>
 <section id="references">
 <h3>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h3>
@@ -887,9 +898,10 @@ these are standard and do not require citation</p></li>
 </section>
 <section id="see-also">
 <h3>See Also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h3>
-<p>Link to relevant user guide pages and Explanation pages. This section replaces
-in-docstring examples and algorithm descriptions by directing readers to
-interactive visual demonstrations and conceptual deep-dives.</p>
+<p>Link to relevant user guide pages and Explanation pages. This section
+complements the in-docstring example and the algorithm discussion on Explanation
+pages by directing readers to interactive visual demonstrations and conceptual
+deep-dives.</p>
 <p><strong>Rules:</strong></p>
 <ul class="simple">
 <li><p>Include at least one link: either a user guide page (tutorial or how-to) or an
@@ -986,10 +998,10 @@ documentation.</p>
 <p><strong>Omitting practical tuning guidance from Args.</strong> A bare “sigma: Standard
 deviation” is insufficient. Include the typical range and the effect of adjusting
 the parameter.</p>
-<p><strong>Putting usage examples in the docstring.</strong> Image processing operations produce
-visual results that text-only doctest output cannot convey. Link to user guide
-tutorials and how-to notebooks where the operation is demonstrated with
-interactive Plotly visualizations instead.</p>
+<p><strong>Omitting the runnable doctest example.</strong> Every operation docstring needs an
+<code class="docutils literal notranslate"><span class="pre">Examples</span></code> section that executes against <code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code> under
+<code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--doctest-modules</span></code>. Link to user guide tutorials for the <em>visual</em>
+walkthrough via <code class="docutils literal notranslate"><span class="pre">See</span> <span class="pre">Also</span></code>, but keep the runnable example in the docstring.</p>
 </section>
 <section id="worked-example-otsudetector">
 <h2>Worked Example: OtsuDetector<a class="headerlink" href="#worked-example-otsudetector" title="Link to this heading">#</a></h2>
@@ -1035,6 +1047,14 @@ interactive Plotly visualizations instead.</p>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If the threshold computation fails on a uniform image.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic import load_synth_yeast_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.detect import OtsuDetector</span>
+<span class="sd">        &gt;&gt;&gt; plate = load_synth_yeast_plate()</span>
+<span class="sd">        &gt;&gt;&gt; detected = OtsuDetector().apply(plate)</span>
+<span class="sd">        &gt;&gt;&gt; detected.num_objects &gt; 0</span>
+<span class="sd">        True</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        [1] N. Otsu, &quot;A threshold selection method from gray-level</span>

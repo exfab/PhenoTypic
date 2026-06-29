@@ -1,35 +1,33 @@
 Configuration Reference
 =======================
 
-PhenoTypic's behavior can be configured through the ``phenotypic.settings_``
-module. Import settings before other PhenoTypic modules when modifying them.
+PhenoTypic exposes process-wide runtime switches through the
+``phenotypic.settings`` module. These settings are intentionally narrow:
+algorithm defaults and pipeline parameters are serialized on the operation
+models themselves, not stored in global settings.
 
 .. code-block:: python
 
-   import phenotypic.settings_
-   # Modify settings here, before importing other modules
+   import phenotypic.settings as settings
+
+   settings.set_validate_ops(True)
+
+   with settings.validation(False):
+       ...  # temporarily disable operation integrity validation
 
 Global Settings
 ---------------
 
-Settings are accessed via the ``phenotypic.settings_`` module. Key
-configuration options include:
+Settings are accessed via the ``phenotypic.settings`` module.
 
-**Image Defaults**
+**Validation**
 
-- ``default_bit_depth`` — Default bit depth for new images (8 or 16)
-- ``default_gamma`` — Default gamma encoding (``GAMMA_ENCODINGS.SRGB``)
-- ``default_illuminant`` — Default illuminant (``"D65"``)
+- ``VALIDATE_OPS`` — Enables operation and measurement integrity checks in the
+  current Python process. Defaults to ``False``.
+- ``set_validate_ops(enabled)`` — Sets ``VALIDATE_OPS`` explicitly.
+- ``validation(enabled)`` — Context manager for temporary validation changes.
 
-**Processing**
-
-- ``detect_mode`` — Default detection matrix source channel (``"gray"``)
-- ``n_jobs`` — Default parallelism for batch operations
-
-**Visualization**
-
-- ``plotly_template`` — Default Plotly template for ``.dash()`` figures
-- ``matplotlib_backend`` — Matplotlib backend selection
+The legacy ``phenotypic.settings_`` import path has been removed.
 
 Constants
 ---------

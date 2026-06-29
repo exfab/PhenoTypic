@@ -738,210 +738,35 @@ all-rights-reserved). When <code class="docutils literal notranslate"><span clas
 <p>PhenoTypic itself is distributed via PyPI and managed with <code class="docutils literal notranslate"><span class="pre">uv</span></code>. <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code>
 is not published on PyPI, so it is <strong>not</strong> included in any <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>
 extra. Users who need <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> must install <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code>
-themselves; the recipe below uses <code class="docutils literal notranslate"><span class="pre">pixi</span></code> for that.</p>
-</section>
-<section id="installing-sam2detector-pypi-only">
-<h3>Installing <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> (PyPI-only)<a class="headerlink" href="#installing-sam2detector-pypi-only" title="Link to this heading">#</a></h3>
-<p>On Linux or macOS:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>add<span class="w"> </span><span class="s2">&quot;phenotypic[torch]&quot;</span><span class="w">          </span><span class="c1"># torch + torchvision + sam2</span>
-<span class="c1"># or, inside a uv-managed project:</span>
-uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>torch
-</pre></div>
-</div>
-<p>The <code class="docutils literal notranslate"><span class="pre">torch</span></code> extra is not available on Windows — <code class="docutils literal notranslate"><span class="pre">sam2</span></code> requires CUDA <code class="docutils literal notranslate"><span class="pre">nvcc</span></code>
-and has no pre-built Windows wheels. Use WSL2 (Ubuntu) instead.</p>
-</section>
-<section id="installing-the-foundation-models-sam3detector-dinosam2detector">
-<h3>Installing the foundation models (<code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>)<a class="headerlink" href="#installing-the-foundation-models-sam3detector-dinosam2detector" title="Link to this heading">#</a></h3>
-<p>The foundation detectors collapse to two pure-Python, permissive libraries —
-<code class="docutils literal notranslate"><span class="pre">transformers</span></code> (&gt;=5.2.0, the first release shipping <code class="docutils literal notranslate"><span class="pre">Sam3Model</span></code>/<code class="docutils literal notranslate"><span class="pre">Sam3Processor</span></code>)
-and <code class="docutils literal notranslate"><span class="pre">huggingface_hub</span></code>. Both ship in the <code class="docutils literal notranslate"><span class="pre">foundation</span></code> extra (which pulls
-<code class="docutils literal notranslate"><span class="pre">torch</span></code>); the <code class="docutils literal notranslate"><span class="pre">gpu</span></code> umbrella extra installs every GPU detector at once.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>foundation<span class="w">           </span><span class="c1"># SAM3 + DINO-based detectors</span>
-uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>gpu<span class="w">                  </span><span class="c1"># umbrella: every GPU detector (dev env)</span>
-<span class="c1"># as a dependency of a downstream project:</span>
-uv<span class="w"> </span>add<span class="w"> </span><span class="s1">&#39;phenotypic[foundation]&#39;</span>
-</pre></div>
-</div>
-<p>Installing any extra <strong>never pulls encumbered material</strong> — only the gated
-<em>weights</em> (SAM3, DINOv3) require a license handshake, and they are fetched at
-runtime, never at install time (see <em>Gated weights</em> below).</p>
-</section>
-<section id="enabling-micro-sam-optional-self-service">
-<h3>Enabling <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> (optional, self-service)<a class="headerlink" href="#enabling-micro-sam-optional-self-service" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is only published on conda-forge. Because PhenoTypic does not
-own your environment, we recommend managing the combined stack in your own
-project with <a class="reference external" href="https://pixi.sh">pixi</a>, which speaks both conda-forge and
-PyPI in a single lockfile. Create a <code class="docutils literal notranslate"><span class="pre">pixi.toml</span></code> in <em>your</em> project (not in
-PhenoTypic):</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[project]</span>
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-phenotyping-project&quot;</span>
-<span class="n">channels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;conda-forge&quot;</span><span class="p">]</span>
-<span class="n">platforms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;osx-arm64&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;linux-64&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;win-64&quot;</span><span class="p">]</span>
-
-<span class="k">[pypi-dependencies]</span>
-<span class="n">phenotypic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
-<span class="c1"># Or, while developing against a local checkout:</span>
-<span class="c1"># phenotypic = { path = &quot;../PhenoTypic&quot;, editable = true }</span>
-
-<span class="k">[dependencies]</span>
-<span class="n">micro_sam</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;*&quot;</span>
-</pre></div>
-</div>
-<p>Then:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pixi<span class="w"> </span>install
-pixi<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
-</pre></div>
-</div>
-<p>Because conda’s <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> pulls in CPU-only conda PyTorch, combining it
-with <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code>’s CUDA wheels in the same environment requires extra
-care (the conda torch will typically win). Keep SAM2 and micro-sam work
-in separate environments if you need both with GPU acceleration.</p>
+themselves; the tutorial recipe below uses <code class="docutils literal notranslate"><span class="pre">pixi</span></code> for that.</p>
+<blockquote>
+<div><p><strong>Installing the detector packages and downloading their weights is covered in
+the <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+section of the Getting Started tutorial.</strong> In short: <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">add</span> <span class="pre">&quot;phenotypic[torch]&quot;</span></code>
+for SAM2, <code class="docutils literal notranslate"><span class="pre">&quot;phenotypic[foundation]&quot;</span></code> for the SAM3/DINO detectors, the <code class="docutils literal notranslate"><span class="pre">[gpu]</span></code>
+umbrella for all of them, and conda-forge <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> for <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>.
+In a source checkout, use <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">foundation</span></code> to install the same
+foundation-model dependencies. Gated SAM3/DINOv3 weights need a one-time
+Hugging Face license handshake (<code class="docutils literal notranslate"><span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code> after accepting the model
+license on Hugging Face).</p>
+</div></blockquote>
 <p><code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code> is importable from <code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> even when
 <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is missing; the <code class="docutils literal notranslate"><span class="pre">ImportError</span></code> is deferred to the first
-<code class="docutils literal notranslate"><span class="pre">apply()</span></code> call and points back at these instructions.</p>
-</section>
-<section id="alternative-pip-conda">
-<h3>Alternative: pip + conda<a class="headerlink" href="#alternative-pip-conda" title="Link to this heading">#</a></h3>
-<p>If you already manage your environment with conda:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>phenotypic<span class="w">                        </span><span class="c1"># base (or phenotypic[torch] on non-Windows)</span>
-conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>micro_sam<span class="w">        </span><span class="c1"># adds MicroSamDetector support</span>
-</pre></div>
-</div>
+<code class="docutils literal notranslate"><span class="pre">apply()</span></code> call and points back at the installation instructions.</p>
 </section>
 </section>
 <section id="downloading-model-checkpoints">
 <h2>Downloading Model Checkpoints<a class="headerlink" href="#downloading-model-checkpoints" title="Link to this heading">#</a></h2>
-<p>Both SAM2 and micro-sam download checkpoints automatically on first use.
-However, on SLURM clusters the compute nodes often lack internet access, so
-you should pre-download checkpoints on a login node before submitting jobs.</p>
-<section id="sam2-checkpoints">
-<h3>SAM2 checkpoints<a class="headerlink" href="#sam2-checkpoints" title="Link to this heading">#</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the default (tiny) SAM2 checkpoint</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download
-
-<span class="c1"># Download a specific size</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>large
-
-<span class="c1"># Download all SAM2 sizes at once</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--all
-
-<span class="c1"># Force re-download even if cached</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny<span class="w"> </span>--force
-</pre></div>
-</div>
-<p>SAM2 checkpoints are stored in the <code class="docutils literal notranslate"><span class="pre">torch.hub</span></code> cache directory
-(<code class="docutils literal notranslate"><span class="pre">~/.cache/torch/hub/checkpoints/</span></code> by default). Set the <code class="docutils literal notranslate"><span class="pre">TORCH_HOME</span></code>
-environment variable to change this location.</p>
-<p>Available SAM2 sizes: <code class="docutils literal notranslate"><span class="pre">tiny</span></code> (~39 MB), <code class="docutils literal notranslate"><span class="pre">small</span></code>, <code class="docutils literal notranslate"><span class="pre">base_plus</span></code>, <code class="docutils literal notranslate"><span class="pre">large</span></code> (~900 MB).</p>
-</section>
-<section id="micro-sam-checkpoints">
-<h3>micro-sam checkpoints<a class="headerlink" href="#micro-sam-checkpoints" title="Link to this heading">#</a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the default (vit_b_lm) micro-sam model</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam
-
-<span class="c1"># Download a specific model</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_l_lm
-
-<span class="c1"># Download all micro-sam models</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--all
-</pre></div>
-</div>
-<p>micro-sam stores checkpoints via <code class="docutils literal notranslate"><span class="pre">platformdirs</span></code>. Set <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code> to
-override the cache location.</p>
-</section>
-<section id="foundation-model-weights-sam3-dinov3-gated-dinov2-ungated">
-<h3>Foundation-model weights (SAM3 + DINOv3 gated, DINOv2 ungated)<a class="headerlink" href="#foundation-model-weights-sam3-dinov3-gated-dinov2-ungated" title="Link to this heading">#</a></h3>
-<p>SAM3 and the DINO backbones live on the Hugging Face Hub and are downloaded via
-<code class="docutils literal notranslate"><span class="pre">huggingface_hub.snapshot_download</span></code> into the HF cache. <strong>SAM3 weights
-(~3.45 GB) and DINOv3 weights are gated</strong>; DINOv2 is ungated.</p>
-<p><strong>One-time human handshake for a gated model (per user, per model):</strong></p>
-<ol class="arabic simple">
-<li><p>Have a Hugging Face account.</p></li>
-<li><p>Accept the gate on the model page — <a class="reference external" href="https://huggingface.co/facebook/sam3">https://huggingface.co/facebook/sam3</a>
-for SAM3, <a class="reference external" href="https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m">https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m</a>
-for DINOv3 (this <em>is</em> the license acceptance).</p></li>
-<li><p>Authenticate locally once: <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code> (stores a token), or
-export <code class="docutils literal notranslate"><span class="pre">HF_TOKEN</span></code>.</p></li>
-</ol>
-<p>Then download with the extended <code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> CLI:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># SAM3 (gated): --accept-license acknowledges the SAM License non-interactively</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam3<span class="w"> </span>--accept-license
-
-<span class="c1"># DINOv3 (gated): --accept-license acknowledges the DINOv3 License</span>
-<span class="c1">#   (required for Insid3Detector&#39;s native backbone + the dino_version=3 opt-in)</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>dinov3<span class="w"> </span>--dino-size<span class="w"> </span>base<span class="w"> </span>--accept-license
-
-<span class="c1"># DINOv2 (ungated): no acceptance, no token</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>dinov2<span class="w"> </span>--dino-size<span class="w"> </span>base
-</pre></div>
-</div>
-<p>If the gate is not accepted or no token is present, the download fails with an
-actionable message (“Request access at <url>, then run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code>”). The informational acceptance gate is also satisfied non-interactively
-by <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3,dinov3</span></code> (a comma list for several
-models) — this is the layer the <code class="docutils literal notranslate"><span class="pre">--accept-license</span></code> flag sets for you, on top of
-the binding Hugging Face gate.</p>
-</section>
-<section id="foundation-model-environment-variables">
-<h3>Foundation-model environment variables<a class="headerlink" href="#foundation-model-environment-variables" title="Link to this heading">#</a></h3>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Variable</p></th>
-<th class="head"><p>Purpose</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HF_TOKEN</span></code> / <code class="docutils literal notranslate"><span class="pre">HUGGING_FACE_HUB_TOKEN</span></code></p></td>
-<td><p>auth for gated download (alternative to <code class="docutils literal notranslate"><span class="pre">hf</span> <span class="pre">auth</span> <span class="pre">login</span></code>)</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HF_HOME</span></code> (or <code class="docutils literal notranslate"><span class="pre">HF_HUB_CACHE</span></code>)</p></td>
-<td><p>cache location → point at shared HPCC storage</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HF_HUB_OFFLINE=1</span></code> / <code class="docutils literal notranslate"><span class="pre">TRANSFORMERS_OFFLINE=1</span></code></p></td>
-<td><p>force load-from-cache on offline compute nodes</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code></p></td>
-<td><p>non-interactive acknowledgement for batch/SLURM jobs</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</section>
-<section id="slurm-pre-caching-workflow">
-<h3>SLURM pre-caching workflow<a class="headerlink" href="#slurm-pre-caching-workflow" title="Link to this heading">#</a></h3>
-<p>On a cluster, download models on the login node first:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># On the login node (has internet access)</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam2<span class="w"> </span>--model-size<span class="w"> </span>tiny
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>microsam<span class="w"> </span>--model-name<span class="w"> </span>vit_b_lm
-
-<span class="c1"># Verify they are cached</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>list
-
-<span class="c1"># Now submit SLURM jobs -- compute nodes will use the cached checkpoints</span>
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
-</pre></div>
-</div>
-<p><strong>Foundation models on HPCC (offline compute nodes).</strong> Never download inside a
-job — accept the gate and pre-stage weights to shared storage on the login node,
-then run the compute job offline:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># On the login node (has internet): cache to shared storage, accept once</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">HF_HOME</span><span class="o">=</span>/bigdata/exfab/&lt;...&gt;/hf_cache
-uv<span class="w"> </span>run<span class="w"> </span>hf<span class="w"> </span>auth<span class="w"> </span>login
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>sam3<span class="w"> </span>--accept-license
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<span class="w"> </span>download<span class="w"> </span>--model-type<span class="w"> </span>dinov2
-
-<span class="c1"># In the SLURM job: same HF_HOME, force offline, carry the accepted acknowledgement</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">HF_HOME</span><span class="o">=</span>/bigdata/exfab/&lt;...&gt;/hf_cache
-<span class="nb">export</span><span class="w"> </span><span class="nv">HF_HUB_OFFLINE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">TRANSFORMERS_OFFLINE</span><span class="o">=</span><span class="m">1</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span><span class="o">=</span>sam3
-python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
-</pre></div>
-</div>
-<p>The binding acceptance (HF gate + token) happens <strong>once on the login node</strong>;
-the compute job carries only the already-accepted token plus
-<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code> and reads the pre-staged cache. Acceptance
-never happens silently inside a batch job.</p>
-</section>
+<p>Every detector downloads its checkpoints automatically on first use, and the
+<code class="docutils literal notranslate"><span class="pre">phenotypic.detect.nn</span></code> CLI (<code class="docutils literal notranslate"><span class="pre">download</span></code> / <code class="docutils literal notranslate"><span class="pre">list</span></code> / <code class="docutils literal notranslate"><span class="pre">clear</span></code>) pre-fetches and
+inspects them — essential before submitting SLURM jobs, since compute nodes
+often lack internet access. The full command set, cache-location environment
+variables (<code class="docutils literal notranslate"><span class="pre">TORCH_HOME</span></code>, <code class="docutils literal notranslate"><span class="pre">MICROSAM_CACHEDIR</span></code>, <code class="docutils literal notranslate"><span class="pre">HF_HOME</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code>, …), and the login-node pre-staging workflow
+for gated foundation weights are documented in the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section. The SLURM-specific staging is expanded under
+<a class="reference internal" href="#slurm-deployment"><span class="std std-ref">SLURM Deployment</span></a> below.</p>
 </section>
 <section id="using-sam2detector">
 <h2>Using Sam2Detector<a class="headerlink" href="#using-sam2detector" title="Link to this heading">#</a></h2>
@@ -1036,7 +861,8 @@ the predicted instance masks into a labelled <code class="docutils literal notra
 </pre></div>
 </div>
 <p>SAM3 weights are <strong>gated</strong> (SAM License). Accept the gate and authenticate
-once (see <em>Foundation-model weights</em> above) before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>.</p>
+once (see <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>)
+before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>.</p>
 <p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward and runs at 1008 px
 internally, so <code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code> tiles large plates into fixed <code class="docutils literal notranslate"><span class="pre">tile_px</span></code> crops
 with <code class="docutils literal notranslate"><span class="pre">tile_overlap</span></code>, infers each tile, offsets the masks back to full
@@ -1069,7 +895,10 @@ a labelled <code class="docutils literal notranslate"><span class="pre">objmap</
 <p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> selects the backbone generation: <code class="docutils literal notranslate"><span class="pre">2</span></code> = DINOv2 (default, ungated),
 <code class="docutils literal notranslate"><span class="pre">3</span></code> = DINOv3 (gated opt-in). Selecting <code class="docutils literal notranslate"><span class="pre">dino_version=3</span></code> routes the snapshot pull
 through the DINOv3-License acceptance gate (pre-stage it with the
-<code class="docutils literal notranslate"><span class="pre">download</span> <span class="pre">--model-type</span> <span class="pre">dinov3</span> <span class="pre">--accept-license</span></code> command above).</p>
+<code class="docutils literal notranslate"><span class="pre">download</span> <span class="pre">--model-type</span> <span class="pre">dinov3</span> <span class="pre">--accept-license</span></code> command from the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section). The default DINOv3 checkpoint id is
+<code class="docutils literal notranslate"><span class="pre">dinov3-vitb16-pretrain-lvd1689m</span></code>.</p>
 <p>Key parameters:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">dino_version</span></code> / <code class="docutils literal notranslate"><span class="pre">dino_size</span></code> — backbone generation (2/3) and size.</p></li>
@@ -1387,9 +1216,9 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic.detect.nn<spa
 </section>
 <section id="importerror-microsamdetector-requires-the-micro-sam-package">
 <h3><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">MicroSamDetector</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">micro_sam</span> <span class="pre">package</span></code><a class="headerlink" href="#importerror-microsamdetector-requires-the-micro-sam-package" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is conda-only and must be installed separately. See
-Enabling micro_sam (optional, self-service)
-above.</p>
+<p><code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> is conda-only and must be installed separately. See the
+<a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
+tutorial section for the conda-forge / <code class="docutils literal notranslate"><span class="pre">pixi</span></code> recipe.</p>
 </section>
 <section id="runtimeerror-no-accelerator-available">
 <h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">No</span> <span class="pre">accelerator</span> <span class="pre">available</span></code><a class="headerlink" href="#runtimeerror-no-accelerator-available" title="Link to this heading">#</a></h3>
@@ -1480,20 +1309,9 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-model-license-posture">Per-model license posture</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-sam2detector-pypi-only">Installing <code class="docutils literal notranslate"><span class="pre">Sam2Detector</span></code> (PyPI-only)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installing-the-foundation-models-sam3detector-dinosam2detector">Installing the foundation models (<code class="docutils literal notranslate"><span class="pre">Sam3Detector</span></code>, <code class="docutils literal notranslate"><span class="pre">DinoSam2Detector</span></code>)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#enabling-micro-sam-optional-self-service">Enabling <code class="docutils literal notranslate"><span class="pre">micro_sam</span></code> (optional, self-service)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#alternative-pip-conda">Alternative: pip + conda</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-model-checkpoints">Downloading Model Checkpoints</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sam2-checkpoints">SAM2 checkpoints</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#micro-sam-checkpoints">micro-sam checkpoints</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#foundation-model-weights-sam3-dinov3-gated-dinov2-ungated">Foundation-model weights (SAM3 + DINOv3 gated, DINOv2 ungated)</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#foundation-model-environment-variables">Foundation-model environment variables</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-pre-caching-workflow">SLURM pre-caching workflow</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#downloading-model-checkpoints">Downloading Model Checkpoints</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-sam2detector">Using Sam2Detector</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parameter-tuning-for-colony-detection">Parameter tuning for colony detection</a></li>
 </ul>

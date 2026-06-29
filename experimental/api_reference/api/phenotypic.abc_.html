@@ -859,6 +859,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
@@ -872,11 +873,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_report_html_path.html">phenotypic.sdk_.processing_report_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_state_path.html">phenotypic.sdk_.processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.progress_dir.html">phenotypic.sdk_.progress_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_config_json_path.html">phenotypic.sdk_.qc_config_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_dir.html">phenotypic.sdk_.qc_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_members_parquet_path.html">phenotypic.sdk_.qc_members_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_duckdb_path.html">phenotypic.sdk_.qc_duckdb_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_review_state_path.html">phenotypic.sdk_.qc_review_state_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_summary_parquet_path.html">phenotypic.sdk_.qc_summary_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.readme_md_path.html">phenotypic.sdk_.readme_md_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
@@ -888,6 +887,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html">phenotypic.sdk_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html">phenotypic.sdk_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html">phenotypic.sdk_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html">phenotypic.sdk_.resolve_qc_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html">phenotypic.sdk_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html">phenotypic.sdk_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html">phenotypic.sdk_.resolve_tuning_spec_path</a></li>
@@ -919,6 +919,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -16311,8 +16312,8 @@ to guarantee that RGB and grayscale data are never modified:</p>
 <li><p>Recalculates signatures <strong>after</strong> operation completes</p></li>
 <li><p>Raises <code class="docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code> if any protected component was modified</p></li>
 </ol>
-<p><strong>Note:</strong> Integrity validation only runs if the <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> environment variable
-is set (development-time safety; disabled in production for performance).</p>
+<p><strong>Note:</strong> Integrity validation only runs if <code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true
+(development-time safety; disabled in production for performance).</p>
 <p><strong>Implementing a Custom ImageEnhancer</strong></p>
 <p>Subclass ImageEnhancer and implement a single method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageEnhancer</span>
@@ -17523,7 +17524,7 @@ original unchanged</p></li>
 <li><p><strong>Calls your _operate() instance method</strong> with the image</p></li>
 <li><p><strong>Validates integrity</strong> (subclass-specific via <code class="docutils literal notranslate"><span class="pre">&#64;validate_operation_integrity</span></code>)
 - Detects unexpected modifications to protected image components
-- Only enabled if <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> in environment</p></li>
+- Only enabled if <code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true</p></li>
 </ol>
 <p>Your subclass only needs to implement <code class="docutils literal notranslate"><span class="pre">_operate(self,</span> <span class="pre">image)</span> <span class="pre">-&gt;</span> <span class="pre">Image</span></code>.</p>
 <p><strong>The _operate() method contract</strong></p>
@@ -17592,7 +17593,7 @@ enforce that modifications are limited to specific components. For example:</p>
 <li><p>Recalculates signatures <strong>after</strong> operation completes</p></li>
 <li><p>Raises <code class="docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code> if any protected component changed</p></li>
 </ol>
-<p>Only enabled if <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> in environment (for performance).</p>
+<p>Only enabled if <code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true (for performance).</p>
 <p><strong>Operation chaining and pipelines</strong></p>
 <p>Operations are designed for method chaining:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">GaussianBlur</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
@@ -17682,7 +17683,7 @@ configured for INFO level or higher. Disable by setting logger to WARNING.</p></
 <li><p><strong>Cross-platform compatibility:</strong> Some dependencies (rawpy, pympler) are
 platform-specific. Code must gracefully handle missing optional dependencies.</p></li>
 <li><p><strong>Integrity validation is optional:</strong> The <code class="docutils literal notranslate"><span class="pre">&#64;validate_operation_integrity</span></code>
-decorator only runs if <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> in environment. This provides
+decorator only runs if <code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true. This provides
 development-time safety without production overhead.</p></li>
 </ul>
 </div>
@@ -21753,7 +21754,7 @@ other image data to inform detection.</p></li>
 validation (<code class="docutils literal notranslate"><span class="pre">&#64;validate_operation_integrity</span></code> decorator).</p></li>
 </ul>
 <p>Any attempt to modify protected image components raises <code class="docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code> when
-<code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> in the environment (enabled during development/testing).</p>
+<code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true (enabled during development/testing).</p>
 <p><strong>Why is detection central to the pipeline?</strong></p>
 <p>Detection enables:</p>
 <ol class="arabic simple">
@@ -22959,7 +22960,7 @@ image data, ensuring reproducibility and enabling comparison of different cleanu
 (<cite>&#64;validate_operation_integrity</cite> decorator).</p></li>
 </ul>
 <p>Any attempt to modify protected image components raises <cite>OperationIntegrityError</cite> when
-<cite>VALIDATE_OPS=True</cite> in the environment (enabled during development/testing).</p>
+<code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true (enabled during development/testing).</p>
 <p><strong>Role in the Detection-to-Measurement Pipeline</strong></p>
 <p>ObjectRefiner sits after detection but before measurement:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Raw Image (rgb, gray, detect_mat)
@@ -23051,8 +23052,8 @@ to guarantee that preprocessing data are never modified:</p>
 <li><p>Recalculates signatures <strong>after</strong> operation completes</p></li>
 <li><p>Raises <code class="docutils literal notranslate"><span class="pre">OperationIntegrityError</span></code> if any protected component was modified</p></li>
 </ol>
-<p><strong>Note:</strong> Integrity validation only runs if the <code class="docutils literal notranslate"><span class="pre">VALIDATE_OPS=True</span></code> environment variable
-is set (development-time safety; disabled in production for performance).</p>
+<p><strong>Note:</strong> Integrity validation only runs if <code class="docutils literal notranslate"><span class="pre">phenotypic.settings.VALIDATE_OPS</span></code> is true
+(development-time safety; disabled in production for performance).</p>
 <p><strong>Implementing a Custom ObjectRefiner</strong></p>
 <p>Subclass ObjectRefiner and implement a single method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
@@ -24985,17 +24986,17 @@ validated to form a valid model.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_post_measurement.html#PostMeasurement.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_post_measurement.html#PostMeasurement.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Apply the post-measurement transform.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The merged measurement DataFrame.</p>
+<dd class="field-odd"><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>pandas.DataFrame</em></a>) – The merged measurement DataFrame.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The transformed DataFrame.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -26150,7 +26151,7 @@ name, description, and the lists of operations and measurements.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
 <dd><p>Run the analysis chain (filters then model) against an aggregate frame.</p>
 <p>Applies each filter in order — each transforms a DataFrame into another
 DataFrame — then runs the configured terminal model to produce a fit
@@ -26165,7 +26166,7 @@ post (or accepting that filters/model see pre-post data) before
 calling <code class="docutils literal notranslate"><span class="pre">analyze</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><em>pandas.DataFrame</em></a>) – The aggregate measurements DataFrame.</p>
+<dd class="field-odd"><p><strong>df</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><em>pandas.DataFrame</em></a>) – The aggregate measurements DataFrame.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
@@ -26318,7 +26319,7 @@ dictionary mapping operation names to intermediate snapshots (or
 
 <dl class="py method">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">benchmark_results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.3)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
+<span class="sig-name descname"><span class="pre">benchmark_results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.4)"><span class="pre">pandas.DataFrame</span></a></span></span></dt>
 <dd><p>Return execution times and memory usage for operations and measurements.</p>
 <p>This method should be called after applying the pipeline on an image to get
 the execution times and memory consumption of the different processes.</p>

@@ -697,8 +697,8 @@
 <span class="sd">    3. Recalculates signatures **after** operation completes</span>
 <span class="sd">    4. Raises ``OperationIntegrityError`` if any protected component was modified</span>
 
-<span class="sd">    **Note:** Integrity validation only runs if the ``VALIDATE_OPS=True`` environment variable</span>
-<span class="sd">    is set (development-time safety; disabled in production for performance).</span>
+<span class="sd">    **Note:** Integrity validation only runs if ``phenotypic.settings.VALIDATE_OPS`` is true</span>
+<span class="sd">    (development-time safety; disabled in production for performance).</span>
 
 <span class="sd">    **Implementing a Custom ImageEnhancer**</span>
 

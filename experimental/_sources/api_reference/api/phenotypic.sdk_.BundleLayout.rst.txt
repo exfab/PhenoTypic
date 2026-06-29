@@ -1,0 +1,57 @@
+phenotypic.sdk\_.BundleLayout
+=============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: BundleLayout
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~BundleLayout.__init__
+      ~BundleLayout.detect
+      ~BundleLayout.error_category_parquet
+      ~BundleLayout.hdf_path
+      ~BundleLayout.overlay_path
+      ~BundleLayout.overlays_dir
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BundleLayout.analysis_csv
+      ~BundleLayout.analysis_parquet
+      ~BundleLayout.curation_labels_parquet
+      ~BundleLayout.custom_categories_json
+      ~BundleLayout.error_analysis_csv
+      ~BundleLayout.error_analysis_html
+      ~BundleLayout.error_analysis_parquet
+      ~BundleLayout.errors_dir
+      ~BundleLayout.has_results
+      ~BundleLayout.master_csv
+      ~BundleLayout.master_parquet
+      ~BundleLayout.mirror_csv
+      ~BundleLayout.mirror_parquet
+      ~BundleLayout.pipeline_config_path
+      ~BundleLayout.qc_dir
+      ~BundleLayout.qc_duckdb
+      ~BundleLayout.qc_review_state_path
+      ~BundleLayout.resolved_pipeline_config_path
+      ~BundleLayout.results_dir
+      ~BundleLayout.verified_parquet
+      ~BundleLayout.deliverables_base
+      ~BundleLayout.output_root
+   
+   

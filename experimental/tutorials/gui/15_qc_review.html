@@ -683,10 +683,8 @@ place with a <code class="docutils literal notranslate"><span class="pre">before
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>A finished CLI run whose <code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json</span></code> carries at least
-one QC check, so the CLI wrote the <code class="docutils literal notranslate"><span class="pre">qc/</span></code> artifact
-(<code class="docutils literal notranslate"><span class="pre">qc/qc_summary.parquet</span></code>, <code class="docutils literal notranslate"><span class="pre">qc/qc_members.parquet</span></code>,
-<code class="docutils literal notranslate"><span class="pre">qc/qc_config.json</span></code> — these stay at the output-dir root). Configure a
-check in the <strong>Configure</strong> sub-view, then re-run
+one QC check, so the CLI wrote <code class="docutils literal notranslate"><span class="pre">deliverables/qc/qc.duckdb</span></code>.
+Configure a check in the <strong>Configure</strong> sub-view, then re-run
 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">recompile</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span> <span class="pre">--pipeline</span> <span class="pre">&lt;pipeline.json&gt;</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;</span></code>) to compute
 it. See <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a>.</p></li>
 <li><p>The post-applied <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> mirror under
@@ -737,10 +735,15 @@ a sparse or under-powered group; the summary header counts those as
 <code class="docutils literal notranslate"><span class="pre">insufficient</span></code> and they sort to the bottom of the worklist — they are
 “no signal”, not “good”.</p></li>
 <li><p><strong>Review progress is per-module and resets on re-run.</strong> Marked-reviewed
-groups live in GUI-owned <code class="docutils literal notranslate"><span class="pre">qc/review_state.json</span></code>, keyed by check
+groups live in GUI-owned <code class="docutils literal notranslate"><span class="pre">deliverables/qc/review_state.json</span></code>, keyed by check
 <code class="docutils literal notranslate"><span class="pre">instance_id</span></code>. An in-session recompute preserves it; the next CLI
 recompile or measure-mode run clears it so a fresh run starts the queue
 over.</p></li>
+<li><p><strong>Legacy flat QC parquets are not read.</strong> Outputs that only contain
+<code class="docutils literal notranslate"><span class="pre">qc_summary.parquet</span></code>, <code class="docutils literal notranslate"><span class="pre">qc_members.parquet</span></code>, or <code class="docutils literal notranslate"><span class="pre">qc_config.json</span></code> need a
+recompile to create <code class="docutils literal notranslate"><span class="pre">deliverables/qc/qc.duckdb</span></code>. The old SDK constants and
+path helpers for those parquet artifacts were removed; use <code class="docutils literal notranslate"><span class="pre">QC_DUCKDB</span></code>,
+<code class="docutils literal notranslate"><span class="pre">qc_duckdb_path(output_dir)</span></code>, or <code class="docutils literal notranslate"><span class="pre">BundleLayout.qc_duckdb</span></code>.</p></li>
 <li><p><strong>Curation is shared.</strong> Removing a colony in Review removes it
 everywhere (the Plate / Colony tabs and the heatmap) — it writes the
 same <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> removal set.</p></li>

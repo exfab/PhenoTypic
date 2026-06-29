@@ -48,6 +48,8 @@ phenotypic.analysis.GridOccupancy
       ~GridOccupancy.show
       ~GridOccupancy.status_col
       ~GridOccupancy.summary
+      ~GridOccupancy.table_spec
+      ~GridOccupancy.to_table
       ~GridOccupancy.update_forward_refs
       ~GridOccupancy.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.GridOccupancy
 
    .. autosummary::
    
+      ~GridOccupancy.member_key_cols
       ~GridOccupancy.model_computed_fields
       ~GridOccupancy.model_config
       ~GridOccupancy.model_extra
       ~GridOccupancy.model_fields
       ~GridOccupancy.model_fields_set
       ~GridOccupancy.name
+      ~GridOccupancy.supports_object_curation
       ~GridOccupancy.warn_threshold
       ~GridOccupancy.fail_threshold
       ~GridOccupancy.cell_label

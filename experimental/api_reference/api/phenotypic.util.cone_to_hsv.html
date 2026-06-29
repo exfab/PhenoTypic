@@ -859,6 +859,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
@@ -872,11 +873,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_report_html_path.html">phenotypic.sdk_.processing_report_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_state_path.html">phenotypic.sdk_.processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.progress_dir.html">phenotypic.sdk_.progress_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_config_json_path.html">phenotypic.sdk_.qc_config_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_dir.html">phenotypic.sdk_.qc_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_members_parquet_path.html">phenotypic.sdk_.qc_members_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_duckdb_path.html">phenotypic.sdk_.qc_duckdb_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_review_state_path.html">phenotypic.sdk_.qc_review_state_path</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_summary_parquet_path.html">phenotypic.sdk_.qc_summary_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.readme_md_path.html">phenotypic.sdk_.readme_md_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
@@ -888,6 +887,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html">phenotypic.sdk_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html">phenotypic.sdk_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html">phenotypic.sdk_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html">phenotypic.sdk_.resolve_qc_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html">phenotypic.sdk_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html">phenotypic.sdk_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html">phenotypic.sdk_.resolve_tuning_spec_path</a></li>
@@ -919,6 +919,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1153,14 +1154,14 @@
 <h1>phenotypic.util.cone_to_hsv<a class="headerlink" href="#phenotypic-util-cone-to-hsv" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.util.cone_to_hsv">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">cone_to_hsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cone</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#cone_to_hsv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.cone_to_hsv" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.util.</span></span><span class="sig-name descname"><span class="pre">cone_to_hsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cone</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">numpy.ndarray</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><span class="pre">numpy.ndarray</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/util/_robust_color_stats.html#cone_to_hsv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.util.cone_to_hsv" title="Link to this definition">#</a></dt>
 <dd><p>Inverse of <a class="reference internal" href="phenotypic.util.hsv_to_cone.html#phenotypic.util.hsv_to_cone" title="phenotypic.util.hsv_to_cone"><code class="xref py py-func docutils literal notranslate"><span class="pre">hsv_to_cone()</span></code></a>; returns H,S,V in [0,1].</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cone</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>)</p>
+<dd class="field-odd"><p><strong>cone</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
 </dd>
 </dl>
 </dd></dl>

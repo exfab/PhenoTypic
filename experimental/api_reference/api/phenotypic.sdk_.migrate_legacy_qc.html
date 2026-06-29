@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>phenotypic.sdk_.qc_summary_parquet_path &#8212; PhenoTypic</title>
+    <title>phenotypic.sdk_.migrate_legacy_qc &#8212; PhenoTypic</title>
   
   
   
@@ -51,7 +51,7 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.sdk_.qc_summary_parquet_path';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/api/phenotypic.sdk_.migrate_legacy_qc';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
@@ -59,11 +59,11 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
-    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.qc_summary_parquet_path.html" />
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.migrate_legacy_qc.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.sdk_.readme_md_path" href="phenotypic.sdk_.readme_md_path.html" />
-    <link rel="prev" title="phenotypic.sdk_.qc_review_state_path" href="phenotypic.sdk_.qc_review_state_path.html" />
+    <link rel="next" title="phenotypic.sdk_.clear_machine_state" href="phenotypic.sdk_.clear_machine_state.html" />
+    <link rel="prev" title="phenotypic.sdk_.migrate_legacy_machine_state" href="phenotypic.sdk_.migrate_legacy_machine_state.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.17.3" />
@@ -859,6 +859,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_csv_deliverable_path.html">phenotypic.sdk_.metadata_csv_deliverable_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.matches_any_suffix.html">phenotypic.sdk_.matches_any_suffix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlay_manifest_path.html">phenotypic.sdk_.overlay_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
@@ -872,11 +873,9 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_report_html_path.html">phenotypic.sdk_.processing_report_html_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.processing_state_path.html">phenotypic.sdk_.processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.progress_dir.html">phenotypic.sdk_.progress_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_config_json_path.html">phenotypic.sdk_.qc_config_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_dir.html">phenotypic.sdk_.qc_dir</a></li>
-<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_members_parquet_path.html">phenotypic.sdk_.qc_members_parquet_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_duckdb_path.html">phenotypic.sdk_.qc_duckdb_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.qc_review_state_path.html">phenotypic.sdk_.qc_review_state_path</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.qc_summary_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.readme_md_path.html">phenotypic.sdk_.readme_md_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
@@ -888,6 +887,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html">phenotypic.sdk_.resolve_pipeline_config_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html">phenotypic.sdk_.resolve_processing_state_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html">phenotypic.sdk_.resolve_progress_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html">phenotypic.sdk_.resolve_qc_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html">phenotypic.sdk_.resolve_split_assignment_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html">phenotypic.sdk_.resolve_study_db_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html">phenotypic.sdk_.resolve_tuning_spec_path</a></li>
@@ -919,6 +919,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.JobMetadataKey.html">phenotypic.sdk_.JobMetadataKey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ModulePath.html">phenotypic.sdk_.ModulePath</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ProcessingStateKey.html">phenotypic.sdk_.ProcessingStateKey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.BundleLayout.html">phenotypic.sdk_.BundleLayout</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.colourspace.html">phenotypic.sdk_.colourspace</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.decode_srgb.html">phenotypic.sdk_.colourspace.decode_srgb</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.colourspace.encode_srgb.html">phenotypic.sdk_.colourspace.encode_srgb</a></li>
@@ -1132,7 +1133,7 @@
     
     <li class="breadcrumb-item"><a href="phenotypic.sdk_.html" class="nav-link">phenotypic.sdk_</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_.qc_summary_parquet_path</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_.migrate_legacy_qc</span></li>
   </ul>
 </nav>
 </div>
@@ -1149,18 +1150,25 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="phenotypic-sdk-qc-summary-parquet-path">
-<h1>phenotypic.sdk_.qc_summary_parquet_path<a class="headerlink" href="#phenotypic-sdk-qc-summary-parquet-path" title="Link to this heading">#</a></h1>
+  <section id="phenotypic-sdk-migrate-legacy-qc">
+<h1>phenotypic.sdk_.migrate_legacy_qc<a class="headerlink" href="#phenotypic-sdk-migrate-legacy-qc" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="phenotypic.sdk_.qc_summary_parquet_path">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">qc_summary_parquet_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#qc_summary_parquet_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.qc_summary_parquet_path" title="Link to this definition">#</a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/qc_summary.parquet</span></code>.</p>
+<dt class="sig sig-object py" id="phenotypic.sdk_.migrate_legacy_qc">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">migrate_legacy_qc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#migrate_legacy_qc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.migrate_legacy_qc" title="Link to this definition">#</a></dt>
+<dd><p>Move a pre-relocation run’s <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/qc/</span></code> into <code class="docutils literal notranslate"><span class="pre">deliverables/qc/</span></code>.</p>
+<p>Hard cutover (MOVE, no duplication), mirroring
+<a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html#phenotypic.sdk_.migrate_legacy_machine_state" title="phenotypic.sdk_.migrate_legacy_machine_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">migrate_legacy_machine_state()</span></code></a>. A no-op when there is no legacy <code class="docutils literal notranslate"><span class="pre">qc/</span></code>
+or when the canonical <code class="docutils literal notranslate"><span class="pre">deliverables/qc/</span></code> already exists (the move is
+whole-directory; we never merge a half-written canonical with legacy).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if this call moved the directory, else <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1190,7 +1198,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.qc_summary_parquet_path"><code class="docutils literal notranslate"><span class="pre">qc_summary_parquet_path()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.migrate_legacy_qc"><code class="docutils literal notranslate"><span class="pre">migrate_legacy_qc()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -1198,7 +1206,7 @@
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="../../_sources/api_reference/api/phenotypic.sdk_.qc_summary_parquet_path.rst.txt"
+      <li><a href="../../_sources/api_reference/api/phenotypic.sdk_.migrate_legacy_qc.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div></div>

@@ -37,214 +37,34 @@ all-rights-reserved). When `dino_version=3` is selected, PhenoTypic displays
 PhenoTypic itself is distributed via PyPI and managed with `uv`. `micro_sam`
 is not published on PyPI, so it is **not** included in any `phenotypic`
 extra. Users who need `MicroSamDetector` must install `micro_sam`
-themselves; the recipe below uses `pixi` for that.
+themselves; the tutorial recipe below uses `pixi` for that.
 
-### Installing `Sam2Detector` (PyPI-only)
-
-On Linux or macOS:
-
-```bash
-uv add "phenotypic[torch]"          # torch + torchvision + sam2
-# or, inside a uv-managed project:
-uv sync --extra torch
-```
-
-The `torch` extra is not available on Windows — `sam2` requires CUDA `nvcc`
-and has no pre-built Windows wheels. Use WSL2 (Ubuntu) instead.
-
-### Installing the foundation models (`Sam3Detector`, `DinoSam2Detector`)
-
-The foundation detectors collapse to two pure-Python, permissive libraries —
-`transformers` (>=5.2.0, the first release shipping `Sam3Model`/`Sam3Processor`)
-and `huggingface_hub`. Both ship in the `foundation` extra (which pulls
-`torch`); the `gpu` umbrella extra installs every GPU detector at once.
-
-```bash
-uv sync --extra foundation           # SAM3 + DINO-based detectors
-uv sync --extra gpu                  # umbrella: every GPU detector (dev env)
-# as a dependency of a downstream project:
-uv add 'phenotypic[foundation]'
-```
-
-Installing any extra **never pulls encumbered material** — only the gated
-*weights* (SAM3, DINOv3) require a license handshake, and they are fetched at
-runtime, never at install time (see *Gated weights* below).
-
-### Enabling `micro_sam` (optional, self-service)
-
-`micro_sam` is only published on conda-forge. Because PhenoTypic does not
-own your environment, we recommend managing the combined stack in your own
-project with [pixi](https://pixi.sh), which speaks both conda-forge and
-PyPI in a single lockfile. Create a `pixi.toml` in *your* project (not in
-PhenoTypic):
-
-```toml
-[project]
-name = "my-phenotyping-project"
-channels = ["conda-forge"]
-platforms = ["osx-arm64", "linux-64", "win-64"]
-
-[pypi-dependencies]
-phenotypic = "*"
-# Or, while developing against a local checkout:
-# phenotypic = { path = "../PhenoTypic", editable = true }
-
-[dependencies]
-micro_sam = "*"
-```
-
-Then:
-
-```bash
-pixi install
-pixi run python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
-```
-
-Because conda's `micro_sam` pulls in CPU-only conda PyTorch, combining it
-with `Sam2Detector`'s CUDA wheels in the same environment requires extra
-care (the conda torch will typically win). Keep SAM2 and micro-sam work
-in separate environments if you need both with GPU acceleration.
+> **Installing the detector packages and downloading their weights is covered in
+> the {ref}`Deep Learning Detectors`
+> section of the Getting Started tutorial.** In short: `uv add "phenotypic[torch]"`
+> for SAM2, `"phenotypic[foundation]"` for the SAM3/DINO detectors, the `[gpu]`
+> umbrella for all of them, and conda-forge `micro_sam` for `MicroSamDetector`.
+> In a source checkout, use `uv sync --extra foundation` to install the same
+> foundation-model dependencies. Gated SAM3/DINOv3 weights need a one-time
+> Hugging Face license handshake (`hf auth login` after accepting the model
+> license on Hugging Face).
 
 `MicroSamDetector` is importable from `phenotypic.detect.nn` even when
 `micro_sam` is missing; the `ImportError` is deferred to the first
-`apply()` call and points back at these instructions.
-
-### Alternative: pip + conda
-
-If you already manage your environment with conda:
-
-```bash
-pip install phenotypic                        # base (or phenotypic[torch] on non-Windows)
-conda install -c conda-forge micro_sam        # adds MicroSamDetector support
-```
+`apply()` call and points back at the installation instructions.
 
 ## Downloading Model Checkpoints
 
-Both SAM2 and micro-sam download checkpoints automatically on first use.
-However, on SLURM clusters the compute nodes often lack internet access, so
-you should pre-download checkpoints on a login node before submitting jobs.
-
-### SAM2 checkpoints
-
-```bash
-# Download the default (tiny) SAM2 checkpoint
-python -m phenotypic.detect.nn download
-
-# Download a specific size
-python -m phenotypic.detect.nn download --model-type sam2 --model-size large
-
-# Download all SAM2 sizes at once
-python -m phenotypic.detect.nn download --model-type sam2 --all
-
-# Force re-download even if cached
-python -m phenotypic.detect.nn download --model-type sam2 --model-size tiny --force
-```
-
-SAM2 checkpoints are stored in the `torch.hub` cache directory
-(`~/.cache/torch/hub/checkpoints/` by default). Set the `TORCH_HOME`
-environment variable to change this location.
-
-Available SAM2 sizes: `tiny` (~39 MB), `small`, `base_plus`, `large` (~900 MB).
-
-### micro-sam checkpoints
-
-```bash
-# Download the default (vit_b_lm) micro-sam model
-python -m phenotypic.detect.nn download --model-type microsam
-
-# Download a specific model
-python -m phenotypic.detect.nn download --model-type microsam --model-name vit_l_lm
-
-# Download all micro-sam models
-python -m phenotypic.detect.nn download --model-type microsam --all
-```
-
-micro-sam stores checkpoints via `platformdirs`. Set `MICROSAM_CACHEDIR` to
-override the cache location.
-
-### Foundation-model weights (SAM3 + DINOv3 gated, DINOv2 ungated)
-
-SAM3 and the DINO backbones live on the Hugging Face Hub and are downloaded via
-`huggingface_hub.snapshot_download` into the HF cache. **SAM3 weights
-(~3.45 GB) and DINOv3 weights are gated**; DINOv2 is ungated.
-
-**One-time human handshake for a gated model (per user, per model):**
-
-1. Have a Hugging Face account.
-2. Accept the gate on the model page — <https://huggingface.co/facebook/sam3>
-   for SAM3, <https://huggingface.co/facebook/dinov3-vitb16-pretrain-lvd1689m>
-   for DINOv3 (this *is* the license acceptance).
-3. Authenticate locally once: `uv run hf auth login` (stores a token), or
-   export `HF_TOKEN`.
-
-Then download with the extended `phenotypic.detect.nn` CLI:
-
-```bash
-# SAM3 (gated): --accept-license acknowledges the SAM License non-interactively
-uv run python -m phenotypic.detect.nn download --model-type sam3 --accept-license
-
-# DINOv3 (gated): --accept-license acknowledges the DINOv3 License
-#   (required for Insid3Detector's native backbone + the dino_version=3 opt-in)
-uv run python -m phenotypic.detect.nn download --model-type dinov3 --dino-size base --accept-license
-
-# DINOv2 (ungated): no acceptance, no token
-uv run python -m phenotypic.detect.nn download --model-type dinov2 --dino-size base
-```
-
-If the gate is not accepted or no token is present, the download fails with an
-actionable message ("Request access at <url>, then run `uv run hf auth
-login`"). The informational acceptance gate is also satisfied non-interactively
-by `PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3,dinov3` (a comma list for several
-models) — this is the layer the `--accept-license` flag sets for you, on top of
-the binding Hugging Face gate.
-
-### Foundation-model environment variables
-
-| Variable | Purpose |
-|---|---|
-| `HF_TOKEN` / `HUGGING_FACE_HUB_TOKEN` | auth for gated download (alternative to `hf auth login`) |
-| `HF_HOME` (or `HF_HUB_CACHE`) | cache location → point at shared HPCC storage |
-| `HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1` | force load-from-cache on offline compute nodes |
-| `PHENOTYPIC_ACCEPT_MODEL_LICENSE` | non-interactive acknowledgement for batch/SLURM jobs |
-
-### SLURM pre-caching workflow
-
-On a cluster, download models on the login node first:
-
-```bash
-# On the login node (has internet access)
-python -m phenotypic.detect.nn download --model-type sam2 --model-size tiny
-python -m phenotypic.detect.nn download --model-type microsam --model-name vit_b_lm
-
-# Verify they are cached
-python -m phenotypic.detect.nn list
-
-# Now submit SLURM jobs -- compute nodes will use the cached checkpoints
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
-```
-
-**Foundation models on HPCC (offline compute nodes).** Never download inside a
-job — accept the gate and pre-stage weights to shared storage on the login node,
-then run the compute job offline:
-
-```bash
-# On the login node (has internet): cache to shared storage, accept once
-export HF_HOME=/bigdata/exfab/<...>/hf_cache
-uv run hf auth login
-uv run python -m phenotypic.detect.nn download --model-type sam3 --accept-license
-uv run python -m phenotypic.detect.nn download --model-type dinov2
-
-# In the SLURM job: same HF_HOME, force offline, carry the accepted acknowledgement
-export HF_HOME=/bigdata/exfab/<...>/hf_cache
-export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-export PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3
-python -m phenotypic --pipeline pipeline.json --input /plates/ -o /output/
-```
-
-The binding acceptance (HF gate + token) happens **once on the login node**;
-the compute job carries only the already-accepted token plus
-`PHENOTYPIC_ACCEPT_MODEL_LICENSE` and reads the pre-staged cache. Acceptance
-never happens silently inside a batch job.
+Every detector downloads its checkpoints automatically on first use, and the
+`phenotypic.detect.nn` CLI (`download` / `list` / `clear`) pre-fetches and
+inspects them — essential before submitting SLURM jobs, since compute nodes
+often lack internet access. The full command set, cache-location environment
+variables (`TORCH_HOME`, `MICROSAM_CACHEDIR`, `HF_HOME`,
+`PHENOTYPIC_ACCEPT_MODEL_LICENSE`, …), and the login-node pre-staging workflow
+for gated foundation weights are documented in the
+{ref}`Deep Learning Detectors`
+tutorial section. The SLURM-specific staging is expanded under
+[SLURM Deployment](#slurm-deployment) below.
 
 ## Using Sam2Detector
 
@@ -340,7 +160,8 @@ det = Sam3Detector(prompt="yeast colony", score_thresh=0.5)
 ```
 
 SAM3 weights are **gated** (SAM License). Accept the gate and authenticate
-once (see *Foundation-model weights* above) before the first `apply()`.
+once (see {ref}`Deep Learning Detectors`)
+before the first `apply()`.
 
 **Dense plates.** SAM3 caps at 200 instances per forward and runs at 1008 px
 internally, so `Sam3Detector` tiles large plates into fixed `tile_px` crops
@@ -376,7 +197,10 @@ det = DinoSam2Detector(dino_size="base", similarity_thresh=0.5)
 `dino_version` selects the backbone generation: `2` = DINOv2 (default, ungated),
 `3` = DINOv3 (gated opt-in). Selecting `dino_version=3` routes the snapshot pull
 through the DINOv3-License acceptance gate (pre-stage it with the
-`download --model-type dinov3 --accept-license` command above).
+`download --model-type dinov3 --accept-license` command from the
+{ref}`Deep Learning Detectors`
+tutorial section). The default DINOv3 checkpoint id is
+`dinov3-vitb16-pretrain-lvd1689m`.
 
 Key parameters:
 
@@ -715,9 +539,9 @@ uv add "phenotypic[torch]"
 
 ### `ImportError: MicroSamDetector requires the micro_sam package`
 
-`micro_sam` is conda-only and must be installed separately. See
-[Enabling `micro_sam` (optional, self-service)](#enabling-micro_sam-optional-self-service)
-above.
+`micro_sam` is conda-only and must be installed separately. See the
+{ref}`Deep Learning Detectors`
+tutorial section for the conda-forge / `pixi` recipe.
 
 ### `RuntimeError: No accelerator available`
 

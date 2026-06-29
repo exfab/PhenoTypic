@@ -598,11 +598,10 @@
   <h1>Source code for phenotypic.measure._measure_symmetric_zones</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Mask-based radial expansion and symmetry measurement operator.</span>
 
-<span class="sd">Implements :class:`MeasureSymmetricZones`, a branch-free alternative to</span>
-<span class="sd">:class:`MeasureRadialExpansion` that answers two colony-level questions</span>
-<span class="sd">directly from the binary object mask: how far has growth progressed past</span>
-<span class="sd">the inoculum, and out to what radius does that growth remain angularly</span>
-<span class="sd">uniform?</span>
+<span class="sd">Implements :class:`MeasureSymmetricZones`, a branch-free operator that answers</span>
+<span class="sd">two colony-level questions directly from the binary object mask: how far has</span>
+<span class="sd">growth progressed past the inoculum, and out to what radius does that growth</span>
+<span class="sd">remain angularly uniform?</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -711,8 +710,7 @@
 <span class="sd">    ``SymmetricRadius``, the first radius past the inoculum core at which the</span>
 <span class="sd">    per-annulus circular mean resultant length of mask-boundary pixels drops</span>
 <span class="sd">    below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on</span>
-<span class="sd">    the radial density profile, identical algorithm to</span>
-<span class="sd">    :class:`MeasureRadialExpansion`) anchors the measurement; ``MeanExpansion``</span>
+<span class="sd">    the radial density profile) anchors the measurement; ``MeanExpansion``</span>
 <span class="sd">    and ``MaxExpansion`` summarise how far growth reached past that core.</span>
 
 <span class="sd">    Zone segmentation (core / dense / sparse) uses a 1D per-annulus</span>
@@ -820,9 +818,6 @@
 <span class="sd">          extent is informative.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureRadialExpansion` when you need per-branch</span>
-<span class="sd">          statistics (branch counts, outlier runner detection) rather</span>
-<span class="sd">          than a single symmetry scalar.</span>
 <span class="sd">        - :class:`MeasureShape` for general morphological descriptors</span>
 <span class="sd">          (circularity, eccentricity) that do not require radial analysis.</span>
 <span class="sd">        - :class:`MeasureBounds` for lightweight bounding-box data</span>

@@ -715,6 +715,7 @@
     <span class="n">_HIGHER_IS_BAD</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">_exposes_agg_func</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">QUALITY_OCCUPANCY</span>
+    <span class="n">supports_object_curation</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="n">warn_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span>
     <span class="n">fail_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span>
@@ -780,6 +781,50 @@
         <span class="n">out</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">VACANT</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">expected</span> <span class="o">-</span> <span class="n">filled</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="n">out</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">()]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="GridOccupancy.to_table">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.to_table">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return one group-level row per group (occupancy is per-plate).</span>
+
+<span class="sd">        Occupancy reports filled-vs-expected counts broadcast across a</span>
+<span class="sd">        group&#39;s rows, so per-colony rows carry no extra signal. Collapse to</span>
+<span class="sd">        one row per group: the base ``summary()`` (renamed to the generic</span>
+<span class="sd">        QC columns) plus the occupancy-specific counts.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A group-level frame: ``[*groupby, QC_Occupancy_Filled,</span>
+<span class="sd">            QC_Occupancy_Expected, QC_Occupancy_Vacant, QC_Occupancy_Metric,</span>
+<span class="sd">            QC_Occupancy_Status, QC_Occupancy_Flag]``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_latest_measurements</span>
+        <span class="n">occ_cols</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">FILLED</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">EXPECTED</span><span class="p">),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">QUALITY_OCCUPANCY</span><span class="o">.</span><span class="n">VACANT</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span>
+                <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">occ_cols</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+            <span class="p">]</span>
+            <span class="o">.</span><span class="n">first</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+            <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;qc_worst_metric&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">(),</span>
+                <span class="s2">&quot;qc_status&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">(),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">first</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">summary</span><span class="p">[[</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_col</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()]],</span>
+            <span class="n">on</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groupby</span><span class="p">),</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Group-level flag: any member flagged → fail-status drives the flag.</span>
+        <span class="n">merged</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">flag_col</span><span class="p">()]</span> <span class="o">=</span> <span class="n">merged</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">status_col</span><span class="p">()]</span> <span class="o">==</span> <span class="s2">&quot;fail&quot;</span>
+        <span class="k">return</span> <span class="n">merged</span></div>
+
 
 <div class="viewcode-block" id="GridOccupancy.dash">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.analysis.GridOccupancy.html#phenotypic.analysis.GridOccupancy.dash">[docs]</a>

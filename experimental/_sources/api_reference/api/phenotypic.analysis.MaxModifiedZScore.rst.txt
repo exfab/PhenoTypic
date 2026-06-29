@@ -48,6 +48,8 @@ phenotypic.analysis.MaxModifiedZScore
       ~MaxModifiedZScore.show
       ~MaxModifiedZScore.status_col
       ~MaxModifiedZScore.summary
+      ~MaxModifiedZScore.table_spec
+      ~MaxModifiedZScore.to_table
       ~MaxModifiedZScore.update_forward_refs
       ~MaxModifiedZScore.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.MaxModifiedZScore
 
    .. autosummary::
    
+      ~MaxModifiedZScore.member_key_cols
       ~MaxModifiedZScore.model_computed_fields
       ~MaxModifiedZScore.model_config
       ~MaxModifiedZScore.model_extra
       ~MaxModifiedZScore.model_fields
       ~MaxModifiedZScore.model_fields_set
       ~MaxModifiedZScore.name
+      ~MaxModifiedZScore.supports_object_curation
       ~MaxModifiedZScore.warn_threshold
       ~MaxModifiedZScore.fail_threshold
       ~MaxModifiedZScore.time_label

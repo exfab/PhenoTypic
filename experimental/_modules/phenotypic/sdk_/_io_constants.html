@@ -668,6 +668,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span>
@@ -886,22 +887,12 @@
 <span class="c1"># QC artifact filenames (live inside DIR_QC)</span>
 <span class="c1"># ---------------------------------------------------------------------------</span>
 
-<span class="c1">#: Per-group QC summary written by</span>
-<span class="c1">#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`. One row per</span>
-<span class="c1">#: ``(instance_id, groupby key)``: the worst-direction metric, tri-state</span>
-<span class="c1">#: status, flag, member/flagged counts, and a worst-first ``rank``.</span>
-<span class="n">QC_SUMMARY_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc_summary.parquet&quot;</span>
-
-<span class="c1">#: Per-group member colonies written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.</span>
-<span class="c1">#: One row per ``(instance_id, group member)`` carrying the curation key</span>
-<span class="c1">#: (``Metadata_ImageFile`` + ``Object_Label``) plus the member&#39;s</span>
-<span class="c1">#: contributing value, so the Review gallery can render each group&#39;s tiles.</span>
-<span class="n">QC_MEMBERS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc_members.parquet&quot;</span>
-
-<span class="c1">#: Snapshot of the ``qc`` config entries (``instance_id``/``class``/</span>
-<span class="c1">#: ``enabled``/``params``) that produced the current ``qc/`` artifact.</span>
-<span class="c1">#: Written by :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`.</span>
-<span class="n">QC_CONFIG_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc_config.json&quot;</span>
+<span class="c1">#: DuckDB QC analysis database filename: ``&lt;output&gt;/deliverables/qc/qc.duckdb``.</span>
+<span class="c1">#: The sole QC artifact written by</span>
+<span class="c1">#: :func:`phenotypic.sdk_._qc_recipe._runner.run_qc`: one self-describing table</span>
+<span class="c1">#: per QC module (worst-direction metric, tri-state status, flag, member rows,</span>
+<span class="c1">#: worst-first ``rank``) plus a ``qc_modules`` catalog describing each table.</span>
+<span class="n">QC_DUCKDB</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc.duckdb&quot;</span>
 
 <span class="c1">#: Per-module GUI review progress (``instance_id`` -&gt; reviewed group keys +</span>
 <span class="c1">#: last position). Written **only** by the results-viewer QC Review tab;</span>
@@ -1030,10 +1021,12 @@
 <span class="c1">#: Generated SLURM script subdirectory: ``&lt;output&gt;/slurm_scripts/``.</span>
 <span class="n">DIR_SLURM_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_scripts&quot;</span>
 
-<span class="c1">#: QC artifact subdirectory: ``&lt;output&gt;/qc/``. Holds</span>
-<span class="c1">#: :data:`QC_SUMMARY_PARQUET`, :data:`QC_MEMBERS_PARQUET`,</span>
-<span class="c1">#: :data:`QC_CONFIG_JSON` (written by ``run_qc``), and</span>
-<span class="c1">#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab).</span>
+<span class="c1">#: QC artifact subdirectory: ``&lt;output&gt;/deliverables/qc/``. Holds</span>
+<span class="c1">#: :data:`QC_DUCKDB` (written by ``run_qc``) and</span>
+<span class="c1">#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated</span>
+<span class="c1">#: under ``deliverables/`` so a bundle is self-contained;</span>
+<span class="c1">#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy</span>
+<span class="c1">#: pre-relocation root ``&lt;output&gt;/qc/``.</span>
 <span class="n">DIR_QC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc&quot;</span>
 
 <span class="c1">#: ``&lt;output&gt;/deliverables/`` — all user-facing run outputs collected in one</span>
@@ -1054,12 +1047,13 @@
 <span class="c1">#: via ``reemit_error_deliverables`` — so headless == live.</span>
 <span class="n">DIR_ERRORS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;errors&quot;</span>
 
-<span class="c1">#: Durable curation-labels store: ``&lt;output&gt;/qc/curation_labels.parquet``.</span>
+<span class="c1">#: Durable curation-labels store: ``&lt;output&gt;/deliverables/qc/curation_labels.parquet``.</span>
 <span class="c1">#: The source of truth for categorized removals; the CLI re-keys but never</span>
 <span class="c1">#: wipes it (contrast :data:`QC_REVIEW_STATE_JSON`).</span>
 <span class="n">CURATION_LABELS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;curation_labels.parquet&quot;</span>
 
-<span class="c1">#: Ordered custom-category registry sidecar: ``&lt;output&gt;/qc/custom_categories.json``.</span>
+<span class="c1">#: Ordered custom-category registry sidecar:</span>
+<span class="c1">#: ``&lt;output&gt;/deliverables/qc/custom_categories.json``.</span>
 <span class="n">CUSTOM_CATEGORIES_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;custom_categories.json&quot;</span>
 
 <span class="c1">#: Ranked error-cutoff analysis deliverables (``ErrorCutoffFinder`` output;</span>
@@ -1401,6 +1395,35 @@
                 <span class="c1"># moving (or has moved) this artifact — safe to skip.</span>
                 <span class="k">pass</span>
     <span class="k">return</span> <span class="n">moved</span></div>
+
+
+
+<div class="viewcode-block" id="migrate_legacy_qc">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.migrate_legacy_qc.html#phenotypic.sdk_.migrate_legacy_qc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate_legacy_qc</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Move a pre-relocation run&#39;s ``&lt;output&gt;/qc/`` into ``deliverables/qc/``.</span>
+
+<span class="sd">    Hard cutover (MOVE, no duplication), mirroring</span>
+<span class="sd">    :func:`migrate_legacy_machine_state`. A no-op when there is no legacy ``qc/``</span>
+<span class="sd">    or when the canonical ``deliverables/qc/`` already exists (the move is</span>
+<span class="sd">    whole-directory; we never merge a half-written canonical with legacy).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` if this call moved the directory, else ``False``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="n">canonical</span> <span class="o">=</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">legacy</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">or</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">canonical</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">legacy</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">canonical</span><span class="p">))</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="n">shutil</span><span class="o">.</span><span class="n">Error</span><span class="p">):</span>
+        <span class="c1"># Lost a race with a concurrent migrator; safe to skip.</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
 
 
 
@@ -2097,43 +2120,51 @@
 <div class="viewcode-block" id="qc_dir">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_dir.html#phenotypic.sdk_.qc_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/``.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/`` — durable QC + curation state.</span>
 
-<span class="sd">    Pure path expression; ``run_qc`` is responsible for ``mkdir`` when it</span>
-<span class="sd">    writes into it (via :func:`_atomic_write`).</span>
+<span class="sd">    Relocated under ``deliverables/`` so a deliverables bundle is self-contained</span>
+<span class="sd">    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy</span>
+<span class="sd">    root ``&lt;output&gt;/qc/`` layout of pre-relocation runs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_QC</span></div>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_QC</span></div>
 
 
 
-<div class="viewcode-block" id="qc_summary_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_summary_parquet_path.html#phenotypic.sdk_.qc_summary_parquet_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">qc_summary_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_summary.parquet``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_SUMMARY_PARQUET</span></div>
+<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-relocation location: ``&lt;output&gt;/qc/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_QC</span>
+
+
+<div class="viewcode-block" id="resolve_qc_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_qc_dir.html#phenotypic.sdk_.resolve_qc_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the qc dir that exists, preferring ``deliverables/qc/``.</span>
+
+<span class="sd">    Read-only resolver: deliverables/qc if present, else legacy root qc if</span>
+<span class="sd">    present, else the canonical deliverables/qc (for fresh writes).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">new</span>
+    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">legacy</span>
+    <span class="k">return</span> <span class="n">new</span></div>
 
 
 
-<div class="viewcode-block" id="qc_members_parquet_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_members_parquet_path.html#phenotypic.sdk_.qc_members_parquet_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">qc_members_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_members.parquet``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_MEMBERS_PARQUET</span></div>
-
-
-
-<div class="viewcode-block" id="qc_config_json_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_config_json_path.html#phenotypic.sdk_.qc_config_json_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">qc_config_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/qc_config.json``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_CONFIG_JSON</span></div>
+<div class="viewcode-block" id="qc_duckdb_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_duckdb_path.html#phenotypic.sdk_.qc_duckdb_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">qc_duckdb_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/qc.duckdb``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_DUCKDB</span></div>
 
 
 
 <div class="viewcode-block" id="qc_review_state_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.qc_review_state_path.html#phenotypic.sdk_.qc_review_state_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_review_state_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/review_state.json`` (GUI-owned review progress).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/review_state.json`` (GUI-owned review progress).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">QC_REVIEW_STATE_JSON</span></div>
 
 
@@ -2195,7 +2226,7 @@
 <div class="viewcode-block" id="curation_labels_parquet_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.curation_labels_parquet_path.html#phenotypic.sdk_.curation_labels_parquet_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">curation_labels_parquet_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/curation_labels.parquet`` (durable labels store).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/curation_labels.parquet`` (durable labels store).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CURATION_LABELS_PARQUET</span></div>
 
 
@@ -2203,7 +2234,7 @@
 <div class="viewcode-block" id="custom_categories_json_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.custom_categories_json_path.html#phenotypic.sdk_.custom_categories_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">custom_categories_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/qc/custom_categories.json`` (custom-category registry).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/custom_categories.json`` (custom-category registry).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">CUSTOM_CATEGORIES_JSON</span></div>
 
 
@@ -2524,6 +2555,274 @@
         <span class="n">cls_attr</span> <span class="o">=</span> <span class="n">cls_attr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;replace&quot;</span><span class="p">)</span>
     <span class="n">image_cls</span> <span class="o">=</span> <span class="n">GridImage</span> <span class="k">if</span> <span class="n">cls_attr</span> <span class="o">==</span> <span class="n">IMAGE_TYPES</span><span class="o">.</span><span class="n">GRID</span><span class="o">.</span><span class="n">value</span> <span class="k">else</span> <span class="n">Image</span>
     <span class="k">return</span> <span class="n">image_cls</span><span class="o">.</span><span class="n">load_hdf5</span><span class="p">(</span><span class="n">hdf_path</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># BundleLayout — resolved on-disk topology value object</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<div class="viewcode-block" id="BundleLayout">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">BundleLayout</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolved on-disk topology of a run output or a standalone deliverables bundle.</span>
+
+<span class="sd">    Separates the *deliverables base* (the folder directly holding</span>
+<span class="sd">    ``master_measurements.parquet``) from the optional *output root* (the parent</span>
+<span class="sd">    that also holds ``results/`` and ``.phenotypic/``). A standalone bundle has</span>
+<span class="sd">    ``output_root is None``; deliverables-internal artefacts always resolve from</span>
+<span class="sd">    ``deliverables_base`` so the bundle is portable.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        deliverables_base: Folder containing ``master_measurements.parquet``.</span>
+<span class="sd">        output_root: Parent run directory holding ``results/`` + machine state,</span>
+<span class="sd">            or ``None`` for a standalone (deliverables-only) bundle.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">deliverables_base</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">output_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span>
+
+<div class="viewcode-block" id="BundleLayout.detect">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.detect">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BundleLayout&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Classify ``path`` as a run output dir or a standalone deliverables bundle.</span>
+
+<span class="sd">        Case 1 — ``path`` directly holds ``master_measurements.parquet``: treat it</span>
+<span class="sd">        as the deliverables base. Promote ``path.parent`` to ``output_root`` ONLY</span>
+<span class="sd">        when ``path`` is literally named ``deliverables`` AND a sibling ``results/``</span>
+<span class="sd">        exists (the &quot;pointed at the deliverables subdir of a full run&quot; case); this</span>
+<span class="sd">        guard stops a renamed standalone bundle from adopting an unrelated sibling</span>
+<span class="sd">        ``results/``.</span>
+
+<span class="sd">        Case 2 — ``path`` contains ``deliverables/master_measurements.parquet``:</span>
+<span class="sd">        ``deliverables_base = path/deliverables`` and ``output_root = path``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Either a run output directory (containing a ``deliverables/``</span>
+<span class="sd">                subdirectory) or a standalone deliverables folder (directly</span>
+<span class="sd">                containing ``master_measurements.parquet``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A :class:`BundleLayout` with resolved ``deliverables_base`` and</span>
+<span class="sd">            ``output_root``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: ``path`` is neither a run output directory nor a</span>
+<span class="sd">                deliverables bundle.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="n">output_root</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">DIR_DELIVERABLES</span> <span class="ow">and</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">output_root</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">deliverables_base</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">output_root</span><span class="o">=</span><span class="n">output_root</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">deliverables_base</span><span class="o">=</span><span class="n">path</span> <span class="o">/</span> <span class="n">DIR_DELIVERABLES</span><span class="p">,</span> <span class="n">output_root</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is neither a deliverables bundle nor a run output directory &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;containing </span><span class="si">{</span><span class="n">DIR_DELIVERABLES</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="si">}</span><span class="s2">. Point the &quot;</span>
+            <span class="s2">&quot;viewer at a `python -m phenotypic` output dir or a deliverables/ folder.&quot;</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># -- capability ---------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_results</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``True`` when a ``results/`` directory exists under the output root.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">results_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the ``results/`` directory, or ``None`` for a standalone bundle.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_RESULTS</span>
+        <span class="k">return</span> <span class="n">results</span> <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="BundleLayout.hdf_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.hdf_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">hdf_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Full-res per-image HDF for ``(dataset, stem)``, or ``None`` if unavailable.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset: Dataset name (subdirectory under ``results/``).</span>
+<span class="sd">            stem: Image stem (filename without extension).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resolved ``.h5`` path if the file exists, otherwise ``None``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">dataset_hdf_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_root</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.h5&quot;</span>
+        <span class="k">return</span> <span class="n">candidate</span> <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+    <span class="c1"># -- deliverables-anchored artefacts ------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">master_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``master_measurements.parquet`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">master_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``master_measurements.csv`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_CSV</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mirror_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``measurements.parquet`` (post-applied mirror).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MEASUREMENTS_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mirror_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``measurements.csv`` (post-applied mirror).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MEASUREMENTS_CSV</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pipeline_config_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``pipeline.json`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolved_pipeline_config_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the best existing pipeline config path inside the bundle.</span>
+
+<span class="sd">        Mirrors :func:`resolve_pipeline_config_path`&#39;s precedence but anchored</span>
+<span class="sd">        on :attr:`deliverables_base` (so a standalone bundle resolves *inside</span>
+<span class="sd">        itself* without double-joining ``deliverables/``): the canonical typed</span>
+<span class="sd">        config when present, else the legacy plain ``pipeline.json`` when</span>
+<span class="sd">        present, else the canonical path (so writers naturally create typed</span>
+<span class="sd">        config files).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">canonical</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipeline_config_path</span>
+        <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">canonical</span>
+        <span class="n">legacy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">_LEGACY_PIPELINE_JSON</span>
+        <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">legacy</span>
+        <span class="k">return</span> <span class="n">canonical</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qc_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the QC directory, resolving legacy ``&lt;output&gt;/qc/`` layouts.</span>
+
+<span class="sd">        Prefers ``deliverables/qc/`` when it exists. Falls back to the</span>
+<span class="sd">        legacy root ``&lt;output&gt;/qc/`` when only that exists (pre-relocation</span>
+<span class="sd">        runs). Returns the canonical ``deliverables/qc/`` path for fresh</span>
+<span class="sd">        writes when neither is present.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">canonical</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">DIR_QC</span>
+        <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">canonical</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">legacy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_root</span> <span class="o">/</span> <span class="n">DIR_QC</span>
+            <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">legacy</span>
+        <span class="k">return</span> <span class="n">canonical</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qc_duckdb</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``qc/qc.duckdb`` (the QC analysis database).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qc_dir</span> <span class="o">/</span> <span class="n">QC_DUCKDB</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">qc_review_state_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``deliverables/qc/review_state.json`` (GUI-owned review progress).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qc_dir</span> <span class="o">/</span> <span class="n">QC_REVIEW_STATE_JSON</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">curation_labels_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``deliverables/qc/curation_labels.parquet`` (durable labels store).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qc_dir</span> <span class="o">/</span> <span class="n">CURATION_LABELS_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">custom_categories_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``deliverables/qc/custom_categories.json`` (custom-category registry).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qc_dir</span> <span class="o">/</span> <span class="n">CUSTOM_CATEGORIES_JSON</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">errors_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to the ``errors/`` directory under the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">DIR_ERRORS</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``error_analysis.parquet`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``error_analysis.csv`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_CSV</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error_analysis_html</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``error_analysis.html`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ERROR_ANALYSIS_HTML</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">verified_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``verified.parquet`` (GUI-written verified-good archive).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">VERIFIED_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analysis_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``analysis.parquet`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ANALYSIS_PARQUET</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analysis_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``analysis.csv`` in the deliverables base.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">ANALYSIS_CSV</span>
+
+<div class="viewcode-block" id="BundleLayout.error_category_parquet">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.error_category_parquet">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error_category_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">category</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``errors/&lt;category&gt;.parquet``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            category: Bare, already-sanitized category token</span>
+<span class="sd">                (e.g. ``&quot;background_noise&quot;``).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path to the per-category error parquet file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">errors_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2">.parquet&quot;</span></div>
+
+
+<div class="viewcode-block" id="BundleLayout.overlays_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.overlays_dir">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">overlays_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``overlays/&lt;dataset&gt;/``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset: Dataset name.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Directory path for overlay PNGs of the given dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">DIR_OVERLAYS</span> <span class="o">/</span> <span class="n">dataset</span></div>
+
+
+<div class="viewcode-block" id="BundleLayout.overlay_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.BundleLayout.html#phenotypic.sdk_.BundleLayout.overlay_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">overlay_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``overlays/&lt;dataset&gt;/&lt;stem&gt;.png``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset: Dataset name.</span>
+<span class="sd">            stem: Image stem (filename without extension).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path to the overlay PNG for the given image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">overlays_dir</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.png&quot;</span></div>
+</div>
 
 </pre></div>
 

@@ -68,6 +68,7 @@
       metadata_csv_deliverable_path
       matches_any_suffix
       migrate_legacy_machine_state
+      migrate_legacy_qc
       clear_machine_state
       overlay_manifest_path
       param_importance_path
@@ -81,11 +82,9 @@
       processing_report_html_path
       processing_state_path
       progress_dir
-      qc_config_json_path
       qc_dir
-      qc_members_parquet_path
+      qc_duckdb_path
       qc_review_state_path
-      qc_summary_parquet_path
       readme_md_path
       read_run_manifest
       recompile_dir
@@ -97,6 +96,7 @@
       resolve_pipeline_config_path
       resolve_processing_state_path
       resolve_progress_dir
+      resolve_qc_dir
       resolve_split_assignment_path
       resolve_study_db_path
       resolve_tuning_spec_path
@@ -140,6 +140,7 @@
       JobMetadataKey
       ModulePath
       ProcessingStateKey
+      BundleLayout
    
    
 

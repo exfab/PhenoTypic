@@ -658,7 +658,7 @@
 <span class="sd">      (`@validate_operation_integrity` decorator).</span>
 
 <span class="sd">    Any attempt to modify protected image components raises `OperationIntegrityError` when</span>
-<span class="sd">    `VALIDATE_OPS=True` in the environment (enabled during development/testing).</span>
+<span class="sd">    ``phenotypic.settings.VALIDATE_OPS`` is true (enabled during development/testing).</span>
 
 <span class="sd">    **Role in the Detection-to-Measurement Pipeline**</span>
 
@@ -769,8 +769,8 @@
 <span class="sd">    3. Recalculates signatures **after** operation completes</span>
 <span class="sd">    4. Raises ``OperationIntegrityError`` if any protected component was modified</span>
 
-<span class="sd">    **Note:** Integrity validation only runs if the ``VALIDATE_OPS=True`` environment variable</span>
-<span class="sd">    is set (development-time safety; disabled in production for performance).</span>
+<span class="sd">    **Note:** Integrity validation only runs if ``phenotypic.settings.VALIDATE_OPS`` is true</span>
+<span class="sd">    (development-time safety; disabled in production for performance).</span>
 
 <span class="sd">    **Implementing a Custom ObjectRefiner**</span>
 

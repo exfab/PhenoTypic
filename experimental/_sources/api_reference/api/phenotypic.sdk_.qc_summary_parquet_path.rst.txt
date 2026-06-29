@@ -1,6 +1,0 @@
-phenotypic.sdk\_.qc\_summary\_parquet\_path
-===========================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: qc_summary_parquet_path

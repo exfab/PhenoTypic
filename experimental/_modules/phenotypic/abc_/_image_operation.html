@@ -697,7 +697,7 @@
 <span class="sd">    3. **Calls your _operate() instance method** with the image</span>
 <span class="sd">    4. **Validates integrity** (subclass-specific via ``@validate_operation_integrity``)</span>
 <span class="sd">       - Detects unexpected modifications to protected image components</span>
-<span class="sd">       - Only enabled if ``VALIDATE_OPS=True`` in environment</span>
+<span class="sd">       - Only enabled if ``phenotypic.settings.VALIDATE_OPS`` is true</span>
 
 <span class="sd">    Your subclass only needs to implement ``_operate(self, image) -&gt; Image``.</span>
 
@@ -780,7 +780,7 @@
 <span class="sd">    3. Recalculates signatures **after** operation completes</span>
 <span class="sd">    4. Raises ``OperationIntegrityError`` if any protected component changed</span>
 
-<span class="sd">    Only enabled if ``VALIDATE_OPS=True`` in environment (for performance).</span>
+<span class="sd">    Only enabled if ``phenotypic.settings.VALIDATE_OPS`` is true (for performance).</span>
 
 <span class="sd">    **Operation chaining and pipelines**</span>
 
@@ -853,7 +853,7 @@
 <span class="sd">          platform-specific. Code must gracefully handle missing optional dependencies.</span>
 
 <span class="sd">        - **Integrity validation is optional:** The ``@validate_operation_integrity``</span>
-<span class="sd">          decorator only runs if ``VALIDATE_OPS=True`` in environment. This provides</span>
+<span class="sd">          decorator only runs if ``phenotypic.settings.VALIDATE_OPS`` is true. This provides</span>
 <span class="sd">          development-time safety without production overhead.</span>
 
 <span class="sd">    Examples:</span>

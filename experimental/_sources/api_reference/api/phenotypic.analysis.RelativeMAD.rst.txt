@@ -48,6 +48,8 @@ phenotypic.analysis.RelativeMAD
       ~RelativeMAD.show
       ~RelativeMAD.status_col
       ~RelativeMAD.summary
+      ~RelativeMAD.table_spec
+      ~RelativeMAD.to_table
       ~RelativeMAD.update_forward_refs
       ~RelativeMAD.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.RelativeMAD
 
    .. autosummary::
    
+      ~RelativeMAD.member_key_cols
       ~RelativeMAD.model_computed_fields
       ~RelativeMAD.model_config
       ~RelativeMAD.model_extra
       ~RelativeMAD.model_fields
       ~RelativeMAD.model_fields_set
       ~RelativeMAD.name
+      ~RelativeMAD.supports_object_curation
       ~RelativeMAD.warn_threshold
       ~RelativeMAD.fail_threshold
       ~RelativeMAD.time_label

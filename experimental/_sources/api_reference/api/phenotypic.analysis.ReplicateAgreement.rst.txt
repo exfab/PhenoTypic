@@ -48,6 +48,8 @@ phenotypic.analysis.ReplicateAgreement
       ~ReplicateAgreement.show
       ~ReplicateAgreement.status_col
       ~ReplicateAgreement.summary
+      ~ReplicateAgreement.table_spec
+      ~ReplicateAgreement.to_table
       ~ReplicateAgreement.update_forward_refs
       ~ReplicateAgreement.validate
    
@@ -59,12 +61,14 @@ phenotypic.analysis.ReplicateAgreement
 
    .. autosummary::
    
+      ~ReplicateAgreement.member_key_cols
       ~ReplicateAgreement.model_computed_fields
       ~ReplicateAgreement.model_config
       ~ReplicateAgreement.model_extra
       ~ReplicateAgreement.model_fields
       ~ReplicateAgreement.model_fields_set
       ~ReplicateAgreement.name
+      ~ReplicateAgreement.supports_object_curation
       ~ReplicateAgreement.warn_threshold
       ~ReplicateAgreement.fail_threshold
       ~ReplicateAgreement.time_label
