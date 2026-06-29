@@ -51,6 +51,14 @@ class _LazyColourPlotting(types.ModuleType):
     __phenotypic_lazy_stub__ = True
 
     def __getattr__(self, name: str):
+        # Introspection probes (e.g. inspect.getmodule asking for ``__file__``
+        # while formatting an unrelated traceback) must not force the heavy
+        # import — only genuine plotting attribute access should. Forwarding a
+        # dunder lookup would detonate the real ``colour.plotting`` import even
+        # in venvs where colour is broken, surfacing a confusing secondary
+        # error during traceback formatting.
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(name)
         # First real use: replace ourselves with the genuine submodule.
         sys.modules.pop("colour.plotting", None)
         real = importlib.import_module("colour.plotting")
