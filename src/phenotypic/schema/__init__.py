@@ -16,6 +16,7 @@ standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops
 """
 
 from ._measurement_info import Entry, MeasurementInfo
+from ._rembi import REMBI_MODULE as REMBI_MODULE
 from ._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -71,6 +72,7 @@ from ._texture import TEXTURE
 __all__ = [
     "Entry",
     "MeasurementInfo",
+    "REMBI_MODULE",
     "METADATA",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",

@@ -7,7 +7,10 @@ conventions, descriptive metadata, and automatic documentation generation.
 import re
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from ._rembi import REMBI_MODULE
 
 _DERIVATION_TYPES: Final = frozenset({"parameterization", "normalization", "diagnostic"})
 # Not used by _classify; consumed by the Task 10 coverage-gate test.
@@ -81,6 +84,7 @@ class Entry:
     tier: int | None = None
     derivation_type: str | None = None
     derives_from: str | None = None
+    rembi_module: "REMBI_MODULE | None" = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -98,6 +102,10 @@ class Entry:
             )
         if self.derives_from is not None and not isinstance(self.derives_from, str):
             raise TypeError("Entry.derives_from must be a string token or None")
+        if self.rembi_module is not None:
+            from ._rembi import REMBI_MODULE
+            if not isinstance(self.rembi_module, REMBI_MODULE):
+                raise TypeError("Entry.rembi_module must be a REMBI_MODULE or None")
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -329,6 +337,7 @@ class MeasurementInfo(str, Enum):
     tier_override: int | None
     derivation_type: str | None
     derives_from: str | None
+    rembi_module_override: "REMBI_MODULE | None"
 
     @classmethod
     def category(cls) -> str:
@@ -356,6 +365,11 @@ class MeasurementInfo(str, Enum):
     @classmethod
     def tier(cls) -> int | None:
         """Trust tier (1/2/3) for primary measurements, or None."""
+        return None
+
+    @classmethod
+    def rembi_module(cls) -> "REMBI_MODULE | None":
+        """REMBI module for this enum, or None until a subclass declares it."""
         return None
 
     @property
@@ -395,6 +409,7 @@ class MeasurementInfo(str, Enum):
         obj.tier_override = entry.tier
         obj.derivation_type = entry.derivation_type
         obj.derives_from = entry.derives_from
+        obj.rembi_module_override = entry.rembi_module
         return obj
 
     def __str__(self) -> str:
@@ -418,6 +433,17 @@ class MeasurementInfo(str, Enum):
     def resolved_tier(self) -> int | None:
         """The trust tier (1/2/3) for this member, or None for non-primary."""
         return _classify(self)[1]
+
+    @property
+    def resolved_rembi_module(self) -> "REMBI_MODULE":
+        """Total REMBI-module resolver: override > enum declaration > fallback."""
+        from ._rembi import REMBI_MODULE
+        if self.rembi_module_override is not None:
+            return self.rembi_module_override
+        mod = type(self).rembi_module()
+        if mod is not None:
+            return mod
+        return REMBI_MODULE.ANALYZED_DATA
 
     @property
     def use_label(self) -> str:
