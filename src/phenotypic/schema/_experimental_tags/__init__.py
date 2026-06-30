@@ -14,18 +14,18 @@ still accepted everywhere. Re-exported from :mod:`phenotypic.schema`:
 
 from ._acquisition import ACQUISITION_METADATA
 from ._condition import CONDITION_METADATA
+from ._culture import CULTURE_METADATA
 from ._experiment import EXPERIMENT_METADATA
 from ._genetic import GENETIC_METADATA
-from ._incubation import INCUBATION_METADATA
 from ._plate import PLATE_METADATA
 from ._sample import SAMPLE_METADATA
 
 __all__ = [
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",
+    "CULTURE_METADATA",
     "EXPERIMENT_METADATA",
     "GENETIC_METADATA",
-    "INCUBATION_METADATA",
     "PLATE_METADATA",
     "SAMPLE_METADATA",
 ]

@@ -11,7 +11,7 @@ public import surface stays stable:
 It also hosts the metadata vocabulary: ``METADATA`` (framework-populated image
 bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
 ``SAMPLE_METADATA``, ``PLATE_METADATA``, ``CONDITION_METADATA``,
-``INCUBATION_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
+``CULTURE_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
 standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
 """
 
@@ -30,9 +30,9 @@ from ._metadata import METADATA
 from ._experimental_tags import (
     ACQUISITION_METADATA,
     CONDITION_METADATA,
+    CULTURE_METADATA,
     EXPERIMENT_METADATA,
     GENETIC_METADATA,
-    INCUBATION_METADATA,
     PLATE_METADATA,
     SAMPLE_METADATA,
 )
@@ -76,9 +76,9 @@ __all__ = [
     "METADATA",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",
+    "CULTURE_METADATA",
     "EXPERIMENT_METADATA",
     "GENETIC_METADATA",
-    "INCUBATION_METADATA",
     "PLATE_METADATA",
     "SAMPLE_METADATA",
     "BBOX",

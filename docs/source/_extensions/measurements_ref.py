@@ -43,7 +43,7 @@ _GROUPS: dict[str, tuple[str, ...]] = {
     "Curation & Errors": ("CURATION", "ErrorCategory"),
     "Metadata"         : (
         "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
-        "EXPERIMENT_METADATA", "GENETIC_METADATA", "INCUBATION_METADATA",
+        "CULTURE_METADATA", "EXPERIMENT_METADATA", "GENETIC_METADATA",
         "PLATE_METADATA", "SAMPLE_METADATA",
     ),
 }
@@ -73,10 +73,10 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "Use when comparing phenotypes across growth environments or "
         "perturbations.",
     ),
-    "INCUBATION_METADATA" : (
+    "CULTURE_METADATA" : (
         "Temperature, elapsed time, time units, timepoints, day indices, "
         "generation, humidity, and atmosphere.",
-        "Use for time-course analyses and incubation-condition grouping.",
+        "Use for time-course analyses and culture-condition grouping.",
     ),
     "ACQUISITION_METADATA": (
         "Image acquisition details, including imaging date, instrument, "

@@ -1,13 +1,13 @@
-"""Incubation and time-course metadata tags for the PhenoTypic module."""
+"""Culture and time-course metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
 from .._tiers import IdentityInfo
 
 
-class INCUBATION_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags describing incubation and time course.
+class CULTURE_METADATA(IdentityInfo):
+    """Recommended ``Metadata_*`` tags describing culture and time course.
 
-    These capture the temporal and environmental incubation parameters of an
+    These capture the temporal and environmental culture parameters of an
     experiment (temperature, elapsed time, timepoint, generation, atmosphere).
     ``Time``/``Timepoint`` align with the QC time-series axis. Members render as
     ``Metadata_<Label>`` (e.g. ``Metadata_Time``) and share the ``Metadata_``
@@ -19,7 +19,7 @@ class INCUBATION_METADATA(IdentityInfo):
     def category(cls) -> str:
         return "Metadata"
 
-    TEMPERATURE = Entry("Temperature", "Incubation temperature in degrees Celsius.")
+    TEMPERATURE = Entry("Temperature", "Culture temperature in degrees Celsius.")
     TIME = Entry("Time", "Elapsed growth time.")
     TIME_UNIT = Entry("TimeUnit", "Unit for the Time value (e.g. hours, days).")
     TIMEPOINT = Entry(

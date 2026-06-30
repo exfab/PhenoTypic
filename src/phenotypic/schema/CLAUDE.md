@@ -26,7 +26,7 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   the pipeline, not user input.
 - `_experimental_tags/` — seven `MeasurementInfo` subclasses
   (`GENETIC_METADATA`, `SAMPLE_METADATA`, `PLATE_METADATA`,
-  `CONDITION_METADATA`, `INCUBATION_METADATA`, `ACQUISITION_METADATA`,
+  `CONDITION_METADATA`, `CULTURE_METADATA`, `ACQUISITION_METADATA`,
   `EXPERIMENT_METADATA`), one per file, re-exported from `__init__.py`. All
   return `category() == "Metadata"`, so the grouping is organizational and every
   member shares the `Metadata_` namespace (`SAMPLE_METADATA.REPLICATE` →
