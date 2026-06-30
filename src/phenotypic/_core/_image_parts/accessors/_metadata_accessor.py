@@ -318,6 +318,7 @@ class MetadataAccessor:
         # insert() places each column at loc=0, so iterate in reverse rank to
         # land the lowest-rank module (Study) at the leftmost position.
         from phenotypic.schema import REMBI_MODULE, header_to_module
+        from phenotypic.sdk_ import ensure_metadata_prefix, is_metadata_header
 
         idx = header_to_module()
         order = {m: i for i, m in enumerate(REMBI_MODULE)}
@@ -336,10 +337,10 @@ class MetadataAccessor:
                 value = (
                     self._parent_image.name
                 )  # offload handling to image handler class
-            if not key.startswith("Metadata_"):
-                header = f"Metadata_{key}"
-            else:
+            if is_metadata_header(key):
                 header = key
+            else:
+                header = ensure_metadata_prefix(key)
             if header not in working_df.columns:
                 working_df.insert(
                         loc=0, column=header, value=value,

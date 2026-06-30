@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import _ensure_prefix
+from ._utils import ensure_metadata_prefix
 
 
 class ExpandMetadata(PostMeasurement):
@@ -65,7 +65,7 @@ class ExpandMetadata(PostMeasurement):
     @classmethod
     def _prefix_column(cls, column: str) -> str:
         """Prepend the ``Metadata_`` prefix to a non-empty column name."""
-        return _ensure_prefix(column) if column else ""
+        return ensure_metadata_prefix(column) if column else ""
 
     @field_validator("labels", mode="before")
     @classmethod
@@ -77,7 +77,7 @@ class ExpandMetadata(PostMeasurement):
         round-trips). A genuinely-empty ``labels`` is caught at
         ``apply()`` time by ``_operate``'s split-count check.
         """
-        return [_ensure_prefix(lbl) for lbl in labels] if labels else []
+        return [ensure_metadata_prefix(lbl) for lbl in labels] if labels else []
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Split the metadata column and insert new columns.

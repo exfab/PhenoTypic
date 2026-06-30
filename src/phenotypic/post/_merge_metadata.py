@@ -6,7 +6,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import _ensure_prefix
+from ._utils import ensure_metadata_prefix
 
 
 class MergeMetadata(PostMeasurement):
@@ -70,13 +70,13 @@ class MergeMetadata(PostMeasurement):
         """
         if columns and len(columns) < 2:
             raise ValueError("columns must contain at least 2 column names to merge")
-        return [_ensure_prefix(c) for c in columns] if columns else []
+        return [ensure_metadata_prefix(c) for c in columns] if columns else []
 
     @field_validator("label")
     @classmethod
     def _prefix_label(cls, label: str) -> str:
         """Prepend the ``Metadata_`` prefix to a non-empty label."""
-        return _ensure_prefix(label) if label else ""
+        return ensure_metadata_prefix(label) if label else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Merge the specified columns into a new column.

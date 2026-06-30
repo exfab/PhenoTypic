@@ -4,7 +4,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import _ensure_prefix
+from ._utils import ensure_metadata_prefix
 
 
 class AppendString(PostMeasurement):
@@ -46,7 +46,7 @@ class AppendString(PostMeasurement):
     @classmethod
     def _prefix_column(cls, column: str) -> str:
         """Prepend the ``Metadata_`` prefix to a non-empty column name."""
-        return _ensure_prefix(column) if column else ""
+        return ensure_metadata_prefix(column) if column else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Append the string value to each cell in the target column.

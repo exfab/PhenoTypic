@@ -67,6 +67,23 @@ def is_metadata_header(col: str) -> bool:
     return any(str(col).startswith(p) for p in metadata_category_prefixes())
 
 
+_GENERIC_PREFIX = "Metadata_"
+
+
+def ensure_metadata_prefix(name: str) -> str:
+    """Prefix a bare metadata label with its schema category, else generic.
+
+    ``'Strain' -> 'MetadataGenetic_Strain'`` (the owning enum's category);
+    an unknown ``'Foo' -> 'Metadata_Foo'`` (kept, uncategorized). Names that
+    already carry a metadata prefix -- any ``Metadata<Topic>_`` category prefix
+    or the generic ``Metadata_`` -- pass through unchanged.
+    """
+    if is_metadata_header(name) or name.startswith(_GENERIC_PREFIX):
+        return name
+    category = metadata_category_for_label(name)
+    return f"{category}_{name}" if category else f"{_GENERIC_PREFIX}{name}"
+
+
 @lru_cache(maxsize=1)
 def _label_to_category() -> dict[str, str]:
     """Map each bare metadata label to the category of the enum that owns it.
