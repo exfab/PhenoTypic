@@ -24,10 +24,11 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   (`UUID`, `ImageName`, `BitDepth`, …). `category() == "Metadata"`, so members
   render as `Metadata_<Label>`. These are `image.metadata` accessor keys set by
   the pipeline, not user input.
-- `_experimental_tags/` — seven `MeasurementInfo` subclasses
+- `_experimental_tags/` — eight `MeasurementInfo` subclasses
   (`GENETIC_METADATA`, `SAMPLE_METADATA`, `PLATE_METADATA`,
   `CONDITION_METADATA`, `CULTURE_METADATA`, `ACQUISITION_METADATA`,
-  `EXPERIMENT_METADATA`), one per file, re-exported from `__init__.py`. All
+  `EXPERIMENT_METADATA`, `STUDY_METADATA`), one per file, re-exported from
+  `__init__.py`. All
   return `category() == "Metadata"`, so the grouping is organizational and every
   member shares the `Metadata_` namespace (`SAMPLE_METADATA.REPLICATE` →
   `Metadata_Replicate`). A **recommended vocabulary, not a validator**: it

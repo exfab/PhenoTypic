@@ -45,5 +45,5 @@ class CULTURE_METADATA(IdentityInfo):
     )
     DAY = Entry("Day", "Day index of the experiment.")
     GENERATION = Entry("Generation", "Generation or passage number.")
-    HUMIDITY = Entry("Humidity", "Relative humidity during incubation.")
+    HUMIDITY = Entry("Humidity", "Relative humidity during culture.")
     ATMOSPHERE = Entry("Atmosphere", "Atmospheric condition (e.g. aerobic, anaerobic).")
