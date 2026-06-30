@@ -91,3 +91,35 @@ def build_rembi_manifest(
         manifest["analyzed_data"] = {"features": {k: sorted(v) for k, v in features.items()}}
 
     return manifest
+
+
+def write_rembi_manifest(
+    output_dir,
+    measurements: pd.DataFrame,
+    image_metadata: list[dict],
+    study_config: dict | None = None,
+):
+    """Best-effort: build + write the manifest to deliverables/rembi.yaml.
+
+    Never raises — logs and returns None on any failure, so finalize is never
+    blocked (same contract as the best-effort metadata.csv copy). No-ops
+    (returns ``None``) when the deliverables dir does not exist.
+    """
+    import logging
+    from pathlib import Path
+
+    import yaml
+
+    from ._io_constants import rembi_manifest_path
+
+    log = logging.getLogger(__name__)
+    try:
+        manifest = build_rembi_manifest(measurements, image_metadata, study_config)
+        path = rembi_manifest_path(Path(output_dir))
+        if not path.parent.exists():
+            return None
+        path.write_text(yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True))
+        return path
+    except Exception:  # noqa: BLE001 - best-effort, never block finalize
+        log.warning("REMBI manifest write failed", exc_info=True)
+        return None

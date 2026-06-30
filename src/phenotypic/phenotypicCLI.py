@@ -135,6 +135,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union, cast
 
 import click
+import yaml
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -775,6 +776,16 @@ def _print_process_only_dry_run_plan(
     help="CSV file to inner-join onto master_measurements.csv on shared columns",
 )
 @click.option(
+    "--study",
+    "study",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    metavar="PATH",
+    help="Optional study.yaml of REMBI Study-level fields (Title, License, "
+         "Author, ...) folded into deliverables/rembi.yaml. CLI study file "
+         "overrides constant Metadata_* columns.",
+)
+@click.option(
     "--checkpoint-interval",
     type=int,
     default=None,
@@ -834,6 +845,7 @@ def phenotypic_cli(
     restart: bool,
     overwrite: bool,
     metadata_csv: Optional[Path],
+    study: Optional[Path],
     checkpoint_interval: Optional[int],
     skip_validation: bool,
     no_qc: bool,
@@ -1458,6 +1470,17 @@ def phenotypic_cli(
         except Exception as e:
             logger.warning(f"Failed to load pipeline for finalizer: {e}")
 
+        # Parse the optional --study YAML once; its REMBI Study-level fields are
+        # folded into deliverables/rembi.yaml and override constant Metadata_*
+        # study columns. Best-effort: a malformed/unreadable file is logged and
+        # the manifest still emits from the mirror's own columns.
+        study_config: Optional[dict] = None
+        if study is not None:
+            try:
+                study_config = yaml.safe_load(Path(study).read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.warning(f"Failed to read --study file {study}: {e}")
+
         # Aggregate master CSV (if we have completed results)
         if results.total_completed > 0:
             click.echo("\nAggregating measurements...")
@@ -1466,6 +1489,7 @@ def phenotypic_cli(
                 metadata_csv=config.metadata_csv,
                 pipeline=finalizer_pipeline,
                 no_qc=no_qc,
+                study_config=study_config,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")

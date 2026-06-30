@@ -15,7 +15,7 @@ import shutil
 import tempfile
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, Final, List, Optional, TYPE_CHECKING
 
 import pandas as pd
 import polars as pl
@@ -520,12 +520,44 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
         )
 
 
+#: Post-applied mirror columns that source the REMBI manifest's per-image
+#: ``image_data`` block, mapped to the bare keys
+#: :func:`phenotypic.sdk_._rembi_manifest.build_rembi_manifest` reads. Only the
+#: columns the mirror carries today are listed; ``Metadata_UUID`` is private and
+#: absent from the measurement frame, so it is naturally omitted.
+_REMBI_IMAGE_META_COLUMNS: Final[dict[str, str]] = {
+    "Metadata_ImageName": "ImageName",
+    "Metadata_BitDepth": "BitDepth",
+    "Metadata_ImageType": "ImageType",
+    "Metadata_UUID": "UUID",
+}
+
+
+def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
+    """Distinct per-image metadata rows for the REMBI manifest's image_data.
+
+    Folds the per-colony post-applied mirror down to one dict per distinct
+    image, reading whichever of :data:`_REMBI_IMAGE_META_COLUMNS` the frame
+    carries and mapping each to the manifest builder's bare key. Returns an
+    empty list when none of those columns are present.
+    """
+    present = [c for c in _REMBI_IMAGE_META_COLUMNS if c in mirror_df.columns]
+    if not present:
+        return []
+    distinct = mirror_df.select(present).unique()
+    return [
+        {_REMBI_IMAGE_META_COLUMNS[c]: record[c] for c in present}
+        for record in distinct.iter_rows(named=True)
+    ]
+
+
 def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
     metadata_csv: Optional[Path] = None,
     no_qc: bool = False,
+    study_config: Optional[dict] = None,
 ) -> "pl.DataFrame":
     """Run every CLI side effect that follows a freshly written master file.
 
@@ -594,6 +626,11 @@ def finalize_post_master_outputs(
             :func:`phenotypic.sdk_._qc_recipe._runner.run_qc` writes the ``qc/`` artifact from
             the post-applied + metadata-joined frame. QC failures are
             logged and never affect the authoritative master files.
+        study_config: Optional REMBI Study-level fields (parsed ``--study``
+            YAML). Forwarded to the best-effort REMBI manifest writer, where
+            they override constant ``Metadata_*`` study columns folded into
+            ``deliverables/rembi.yaml``. ``None`` (the default) emits the
+            manifest with only the study columns the mirror carries.
 
     Returns:
         The post-applied frame (with external metadata joined when
@@ -640,6 +677,28 @@ def finalize_post_master_outputs(
                 "(master/measurements still written)",
                 exc_info=True,
             )
+
+    # Always emit the REMBI run manifest (deliverables/rembi.yaml) from the
+    # post-applied MIRROR — never the clean master — folding its per-colony rows
+    # up to each REMBI module's scope. Best-effort like the metadata.csv copy:
+    # ``write_rembi_manifest`` is internally guarded and no-ops when deliverables/
+    # is absent, and the mirror→image-metadata derivation is wrapped so a forward
+    # finalize is never blocked.
+    try:
+        from phenotypic.sdk_._rembi_manifest import write_rembi_manifest
+
+        write_rembi_manifest(
+            output_dir,
+            post_df.to_pandas(),
+            _image_metadata_from_mirror(post_df),
+            study_config=study_config,
+        )
+    except Exception:
+        logger.warning(
+            "Failed to write REMBI manifest deliverables/rembi.yaml "
+            "(master/measurements still written)",
+            exc_info=True,
+        )
 
     if pipeline is not None:
         _persist_pipeline_to_output_dir(output_dir, pipeline)
@@ -810,6 +869,7 @@ def aggregate_measurements(
     metadata_csv: Optional[Path] = None,
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
+    study_config: Optional[dict] = None,
 ) -> Optional[Path]:
     """Aggregate per-image Parquet files into a master CSV via DuckDB.
 
@@ -845,6 +905,10 @@ def aggregate_measurements(
             pipeline cannot be recovered.
         no_qc: Forwarded to :func:`finalize_post_master_outputs` to skip
             the QC compute step. See that function for details.
+        study_config: Optional REMBI Study-level fields (parsed ``--study``
+            YAML) forwarded to :func:`finalize_post_master_outputs`, where they
+            override constant ``Metadata_*`` study columns in the emitted
+            ``deliverables/rembi.yaml``.
 
     Returns:
         Path to ``master_measurements.csv``, or ``None`` if no
@@ -942,7 +1006,7 @@ def aggregate_measurements(
     resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
     finalize_post_master_outputs(
         output_dir, master_df, resolved_pipeline,
-        metadata_csv=metadata_csv, no_qc=no_qc,
+        metadata_csv=metadata_csv, no_qc=no_qc, study_config=study_config,
     )
 
     return master_csv_path
@@ -1477,6 +1541,7 @@ class OutputManager:
         metadata_csv: Optional[Path] = None,
         pipeline: Optional["ImagePipeline"] = None,
         no_qc: bool = False,
+        study_config: Optional[dict] = None,
     ) -> Optional[Path]:
         """Aggregate per-image measurement Parquet files into master CSV.
 
@@ -1489,6 +1554,8 @@ class OutputManager:
                 :func:`aggregate_measurements` for fallback behavior.
             no_qc: Forwarded to skip the QC compute step. See
                 :func:`finalize_post_master_outputs`.
+            study_config: Optional parsed ``--study`` YAML forwarded to the
+                REMBI manifest writer in :func:`finalize_post_master_outputs`.
 
         Returns:
             Path to master_measurements.csv, or None if no measurements found.
@@ -1500,4 +1567,5 @@ class OutputManager:
             metadata_csv=metadata_csv,
             pipeline=pipeline,
             no_qc=no_qc,
+            study_config=study_config,
         )

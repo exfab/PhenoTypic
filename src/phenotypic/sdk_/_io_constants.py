@@ -180,6 +180,12 @@ MEASUREMENTS_PARQUET: Final[str] = "measurements.parquet"
 #: run; a missing/unreadable source is logged and skipped.
 DELIVERABLES_METADATA_CSV: Final[str] = "metadata.csv"
 
+#: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.
+#: Written best-effort by
+#: :func:`phenotypic.sdk_._rembi_manifest.write_rembi_manifest` in finalize;
+#: folds the post-applied measurements mirror up to each REMBI module's scope.
+REMBI_MANIFEST_YAML: Final[str] = "rembi.yaml"
+
 #: Output filename of the model-fit summary written by the CLI when the
 #: pipeline has a ``model`` configured (and re-emitted by the analysis
 #: GUI's "Run analysis" button). Human-readable mirror of
@@ -830,6 +836,11 @@ def measurements_parquet_path(output_dir: Path) -> Path:
 def metadata_csv_deliverable_path(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/metadata.csv`` (co-located ``--metadata`` copy)."""
     return deliverables_dir(output_dir) / DELIVERABLES_METADATA_CSV
+
+
+def rembi_manifest_path(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/rembi.yaml`` — the REMBI run manifest."""
+    return deliverables_dir(output_dir) / REMBI_MANIFEST_YAML
 
 
 def pipeline_json_path(output_dir: Path) -> Path:
