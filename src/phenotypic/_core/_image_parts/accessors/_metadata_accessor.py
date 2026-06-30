@@ -314,7 +314,24 @@ class MetadataAccessor:
             >>> # result_df now has Metadata_ImageName and Metadata_resolution columns at position 0
         """
         working_df = df if inplace else df.copy()
-        for key, value in self._public_protected_metadata.items():
+        # Insert metadata columns in canonical REMBI-module order (then alpha).
+        # insert() places each column at loc=0, so iterate in reverse rank to
+        # land the lowest-rank module (Study) at the leftmost position.
+        from phenotypic.schema import REMBI_MODULE, header_to_module
+
+        idx = header_to_module()
+        order = {m: i for i, m in enumerate(REMBI_MODULE)}
+
+        def _rank(item):
+            k = item[0]
+            header = k if str(k).startswith("Metadata") else f"Metadata_{k}"
+            mod = idx.get(header, REMBI_MODULE.UNCATEGORIZED)
+            return (order[mod], str(k))
+
+        items = sorted(
+            self._public_protected_metadata.items(), key=_rank, reverse=True
+        )
+        for key, value in items:
             if key == METADATA.IMAGE_NAME:
                 value = (
                     self._parent_image.name
@@ -329,6 +346,40 @@ class MetadataAccessor:
                         allow_duplicates=allow_duplicates
                 )
         return working_df
+
+    def by_module(self, module) -> dict:
+        """Group metadata keys/values by REMBI module (read-only view).
+
+        Framework private/protected keys (e.g. ``ImageName``, ``UUID``) map to
+        :attr:`~phenotypic.schema.REMBI_MODULE.IMAGE_DATA`; public tags resolve
+        via the schema reverse index; unrecognized keys fall to
+        :attr:`~phenotypic.schema.REMBI_MODULE.UNCATEGORIZED`.
+
+        Args:
+            module: A :class:`~phenotypic.schema.REMBI_MODULE` or its string
+                value (e.g. ``"ImageData"``).
+
+        Returns:
+            dict: ``{key: value}`` for every metadata entry resolving to
+            *module*, in combined-metadata iteration order.
+        """
+        from phenotypic.schema import REMBI_MODULE, header_to_module
+
+        target = module if isinstance(module, REMBI_MODULE) else REMBI_MODULE(module)
+        idx = header_to_module()
+        out: dict = {}
+        for key, value in self._combined_metadata.items():
+            header = key if str(key).startswith("Metadata") else f"Metadata_{key}"
+            mod = idx.get(header)
+            if mod is None:
+                mod = (
+                    REMBI_MODULE.IMAGE_DATA
+                    if key in self._private_metadata or key in self._protected_metadata
+                    else REMBI_MODULE.UNCATEGORIZED
+                )
+            if mod is target:
+                out[key] = value
+        return out
 
     def table(self) -> pd.Series:
         """Convert metadata to a pandas Series.
