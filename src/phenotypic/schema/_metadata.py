@@ -1,6 +1,7 @@
 """Framework metadata bookkeeping labels for the PhenoTypic module."""
 
 from ._measurement_info import Entry
+from ._rembi import REMBI_MODULE
 from ._tiers import IdentityInfo
 
 
@@ -20,6 +21,10 @@ class METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.IMAGE_DATA
 
     UUID = Entry("UUID", "The unique identifier of the image.")
     IMAGE_NAME = Entry("ImageName", "The name of the image.")

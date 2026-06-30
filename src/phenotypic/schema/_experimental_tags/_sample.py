@@ -1,6 +1,7 @@
 """Sample identity and provenance metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
@@ -17,6 +18,10 @@ class SAMPLE_METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.BIOSAMPLE
 
     SAMPLE_ID = Entry("SampleID", "Unique identifier for the biological sample.")
     BIO_REPLICATE = Entry("BioReplicate",

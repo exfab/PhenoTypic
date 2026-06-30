@@ -1,6 +1,7 @@
 """Media and growth-condition metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
@@ -17,6 +18,10 @@ class CONDITION_METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.SPECIMEN_PREP
 
     MEDIA = Entry("Media", "Growth medium name (e.g. YPD, SC, LB).")
     CARBON_SOURCE = Entry("CarbonSource", "Primary carbon source (e.g. glucose, galactose).")

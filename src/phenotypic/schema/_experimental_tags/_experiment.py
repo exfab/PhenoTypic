@@ -1,6 +1,7 @@
 """Experiment-level and bookkeeping metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
@@ -17,6 +18,10 @@ class EXPERIMENT_METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.STUDY
 
     EXPERIMENT_ID = Entry("ExperimentID", "Unique identifier for the experiment.")
     PROJECT = Entry("Project", "Project name or identifier.")

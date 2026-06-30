@@ -1,6 +1,7 @@
 """Imaging and acquisition metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
@@ -17,6 +18,10 @@ class ACQUISITION_METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.IMAGE_ACQUISITION
 
     IMAGING_DATE = Entry("ImagingDate", "Date the image was acquired.")
     INSTRUMENT = Entry("Instrument", "Imaging instrument or scanner model.")

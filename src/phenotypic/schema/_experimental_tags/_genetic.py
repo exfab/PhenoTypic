@@ -1,6 +1,7 @@
 """Organism and genetics metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
@@ -18,6 +19,10 @@ class GENETIC_METADATA(IdentityInfo):
     @classmethod
     def category(cls) -> str:
         return "Metadata"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.BIOSAMPLE
 
     ORGANISM = Entry("Organism", "Species or organism name (e.g. Saccharomyces cerevisiae).")
     STRAIN = Entry("Strain", "Strain name or identifier (e.g. BY4741).")
