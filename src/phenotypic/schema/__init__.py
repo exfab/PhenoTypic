@@ -35,6 +35,7 @@ from ._experimental_tags import (
     GENETIC_METADATA,
     PLATE_METADATA,
     SAMPLE_METADATA,
+    STUDY_METADATA,
 )
 from ._bbox import BBOX
 from ._color_composition import ColorComposition
@@ -81,6 +82,7 @@ __all__ = [
     "GENETIC_METADATA",
     "PLATE_METADATA",
     "SAMPLE_METADATA",
+    "STUDY_METADATA",
     "BBOX",
     "ColorComposition",
     "ColorHSV",

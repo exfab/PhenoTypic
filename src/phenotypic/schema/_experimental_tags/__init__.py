@@ -19,6 +19,7 @@ from ._experiment import EXPERIMENT_METADATA
 from ._genetic import GENETIC_METADATA
 from ._plate import PLATE_METADATA
 from ._sample import SAMPLE_METADATA
+from ._study import STUDY_METADATA
 
 __all__ = [
     "ACQUISITION_METADATA",
@@ -28,4 +29,5 @@ __all__ = [
     "GENETIC_METADATA",
     "PLATE_METADATA",
     "SAMPLE_METADATA",
+    "STUDY_METADATA",
 ]

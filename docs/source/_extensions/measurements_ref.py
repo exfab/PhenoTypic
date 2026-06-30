@@ -44,7 +44,7 @@ _GROUPS: dict[str, tuple[str, ...]] = {
     "Metadata"         : (
         "METADATA", "ACQUISITION_METADATA", "CONDITION_METADATA",
         "CULTURE_METADATA", "EXPERIMENT_METADATA", "GENETIC_METADATA",
-        "PLATE_METADATA", "SAMPLE_METADATA",
+        "PLATE_METADATA", "SAMPLE_METADATA", "STUDY_METADATA",
     ),
 }
 
@@ -92,6 +92,11 @@ _METADATA_OVERVIEWS: dict[str, tuple[str, str]] = {
         "Experiment-level bookkeeping, including experiment IDs, projects, "
         "datasets, protocols, and notes.",
         "Use when organizing outputs across projects, protocols, or datasets.",
+    ),
+    "STUDY_METADATA"      : (
+        "Study-level descriptors for one run: title, description, keywords, "
+        "authors, license, funding, publications, links, and acknowledgements.",
+        "Use when recording REMBI Study-component provenance for a dataset.",
     ),
 }
 
