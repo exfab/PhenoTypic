@@ -206,6 +206,11 @@ from ._io_constants import (
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
+from ._metadata_helpers import (
+    is_metadata_header,
+    metadata_category_for_label,
+    metadata_category_prefixes,
+)
 from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
 from .typing_ import ProcessOnlyLayer
 
@@ -225,6 +230,9 @@ __all__ = [
     "constants_",
     "exceptions_",
     "is_binary_mask",
+    "is_metadata_header",
+    "metadata_category_for_label",
+    "metadata_category_prefixes",
     "napari_",
     "register",
     "slurm",
