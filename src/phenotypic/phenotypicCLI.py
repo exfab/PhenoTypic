@@ -840,21 +840,31 @@ def phenotypic_cli(
     layer: Optional[str],
 ):
     """
-    Execute a PhenoTypic pipeline on images.
+    Execute a PhenoTypic image-processing pipeline on a file or directory.
 
-    --pipeline: Path to pipeline configuration file
+    The --mode flag selects what the run produces:
 
-    --input: Image file or directory to process
+    \b
+      full       Apply the pipeline and measure every image, then write the
+                 deliverables (measurements, analysis, dashboard, overlays,
+                 QC). Requires --pipeline and --input. This is the default.
+      measure    Re-run measurement only against an existing output root.
+                 Requires --pipeline; no --input (inputs are discovered
+                 from --output).
+      recompile  Refresh aggregate outputs from an existing output root; no
+                 --input or --pipeline (both are reloaded from --output).
+      process    Apply-only export: write ONE image layer per input (chosen
+                 with --layer), mirroring the input tree under --output.
+                 Skips measurement, deliverables, QC, and the dashboard.
 
-    --mode process --layer {rgb|gray|detect_mat|objmap}: apply-only export
-    mode. Runs pipeline.apply() and writes a single image layer per input via
-    the layer accessor's imsave (rgb integer TIFF at the source bit depth;
-    gray/detect_mat float TIFF preserving full precision; objmap 16-bit
-    raw-label PNG; PhenoTypic metadata embedded), mirroring the input tree
-    under --output. Skips measurement, deliverables, QC, and the dashboard;
-    machine-state (progress manifest, event log, pipeline copy) lives under
-    <output>/.phenotypic/. Full local + SLURM + resume reuse. Example::
+    Process-mode export writes each layer via the layer accessor's imsave:
+    rgb integer TIFF at the source bit depth; gray/detect_mat float TIFF
+    preserving full precision; objmap 16-bit raw-label PNG (PhenoTypic
+    metadata embedded). Machine-state (progress manifest, event log, pipeline
+    copy) lives under <output>/.phenotypic/. All modes support local + SLURM
+    execution and content-defined resume. Example:
 
+    \b
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
     """
