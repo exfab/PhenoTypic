@@ -1,0 +1,1103 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family F · Network topology (Regime A)
+  Content authored against branch-phenotypes-catalog.md §0 + "### Family F — Network topology".
+  <head> and component markup/classes copied verbatim from _design-system.html.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family F — Network topology · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-a)">F</div>
+    <div>
+      <div class="hero-kicker">Family · Regime A · skeleton + graph</div>
+      <h1 class="hero-title">Network topology</h1>
+      <p class="lede">Once a colony can be reduced to a skeleton and a graph — nodes for
+        tips and junctions, edges for segments — this family reads the <em>wiring</em>:
+        how many tips, how often it branches, what order each segment sits at, and how many
+        loops close. It is the architectural layer the rest of the catalog points toward, and
+        the one most exposed to overlap: every count rides on a correctly resolved graph.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--regime-a)"></span>Skeleton / graph</span>
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>Retracing-gated</span>
+        <span class="chip">19 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ILLUSTRATIONS ============ -->
+  <section class="band">
+    <h2 class="section-title">Reading a hyphal graph</h2>
+    <p class="section-sub">Five primitives the family is built on: node degrees, Strahler ordering,
+      the hyphal growth unit, anastomosis loops and the first Betti number, and Horton's bifurcation
+      ratio. Each is hand-drawn below; the metric cards then put one phenotype per card.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- MARQUEE (a) — node degree classification -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Node degree: tip, junction, crossing</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">Every skeleton node carries a <span class="term">degree</span> = how many
+          segments meet there. Degree-1 = a free <b>tip</b>; degree-3 = a true <b>junction</b> (a branch);
+          degree-4 = a <b>crossing</b> — most often two hyphae passing over each other, <em>not</em> a branch.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Skeleton graph with degree-1 tips, degree-3 junctions, and a degree-4 crossing colour-coded">
+            <!-- edges -->
+            <g class="struct" stroke="var(--ink)">
+              <path d="M40,110 L120,110"/>
+              <path d="M120,110 L185,72"/>
+              <path d="M120,110 L185,150"/>
+              <path d="M185,72 L250,52"/>
+              <path d="M185,72 L250,96"/>
+              <!-- crossing: two strands through one degree-4 node at (250,150) -->
+              <path d="M200,118 L300,182"/>
+              <path d="M200,182 L300,118"/>
+              <path d="M185,150 L200,160"/>
+            </g>
+            <!-- degree-1 tips (green) -->
+            <g fill="var(--green)">
+              <circle cx="40" cy="110" r="5"/><circle cx="250" cy="52" r="5"/>
+              <circle cx="250" cy="96" r="5"/><circle cx="300" cy="182" r="5"/>
+              <circle cx="300" cy="118" r="5"/><circle cx="200" cy="118" r="5"/>
+              <circle cx="200" cy="182" r="5"/>
+            </g>
+            <!-- degree-3 junctions (blue) -->
+            <g fill="var(--blue)">
+              <circle cx="120" cy="110" r="6"/><circle cx="185" cy="72" r="6"/>
+            </g>
+            <!-- degree-4 crossing (vermillion) -->
+            <circle cx="250" cy="150" r="7" fill="var(--vermillion)"/>
+            <text class="lbl" x="30" y="98" fill="var(--green)">deg 1 · tip</text>
+            <text class="lbl" x="95" y="132" fill="var(--blue)">deg 3</text>
+            <text class="lbl-strong" x="146" y="60" fill="var(--blue)">junction</text>
+            <text class="lbl-strong" x="232" y="200" fill="var(--vermillion)">deg 4 · crossing</text>
+          </svg>
+          <figcaption><b>Why it matters:</b> a degree-4 node is a <b>candidate overlap / anastomosis</b>,
+            not a branch — counting it as a junction inflates branch points and hides the two tips it fuses.
+            Resolving it by direction continuity (continue each strand at the smallest turning angle) is the
+            core of degree-4 disambiguation.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Vascular</span><span class="prov">NEFI</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; vascular A/V topology</span></div>
+        </div>
+      </article>
+
+      <!-- MARQUEE (b) — Horton-Strahler ordering -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Horton–Strahler ordering</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">Terminal segments are order 1. Where two segments of the same order
+          <span class="term">k</span> meet, the downstream segment becomes order <span class="term">k+1</span>;
+          where unequal orders meet, the larger order continues. Order grows toward the trunk.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Horton-Strahler ordering on a branching tree, segments coloured by order 1, 2, 3">
+            <!-- order 1 (green) terminal twigs -->
+            <g class="struct" stroke="var(--green)">
+              <path d="M40,40 L92,78"/><path d="M40,84 L92,78"/>
+              <path d="M44,140 L96,116"/><path d="M44,176 L96,116"/>
+              <path d="M250,40 L300,70"/><path d="M250,84 L300,70"/>
+            </g>
+            <!-- order 2 (blue) -->
+            <g class="struct" stroke="var(--blue)">
+              <path d="M92,78 L168,108"/>
+              <path d="M96,116 L168,108"/>
+              <path d="M300,70 L246,118"/>
+            </g>
+            <!-- order 3 (vermillion) trunk -->
+            <g class="struct" stroke="var(--vermillion)" stroke-width="3">
+              <path d="M168,108 L246,118"/>
+              <path d="M246,118 L320,150"/>
+            </g>
+            <text class="lbl" x="46" y="34" fill="var(--green)">1</text>
+            <text class="lbl" x="46" y="196" fill="var(--green)">1</text>
+            <text class="lbl" x="124" y="84" fill="var(--blue)">2</text>
+            <text class="lbl-strong" x="196" y="104" fill="var(--vermillion)">3 · trunk</text>
+            <text class="lbl-strong" x="118" y="200" fill="var(--ink)">two order-k meet → k+1</text>
+          </svg>
+          <figcaption><b>Rule:</b> two order-<i>k</i> segments meeting promote the parent to <i>k+1</i>;
+            a smaller tributary joining a larger one does not. The maximum order is the tree's
+            <b>Strahler order</b> and seeds the bifurcation- and length-ratio laws below.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957</span></div>
+        </div>
+      </article>
+
+      <!-- MARQUEE (c) — Hyphal Growth Unit -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hyphal Growth Unit (HGU)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">The classic mycology shape index: <span class="term">total length ÷ tip count</span>
+          — the mean length of hypha that supports one growing tip. Low HGU = a densely branched mat;
+          high HGU = long sparse runners.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hyphal Growth Unit equals total skeleton length divided by tip count on a small network">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M50,150 L120,120"/>
+              <path d="M120,120 L185,86"/>
+              <path d="M120,120 L172,160"/>
+              <path d="M185,86 L250,64"/>
+              <path d="M185,86 L246,116"/>
+              <path d="M172,160 L232,176"/>
+            </g>
+            <!-- tips (green) -->
+            <g fill="var(--green)">
+              <circle cx="50" cy="150" r="5"/><circle cx="250" cy="64" r="5"/>
+              <circle cx="246" cy="116" r="5"/><circle cx="232" cy="176" r="5"/>
+            </g>
+            <!-- junctions (faint) -->
+            <g fill="var(--blue)"><circle cx="120" cy="120" r="4"/><circle cx="185" cy="86" r="4"/><circle cx="172" cy="160" r="4"/></g>
+            <text class="lbl" x="40" y="170" fill="var(--green)">tip</text>
+            <text class="lbl-strong" x="40" y="208">HGU = L<tspan baseline-shift="sub">t</tspan> ÷ N<tspan baseline-shift="sub">tips</tspan>  =  Σ segments ÷ 4</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> sum every skeleton segment for <i>L<sub>t</sub></i>, count the
+            degree-1 nodes for tips, divide. Here four green tips share one length budget — a falling HGU over
+            time signals a switch to denser lateral branching.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974</span></div>
+        </div>
+      </article>
+
+      <!-- MARQUEE (d) — anastomosis loop & first Betti number -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Anastomosis loop & first Betti number</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">When two hyphae fuse they close a <b>loop</b>. The number of independent
+          loops is the first Betti number <span class="term">β₁ = E − V + C</span> (edges minus vertices
+          plus connected components) — the count of genuinely cyclic, load-bearing connections.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An anastomosis loop and the first Betti number as edges minus vertices plus components">
+            <!-- a small network with one fusion loop -->
+            <g class="struct" stroke="var(--blue)">
+              <path d="M40,110 L110,110"/>
+              <path d="M110,110 L185,72"/>
+              <path d="M110,110 L185,148"/>
+              <!-- loop: two arms meet again at the fusion node -->
+              <path d="M185,72 L262,110"/>
+              <path d="M185,148 L262,110"/>
+              <path d="M262,110 L330,110"/>
+            </g>
+            <!-- vertices -->
+            <g fill="var(--blue)">
+              <circle cx="110" cy="110" r="5"/><circle cx="185" cy="72" r="5"/>
+              <circle cx="185" cy="148" r="5"/>
+            </g>
+            <g fill="var(--green)"><circle cx="40" cy="110" r="5"/><circle cx="330" cy="110" r="5"/></g>
+            <!-- fusion node -->
+            <circle cx="262" cy="110" r="7" fill="var(--vermillion)"/>
+            <text class="lbl" x="206" y="92" fill="var(--vermillion)">fusion</text>
+            <text class="lbl-strong" x="188" y="128" fill="var(--vermillion)">loop</text>
+            <text class="lbl-strong" x="30" y="206">β₁ = E − V + C  =  7 − 6 + 1 = 1 loop</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count edges (7), vertices (6), components (1) → one independent
+            cycle. <b>Caveat:</b> a spurious crossing read as a junction also closes a false loop, so β₁ is
+            only as honest as the degree-4 resolution; time-lapse confirms a true fusion persists.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; Carpentier 2020</span></div>
+        </div>
+      </article>
+
+      <!-- MARQUEE (e) — bifurcation ratio -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Bifurcation ratio R<sub>b</sub></h3>
+          <div class="badges"><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">Horton's law: count the segments at each Strahler order and take the ratio of
+          successive counts, <span class="term">R<sub>b</sub> = N<sub>ω</sub> / N<sub>ω+1</sub></span>.
+          A near-constant ratio across orders is the signature of a self-similar branching tree.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Bifurcation ratio as the ratio of segment counts between successive Strahler orders">
+            <!-- bar chart: counts per order -->
+            <g>
+              <line class="axis" x1="44" y1="170" x2="330" y2="170"/>
+              <line class="axis" x1="44" y1="170" x2="44" y2="26"/>
+              <!-- order 1: N=8 -->
+              <rect x="70" y="42" width="46" height="128" fill="var(--green)" opacity="0.85"/>
+              <!-- order 2: N=4 -->
+              <rect x="158" y="106" width="46" height="64" fill="var(--blue)" opacity="0.85"/>
+              <!-- order 3: N=2 -->
+              <rect x="246" y="138" width="46" height="32" fill="var(--vermillion)" opacity="0.85"/>
+              <text class="lbl-strong" x="80" y="36">N₁=8</text>
+              <text class="lbl-strong" x="166" y="100">N₂=4</text>
+              <text class="lbl-strong" x="252" y="132">N₃=2</text>
+              <text class="lbl" x="84" y="186" fill="var(--green)">ω=1</text>
+              <text class="lbl" x="172" y="186" fill="var(--blue)">ω=2</text>
+              <text class="lbl" x="258" y="186" fill="var(--vermillion)">ω=3</text>
+            </g>
+            <text class="lbl-strong" x="48" y="210">R_b = 8/4 = 4/2 = 2  (constant → self-similar)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> tally segments per order from the Strahler labelling, then divide
+            adjacent counts. Reported as a single mean ratio; the companion <b>stream-length ratio R<sub>L</sub></b>
+            does the same for mean segment length per order.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ METRIC CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per Family-F phenotype. Definition → how it works (illustration) →
+      regime / input / provenance / citation. Note the colour of the fit badges — most of this family is
+      🔴 A-fragile, a handful 🟡 A-feasible, and only the mask-level Euler number is 🟢.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1 — Total hyphal length -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Total hyphal length L<sub>t</sub></h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The sum of all skeleton segment lengths in the reconnected network — the total
+          amount of hypha the colony has built. Robust <em>if</em> the segmentation closes; gaps and missed
+          fragments both undercount it.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Total hyphal length as the sum of all skeleton segment lengths">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M44,150 L120,120"/><path d="M120,120 L196,90"/>
+              <path d="M120,120 L176,162"/><path d="M196,90 L266,66"/>
+              <path d="M196,90 L262,116"/><path d="M176,162 L240,180"/>
+            </g>
+            <text class="lbl" x="70" y="128" fill="var(--blue)">ℓ₁</text>
+            <text class="lbl" x="150" y="100" fill="var(--blue)">ℓ₂</text>
+            <text class="lbl" x="220" y="70" fill="var(--blue)">ℓ₃</text>
+            <text class="lbl" x="146" y="158" fill="var(--blue)">ℓ₄</text>
+            <text class="lbl-strong" x="44" y="206">L_t = Σ ℓᵢ over all segments</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> trace each skeleton segment and accumulate its arc length. The most
+            forgiving graph metric — a single integral, so local tracing slips average out.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras 2010</span></div>
+        </div>
+      </article>
+
+      <!-- 2 — Tip / apex count -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tip / apex count</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The number of degree-1 nodes — free hyphal apices, the growing ends. A direct
+          read of how many fronts the colony is pushing outward.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Tip count as the number of degree-1 skeleton nodes, with crossings fusing tips">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M60,110 L130,110"/><path d="M130,110 L196,80"/>
+              <path d="M130,110 L196,142"/><path d="M196,80 L264,62"/>
+            </g>
+            <g fill="var(--green)"><circle cx="60" cy="110" r="6"/><circle cx="264" cy="62" r="6"/></g>
+            <!-- a crossing region hiding tips -->
+            <path class="struct" stroke="var(--vermillion)" stroke-dasharray="4 4" d="M196,142 L250,150 M222,128 L228,172"/>
+            <circle cx="225" cy="150" r="7" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl" x="44" y="100" fill="var(--green)">tip</text>
+            <text class="lbl" x="250" y="56" fill="var(--green)">tip</text>
+            <text class="lbl-strong" x="186" y="200" fill="var(--vermillion)">crossing fuses / hides tips</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count degree-1 nodes after skeletonisation. <b>Fragile:</b> where two
+            hyphae cross or touch, two real tips collapse into one node — tip counts fall first under overlap.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974; Arganda-Carreras 2010</span></div>
+        </div>
+      </article>
+
+      <!-- 3 — Branch-point / node count -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branch-point / node count</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The number of degree-≥3 nodes — the places a hypha splits. Counted with the
+          triple (degree-3, a true branch) kept separate from the quadruple (degree-4, a likely crossing).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Branch-point count distinguishing degree-3 junctions from degree-4 crossings">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M44,150 L116,118"/><path d="M116,118 L188,86"/>
+              <path d="M116,118 L172,158"/>
+              <path d="M210,120 L300,176"/><path d="M210,176 L300,120"/>
+            </g>
+            <circle cx="116" cy="118" r="6" fill="var(--blue)"/>
+            <text class="lbl-strong" x="96" y="106" fill="var(--blue)">deg 3 ✓</text>
+            <circle cx="255" cy="148" r="7" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="232" y="200" fill="var(--vermillion)">deg 4 = false node</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count nodes of degree 3 or more. <b>Fragile:</b> overlap manufactures
+            degree-4 nodes that masquerade as branch points, so the raw count over-reports branching unless
+            degree-4 nodes are flagged as candidate crossings.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras 2010</span></div>
+        </div>
+      </article>
+
+      <!-- 4 — Branching frequency -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branching frequency φ</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Branch points per unit hyphal length — how densely a colony splits per
+          millimetre of hypha. Normalising by length makes it comparable across colony sizes.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Branching frequency as branch points divided by total hyphal length">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M40,150 L110,128"/><path d="M110,128 L180,104"/>
+              <path d="M110,128 L160,166"/><path d="M180,104 L250,84"/>
+              <path d="M180,104 L246,128"/>
+            </g>
+            <g fill="var(--vermillion)"><circle cx="110" cy="128" r="5"/><circle cx="180" cy="104" r="5"/></g>
+            <text class="lbl" x="92" y="118" fill="var(--vermillion)">×</text>
+            <text class="lbl" x="166" y="94" fill="var(--vermillion)">×</text>
+            <text class="lbl-strong" x="40" y="200">φ = (branch points) ÷ L_t</text>
+            <text class="lbl" x="40" y="216">= 2 ÷ Σℓ</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> divide the branch-point count by total hyphal length. <b>Fragile:</b>
+            it inherits the branch-point count's overlap errors in the numerator <em>and</em> length slips in
+            the denominator.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ro</span><span class="prov">Va</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Riquelme 2019</span></div>
+        </div>
+      </article>
+
+      <!-- 5 — Junction / branch density -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Junction / branch density</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Branch points per unit <em>area</em> rather than per unit length. The global
+          area normalisation makes it steadier than length-based frequency when the skeleton is imperfect.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Branch density as junctions per unit area inside the colony footprint">
+            <rect x="46" y="30" width="268" height="150" rx="10" fill="rgba(0,114,178,.06)" stroke="var(--blue)" stroke-dasharray="5 4"/>
+            <g class="struct" stroke="var(--ink)">
+              <path d="M70,120 L120,96 L170,118 L220,92 L270,116"/>
+              <path d="M120,96 L130,150"/><path d="M220,92 L228,150"/>
+            </g>
+            <g fill="var(--blue)"><circle cx="120" cy="96" r="5"/><circle cx="170" cy="118" r="5"/><circle cx="220" cy="92" r="5"/></g>
+            <text class="lbl" x="252" y="48" fill="var(--blue)">area A</text>
+            <text class="lbl-strong" x="60" y="206">density = (# junctions) ÷ A</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count junctions and divide by the colony footprint area. <b>Why
+            steadier:</b> a global denominator averages over local tracing noise, so it degrades more
+            gracefully than per-length frequency — the catalog rates it 🟡, not 🔴.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry 2015; Zudaire 2011</span></div>
+        </div>
+      </article>
+
+      <!-- 6 — Hyphal Growth Unit -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hyphal Growth Unit (HGU)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Total hyphal length divided by tip count — the mean length of hypha per growing
+          tip. A foundational mycology index of how branched the colony is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hyphal Growth Unit as total length over number of tips">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M50,150 L122,122"/><path d="M122,122 L190,92"/>
+              <path d="M122,122 L176,162"/><path d="M190,92 L258,70"/>
+              <path d="M190,92 L252,120"/>
+            </g>
+            <g fill="var(--green)"><circle cx="50" cy="150" r="5"/><circle cx="258" cy="70" r="5"/><circle cx="252" cy="120" r="5"/><circle cx="176" cy="162" r="5"/></g>
+            <text class="lbl" x="38" y="170" fill="var(--green)">4 tips</text>
+            <text class="lbl-strong" x="50" y="204">HGU = L_t ÷ N_tips</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> combine the (forgiving) total length with the (fragile) tip count.
+            Its accuracy is bounded by the tip count, hence 🟡 — but a robust length numerator partly buffers
+            tip-count error.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974</span></div>
+        </div>
+      </article>
+
+      <!-- 7 — Branch order (centrifugal) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branch order (centrifugal)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Order is incremented by one at every bifurcation as you move <em>outward</em>
+          from the main axis: the trunk is 0, its daughters 1, their daughters 2, and so on.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Centrifugal branch order incremented at each bifurcation from the main axis outward">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M40,110 L120,110"/>
+              <path d="M120,110 L190,78"/><path d="M120,110 L190,142"/>
+              <path d="M190,78 L260,58"/><path d="M190,78 L256,98"/>
+              <path d="M190,142 L260,160"/>
+            </g>
+            <text class="lbl-strong" x="64" y="100" fill="var(--vermillion)">0</text>
+            <text class="lbl-strong" x="150" y="84" fill="var(--orange)">1</text>
+            <text class="lbl-strong" x="150" y="142" fill="var(--orange)">1</text>
+            <text class="lbl-strong" x="222" y="58" fill="var(--blue)">2</text>
+            <text class="lbl-strong" x="220" y="100" fill="var(--blue)">2</text>
+            <text class="lbl-strong" x="44" y="206">order +1 at each split, axis → tip</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> root the tree at the inoculum, then increment order at each branch.
+            <b>Fragile:</b> it needs a clean parent/child assignment everywhere — one mis-rooted or merged
+            junction shifts the order of an entire subtree.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni 2008</span></div>
+        </div>
+      </article>
+
+      <!-- 8 — Horton-Strahler order -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Horton–Strahler order</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">A bottom-up ordering: terminal segments are order 1; where two equal orders
+          <i>k</i> meet, the parent becomes <i>k+1</i>. The maximum order summarises the tree's depth.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Horton-Strahler order with terminal twigs order 1 and the trunk at maximum order">
+            <g class="struct" stroke="var(--green)">
+              <path d="M40,46 L96,80"/><path d="M40,86 L96,80"/>
+              <path d="M44,150 L100,118"/><path d="M44,184 L100,118"/>
+            </g>
+            <g class="struct" stroke="var(--blue)"><path d="M96,80 L176,100"/><path d="M100,118 L176,100"/></g>
+            <g class="struct" stroke="var(--vermillion)" stroke-width="3"><path d="M176,100 L320,134"/></g>
+            <text class="lbl" x="48" y="40" fill="var(--green)">1</text>
+            <text class="lbl" x="48" y="204" fill="var(--green)">1</text>
+            <text class="lbl" x="130" y="84" fill="var(--blue)">2</text>
+            <text class="lbl-strong" x="236" y="118" fill="var(--vermillion)">3 = max order</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> label leaves 1 and promote on equal-order confluence. <b>Fragile:</b>
+            it assumes a tree — a single anastomosis <em>loop</em> destroys the strict ordering, so spurious
+            crossings break it.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957</span></div>
+        </div>
+      </article>
+
+      <!-- 9 — Shreve magnitude -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Shreve magnitude</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">For each segment, the number of upstream source links (tips) that drain into it.
+          Unlike Strahler order it simply <em>adds</em> at each junction, so the trunk's magnitude equals the
+          total tip count.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Shreve magnitude as the count of upstream source links accumulating at each junction">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M40,50 L110,86"/><path d="M40,90 L110,86"/>
+              <path d="M44,150 L112,120"/><path d="M44,184 L112,120"/>
+              <path d="M110,86 L200,104"/><path d="M112,120 L200,104"/>
+              <path d="M200,104 L320,128"/>
+            </g>
+            <g fill="var(--green)"><circle cx="40" cy="50" r="4"/><circle cx="40" cy="90" r="4"/><circle cx="44" cy="150" r="4"/><circle cx="44" cy="184" r="4"/></g>
+            <text class="lbl" x="120" y="80" fill="var(--blue)">μ=2</text>
+            <text class="lbl" x="120" y="138" fill="var(--blue)">μ=2</text>
+            <text class="lbl-strong" x="226" y="112" fill="var(--vermillion)">μ=4</text>
+            <text class="lbl-strong" x="40" y="208">magnitude adds: 2 + 2 = 4 tips</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> propagate tip counts downstream, summing at every junction.
+            <b>Fragile:</b> a single hidden or fused tip changes the magnitude of every segment below it.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Shreve 1966</span></div>
+        </div>
+      </article>
+
+      <!-- 10 — Bifurcation ratio -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Bifurcation ratio R<sub>b</sub></h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The ratio of segment counts between successive Strahler orders,
+          <span class="term">N<sub>ω</sub> / N<sub>ω+1</sub></span> (Horton's first law). A stable ratio is the
+          fingerprint of a self-similar tree.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Bifurcation ratio from per-order segment counts">
+            <line class="axis" x1="44" y1="170" x2="330" y2="170"/>
+            <line class="axis" x1="44" y1="170" x2="44" y2="26"/>
+            <rect x="70" y="46" width="44" height="124" fill="var(--green)" opacity="0.85"/>
+            <rect x="158" y="108" width="44" height="62" fill="var(--blue)" opacity="0.85"/>
+            <rect x="246" y="139" width="44" height="31" fill="var(--vermillion)" opacity="0.85"/>
+            <text class="lbl" x="84" y="40">N₁</text><text class="lbl" x="172" y="102">N₂</text><text class="lbl" x="260" y="133">N₃</text>
+            <text class="lbl-strong" x="50" y="206">R_b = N_ω / N_(ω+1) ≈ const</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> tally segments per Strahler order, divide adjacent counts.
+            <b>Fragile:</b> it stands entirely on the Strahler labelling — any ordering error from loops
+            propagates straight into the ratio.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+      </article>
+
+      <!-- 11 — Stream-length ratio -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Stream-length ratio R<sub>L</sub></h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The same idea as the bifurcation ratio but for <em>length</em>: the ratio of mean
+          segment length between successive Strahler orders. Higher orders tend to be longer.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Stream-length ratio as mean segment length per Strahler order">
+            <line class="axis" x1="44" y1="170" x2="330" y2="170"/>
+            <line class="axis" x1="44" y1="170" x2="44" y2="26"/>
+            <!-- mean length per order rising -->
+            <rect x="70" y="128" width="44" height="42" fill="var(--green)" opacity="0.85"/>
+            <rect x="158" y="92" width="44" height="78" fill="var(--blue)" opacity="0.85"/>
+            <rect x="246" y="52" width="44" height="118" fill="var(--vermillion)" opacity="0.85"/>
+            <text class="lbl" x="76" y="122" fill="var(--green)">L̄₁</text>
+            <text class="lbl" x="164" y="86" fill="var(--blue)">L̄₂</text>
+            <text class="lbl" x="252" y="46" fill="var(--vermillion)">L̄₃</text>
+            <text class="lbl-strong" x="50" y="206">R_L = L̄_(ω+1) / L̄_ω</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> average segment length within each Strahler order, then take the ratio
+            between orders. <b>Fragile:</b> same dependence on the ordering, plus per-segment length error.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+      </article>
+
+      <!-- 12 — Tokunaga (a,c) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tokunaga (a, c) self-similarity</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">A two-parameter fingerprint of how side tributaries attach across orders: the
+          mean number of order-<i>j</i> tributaries on an order-<i>i</i> segment follows
+          <span class="term">T<sub>k</sub> = a·c<sup>k−1</sup></span>. The pair (a, c) captures the branching
+          style compactly.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Tokunaga side-tributary matrix and its self-similar a c parameters">
+            <!-- main stem with side tributaries of decreasing order -->
+            <g class="struct" stroke="var(--vermillion)" stroke-width="3"><path d="M40,150 L320,150"/></g>
+            <g class="struct" stroke="var(--blue)">
+              <path d="M110,150 L140,108"/><path d="M210,150 L240,108"/>
+            </g>
+            <g class="struct" stroke="var(--green)">
+              <path d="M70,150 L88,124"/><path d="M160,150 L178,124"/><path d="M270,150 L288,124"/>
+            </g>
+            <text class="lbl" x="120" y="100" fill="var(--blue)">order 2</text>
+            <text class="lbl" x="60" y="118" fill="var(--green)">order 1</text>
+            <text class="lbl-strong" x="40" y="200">T_k = a · c^(k−1)   → fit (a, c)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> build the side-tributary matrix, then fit the geometric law for (a, c).
+            <b>Slightly less fragile</b> than per-node metrics because (a, c) is a <em>global</em> fit — the
+            catalog rates the fit itself "low–med" tolerant — but it still needs the ordering.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Peckham 1995</span></div>
+        </div>
+      </article>
+
+      <!-- 13 — Topological index TI -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Topological index TI</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The slope of <span class="term">log(altitude)</span> against
+          <span class="term">log(magnitude)</span> across the tree — a single number on the
+          herringbone ↔ dichotomous axis. Herringbone trees grow altitude fast; dichotomous ones spread.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Topological index as the slope of log altitude versus log magnitude">
+            <line class="axis" x1="46" y1="174" x2="320" y2="174"/>
+            <line class="axis" x1="46" y1="174" x2="46" y2="28"/>
+            <polyline points="60,158 110,128 165,96 220,66 290,40" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+            <g fill="var(--blue)">
+              <circle cx="60" cy="158" r="3"/><circle cx="110" cy="128" r="3"/><circle cx="165" cy="96" r="3"/>
+              <circle cx="220" cy="66" r="3"/><circle cx="290" cy="40" r="3"/>
+            </g>
+            <text class="lbl-strong" x="160" y="86" fill="var(--blue)">slope = TI</text>
+            <text class="lbl" x="190" y="190">log magnitude →</text>
+            <text class="lbl" x="20" y="92" transform="rotate(-90 20,92)">log altitude</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> plot each subtree's altitude (longest base→tip path) against its
+            magnitude (tips), and read the log–log slope. <b>Fragile:</b> both axes come from the topology, so
+            tracing error tilts the line.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter / Delory 2016</span></div>
+        </div>
+      </article>
+
+      <!-- 14 — Magnitude / altitude / Pe -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Magnitude / altitude / exterior path length</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Three companion tree statistics: <b>magnitude</b> = number of tips,
+          <b>altitude</b> = longest base→tip link path, and <b>total exterior path length P<sub>e</sub></b> =
+          the sum of path lengths from the base to every tip.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Magnitude as tip count, altitude as the longest base-to-tip path, exterior path length as the sum of paths to tips">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M40,120 L110,120"/>
+              <path d="M110,120 L185,82"/><path d="M110,120 L185,158"/>
+              <path d="M185,82 L262,62"/><path d="M185,82 L260,100"/>
+              <path d="M185,158 L262,176"/>
+            </g>
+            <!-- highlight altitude path -->
+            <path d="M40,120 L110,120 L185,82 L262,62" fill="none" stroke="var(--vermillion)" stroke-width="3" opacity="0.7"/>
+            <g fill="var(--green)"><circle cx="262" cy="62" r="5"/><circle cx="260" cy="100" r="5"/><circle cx="262" cy="176" r="5"/></g>
+            <text class="lbl" x="270" y="56" fill="var(--green)">tip</text>
+            <text class="lbl-strong" x="120" y="92" fill="var(--vermillion)">altitude</text>
+            <text class="lbl-strong" x="40" y="206">magnitude = 3 tips · Pe = Σ base→tip</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count tips for magnitude, trace the longest rooted path for altitude,
+            and sum every base→tip path for P<sub>e</sub>. <b>Fragile:</b> all three rest on a correctly rooted,
+            unbroken tree.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter / Delory 2016</span></div>
+        </div>
+      </article>
+
+      <!-- 15 — internal vs external links -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Internal vs external links &amp; mean link lengths</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Partition every segment into <b>external links</b> (junction → tip) and
+          <b>internal links</b> (junction → junction), then count each class and measure their mean lengths.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Segments partitioned into external bifurcation-to-tip links and internal bifurcation-to-bifurcation links">
+            <!-- internal links (blue, bif-bif) -->
+            <g class="struct" stroke="var(--blue)" stroke-width="3">
+              <path d="M60,150 L140,120"/><path d="M140,120 L210,96"/>
+            </g>
+            <!-- external links (green, bif-tip) -->
+            <g class="struct" stroke="var(--green)">
+              <path d="M140,120 L168,170"/>
+              <path d="M210,96 L284,72"/><path d="M210,96 L280,118"/>
+            </g>
+            <g fill="var(--blue)"><circle cx="140" cy="120" r="5"/><circle cx="210" cy="96" r="5"/></g>
+            <g fill="var(--green)"><circle cx="60" cy="150" r="5"/><circle cx="168" cy="170" r="5"/><circle cx="284" cy="72" r="5"/><circle cx="280" cy="118" r="5"/></g>
+            <text class="lbl" x="150" y="106" fill="var(--blue)">internal</text>
+            <text class="lbl" x="226" y="68" fill="var(--green)">external → tip</text>
+            <text class="lbl-strong" x="50" y="206">#internal vs #external + mean lengths</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> classify each segment by whether its ends are junctions or tips, then
+            count and measure both classes. <b>Fragile:</b> the partition depends on correct tip/junction
+            labelling — the very thing overlap corrupts.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span><span class="prov">Ne</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Delory 2016; Scorcioni 2008</span></div>
+        </div>
+      </article>
+
+      <!-- 16 — Anastomosis / fusion -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Anastomosis / hyphal fusion count &amp; rate</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The number (and, over time, the rate) of loop-creating reconnections where one
+          hypha fuses tip-to-tip or tip-to-side with another — the events that turn a tree into a true network.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Anastomosis as a tip-to-side hyphal fusion that creates a loop, disambiguated from a crossing by time-lapse">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M40,80 L130,96 L220,84"/>
+              <path d="M90,150 L150,128"/>
+            </g>
+            <!-- fusion of a tip onto a side -->
+            <path class="struct" stroke="var(--vermillion)" stroke-width="2.5" d="M150,128 L186,108"/>
+            <circle cx="186" cy="108" r="7" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="160" y="100" fill="var(--vermillion)">fusion</text>
+            <text class="lbl" x="40" y="200">t₀ approach</text>
+            <text class="lbl" x="200" y="200" fill="var(--vermillion)">t₁ fused → loop persists</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> detect loop-closing reconnections in the graph. <b>Fragile:</b> a static
+            image cannot tell a true fusion from a chance crossing — <b>time-lapse disambiguates</b>, since a
+            real fusion persists as a load-bearing loop while a crossing does not.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (+ time)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
+        </div>
+      </article>
+
+      <!-- 17 — Loop / mesh count (1st Betti) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Network loop / mesh count (1st Betti)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The number of independent cycles in the network,
+          <span class="term">β₁ = E − V + C</span> (edges − vertices + components). Counts how meshed —
+          how loopy — the colony's wiring is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="First Betti number counting independent cycles as edges minus vertices plus components">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M70,60 L160,60 L160,150 L70,150 Z"/>
+              <path d="M160,60 L250,80"/><path d="M160,150 L250,130"/>
+              <path d="M250,80 L250,130"/>
+            </g>
+            <g fill="var(--blue)">
+              <circle cx="70" cy="60" r="4"/><circle cx="160" cy="60" r="4"/><circle cx="160" cy="150" r="4"/>
+              <circle cx="70" cy="150" r="4"/><circle cx="250" cy="80" r="4"/><circle cx="250" cy="130" r="4"/>
+            </g>
+            <text class="lbl-strong" x="100" y="110" fill="var(--vermillion)">loop A</text>
+            <text class="lbl-strong" x="196" y="110" fill="var(--vermillion)">loop B</text>
+            <text class="lbl-strong" x="50" y="200">β₁ = 7 − 6 + 1 = 2 loops</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count edges, vertices and components, then E−V+C. <b>Fragile:</b>
+            every spurious crossing read as a junction adds a <em>false</em> loop, so β₁ over-reports meshing
+            unless degree-4 nodes are resolved.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; Carpentier 2020</span></div>
+        </div>
+      </article>
+
+      <!-- 18 — Euler number -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Euler number χ</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Objects minus holes — a connectivity number read straight off the binary
+          <em>mask</em>, no graph required. As loops and anastomoses enclose holes, χ falls, tracking meshing
+          at the silhouette level.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Euler number as connected objects minus enclosed holes computed on the binary mask">
+            <!-- one object with two enclosed holes -->
+            <path d="M50,40 H300 V180 H50 Z" fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="2"/>
+            <circle cx="130" cy="110" r="26" fill="var(--bg)" stroke="var(--vermillion)" stroke-width="2"/>
+            <circle cx="220" cy="110" r="26" fill="var(--bg)" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl" x="92" y="60" fill="var(--green)">1 object</text>
+            <text class="lbl" x="110" y="114" fill="var(--vermillion)">hole</text>
+            <text class="lbl" x="200" y="114" fill="var(--vermillion)">hole</text>
+            <text class="lbl-strong" x="60" y="206">χ = objects − holes = 1 − 2 = −1</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count connected foreground objects and enclosed background holes on the
+            mask; χ = objects − holes. <b>Robust:</b> it never separates branches, so it survives dense,
+            overlapping, low-res growth — the one 🟢 metric in this family.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ge</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">scikit-image</span></div>
+        </div>
+      </article>
+
+      <!-- 19 — Connectivity indices -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Connectivity indices (α, β, γ / meshedness)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Graph-theory ratios of edges to nodes: <b>β</b> = edges ÷ nodes,
+          <b>γ</b> = edges ÷ maximum possible edges, and the meshedness <b>α</b> = realised ÷ maximum
+          independent loops. Together they summarise how richly connected the network is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Connectivity indices as edge-to-node and edge-to-maximum ratios of the network graph">
+            <g class="struct" stroke="var(--blue)">
+              <path d="M70,60 L170,50 L260,90"/>
+              <path d="M70,60 L120,150"/><path d="M170,50 L210,150"/>
+              <path d="M120,150 L210,150"/><path d="M210,150 L260,90"/>
+            </g>
+            <g fill="var(--blue)">
+              <circle cx="70" cy="60" r="5"/><circle cx="170" cy="50" r="5"/><circle cx="260" cy="90" r="5"/>
+              <circle cx="120" cy="150" r="5"/><circle cx="210" cy="150" r="5"/>
+            </g>
+            <text class="lbl" x="84" y="44" fill="var(--blue)">V nodes</text>
+            <text class="lbl-strong" x="40" y="196">β = E/V · γ = E/E_max · α = meshedness</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count edges and nodes and form the ratios. <b>Fragile:</b> both the edge
+            and node tallies are corrupted by false junctions and hidden tips, so every index inherits the
+            graph's overlap errors.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout">
+      <h3>These are the metrics that fail first under overlap</h3>
+      <p>Family F is the most exposed family in the catalog. Because every count rides on a correctly
+        resolved skeleton graph, overlap manufactures <b>false junctions</b> (two crossing hyphae read as a
+        branch), <b>hides tips</b> (two apices fused into one node), and <b>breaks the ordering</b> (a single
+        anastomosis loop destroys strict Strahler/centrifugal order). That is why all but the mask-level
+        Euler number sit at 🟡 or 🔴 — they are <b>retracing-gated</b>, depending on the in-progress
+        <span class="definition"><span class="term">sdk_/branch_pathfinding</span></span> least-cost-path
+        engine that reconnects fragments and traverses crossings rather than mis-reading them.</p>
+      <p>The literature points at four concrete accuracy levers for this family:</p>
+      <ul>
+        <li><b>Degree-4 resolution by direction continuity</b> — continue each strand at the smallest turning
+          angle, separating a true branch from a crossing from an anastomosis (the documented accuracy ceiling).</li>
+        <li><b>A vesselness cost term (Frangi/Sato)</b> in the composite cost surface, recovering faint thin
+          hyphae before thresholding so the graph starts cleaner.</li>
+        <li><b>Time-lapse disambiguation</b> — a true fusion persists as a load-bearing loop while a chance
+          crossing does not, turning ambiguous static junctions into resolvable events.</li>
+        <li><b>A DIADEM-style topology-similarity gate</b> — validate traces against hand-traced ground truth
+          before any of these counts ship.</li>
+      </ul>
+      <p>Until those land, prefer the family's more forgiving members — <b>total hyphal length</b>,
+        <b>junction density</b>, <b>HGU</b>, and the mask-level <b>Euler number</b> — and treat per-tip,
+        per-order, and loop counts as aspirational on dense, low-resolution mycelium.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

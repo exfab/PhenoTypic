@@ -1,0 +1,685 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family J · Physiology / pigment tied to branch structure
+  Head + component markup copied verbatim from _design-system.html. Content authored for Family J.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family J — Physiology &amp; pigment · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-phys)">J</div>
+    <div>
+      <div class="hero-kicker">Family · Phys overlay · colour / RGB</div>
+      <h1 class="hero-title">Physiology &amp; pigment tied to branch structure</h1>
+      <p class="lede">Colony-scale colour fields — pigment intensity, radial gradients, concentric
+        zonation, sectoring, aerial-vs-substrate contrast — that read fungal physiology off cheap
+        whole-plate RGB photos, without resolving a single hypha. The branch structure is inferred
+        from how colour is laid out across the colony.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--purple)"></span>RGB / colour</span>
+        <span class="chip"><span class="dot" style="background:var(--purple)"></span>🎨 Phys overlay</span>
+        <span class="chip">11 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Colour &amp; pigment metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it is read off the colour field (illustration)
+      → input / provenance / source. Most are whole-plate RGB fields; ⏱ marks the one that also needs time-lapse.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1. Pigmentation intensity ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Pigmentation intensity</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The colony's average colour: the mean <span class="term">R/G/B</span> or
+          CIELAB <span class="term">L*a*b*</span> taken over every colony pixel. A single colour summary
+          for how dark, saturated, or hued the whole growth is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Colony pixels averaged to one mean colour swatch">
+            <!-- colony fill -->
+            <circle cx="115" cy="110" r="74" fill="rgba(184,99,143,.30)" stroke="var(--purple)" stroke-width="2"/>
+            <circle cx="92" cy="86" r="14" fill="rgba(184,99,143,.55)"/>
+            <circle cx="138" cy="98" r="18" fill="rgba(184,99,143,.42)"/>
+            <circle cx="108" cy="140" r="16" fill="rgba(184,99,143,.6)"/>
+            <circle cx="150" cy="138" r="11" fill="rgba(184,99,143,.5)"/>
+            <text class="lbl" x="60" y="200">per-pixel R,G,B</text>
+            <!-- arrow -->
+            <path d="M200,110 H252" class="axis" stroke-width="2" marker-end="url(#jarr)"/>
+            <defs><marker id="jarr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+              <path d="M0,0 L9,4.5 L0,9 Z" fill="var(--text-dim)"/></marker></defs>
+            <text class="lbl" x="200" y="98">mean</text>
+            <!-- mean swatch -->
+            <rect x="262" y="76" width="68" height="68" rx="8" fill="rgba(184,99,143,.5)" stroke="var(--purple)" stroke-width="2"/>
+            <text class="lbl-strong" x="262" y="166">L*a*b* / RGB</text>
+          </svg>
+          <figcaption><b>Read:</b> average the colour channels over the colony mask. One swatch per
+            colony — a baseline pigment descriptor that needs only a flat RGB photo.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 2. Pigment radial gradient (MARQUEE a) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Pigment radial gradient</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How colour or intensity changes from the inoculum outward: sample the
+          colour along a radius from centre to edge and read it as a <span class="term">profile vs radius</span>.
+          Captures dark-core / pale-margin (or the reverse) physiology in one curve.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Colour sampled along a radius from centre to edge, with the profile curve">
+            <!-- radially-graded colony -->
+            <defs>
+              <radialGradient id="jgrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(120,40,80,.85)"/>
+                <stop offset="55%" stop-color="rgba(184,99,143,.45)"/>
+                <stop offset="100%" stop-color="rgba(184,99,143,.10)"/>
+              </radialGradient>
+            </defs>
+            <circle cx="90" cy="92" r="74" fill="url(#jgrad)" stroke="var(--purple)" stroke-width="2"/>
+            <!-- radius transect -->
+            <line x1="90" y1="92" x2="164" y2="92" class="struct" stroke="var(--ink)" stroke-dasharray="4 4"/>
+            <circle cx="90" cy="92" r="4" fill="var(--ink)"/>
+            <text class="lbl" x="40" y="184">centre → edge</text>
+            <text class="lbl-strong" x="120" y="84">r</text>
+            <!-- profile plot -->
+            <g transform="translate(196,28)">
+              <line class="axis" x1="0" y1="130" x2="138" y2="130"/>
+              <line class="axis" x1="0" y1="130" x2="0" y2="10"/>
+              <path d="M4,22 C36,30 58,70 86,104 C104,124 122,128 134,128" fill="none" stroke="var(--purple)" stroke-width="2.5"/>
+              <circle cx="4" cy="22" r="3" fill="var(--purple)"/>
+              <circle cx="134" cy="128" r="3" fill="var(--purple)"/>
+              <text class="lbl" x="2" y="146">radius r →</text>
+              <text class="lbl" x="-26" y="40" transform="rotate(-90 -26,40)">colour / L*</text>
+              <text class="lbl-strong" x="14" y="20" fill="var(--purple)">dark core</text>
+              <text class="lbl" x="78" y="120">pale margin</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> walk a line from the inoculum to the colony edge, recording colour at
+            each radius — a falling (or rising) curve is the <b>pigment gradient</b>. Average over many
+            radii to beat noise.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 3. Concentric ring / zonation strength (MARQUEE b) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Concentric ring / zonation strength</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How strongly the colony is banded into concentric rings: take the intensity
+          along a radial transect and measure the <span class="term">periodicity and amplitude</span> of its
+          ups-and-downs (e.g. by FFT). High when sharp, regular rings; low when smooth.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Alternating concentric rings and the band-spacing to period readout">
+            <!-- ringed colony -->
+            <g transform="translate(88,96)">
+              <circle r="72" fill="rgba(184,99,143,.10)" stroke="var(--purple)" stroke-width="2"/>
+              <circle r="58" fill="none" stroke="var(--purple)" stroke-width="6" opacity=".55"/>
+              <circle r="42" fill="none" stroke="var(--purple)" stroke-width="6" opacity=".55"/>
+              <circle r="26" fill="none" stroke="var(--purple)" stroke-width="6" opacity=".55"/>
+              <circle r="10" fill="rgba(184,99,143,.5)"/>
+              <line x1="0" y1="0" x2="72" y2="0" stroke="var(--ink)" stroke-dasharray="3 3" stroke-width="1.5"/>
+            </g>
+            <text class="lbl" x="44" y="190">concentric bands</text>
+            <!-- transect signal + period -->
+            <g transform="translate(190,30)">
+              <line class="axis" x1="0" y1="120" x2="150" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="14"/>
+              <path d="M2,30 Q14,12 26,30 T50,30 T74,30 T98,30 T122,30 T146,30" fill="none" stroke="var(--purple)" stroke-width="2.5"/>
+              <!-- band spacing brace -->
+              <line x1="26" y1="92" x2="50" y2="92" stroke="var(--orange)" stroke-width="2"/>
+              <line x1="26" y1="86" x2="26" y2="98" stroke="var(--orange)" stroke-width="2"/>
+              <line x1="50" y1="86" x2="50" y2="98" stroke="var(--orange)" stroke-width="2"/>
+              <text class="lbl-strong" x="20" y="112" fill="var(--orange)">Δr</text>
+              <text class="lbl" x="2" y="136">radius →</text>
+              <text class="lbl" x="-24" y="40" transform="rotate(-90 -24,40)">intensity</text>
+              <text class="lbl-strong" x="86" y="58">period = Δr</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> the radial intensity oscillates; the dominant FFT peak gives the
+            <b>band spacing Δr</b> and the peak height gives zonation strength. Robust because it is a
+            whole-field periodicity, not per-band detection.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale / RGB series</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cesbron 2024</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 4. Circadian conidiation banding period ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Circadian conidiation banding period</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">For clock-banding fungi, divide the spacing between conidiation bands by the
+          colony's growth rate to recover a <span class="term">time period</span> (≈24&nbsp;h in circadian
+          strains). Turns a spatial ring spacing into a biological clock readout.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Band spacing divided by growth rate gives a temporal period">
+            <!-- race-tube style banding -->
+            <rect x="20" y="60" width="320" height="46" rx="6" fill="rgba(184,99,143,.08)" stroke="var(--purple)" stroke-width="1.5"/>
+            <g fill="var(--purple)" opacity=".6">
+              <rect x="58" y="60" width="14" height="46"/>
+              <rect x="112" y="60" width="14" height="46"/>
+              <rect x="166" y="60" width="14" height="46"/>
+              <rect x="220" y="60" width="14" height="46"/>
+              <rect x="274" y="60" width="14" height="46"/>
+            </g>
+            <text class="lbl" x="20" y="50">conidiation bands along growth axis</text>
+            <!-- spacing brace -->
+            <line x1="65" y1="120" x2="119" y2="120" stroke="var(--orange)" stroke-width="2"/>
+            <line x1="65" y1="114" x2="65" y2="126" stroke="var(--orange)" stroke-width="2"/>
+            <line x1="119" y1="114" x2="119" y2="126" stroke="var(--orange)" stroke-width="2"/>
+            <text class="lbl-strong" x="78" y="140" fill="var(--orange)">Δx</text>
+            <!-- formula -->
+            <text class="lbl-strong" x="20" y="180">period&nbsp;T = Δx ÷ growth-rate&nbsp;(mm·h⁻¹)</text>
+            <text class="lbl" x="20" y="200" fill="var(--purple)">≈ 24 h in circadian strains</text>
+          </svg>
+          <figcaption><b>Read:</b> measure the band spacing Δx along the growth axis and divide by the
+            radial growth rate; the quotient is the <b>banding period in hours</b>. Needs a growth-rate
+            estimate, so it carries the ⏱ time-lapse flag.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale time-series</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dunlap &amp; Loros 2007</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 5. Sectoring (MARQUEE c) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Sectoring</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Angular wedges of the colony that differ in colour or morphology from the
+          rest — often a mutant or degenerate sub-clone. Reported as the <span class="term">fraction of the
+          colony that is sectored</span> and the number of sectors.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony with angular sectors of distinct colour and morphology">
+            <g transform="translate(150,110)">
+              <!-- base colony -->
+              <circle r="86" fill="rgba(184,99,143,.16)" stroke="var(--purple)" stroke-width="2"/>
+              <!-- two distinct sectors as pie wedges -->
+              <path d="M0,0 L86,0 A86,86 0 0 1 26.6,81.8 Z" fill="rgba(217,138,0,.30)" stroke="var(--orange)" stroke-width="1.5"/>
+              <path d="M0,0 L-81.8,26.6 A86,86 0 0 1 -60.8,-60.8 Z" fill="rgba(11,155,118,.26)" stroke="var(--green)" stroke-width="1.5"/>
+              <circle r="9" fill="rgba(184,99,143,.5)"/>
+              <text class="lbl-strong" x="34" y="40" fill="var(--orange)">sector α</text>
+              <text class="lbl-strong" x="-86" y="-30" fill="var(--green)">sector β</text>
+            </g>
+            <text class="lbl" x="40" y="208">fraction sectored = Σ wedge angle ÷ 360°</text>
+          </svg>
+          <figcaption><b>Read:</b> segment the colony into angular bins, flag bins whose colour/texture
+            departs from the colony median, and sum their angular span. The departing wedges are
+            <b>sectors</b>; their total angle ÷ 360° is the sectored fraction.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vicente 2025</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 6. Aerial vs substrate mycelium (MARQUEE d) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Aerial vs substrate mycelium</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-amber">🟡 lighting-dep.</span></div>
+        </div>
+        <p class="definition">The split between fluffy, bright <span class="term">aerial</span> hyphae rising
+          off the plate and the dark, flat <span class="term">substrate</span> mat embedded in the agar,
+          read from brightness/texture contrast. Reported as the fraction of the colony that is aerial.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Bright fluffy aerial zone versus dark flat substrate zone in cross-section and plan">
+            <!-- plan view -->
+            <circle cx="92" cy="92" r="70" fill="rgba(80,70,55,.30)" stroke="var(--ink)" stroke-width="2"/>
+            <circle cx="92" cy="92" r="38" fill="rgba(251,248,241,.92)" stroke="var(--purple)" stroke-width="2"/>
+            <text class="lbl-strong" x="66" y="92">aerial</text>
+            <text class="lbl" x="64" y="148">substrate</text>
+            <text class="lbl" x="56" y="178">plan (brightness)</text>
+            <!-- cross-section -->
+            <g transform="translate(206,40)">
+              <line x1="0" y1="120" x2="140" y2="120" class="axis" stroke-width="2"/>
+              <!-- flat dark substrate -->
+              <rect x="0" y="120" width="140" height="22" fill="rgba(80,70,55,.45)"/>
+              <!-- fluffy aerial mound -->
+              <path d="M30,120 Q44,72 58,96 Q70,60 84,98 Q96,68 110,120 Z" fill="rgba(251,248,241,.95)" stroke="var(--purple)" stroke-width="1.8"/>
+              <text class="lbl-strong" x="44" y="64" fill="var(--purple)">fluffy</text>
+              <text class="lbl" x="2" y="160">flat dark mat</text>
+              <text class="lbl" x="2" y="20">cross-section</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> bright/high-texture pixels are aerial fluff; dark/flat pixels are the
+            substrate mat. The bright fraction is the aerial proportion — robust to overlap, but
+            <b>oblique lighting dependent</b>.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">gray / RGB (oblique)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Yagüe-type pattern analysis</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 7. Exudate / guttation droplets ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Exudate / guttation droplets</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-amber">🟡 lighting-dep.</span></div>
+        </div>
+        <p class="definition">Surface droplets the colony secretes, seen as bright <span class="term">specular</span>
+          highlights on the mycelium. Counted and measured for <span class="term">number, area, and spatial
+          distribution</span> as a marker of metabolic exudation.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Specular highlight droplets scattered over the colony surface">
+            <circle cx="180" cy="110" r="88" fill="rgba(184,99,143,.16)" stroke="var(--purple)" stroke-width="2"/>
+            <!-- droplets with specular glints -->
+            <g>
+              <circle cx="150" cy="78" r="13" fill="rgba(58,159,214,.30)" stroke="var(--sky)" stroke-width="1.5"/>
+              <circle cx="146" cy="73" r="3.5" fill="#fff"/>
+              <circle cx="210" cy="96" r="10" fill="rgba(58,159,214,.30)" stroke="var(--sky)" stroke-width="1.5"/>
+              <circle cx="207" cy="92" r="2.6" fill="#fff"/>
+              <circle cx="168" cy="138" r="15" fill="rgba(58,159,214,.30)" stroke="var(--sky)" stroke-width="1.5"/>
+              <circle cx="163" cy="132" r="4" fill="#fff"/>
+              <circle cx="214" cy="146" r="9" fill="rgba(58,159,214,.30)" stroke="var(--sky)" stroke-width="1.5"/>
+              <circle cx="211" cy="142" r="2.4" fill="#fff"/>
+              <circle cx="128" cy="118" r="8" fill="rgba(58,159,214,.30)" stroke="var(--sky)" stroke-width="1.5"/>
+              <circle cx="125" cy="114" r="2.4" fill="#fff"/>
+            </g>
+            <text class="lbl-strong" x="232" y="80" fill="#1f7fb5">specular glint</text>
+            <text class="lbl" x="58" y="206">count · area · distribution of droplets</text>
+          </svg>
+          <figcaption><b>Read:</b> threshold bright specular blobs against the colony, then count them and
+            sum their area. Sensitive to illumination geometry, so flagged <b>lighting-dependent</b>.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB (specular)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 8. Sporulation density zones ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Sporulation density zones</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-amber">🟡 calibrated</span></div>
+        </div>
+        <p class="definition">Local conidia (spore) density mapped across the colony by calibrating
+          <span class="term">gray-value</span> against a measured spore count, then applying that curve
+          pixel-by-pixel. Yields a spatial map of where the colony is sporulating hardest.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Gray value calibrated to conidia count to map sporulation density">
+            <!-- colony with density zones -->
+            <circle cx="100" cy="106" r="74" fill="rgba(80,70,55,.12)" stroke="var(--ink)" stroke-width="2"/>
+            <circle cx="86" cy="86" r="26" fill="rgba(80,70,55,.5)"/>
+            <circle cx="128" cy="128" r="20" fill="rgba(80,70,55,.32)"/>
+            <text class="lbl" x="60" y="194">gray-value zones</text>
+            <!-- calibration line -->
+            <g transform="translate(208,30)">
+              <line class="axis" x1="0" y1="130" x2="130" y2="130"/>
+              <line class="axis" x1="0" y1="130" x2="0" y2="14"/>
+              <line x1="6" y1="122" x2="124" y2="26" stroke="var(--purple)" stroke-width="2.5"/>
+              <circle cx="30" cy="98" r="3" fill="var(--purple)"/>
+              <circle cx="66" cy="68" r="3" fill="var(--purple)"/>
+              <circle cx="102" cy="42" r="3" fill="var(--purple)"/>
+              <text class="lbl" x="0" y="148">gray value →</text>
+              <text class="lbl" x="-26" y="48" transform="rotate(-90 -26,48)">conidia / mm²</text>
+              <text class="lbl-strong" x="58" y="60" fill="var(--purple)">calibration</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> build a gray-value↔conidia-count calibration from sampled patches, then
+            invert it across the colony to get a spore-density field. Needs the calibration step, hence
+            <b>calibrated</b>.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale (calibrated)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Linde 2021</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 9. Melanization ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Melanization</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Darkening of colony zones as melanin accumulates — tracked as a drop in
+          CIELAB <span class="term">L*</span> (lightness), often over time. A direct readout of pigment
+          deposition in defence or stress responses.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Lightness L star falling as zones darken with melanin over time">
+            <!-- three colonies darkening -->
+            <g>
+              <circle cx="62" cy="84" r="34" fill="rgba(184,99,143,.16)" stroke="var(--purple)" stroke-width="1.8"/>
+              <circle cx="150" cy="84" r="34" fill="rgba(110,80,70,.42)" stroke="var(--ink)" stroke-width="1.8"/>
+              <circle cx="238" cy="84" r="34" fill="rgba(45,38,30,.78)" stroke="var(--ink)" stroke-width="1.8"/>
+              <text class="lbl" x="40" y="136">t₀</text>
+              <text class="lbl" x="130" y="136">t₁</text>
+              <text class="lbl" x="218" y="136">t₂</text>
+            </g>
+            <!-- L* falling -->
+            <g transform="translate(40,150)">
+              <line class="axis" x1="0" y1="46" x2="280" y2="46"/>
+              <line class="axis" x1="0" y1="46" x2="0" y2="2"/>
+              <polyline points="22,6 110,22 198,40" fill="none" stroke="var(--purple)" stroke-width="2.5"/>
+              <circle cx="22" cy="6" r="3" fill="var(--purple)"/><circle cx="110" cy="22" r="3" fill="var(--purple)"/>
+              <circle cx="198" cy="40" r="3" fill="var(--purple)"/>
+              <text class="lbl" x="232" y="50">time →</text>
+              <text class="lbl-strong" x="-2" y="-2" fill="var(--purple)">L* ↓</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> watch lightness L* fall in colony zones; the magnitude and rate of the
+            drop quantify <b>melanization</b>. Robust because it is a simple zonal brightness change.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zapanta et al. 2025 (PUPMCR)</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 10. Colony colour heterogeneity ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Colony colour heterogeneity</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How variable the colony's colour is overall: the <span class="term">variance</span>
+          or <span class="term">entropy</span> of colour across all colony pixels. High for patchy,
+          multi-toned colonies; low for a uniform lawn.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Uniform colony versus patchy colony and their colour-value histograms">
+            <!-- uniform colony + tight histogram -->
+            <circle cx="70" cy="78" r="42" fill="rgba(184,99,143,.32)" stroke="var(--purple)" stroke-width="2"/>
+            <g transform="translate(34,134)" stroke="var(--purple)" stroke-width="6">
+              <line x1="20" y1="40" x2="20" y2="22"/><line x1="32" y1="40" x2="32" y2="8"/><line x1="44" y1="40" x2="44" y2="20"/>
+            </g>
+            <text class="lbl" x="30" y="196">low variance</text>
+            <!-- patchy colony + spread histogram -->
+            <g transform="translate(180,0)">
+              <circle cx="70" cy="78" r="42" fill="rgba(184,99,143,.18)" stroke="var(--purple)" stroke-width="2"/>
+              <circle cx="56" cy="64" r="13" fill="rgba(217,138,0,.45)"/>
+              <circle cx="88" cy="72" r="11" fill="rgba(11,155,118,.4)"/>
+              <circle cx="70" cy="98" r="12" fill="rgba(45,38,30,.55)"/>
+              <g transform="translate(34,134)" stroke="var(--vermillion)" stroke-width="6">
+                <line x1="4" y1="40" x2="4" y2="24"/><line x1="16" y1="40" x2="16" y2="14"/><line x1="28" y1="40" x2="28" y2="22"/>
+                <line x1="40" y1="40" x2="40" y2="10"/><line x1="52" y1="40" x2="52" y2="26"/>
+              </g>
+              <text class="lbl" x="22" y="196">high variance / entropy</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> build the colony's colour histogram and take its spread (variance) or
+            entropy. A wide, multi-modal histogram = heterogeneous colony. Pure whole-field statistic,
+            very robust.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vicente 2025</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 11. Colour→biomass/toxin proxy (MARQUEE e) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Colour → biomass / toxin proxy</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">A regression that maps cheap RGB colour features onto an expensive
+          ground-truth such as <span class="term">biomass</span> or mycotoxin (e.g. DON). Once fitted,
+          colour alone predicts the target — a non-destructive proxy.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Scatter of a colour feature against biomass with a fitted regression line">
+            <g transform="translate(40,18)">
+              <line class="axis" x1="0" y1="160" x2="280" y2="160"/>
+              <line class="axis" x1="0" y1="160" x2="0" y2="8"/>
+              <!-- scatter -->
+              <g fill="var(--purple)">
+                <circle cx="30" cy="138" r="4"/><circle cx="58" cy="126" r="4"/><circle cx="74" cy="132" r="4"/>
+                <circle cx="104" cy="104" r="4"/><circle cx="126" cy="92" r="4"/><circle cx="150" cy="98" r="4"/>
+                <circle cx="178" cy="70" r="4"/><circle cx="204" cy="58" r="4"/><circle cx="232" cy="44" r="4"/>
+                <circle cx="252" cy="34" r="4"/>
+              </g>
+              <!-- regression line -->
+              <line x1="14" y1="146" x2="266" y2="30" stroke="var(--orange)" stroke-width="2.5"/>
+              <text class="lbl" x="180" y="150">colour feature →</text>
+              <text class="lbl" x="-30" y="56" transform="rotate(-90 -30,56)">biomass / DON</text>
+              <text class="lbl-strong" x="150" y="74" fill="var(--orange)">fit: ŷ = a·colour + b</text>
+            </g>
+          </svg>
+          <figcaption><b>Read:</b> on a calibration set, scatter a colour feature against measured biomass
+            or toxin and fit a line; the slope/R² gives a <b>colour proxy</b> you then apply to new plates.
+            Quality depends on the calibration set.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Belmonte 2019</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>Cheap RGB, colony-scale — but the biology is human-authored</h3>
+      <p>Almost everything in this family comes straight off a <b>whole-plate RGB photo</b>: no branch
+        isolation, no skeleton, no high-resolution microscopy. Pigment intensity, radial gradient,
+        zonation, sectoring, and colour heterogeneity are <b>colony-scale colour fields</b> — they
+        summarise how colour is laid out over the silhouette, so dense and overlapping hyphae never
+        have to be separated. That is exactly why they sit at 🟢 B-robust.</p>
+      <p>The handful tagged 🟡 lean on acquisition rather than segmentation: aerial-vs-substrate and
+        exudate droplets are <b>lighting/specular dependent</b>; sporulation density needs a
+        <b>gray-value↔count calibration</b>; the colour→biomass/toxin proxy needs a <b>calibration set</b>;
+        and the conidiation banding period additionally needs a <b>growth-rate estimate</b> (the ⏱ flag).</p>
+      <p>One guardrail: these metrics describe <b>what the colour does</b>, not what it <i>means</i>
+        biologically. Every <span class="term">bio_desc</span> in the schema is left empty for a human
+        domain author — pigment-to-physiology claims are <b>not machine-generated</b>.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

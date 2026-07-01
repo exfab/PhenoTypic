@@ -1,0 +1,312 @@
+<!doctype html>
+<!--
+  SHARED DESIGN SYSTEM — Branch Phenotypes for Filamentous Fungi (artifact set)
+  ============================================================================
+  Every artifact in this folder MUST copy the <head> (CSS + font links) VERBATIM
+  and reuse the component markup + class names below EXACTLY, so the 14-artifact
+  set is visually cohesive. Do not invent new styling. Author only the CONTENT
+  (cards, illustrations, copy) for your assigned family/field.
+
+  Aesthetic: "field notebook / scientific paper" — warm paper, ink text, fine
+  rules, Okabe-Ito colour-blind-safe accents (matches the project DESIGN.md).
+  Regime colours: A=blue  B=green  Dyn=sky  Phys=purple
+  Fit colours:    green(B-robust)  amber(A-feasible)  red(A-fragile)  sky(Dyn)  purple(Phys)
+
+  Illustration rules: hand-authored inline <svg> in figure.illo, viewBox "0 0 360 220",
+  stroke-based line diagrams, labels in mono (use class="lbl"), accent colours via the
+  CSS vars, always followed by <figcaption>. Each must actually depict the mechanism.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Branch Phenotypes — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR (copy verbatim; set active family name) ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO (set badge colour to the family's regime accent) ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--green)">B</div>
+    <div>
+      <div class="hero-kicker">Family · Regime B · whole-silhouette</div>
+      <h1 class="hero-title">Space-filling &amp; heterogeneity</h1>
+      <p class="lede">EXAMPLE TEMPLATE. Replace with the family's one–two-sentence lede:
+        what the family measures and when it is measurable.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Mask / grayscale</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>🟢 ship-now</span>
+        <span class="chip">12 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (copy verbatim into every artifact) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ A SECTION OF CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) → regime/input/provenance/citation.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== EXAMPLE CARD 1 — note the illustration pattern ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Solidity</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Ratio of the colony's actual area to its <span class="term">convex-hull</span> area.
+          ≈1 for a compact disc; well below 1 when a filamentous margin leaves large concave voids — a robust
+          compact-vs-diffuse discriminator.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Solidity = shape area over convex hull area">
+            <!-- convex hull -->
+            <polygon points="60,40 150,30 250,70 280,150 200,190 90,175 45,110"
+                     fill="rgba(217,138,0,.08)" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- irregular colony -->
+            <path class="struct" fill="rgba(11,155,118,.16)" stroke="var(--green)"
+              d="M150,60 C120,55 95,80 100,105 C70,110 70,150 105,150 C110,180 165,175 170,150
+                 C210,165 235,135 210,115 C240,95 215,55 180,72 C172,52 158,52 150,60 Z"/>
+            <text class="lbl" x="250" y="44">convex hull</text>
+            <text class="lbl-strong" x="112" y="120">colony area</text>
+            <text class="lbl-strong" x="60" y="208">Solidity = area<tspan fill="var(--green)">▣</tspan> ÷ hull<tspan fill="var(--orange)">▢</tspan></text>
+          </svg>
+          <figcaption><b>Mechanism:</b> overlay the smallest convex polygon containing the mask; the area ratio
+            falls as the margin gets more indented/branched. Needs only the binary mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+      </article>
+
+      <!-- ===== EXAMPLE CARD 2 — plot-style illustration ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Fractal dimension (box-counting)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Cover the mask with boxes of side ε and count how many are occupied, N(ε).
+          The slope of <span class="term">log N(ε)</span> vs <span class="term">log(1/ε)</span> is the fractal
+          dimension D — an index of space-filling (≈1.2 sparse → ≈2.0 area-filling).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Box-counting at two grid sizes and the log-log slope">
+            <!-- branched shape under a coarse grid -->
+            <g transform="translate(8,14)">
+              <path class="struct" stroke="var(--green)" d="M80,150 L80,90 M80,110 L50,80 M80,100 L112,72 M112,72 L132,46 M112,72 L138,86 M80,90 L60,58 M80,90 L102,52"/>
+              <g stroke="var(--rule)" stroke-width="1">
+                <path d="M40,40 H150 M40,80 H150 M40,120 H150 M40,160 H150 M40,40 V160 M80,40 V160 M120,40 V160"/>
+              </g>
+              <text class="lbl" x="60" y="178">coarse ε</text>
+            </g>
+            <!-- log-log inset -->
+            <g transform="translate(210,18)">
+              <line class="axis" x1="0" y1="150" x2="120" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="20"/>
+              <polyline points="6,142 38,112 70,74 104,38" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <circle cx="6" cy="142" r="3" fill="var(--blue)"/><circle cx="38" cy="112" r="3" fill="var(--blue)"/>
+              <circle cx="70" cy="74" r="3" fill="var(--blue)"/><circle cx="104" cy="38" r="3" fill="var(--blue)"/>
+              <text class="lbl" x="-2" y="166">log(1/ε) →</text>
+              <text class="lbl" x="-8" y="14" transform="rotate(-90 -8,14)"></text>
+              <text class="lbl-strong" x="58" y="64" fill="var(--blue)">slope = D</text>
+              <text class="lbl" x="-30" y="40" transform="rotate(-90 -30,40)">log N(ε)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> tile the silhouette at shrinking box sizes; a steeper log–log slope = more
+            space-filling/branched. Integrates over many scales, so it tolerates noise and overlap.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Physics</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Obert 1990; Papagianni 2006</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT (handling dense/overlap/low-res) ============ -->
+  <section class="band">
+    <div class="callout green">
+      <h3>Why this family survives dense, overlapping, low-resolution hyphae</h3>
+      <p>EXAMPLE. Summarise the family's robustness story from the catalog's "Robustness" column and the
+        §3.2/§3.3 dense-overlap toolkit. Keep it concrete.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (copy verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

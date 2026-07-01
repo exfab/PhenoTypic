@@ -1,0 +1,862 @@
+<!doctype html>
+<!--
+  ARTIFACT — Family I · Growth dynamics (Dyn overlay)
+  Part of the 14-artifact "Branch Phenotypes for Filamentous Fungi" set.
+  <head> copied VERBATIM from _design-system.html; component markup + class names
+  reused exactly. Only the CONTENT (cards, illustrations, copy) is authored here.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family I — Growth dynamics · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-dyn)">I</div>
+    <div>
+      <div class="hero-kicker">Family · Dyn overlay · time-lapse rates</div>
+      <h1 class="hero-title">Growth dynamics</h1>
+      <p class="lede">The rate of everything else. Register a time-lapse and the static size,
+        shape and topology descriptors turn into velocities: how fast the colony edge advances,
+        how fast hyphal tips extend and split, and how the whole network densifies over time.
+        Measurable only once frames are aligned — the spatial fit is inherited from the underlying
+        quantity, then gated again by the need for registered time.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--sky)"></span>⏱ Time-lapse</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Mask edge · 🟢 ship-now</span>
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>Per-tip · 🔴 microscopy</span>
+        <span class="chip">15 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COLONY-SCALE RATES (mask-only ⏱) ============ -->
+  <section class="band">
+    <h2 class="section-title">Colony-scale rates — from a plate time-series</h2>
+    <p class="section-sub">Read off the advancing silhouette frame to frame. Every metric here is ⏱
+      but mask-only: no hyphae are separated, so they survive dense, overlapping, low-resolution growth.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1. Colony radial growth rate Kr/Km — MARQUEE (a) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Colony radial growth rate (Kr / Km)</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How fast the colony margin advances outward, <span class="term">dR/dt</span>.
+          After an initial lag the radius grows linearly with time, and that constant slope — the radial
+          growth rate Kr (or Km on a per-colony basis) — is the single most reproducible growth descriptor
+          a plate can give you.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Colony radius versus time: a flat lag then a straight linear regime">
+            <!-- axes -->
+            <line class="axis" x1="44" y1="186" x2="338" y2="186"/>
+            <line class="axis" x1="44" y1="186" x2="44" y2="24"/>
+            <text class="lbl" x="300" y="204">time →</text>
+            <text class="lbl" x="10" y="40" transform="rotate(-90 10,40)">radius R</text>
+            <!-- lag phase: flat -->
+            <path d="M44,168 C70,167 92,166 116,164" fill="none" stroke="var(--sky)" stroke-width="2.5"/>
+            <!-- linear regime -->
+            <line x1="116" y1="164" x2="318" y2="50" stroke="var(--sky)" stroke-width="2.5"/>
+            <!-- slope triangle -->
+            <line x1="210" y1="103" x2="278" y2="103" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <line x1="278" y1="103" x2="278" y2="65" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="232" y="98" fill="var(--vermillion)">ΔR</text>
+            <text class="lbl" x="282" y="90">Δt</text>
+            <!-- lag bracket -->
+            <line x1="44" y1="178" x2="116" y2="178" stroke="var(--text-dim)" stroke-width="1"/>
+            <text class="lbl" x="56" y="198">lag</text>
+            <text class="lbl-strong" x="150" y="138" fill="var(--sky)">Kr = ΔR ÷ Δt</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> threshold each frame to a mask, take the equivalent radius, and
+            fit a line to the linear region. The slope is Kr; only the colony <b>edge</b> matters, so
+            interior overlap is irrelevant.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">very high (edge only) · 🟢⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1971</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 2. Radial expansion / colonization rate ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Radial expansion / colonization rate</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The rate at which colonized area grows, <span class="term">dArea/dt</span>.
+          Where Kr tracks the one-dimensional edge, this tracks the two-dimensional footprint — how
+          quickly the colony claims new territory on the plate.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Three nested colony outlines at successive times, the colonized area growing">
+            <!-- nested expanding outlines, common inoculum -->
+            <circle cx="120" cy="118" r="30" fill="rgba(58,159,214,.05)" stroke="var(--rule)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="120" cy="118" r="58" fill="rgba(58,159,214,.06)" stroke="var(--sky)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="120" cy="118" r="86" fill="rgba(58,159,214,.07)" stroke="var(--sky)" stroke-width="2"/>
+            <circle cx="120" cy="118" r="3" fill="var(--ink)"/>
+            <text class="lbl" x="112" y="135">t₀</text>
+            <text class="lbl" x="120" y="64">t₁</text>
+            <text class="lbl" x="120" y="34">t₂</text>
+            <!-- area-vs-time inset -->
+            <g transform="translate(232,28)">
+              <line class="axis" x1="0" y1="150" x2="104" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <path d="M2,148 C24,140 46,108 70,64 C82,42 92,30 100,22" fill="none" stroke="var(--sky)" stroke-width="2.5"/>
+              <circle cx="2" cy="148" r="3" fill="var(--sky)"/><circle cx="42" cy="112" r="3" fill="var(--sky)"/><circle cx="100" cy="22" r="3" fill="var(--sky)"/>
+              <text class="lbl" x="44" y="166">time →</text>
+              <text class="lbl" x="-12" y="8" transform="rotate(-90 -12,8)">Area</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> count foreground pixels per frame and differentiate. Robust because
+            it sums over the whole silhouette rather than any single strand.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">very high · 🟢⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Camy 2023</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 3. Specific (biomass) growth rate µ ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Specific (biomass) growth rate µ</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The exponential rate of biomass accumulation,
+          <span class="term">d ln(L) / dt</span>, where L is total hyphal length (or a mask-derived
+          biomass proxy). Unlike Kr it captures interior thickening, not just edge advance — the colony
+          getting denser, not just bigger.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Log of biomass rising as a straight line over time, slope mu">
+            <line class="axis" x1="46" y1="186" x2="338" y2="186"/>
+            <line class="axis" x1="46" y1="186" x2="46" y2="24"/>
+            <text class="lbl" x="300" y="204">time →</text>
+            <text class="lbl" x="12" y="48" transform="rotate(-90 12,48)">ln(biomass)</text>
+            <!-- straight log-line -->
+            <line x1="58" y1="170" x2="320" y2="46" stroke="var(--sky)" stroke-width="2.5"/>
+            <!-- faint exponential underlay (linear scale hint) -->
+            <path d="M58,178 C150,176 230,150 320,64" fill="none" stroke="var(--rule)" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <text class="lbl" x="232" y="150" fill="var(--text-dim)">linear-scale curve</text>
+            <!-- slope label -->
+            <line x1="150" y1="113" x2="220" y2="113" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <line x1="220" y1="113" x2="220" y2="80" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="158" y="78" fill="var(--sky)">slope = µ</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> a straight line on a log axis means constant µ. Mask-feasible via a
+            length/area proxy, but it degrades once the interior saturates and overlap hides new biomass.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">high · 🟡⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1969</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 4. Peripheral growth-zone width w ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Peripheral growth-zone width w</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The width of the annular ring at the colony margin that actually drives
+          radial extension, derived as <span class="term">w = Kr / µ</span>. It is the band of
+          metabolically active leading hyphae behind the front — wider w, faster spread per unit µ.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Colony disc with an active outer annulus of width w behind the advancing edge">
+            <!-- colony disc -->
+            <circle cx="160" cy="112" r="92" fill="rgba(58,159,214,.05)" stroke="var(--rule)" stroke-width="1.5"/>
+            <!-- inert core -->
+            <circle cx="160" cy="112" r="68" fill="rgba(108,101,87,.07)" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="3 3"/>
+            <!-- active annulus highlight -->
+            <path d="M160,20 A92,92 0 0,1 252,112 L228,112 A68,68 0 0,0 160,44 Z" fill="rgba(58,159,214,.22)" stroke="none"/>
+            <!-- w marker -->
+            <line x1="228" y1="112" x2="252" y2="112" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl-strong" x="256" y="116" fill="var(--vermillion)">w</text>
+            <text class="lbl" x="120" y="116">inert core</text>
+            <text class="lbl-strong" x="150" y="40" fill="#1f7fb5">active zone</text>
+            <text class="lbl-strong" x="60" y="208" fill="var(--sky)">w = Kr ÷ µ</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> not measured directly — combine the edge rate Kr and the specific
+            rate µ from the same series. Both inputs are mask-level, so w inherits their robustness.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">radius + µ series</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">high (derived) · 🟢⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1971</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 5. Mass-FD trajectory FD(t) — MARQUEE (c) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Mass-FD trajectory FD(t)</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The box-counting fractal dimension of the mask, tracked frame by frame.
+          A <span class="term">rising FD(t)</span> means the network is densifying — filling in the gaps
+          between hyphae — while a flat FD means it is expanding self-similarly without getting denser.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Fractal dimension rising over time as a sparse network densifies, with three colony thumbnails">
+            <!-- three densifying thumbnails -->
+            <g stroke="var(--sky)" fill="none" stroke-width="1.4" stroke-linecap="round">
+              <g transform="translate(20,18)">
+                <path d="M22,40 L22,4 M22,22 L8,8 M22,16 L36,6"/>
+                <text class="lbl" x="6" y="56">sparse</text>
+              </g>
+              <g transform="translate(78,18)">
+                <path d="M22,40 L22,4 M22,26 L8,12 M22,18 L36,8 M14,30 L4,22 M30,14 L40,18 M22,12 L30,2"/>
+                <text class="lbl" x="12" y="56">denser</text>
+              </g>
+              <g transform="translate(136,18)">
+                <path d="M22,40 L22,4 M22,30 L8,16 M22,22 L36,10 M14,34 L4,26 M30,18 L40,22 M22,14 L30,4 M18,26 L10,30 M26,24 L34,30 M22,8 L16,2"/>
+                <text class="lbl" x="8" y="56">filled</text>
+              </g>
+            </g>
+            <!-- FD vs t curve -->
+            <g transform="translate(196,16)">
+              <line class="axis" x1="0" y1="160" x2="150" y2="160"/>
+              <line class="axis" x1="0" y1="160" x2="0" y2="16"/>
+              <path d="M4,150 C40,138 70,96 100,62 C118,42 134,34 146,30" fill="none" stroke="var(--sky)" stroke-width="2.5"/>
+              <circle cx="4" cy="150" r="3" fill="var(--sky)"/><circle cx="74" cy="86" r="3" fill="var(--sky)"/><circle cx="146" cy="30" r="3" fill="var(--sky)"/>
+              <line x1="0" y1="24" x2="150" y2="24" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+              <text class="lbl" x="92" y="20">FD → 2 (area-filling)</text>
+              <text class="lbl" x="96" y="176">time →</text>
+              <text class="lbl-strong" x="-14" y="10" transform="rotate(-90 -14,10)" fill="#1f7fb5">FD</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> run box-counting (Family B) on every registered frame and plot the
+            slope over time. Inherits FD's multi-scale robustness; needs only the mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">high · 🟢⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lecault 2009</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 6. Growth-front anisotropy ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Growth-front anisotropy</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How non-circular the advancing outline becomes over time — the ellipticity
+          or eccentricity of the colony silhouette tracked across frames. A circle staying circular is
+          isotropic spread; an outline stretching along one axis signals directional bias.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A round early outline becoming an elongated ellipse with a fitted major axis">
+            <!-- early round outline -->
+            <circle cx="96" cy="112" r="50" fill="none" stroke="var(--rule)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text class="lbl" x="72" y="180">isotropic (t₀)</text>
+            <!-- later elongated outline -->
+            <ellipse cx="248" cy="112" rx="88" ry="44" fill="rgba(58,159,214,.08)" stroke="var(--sky)" stroke-width="2"/>
+            <!-- fitted axes -->
+            <line x1="160" y1="112" x2="336" y2="112" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <line x1="248" y1="68" x2="248" y2="156" stroke="var(--text-dim)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="290" y="106" fill="var(--vermillion)">major</text>
+            <text class="lbl" x="252" y="64">minor</text>
+            <text class="lbl" x="200" y="180">anisotropic (t₁)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> fit an ellipse to each frame's mask and follow the axis ratio.
+            A whole-silhouette statistic — directional substrate or airflow shows up without any tracing.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">high · 🟢⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Held 2019</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 7. Space-filling / coverage rate ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Space-filling / coverage rate</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-b">Mask</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">How fast the colony fills its reachable area, <span class="term">d(coverage)/dt</span>,
+          where coverage is the occupied fraction inside the convex hull or field of view. It blends
+          expansion and densification into one saturating curve toward full occupancy.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Coverage fraction rising and saturating toward one over time">
+            <line class="axis" x1="46" y1="186" x2="338" y2="186"/>
+            <line class="axis" x1="46" y1="186" x2="46" y2="24"/>
+            <text class="lbl" x="300" y="204">time →</text>
+            <text class="lbl" x="12" y="58" transform="rotate(-90 12,58)">coverage</text>
+            <!-- saturation asymptote -->
+            <line x1="46" y1="44" x2="338" y2="44" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+            <text class="lbl" x="280" y="40">100%</text>
+            <!-- saturating S-curve -->
+            <path d="M52,176 C110,172 150,150 188,108 C220,72 250,52 338,46" fill="none" stroke="var(--sky)" stroke-width="2.5"/>
+            <!-- steepest-rise marker -->
+            <circle cx="188" cy="108" r="3.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="150" y="138" fill="var(--vermillion)">max rate</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> divide occupied pixels by hull/frame area each frame and differentiate.
+            Mask-level, but the rate softens as touching strands and saturation blur the late curve.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse mask</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">med · 🟡⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ritz &amp; Crawford 1995</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ PER-TIP & PER-BRANCH RATES (microscopy ⏱) ============ -->
+  <section class="band">
+    <h2 class="section-title">Per-tip &amp; per-branch rates — from tracked skeletons</h2>
+    <p class="section-sub">These need registered time <em>and</em> a clean per-tip skeleton you can follow
+      across frames — microscopy territory. They are the richest dynamics, and the most fragile on a dense plate.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 8. Tip extension rate — MARQUEE (b) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tip extension (elongation) rate</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">How fast an individual hyphal tip advances along its own axis,
+          <span class="term">d(tip position)/dt</span>. Where Kr is the colony's collective edge speed,
+          this is the elongation velocity of one apex — the cellular engine underneath the radial rate.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="One hyphal tip advancing across three frames with a new lateral branch emerging">
+            <!-- frame ghosts of the same tip at t0, t1, t2 -->
+            <path class="struct" stroke="var(--rule)" stroke-width="1.5" d="M30,150 C72,150 96,146 120,136"/>
+            <circle cx="120" cy="136" r="3.5" fill="none" stroke="var(--rule)" stroke-width="1.5"/>
+            <text class="lbl" x="106" y="128">t₀</text>
+            <path class="struct" stroke="var(--text-dim)" stroke-width="1.7" d="M30,150 C84,150 132,140 176,118"/>
+            <circle cx="176" cy="118" r="3.5" fill="none" stroke="var(--text-dim)" stroke-width="1.5"/>
+            <text class="lbl" x="166" y="110">t₁</text>
+            <!-- current tip + new branch (links to metric 9) -->
+            <path class="struct" stroke="var(--sky)" stroke-width="2.2" d="M30,150 C100,150 180,134 256,96"/>
+            <circle cx="256" cy="96" r="4.5" fill="var(--sky)"/>
+            <text class="lbl-strong" x="244" y="86" fill="#1f7fb5">t₂</text>
+            <!-- new lateral branch emerging -->
+            <path class="struct" stroke="var(--vermillion)" stroke-width="2" d="M188,113 C198,128 206,142 216,158"/>
+            <circle cx="216" cy="158" r="3.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="214" y="176" fill="var(--vermillion)">new branch</text>
+            <!-- extension arrow -->
+            <line x1="120" y1="136" x2="256" y2="96" stroke="var(--sky)" stroke-width="1" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="150" y="190" fill="#1f7fb5">Δposition ÷ Δt</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> identify each degree-1 node, match it across frames, and measure
+            the per-tip displacement. Fails when crossings fuse or hide tips — the per-tip tracking ceiling.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low (per-tip tracking) · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Spitzer 2017</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 9. Branching rate ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branching rate / new-branch emergence</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">How many new branch points appear per unit time — the rate at which fresh
+          tips are born. It pairs with tip extension: extension lengthens the network, branching multiplies
+          its growing points, and their balance sets the colony's texture.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Branch-point count rising in steps over time as new branches appear">
+            <line class="axis" x1="46" y1="186" x2="338" y2="186"/>
+            <line class="axis" x1="46" y1="186" x2="46" y2="24"/>
+            <text class="lbl" x="300" y="204">time →</text>
+            <text class="lbl" x="12" y="74" transform="rotate(-90 12,74)">#branches</text>
+            <!-- step staircase -->
+            <polyline points="52,170 100,170 100,144 150,144 150,112 200,112 200,74 258,74 258,44 330,44"
+                      fill="none" stroke="var(--sky)" stroke-width="2.5"/>
+            <!-- emergence dots -->
+            <circle cx="100" cy="144" r="3.5" fill="var(--vermillion)"/>
+            <circle cx="150" cy="112" r="3.5" fill="var(--vermillion)"/>
+            <circle cx="200" cy="74" r="3.5" fill="var(--vermillion)"/>
+            <circle cx="258" cy="44" r="3.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="206" y="70" fill="var(--vermillion)">+1 branch</text>
+            <text class="lbl" x="120" y="166">rate = steps ÷ time</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count degree-≥3 nodes per frame and difference the count. Each new
+            step is a branching event — but overlap manufactures false nodes, so it is fragile on a plate.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 10. Specific branching frequency ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Specific branching frequency</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">New tips formed per unit hyphal length per unit time — the branching rate
+          normalized by how much hypha exists. It asks not just <em>how often</em> branches appear but
+          how densely they pack along the filament, independent of total size.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="New branch tics per unit length along a growing hypha, normalized by length">
+            <!-- main hypha with length ruler -->
+            <line x1="34" y1="78" x2="326" y2="78" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- length ticks -->
+            <g stroke="var(--rule)" stroke-width="1">
+              <line x1="90" y1="73" x2="90" y2="83"/><line x1="146" y1="73" x2="146" y2="83"/>
+              <line x1="202" y1="73" x2="202" y2="83"/><line x1="258" y1="73" x2="258" y2="83"/>
+            </g>
+            <text class="lbl" x="150" y="60">hyphal length L →</text>
+            <!-- branches as down-spokes (new tips) -->
+            <g stroke="var(--sky)" stroke-width="2" stroke-linecap="round">
+              <line x1="90" y1="78" x2="78" y2="118"/><line x1="146" y1="78" x2="158" y2="120"/>
+              <line x1="202" y1="78" x2="190" y2="116"/><line x1="258" y1="78" x2="270" y2="122"/>
+            </g>
+            <g fill="var(--vermillion)">
+              <circle cx="78" cy="118" r="3"/><circle cx="158" cy="120" r="3"/>
+              <circle cx="190" cy="116" r="3"/><circle cx="270" cy="122" r="3"/>
+            </g>
+            <text class="lbl-strong" x="60" y="176" fill="#1f7fb5">freq = new tips ÷ (L · Δt)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> divide new-tip counts by traced length and elapsed time. Doubly
+            demanding — needs both reliable tip births and reliable length, both of which crossings spoil.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Katz 1972</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 11. Apical vs lateral branching kinetics ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Apical vs lateral branching kinetics</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The separate rates of <span class="term">apical</span> (tip-splitting,
+          dichotomous) and <span class="term">lateral</span> (subapical, side-branch) events. Two species
+          can share a branching rate yet differ entirely in <em>where</em> branches form — a mechanistic
+          fingerprint of growth.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An apical tip-split versus a lateral side-branch on a hypha">
+            <!-- apical (dichotomous) on the left -->
+            <path class="struct" stroke="var(--ink)" d="M50,150 C66,140 82,128 96,116"/>
+            <path class="struct" stroke="var(--sky)" d="M96,116 C108,104 116,88 120,72"/>
+            <path class="struct" stroke="var(--sky)" d="M96,116 C112,112 130,112 148,110"/>
+            <circle cx="120" cy="72" r="3.5" fill="var(--sky)"/><circle cx="148" cy="110" r="3.5" fill="var(--sky)"/>
+            <text class="lbl-strong" x="62" y="180" fill="#1f7fb5">apical (split)</text>
+            <!-- lateral (subapical) on the right -->
+            <path class="struct" stroke="var(--ink)" d="M214,150 C250,142 290,128 326,108"/>
+            <circle cx="326" cy="108" r="3.5" fill="var(--ink)"/>
+            <text class="lbl" x="320" y="100">tip</text>
+            <path class="struct" stroke="var(--vermillion)" d="M268,131 C272,150 276,166 282,184"/>
+            <circle cx="282" cy="184" r="3.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="228" y="180" fill="var(--vermillion)">lateral (side)</text>
+            <!-- divider -->
+            <line x1="180" y1="40" x2="180" y2="196" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 4"/>
+          </svg>
+          <figcaption><b>Mechanism:</b> classify each new node by whether it forms at an existing apex
+            (apical) or behind it (lateral) and rate each stream. Needs the apex resolved through time —
+            the hardest case for dense fields.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Katz 1972</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 12. First-branch lag ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">First-branch lag</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Time-lapse</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The time from spore germination to the very first branch point on the germling.
+          A single-event latency that captures how long a hypha extends as one unbranched tube before it
+          commits to its first split.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Timeline from germination to first branch marking the lag interval">
+            <!-- timeline -->
+            <line x1="40" y1="118" x2="330" y2="118" stroke="var(--rule)" stroke-width="1.5"/>
+            <!-- germination -->
+            <circle cx="70" cy="118" r="9" fill="rgba(58,159,214,.18)" stroke="var(--sky)" stroke-width="2"/>
+            <text class="lbl" x="46" y="150">germination</text>
+            <!-- unbranched germling growing -->
+            <path class="struct" stroke="var(--ink)" d="M82,114 C120,108 160,104 200,100"/>
+            <!-- first branch event -->
+            <circle cx="232" cy="118" r="6" fill="var(--vermillion)"/>
+            <path class="struct" stroke="var(--vermillion)" stroke-width="2" d="M200,100 C214,96 226,90 236,78"/>
+            <circle cx="236" cy="78" r="3.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="206" y="150" fill="var(--vermillion)">first branch</text>
+            <!-- lag bracket -->
+            <line x1="70" y1="92" x2="232" y2="92" stroke="var(--text-dim)" stroke-width="1"/>
+            <line x1="70" y1="88" x2="70" y2="96" stroke="var(--text-dim)" stroke-width="1"/>
+            <line x1="232" y1="88" x2="232" y2="96" stroke="var(--text-dim)" stroke-width="1"/>
+            <text class="lbl-strong" x="118" y="82" fill="#1f7fb5">first-branch lag</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> follow a single germinating spore and timestamp its first
+            bifurcation. Conceptually simple, but needs isolated germlings tracked cleanly from t₀.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Spitzer 2017</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 13. Anastomosis rate ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Anastomosis rate</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Graph</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">How often hyphae fuse per unit time — tip-to-tip or tip-to-side reconnections
+          that weld the tree into a network of loops. Time-lapse is what tells a true fusion (a persistent
+          load-bearing loop) apart from a mere crossing.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two approaching hyphal tips fusing into a closed loop over two frames">
+            <!-- before: two tips approaching -->
+            <g transform="translate(0,4)">
+              <path class="struct" stroke="var(--rule)" stroke-width="1.7" d="M30,60 C66,72 92,86 110,104"/>
+              <path class="struct" stroke="var(--rule)" stroke-width="1.7" d="M30,150 C66,138 92,124 110,106"/>
+              <circle cx="110" cy="104" r="3.5" fill="none" stroke="var(--rule)" stroke-width="1.5"/>
+              <circle cx="110" cy="106" r="3.5" fill="none" stroke="var(--rule)" stroke-width="1.5"/>
+              <text class="lbl" x="40" y="200">before · two tips</text>
+            </g>
+            <!-- arrow -->
+            <line x1="150" y1="112" x2="186" y2="112" stroke="var(--text-dim)" stroke-width="1.5"/>
+            <path d="M186,112 l-7,-4 v8 z" fill="var(--text-dim)"/>
+            <!-- after: fused loop -->
+            <g transform="translate(0,4)">
+              <path class="struct" stroke="var(--sky)" stroke-width="2.2" d="M214,108 C236,66 286,66 308,108 C286,150 236,150 214,108 Z"/>
+              <circle cx="261" cy="108" r="0"/>
+              <circle cx="308" cy="108" r="4.5" fill="var(--vermillion)"/>
+              <text class="lbl-strong" x="296" y="100" fill="var(--vermillion)">fusion</text>
+              <text class="lbl-strong" x="232" y="116" fill="#1f7fb5">loop</text>
+              <text class="lbl" x="234" y="200">after · closed loop</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> detect new closed cycles (1st Betti number rising) that persist
+            across frames. False crossings vanish next frame; real fusions stay — but the call is delicate.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + graph</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 14. Negative autotropism — MARQUEE (d) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Negative autotropism (tip avoidance)</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The tendency of a growing tip to deflect <em>away</em> from neighbouring
+          hyphae — a self-avoidance that spaces the network out for efficient foraging. Measured as the
+          trajectory deflection a tip takes as it nears another strand.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hyphal tip trajectories bending away from neighbouring hyphae rather than crossing them">
+            <!-- neighbour hyphae (obstacles) -->
+            <path class="struct" stroke="var(--text-dim)" stroke-width="2" d="M150,18 C156,70 156,150 150,202"/>
+            <path class="struct" stroke="var(--text-dim)" stroke-width="2" d="M252,28 C246,80 246,150 252,196"/>
+            <text class="lbl" x="120" y="14">neighbour</text>
+            <!-- approaching tip that bends away (deflected) -->
+            <path class="struct" stroke="var(--sky)" stroke-width="2.4" d="M30,104 C78,104 108,104 126,108 C136,124 134,150 110,176"/>
+            <circle cx="110" cy="176" r="4.5" fill="var(--sky)"/>
+            <!-- second tip deflecting in the gap -->
+            <path class="struct" stroke="var(--sky)" stroke-width="2.4" d="M186,150 C204,140 214,124 214,108 C214,90 224,76 246,66"/>
+            <circle cx="246" cy="66" r="4.5" fill="var(--sky)"/>
+            <!-- straight-line "expected" path for contrast -->
+            <line x1="126" y1="108" x2="186" y2="118" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="40" y="96" fill="#1f7fb5">deflects away</text>
+            <text class="lbl" x="128" y="150" fill="var(--vermillion)">vs straight</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> compare each tip's actual heading to its undeflected projection as
+            it nears a neighbour; a consistent turn away is negative autotropism. Needs reliable per-tip paths.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hutchinson / Meškauskas 2004</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 15. Chemotropism / gradient bias ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Chemotropism / gradient bias</h3>
+          <div class="badges"><span class="badge b-dyn">⏱ Dyn</span><span class="badge b-a">Skeleton</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The tip's reorientation toward (or away from) an external chemical gradient —
+          a directedness index of how strongly tips steer up a nutrient or signal gradient, usually scored
+          in a microfluidic device with a known gradient direction.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hyphal tips turning to align with a left-to-right concentration gradient">
+            <!-- gradient background bars -->
+            <g>
+              <rect x="34" y="24" width="292" height="18" fill="url(#grad-i)"/>
+              <text class="lbl" x="40" y="58">low</text>
+              <text class="lbl" x="300" y="58">high</text>
+              <text class="lbl-strong" x="150" y="18" fill="var(--vermillion)">gradient →</text>
+            </g>
+            <defs>
+              <linearGradient id="grad-i" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(58,159,214,.06)"/>
+                <stop offset="1" stop-color="rgba(58,159,214,.42)"/>
+              </linearGradient>
+            </defs>
+            <!-- tips that start in varied directions and turn up-gradient -->
+            <path class="struct" stroke="var(--sky)" stroke-width="2.2" d="M50,170 C70,150 96,142 124,140 C160,138 196,132 232,124"/>
+            <circle cx="232" cy="124" r="4.5" fill="var(--sky)"/>
+            <path class="struct" stroke="var(--sky)" stroke-width="2.2" d="M60,196 C96,188 120,178 140,170 C180,154 220,150 260,150"/>
+            <circle cx="260" cy="150" r="4.5" fill="var(--sky)"/>
+            <!-- bias arrow -->
+            <line x1="124" y1="140" x2="232" y2="124" stroke="var(--vermillion)" stroke-width="1.3" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="150" y="190" fill="#1f7fb5">tips align up-gradient</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> score the angle between each tip's heading and the gradient axis
+            and average into a reorientation index. Requires per-tip tracking plus a controlled gradient.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">time-lapse + skeleton (microfluidic)</span></div>
+          <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Moore 2024; Nordzieke 2020</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT — measurable-from-plate vs needs-microscopy ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>What a plate time-series gives you — and what needs the microscope</h3>
+      <p>Every metric in this family carries the ⏱ clock, but they split sharply on the <em>spatial</em>
+        fit. The dividing line is whether you ever separate individual hyphae.</p>
+      <p><b>Cheap, from a macroscopic plate time-series (mask-only ⏱ — ship-now):</b> these read off the
+        advancing silhouette and never resolve a strand, so they survive dense, overlapping, low-resolution
+        growth exactly as the static Regime-B descriptors do.</p>
+      <ul>
+        <li><b>Colony radial growth rate Kr/Km</b> — slope of edge radius vs time.</li>
+        <li><b>Radial expansion / colonization rate</b> — dArea/dt of the footprint.</li>
+        <li><b>Mass-FD trajectory FD(t)</b> — box-counting dimension tracked per frame.</li>
+        <li><b>Growth-front anisotropy</b> — ellipticity of the outline over time.</li>
+        <li><em>(adjacent, mask-feasible)</em> specific growth rate µ, derived peripheral-zone width w, and
+          coverage rate — robust but softening as the interior saturates.</li>
+      </ul>
+      <p><b>Needs microscopy + per-tip tracking (🔴⏱ — aspirational on a plate):</b> these require a clean,
+        time-registered skeleton where each apex and junction is followed frame to frame — precisely the
+        case dense overlap breaks.</p>
+      <ul>
+        <li><b>Per-tip extension rate</b> — displacement of one apex along its axis.</li>
+        <li><b>Branching rate &amp; specific branching frequency</b> — new branch points (per length) per time.</li>
+        <li><b>Apical vs lateral branching kinetics</b> and <b>first-branch lag</b> — where and when branches form.</li>
+        <li><b>Anastomosis rate</b> — persistent loop-forming fusions, disambiguated by time.</li>
+        <li><b>Negative autotropism</b> and <b>chemotropism / gradient bias</b> — per-tip trajectory steering.</li>
+      </ul>
+      <p>Practical rule: on a standard agar plate, reach for the mask-only rates; the per-tip dynamics belong
+        to confocal / microfluidic acquisition or a future mature retracing module.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

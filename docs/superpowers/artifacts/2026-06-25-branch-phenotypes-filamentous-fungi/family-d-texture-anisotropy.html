@@ -1,0 +1,620 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family D · Texture & anisotropy
+  Self-contained artifact. <head> copied verbatim from _design-system.html;
+  component markup + class names reused exactly. Content authored for Family D.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family D — Texture &amp; anisotropy · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-b)">D</div>
+    <div>
+      <div class="hero-kicker">Family · Regime B · grayscale texture</div>
+      <h1 class="hero-title">Texture &amp; anisotropy</h1>
+      <p class="lede">How rough and how <em>directional</em> is the mycelium, read straight off the
+        grayscale image? These descriptors quantify branching density and preferred growth direction
+        from local pixel statistics and the spatial-frequency spectrum — no segmentation, no skeleton,
+        no thresholded mask required.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Grayscale field</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>🟢 ship-now</span>
+        <span class="chip">7 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) → regime/input/provenance/citation.
+      Every metric here reads texture or orientation from grayscale alone — they describe branchiness without ever
+      naming a branch.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1. GLCM / Haralick features ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">GLCM / Haralick features</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Tally how often each pair of grey levels sits a fixed step apart into a
+          <span class="term">grey-level co-occurrence matrix</span>, then read summary numbers off it —
+          contrast, homogeneity, energy, entropy, correlation. Fine, busy hyphal texture and smooth
+          confluent lawn give very different signatures.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A pixel grid and an offset build a co-occurrence matrix">
+            <!-- source pixel patch with grey levels labelled -->
+            <g transform="translate(8,18)">
+              <text class="lbl" x="0" y="-4">grey patch</text>
+              <g stroke="var(--rule)" stroke-width="1">
+                <rect x="0"   y="0"  width="26" height="26" fill="rgba(32,30,24,.10)"/>
+                <rect x="26"  y="0"  width="26" height="26" fill="rgba(32,30,24,.55)"/>
+                <rect x="52"  y="0"  width="26" height="26" fill="rgba(32,30,24,.10)"/>
+                <rect x="0"   y="26" width="26" height="26" fill="rgba(32,30,24,.55)"/>
+                <rect x="26"  y="26" width="26" height="26" fill="rgba(32,30,24,.10)"/>
+                <rect x="52"  y="26" width="26" height="26" fill="rgba(32,30,24,.55)"/>
+                <rect x="0"   y="52" width="26" height="26" fill="rgba(32,30,24,.10)"/>
+                <rect x="26"  y="52" width="26" height="26" fill="rgba(32,30,24,.55)"/>
+                <rect x="52"  y="52" width="26" height="26" fill="rgba(32,30,24,.10)"/>
+              </g>
+              <!-- offset arrow (Δx,Δy) between two cells -->
+              <line x1="13" y1="13" x2="39" y2="13" stroke="var(--vermillion)" stroke-width="2.4" marker-end="url(#dArrowGlcm)"/>
+              <text class="lbl-strong" x="6" y="100" fill="var(--vermillion)">offset (Δx,Δy)</text>
+            </g>
+            <!-- mapping arrow -->
+            <line x1="100" y1="55" x2="150" y2="55" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#dArrowGlcm)"/>
+            <text class="lbl" x="104" y="48">count</text>
+            <!-- co-occurrence matrix -->
+            <g transform="translate(170,18)">
+              <text class="lbl" x="0" y="-4">co-occurrence matrix</text>
+              <g stroke="var(--rule)" stroke-width="1">
+                <rect x="0"  y="0"  width="28" height="28" fill="rgba(11,155,118,.50)"/>
+                <rect x="28" y="0"  width="28" height="28" fill="rgba(11,155,118,.08)"/>
+                <rect x="56" y="0"  width="28" height="28" fill="rgba(11,155,118,.12)"/>
+                <rect x="0"  y="28" width="28" height="28" fill="rgba(11,155,118,.10)"/>
+                <rect x="28" y="28" width="28" height="28" fill="rgba(11,155,118,.55)"/>
+                <rect x="56" y="28" width="28" height="28" fill="rgba(11,155,118,.10)"/>
+                <rect x="0"  y="56" width="28" height="28" fill="rgba(11,155,118,.12)"/>
+                <rect x="28" y="56" width="28" height="28" fill="rgba(11,155,118,.10)"/>
+                <rect x="56" y="56" width="28" height="28" fill="rgba(11,155,118,.45)"/>
+              </g>
+              <text class="lbl" x="0" y="100">grey i →</text>
+              <text class="lbl" x="0" y="114" transform="rotate(-90 6,108)"></text>
+            </g>
+            <!-- derived feature readout -->
+            <text class="lbl-strong" x="170" y="150">contrast · entropy ·</text>
+            <text class="lbl-strong" x="170" y="166">homogeneity · energy</text>
+            <defs>
+              <marker id="dArrowGlcm" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> for a chosen pixel offset, count every grey-level pair and normalise it
+            into a matrix; busy fine texture spreads the matrix off-diagonal (high contrast/entropy), smooth lawn
+            concentrates it on the diagonal (high homogeneity/energy). Pure pixel statistics — no mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Haralick 1973</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 2. Directional GLCM anisotropy ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Directional GLCM anisotropy</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Recompute the same Haralick features for offsets at <span class="term">0°, 45°, 90°, 135°</span>
+          and compare them. If a feature swings strongly with angle the texture is directional (aligned hyphae);
+          if it is flat across angles the growth is isotropic.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Haralick contrast measured along four offset directions">
+            <!-- four offset directions -->
+            <g transform="translate(78,86)">
+              <circle r="3.2" fill="var(--ink)"/>
+              <line x1="0" y1="0" x2="46" y2="0"   stroke="var(--blue)"  stroke-width="2.4"/>
+              <line x1="0" y1="0" x2="33" y2="-33" stroke="var(--green)" stroke-width="2.4"/>
+              <line x1="0" y1="0" x2="0"  y2="-46" stroke="var(--orange)" stroke-width="2.4"/>
+              <line x1="0" y1="0" x2="-33" y2="-33" stroke="var(--purple)" stroke-width="2.4"/>
+              <text class="lbl" x="50" y="4" fill="var(--blue)">0°</text>
+              <text class="lbl" x="34" y="-36" fill="var(--green)">45°</text>
+              <text class="lbl" x="-12" y="-50" fill="var(--orange)">90°</text>
+              <text class="lbl" x="-58" y="-36" fill="var(--purple)">135°</text>
+            </g>
+            <!-- angular feature plot -->
+            <g transform="translate(186,26)">
+              <line class="axis" x1="0" y1="150" x2="150" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <text class="lbl" x="34" y="166">0   45  90  135°</text>
+              <text class="lbl" x="-2" y="10" transform="rotate(-90 -2,10)"></text>
+              <!-- anisotropic: strong swing -->
+              <polyline points="14,40 60,120 106,44 150,124" fill="none" stroke="var(--vermillion)" stroke-width="2.6"/>
+              <circle cx="14" cy="40" r="3" fill="var(--vermillion)"/><circle cx="60" cy="120" r="3" fill="var(--vermillion)"/>
+              <circle cx="106" cy="44" r="3" fill="var(--vermillion)"/><circle cx="150" cy="124" r="3" fill="var(--vermillion)"/>
+              <!-- isotropic: flat -->
+              <polyline points="14,96 60,92 106,98 150,94" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-dasharray="4 3"/>
+              <text class="lbl-strong" x="40" y="34" fill="var(--vermillion)">anisotropic</text>
+              <text class="lbl" x="86" y="86">isotropic</text>
+              <text class="lbl" x="-30" y="80" transform="rotate(-90 -30,80)">contrast</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the spread of a Haralick feature across the four offset angles <em>is</em>
+            the anisotropy. A large peak-to-trough swing means texture runs preferentially along one axis; a flat
+            curve means no preferred direction. Reads directionality without tracing a single hypha.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Haralick 1973</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 3. FFT / Fourier orientation & power spectrum ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">FFT / Fourier orientation &amp; power spectrum</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Take the 2-D Fourier transform of the image and integrate its
+          <span class="term">power spectrum</span> by angle and by radius. The angular profile gives the
+          preferred growth orientation; the radial profile gives coarseness (where the spatial-frequency
+          energy concentrates).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Image to 2-D power spectrum, integrated by angle and radius">
+            <!-- striped source patch -->
+            <g transform="translate(14,40)">
+              <rect x="0" y="0" width="92" height="92" fill="var(--inset)" stroke="var(--rule)"/>
+              <g stroke="var(--green)" stroke-width="2">
+                <line x1="6"  y1="86" x2="46" y2="6"/><line x1="22" y1="86" x2="62" y2="6"/>
+                <line x1="38" y1="86" x2="78" y2="6"/><line x1="54" y1="86" x2="92" y2="10"/>
+                <line x1="0"  y1="70" x2="30" y2="6"/>
+              </g>
+              <text class="lbl" x="0" y="-6">aligned hyphae</text>
+            </g>
+            <line x1="112" y1="86" x2="142" y2="86" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#dArrowFft)"/>
+            <text class="lbl" x="110" y="78">FFT</text>
+            <!-- power spectrum with directional lobes -->
+            <g transform="translate(196,40)">
+              <rect x="0" y="0" width="92" height="92" fill="rgba(32,30,24,.06)" stroke="var(--rule)"/>
+              <line class="axis" x1="46" y1="0" x2="46" y2="92"/><line class="axis" x1="0" y1="46" x2="92" y2="46"/>
+              <!-- lobes perpendicular to stripes -->
+              <ellipse cx="70" cy="22" rx="13" ry="7" fill="rgba(0,114,178,.55)" transform="rotate(-32 70,22)"/>
+              <ellipse cx="22" cy="70" rx="13" ry="7" fill="rgba(0,114,178,.55)" transform="rotate(-32 22,70)"/>
+              <text class="lbl" x="0" y="-6">power spectrum</text>
+            </g>
+            <!-- angular integration arc -->
+            <path d="M196,86 A 46 46 0 0 1 224 50" fill="none" stroke="var(--orange)" stroke-width="1.6" stroke-dasharray="3 3"/>
+            <text class="lbl-strong" x="150" y="150" fill="var(--blue)">angle → orientation</text>
+            <text class="lbl-strong" x="150" y="166" fill="var(--orange)">radius → coarseness</text>
+            <defs>
+              <marker id="dArrowFft" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> aligned hyphae produce paired lobes in the power spectrum perpendicular to
+            their direction. Integrating energy around the angle finds the dominant orientation; integrating along
+            the radius reports texture scale. Whole-image transform — robust to overlap and low resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">OrientationJ</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 4. Gabor filter-bank energy ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Gabor filter-bank energy</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Convolve the image with a bank of <span class="term">Gabor wavelets</span> tuned to
+          several orientations and scales, then collect the response energy in each channel. The channel that lights
+          up reveals branch direction; the spread across scales reports fineness.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A bank of oriented Gabor wavelets and their response energies">
+            <text class="lbl" x="14" y="22">oriented Gabor kernels</text>
+            <!-- four oriented wavelets (alternating stripes inside a soft disc) -->
+            <g transform="translate(40,72)">
+              <circle r="26" fill="rgba(32,30,24,.05)" stroke="var(--rule)"/>
+              <g stroke="var(--blue)" stroke-width="2.4"><line x1="-20" y1="0" x2="20" y2="0"/><line x1="-20" y1="-9" x2="20" y2="-9"/><line x1="-20" y1="9" x2="20" y2="9"/></g>
+              <text class="lbl" x="-8" y="42">0°</text>
+            </g>
+            <g transform="translate(124,72)">
+              <circle r="26" fill="rgba(32,30,24,.05)" stroke="var(--rule)"/>
+              <g stroke="var(--green)" stroke-width="2.4" transform="rotate(45)"><line x1="-20" y1="0" x2="20" y2="0"/><line x1="-20" y1="-9" x2="20" y2="-9"/><line x1="-20" y1="9" x2="20" y2="9"/></g>
+              <text class="lbl" x="-10" y="42">45°</text>
+            </g>
+            <g transform="translate(208,72)">
+              <circle r="26" fill="rgba(32,30,24,.05)" stroke="var(--rule)"/>
+              <g stroke="var(--orange)" stroke-width="2.4" transform="rotate(90)"><line x1="-20" y1="0" x2="20" y2="0"/><line x1="-20" y1="-9" x2="20" y2="-9"/><line x1="-20" y1="9" x2="20" y2="9"/></g>
+              <text class="lbl" x="-10" y="42">90°</text>
+            </g>
+            <g transform="translate(292,72)">
+              <circle r="26" fill="rgba(32,30,24,.05)" stroke="var(--rule)"/>
+              <g stroke="var(--purple)" stroke-width="2.4" transform="rotate(135)"><line x1="-20" y1="0" x2="20" y2="0"/><line x1="-20" y1="-9" x2="20" y2="-9"/><line x1="-20" y1="9" x2="20" y2="9"/></g>
+              <text class="lbl" x="-12" y="42">135°</text>
+            </g>
+            <!-- response energy bars -->
+            <g transform="translate(40,128)">
+              <line class="axis" x1="0" y1="64" x2="296" y2="64"/>
+              <rect x="14"  y="30" width="36" height="34" fill="rgba(0,114,178,.55)"/>
+              <rect x="98"  y="18" width="36" height="46" fill="rgba(11,155,118,.65)"/>
+              <rect x="182" y="44" width="36" height="20" fill="rgba(217,138,0,.5)"/>
+              <rect x="266" y="50" width="36" height="14" fill="rgba(184,99,143,.5)"/>
+              <text class="lbl-strong" x="92" y="14" fill="var(--green)">peak channel = direction</text>
+              <text class="lbl" x="-2" y="80">response energy per orientation</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> each wavelet responds most strongly where image texture matches its
+            orientation and scale, so the energy profile across the bank is a direct directionality + fineness
+            signature. Local, multiscale, segmentation-free.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">standard texture analysis</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 5. Local-orientation angle histogram ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Local-orientation angle histogram</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Estimate the dominant orientation inside each small window, then pool all the windows
+          into a <span class="term">histogram of angles</span>. The shape of that histogram summarises the mix of
+          shallow, medium and steep growth directions across the whole colony.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Per-window dominant orientations pooled into an angle histogram">
+            <!-- grid of per-window orientation ticks -->
+            <g transform="translate(16,30)">
+              <text class="lbl" x="0" y="-8">per-window orientation</text>
+              <g stroke="var(--rule)" stroke-width="1" fill="none">
+                <rect x="0" y="0" width="132" height="132"/>
+                <line x1="44" y1="0" x2="44" y2="132"/><line x1="88" y1="0" x2="88" y2="132"/>
+                <line x1="0" y1="44" x2="132" y2="44"/><line x1="0" y1="88" x2="132" y2="88"/>
+              </g>
+              <g stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round">
+                <line x1="8"  y1="36" x2="36" y2="8"/>  <line x1="52" y1="34" x2="80" y2="10"/> <line x1="96" y1="38" x2="124" y2="14"/>
+                <line x1="10" y1="78" x2="34" y2="54"/> <line x1="54" y1="80" x2="78" y2="52"/> <line x1="98" y1="76" x2="122" y2="56"/>
+                <line x1="12" y1="122" x2="32" y2="96"/><line x1="56" y1="120" x2="76" y2="98"/><line x1="100" y1="124" x2="120" y2="98"/>
+              </g>
+            </g>
+            <!-- histogram -->
+            <g transform="translate(196,30)">
+              <text class="lbl" x="0" y="-8">angle histogram</text>
+              <line class="axis" x1="0" y1="120" x2="140" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="6"/>
+              <rect x="10"  y="86" width="22" height="34" fill="rgba(11,155,118,.35)"/>
+              <rect x="36"  y="44" width="22" height="76" fill="rgba(11,155,118,.7)"/>
+              <rect x="62"  y="60" width="22" height="60" fill="rgba(11,155,118,.55)"/>
+              <rect x="88"  y="92" width="22" height="28" fill="rgba(11,155,118,.3)"/>
+              <rect x="114" y="104" width="22" height="16" fill="rgba(11,155,118,.25)"/>
+              <text class="lbl" x="0" y="136">shallow → steep</text>
+              <text class="lbl-strong" x="32" y="40" fill="var(--green)">peak = preferred angle</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a sharp histogram peak means most windows agree on one growth direction
+            (anisotropic); a broad flat histogram means orientations are scattered (isotropic foraging). Works on
+            mask or grayscale and survives dense overlap because each window is summarised locally.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli 2021</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 6. Growth-direction order parameter / anisotropy ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Growth-direction order parameter / anisotropy</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Pool the local growth directions (via the image <span class="term">structure tensor</span>)
+          into one number: how concentrated they are about a common axis. A high order parameter means strongly aligned
+          growth; near zero means randomly oriented spread.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Aligned vs random local directions giving high vs low order parameter">
+            <!-- aligned field -->
+            <g transform="translate(18,34)">
+              <text class="lbl" x="0" y="-8">aligned</text>
+              <rect x="0" y="0" width="130" height="120" fill="rgba(32,30,24,.04)" stroke="var(--rule)"/>
+              <g stroke="var(--green)" stroke-width="2.4" stroke-linecap="round">
+                <line x1="14" y1="100" x2="40" y2="22"/><line x1="44" y1="104" x2="70" y2="26"/>
+                <line x1="74" y1="100" x2="100" y2="22"/><line x1="100" y1="106" x2="124" y2="32"/>
+                <line x1="28" y1="106" x2="52" y2="36"/><line x1="60" y1="104" x2="84" y2="30"/>
+              </g>
+              <text class="lbl-strong" x="6" y="116" fill="var(--green)">S → 1</text>
+            </g>
+            <!-- random field -->
+            <g transform="translate(176,34)">
+              <text class="lbl" x="0" y="-8">random</text>
+              <rect x="0" y="0" width="130" height="120" fill="rgba(32,30,24,.04)" stroke="var(--rule)"/>
+              <g stroke="var(--vermillion)" stroke-width="2.4" stroke-linecap="round">
+                <line x1="20" y1="30" x2="48" y2="42"/><line x1="64" y1="24" x2="74" y2="56"/>
+                <line x1="98" y1="36" x2="120" y2="20"/><line x1="18" y1="78" x2="40" y2="98"/>
+                <line x1="58" y1="92" x2="86" y2="74"/><line x1="96" y1="96" x2="108" y2="64"/>
+              </g>
+              <text class="lbl-strong" x="6" y="116" fill="var(--vermillion)">S → 0</text>
+            </g>
+            <!-- resultant arrow under aligned -->
+            <g transform="translate(83,176)">
+              <line x1="-30" y1="0" x2="30" y2="0" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 3"/>
+              <line x1="0" y1="0" x2="22" y2="-12" stroke="var(--green)" stroke-width="3" marker-end="url(#dArrowOrd)"/>
+              <text class="lbl" x="-58" y="4">mean dir.</text>
+            </g>
+            <defs>
+              <marker id="dArrowOrd" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--green)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> the structure tensor gives a direction at every pixel; the order parameter is
+            the concentration (or one-minus-variance) of those directions about their mean. It collapses a whole
+            orientation field to a single anisotropy score, robust on coarse confluent mycelium.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob 1997</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 7. Angular power spectrum of boundary ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Angular power spectrum of boundary</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Build the distribution of branch/margin orientations around the colony and take its
+          <span class="term">angular Fourier transform</span>. Peaks at particular harmonics reveal an n-fold
+          symmetry or a single preferred angle in how the margin branches.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Boundary orientation distribution and its angular harmonics">
+            <!-- branched boundary with directional spokes -->
+            <g transform="translate(86,108)">
+              <circle r="6" fill="var(--ink)"/>
+              <g stroke="var(--green)" stroke-width="2.4" stroke-linecap="round" fill="none">
+                <path d="M0,0 L0,-66 M0,-40 L-14,-58 M0,-44 L16,-60"/>
+                <path d="M0,0 L57,-33 M30,-17 L48,-20 M38,-22 L46,-38"/>
+                <path d="M0,0 L57,33 M30,17 L50,18 M38,22 L48,36"/>
+                <path d="M0,0 L0,66 M0,40 L-16,58 M0,44 L14,60"/>
+                <path d="M0,0 L-57,33 M-30,17 L-48,20 M-38,22 L-46,36"/>
+                <path d="M0,0 L-57,-33 M-30,-17 L-48,-18 M-38,-22 L-46,-38"/>
+              </g>
+              <text class="lbl" x="-46" y="86">branched margin</text>
+            </g>
+            <!-- angular harmonic spectrum -->
+            <g transform="translate(196,40)">
+              <text class="lbl" x="0" y="-8">angular harmonics</text>
+              <line class="axis" x1="0" y1="120" x2="140" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="6"/>
+              <line x1="20" y1="120" x2="20" y2="64"  stroke="var(--text-dim)" stroke-width="6"/>
+              <line x1="48" y1="120" x2="48" y2="34"  stroke="var(--blue)"     stroke-width="6"/>
+              <line x1="76" y1="120" x2="76" y2="92"  stroke="var(--text-dim)" stroke-width="6"/>
+              <line x1="104" y1="120" x2="104" y2="100" stroke="var(--text-dim)" stroke-width="6"/>
+              <text class="lbl" x="0" y="136">n = 1  2  3  4 …</text>
+              <text class="lbl-strong" x="40" y="28" fill="var(--blue)">n-fold peak</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the orientation distribution of the margin is decomposed into angular
+            harmonics; a dominant harmonic n flags an n-fold growth symmetry (e.g. six-fold dendritic), a single
+            low-order peak flags one preferred direction. Reads margin directionality from the boundary alone.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask (boundary)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout green">
+      <h3>Why this family survives dense, overlapping, low-resolution hyphae</h3>
+      <p>Texture and anisotropy descriptors read branching <b>density</b> and <b>directionality</b> straight off the
+        low-magnification grayscale image — they never try to find, separate, or count an individual branch. Because
+        they aggregate pixel statistics and spatial-frequency energy over whole windows or the whole frame, signal
+        accumulates rather than fragmenting, so they tolerate confluent, crossing, faint hyphae that defeat any
+        skeleton.</p>
+      <p>That makes Family D the dependable fallback exactly when the mask itself is unreliable: GLCM/Haralick texture,
+        FFT/Gabor/structure-tensor orientation, and the angular boundary spectrum all return useful numbers with
+        <b>no segmentation step</b> in the loop — the 🟢 backbone for poorly resolved mycelium.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>
