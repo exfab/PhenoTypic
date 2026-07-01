@@ -69,17 +69,16 @@ def generate_output_key(df: MeasurementFrame) -> pd.DataFrame:
 
     Returns:
         A pandas DataFrame with ``column_header`` and ``description`` columns,
-        preserving the input column order and omitting columns that are not
-        backed by a public ``MeasurementInfo`` member.
+        preserving input column order and omitting columns not backed by a
+        public ``MeasurementInfo`` member (in any header scheme).
 
     Raises:
         TypeError: If *df* is not a pandas or polars DataFrame.
     """
-    descriptions = _measurement_descriptions()
     records = [
-        {"column_header": column, "description": descriptions[column]}
+        {"column_header": column, "description": desc}
         for column in _columns(df)
-        if column in descriptions
+        if (desc := _describe_column(column)) is not None
     ]
     return pd.DataFrame(records, columns=["column_header", "description"])
 
@@ -114,29 +113,25 @@ def _producer_column_groups(columns: Iterable[str]) -> dict[str, list[str]]:
     groups: dict[str, list[str]] = {}
 
     for producer in _discover_measurement_producers():
-        primary_headers = _headers_for_infos(producer.primary_infos)
-        shared_headers = _headers_for_infos(producer.shared_infos)
-
         present_primary = [
-            column for column in ordered_columns if column in primary_headers
+            column
+            for column in ordered_columns
+            if any(info.owns_header(column) for info in producer.primary_infos)
         ]
         if not present_primary:
             continue
 
         producer_headers = set(present_primary)
         producer_headers.update(
-            column for column in ordered_columns if column in shared_headers
+            column
+            for column in ordered_columns
+            if any(info.owns_header(column) for info in producer.shared_infos)
         )
         groups[producer.output_key] = [
             column for column in ordered_columns if column in producer_headers
         ]
 
     return groups
-
-
-def _headers_for_infos(infos: Iterable[type[MeasurementInfo]]) -> set[str]:
-    """Return every header declared by *infos*."""
-    return {member.value for info in infos for member in info}
 
 
 @lru_cache(maxsize=1)
@@ -271,20 +266,25 @@ def metric_token(on: str) -> str:
 
 
 @lru_cache(maxsize=1)
-def _measurement_descriptions() -> dict[str, str]:
-    """Build ``column_header -> description`` from the public schema."""
+def _public_info_classes() -> tuple[type[MeasurementInfo], ...]:
+    """Public, member-ful ``MeasurementInfo`` subclasses exported by schema."""
     import phenotypic.schema as schema
 
-    descriptions: dict[str, str] = {}
+    classes: list[type[MeasurementInfo]] = []
     for name in getattr(schema, "__all__", ()):
         obj = getattr(schema, name, None)
-        if not _is_info_class(obj):
-            continue
-        if not list(obj):  # member-less classification bases contribute no columns
-            continue
-        for member in obj:
-            descriptions.setdefault(member.value, member.desc)
-    return descriptions
+        if _is_info_class(obj) and list(obj):
+            classes.append(obj)
+    return tuple(classes)
+
+
+def _describe_column(column: str) -> str | None:
+    """Resolve *column* to its member's ``desc`` across all schemes, or None."""
+    for info in _public_info_classes():
+        member = info.member_for_header(column)
+        if member is not None:
+            return member.desc
+    return None
 
 
 __all__ = ["generate_output_key", "split_measurements"]
