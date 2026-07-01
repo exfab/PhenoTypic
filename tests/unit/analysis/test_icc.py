@@ -7,7 +7,7 @@ directional thresholds, the NaN guard paths (missing axis column → LOUD
 ``unmatched_groups``; incomplete/duplicated matrix; too-few
 subjects/raters; zero variance), and the ``summary()`` /
 ``group_members()`` helpers. ICC defaults to a repeated-measures design —
-subjects are ``Metadata_Time``, raters are ``Metadata_Replicate``.
+subjects are ``MetadataCulture_Time``, raters are ``MetadataSample_BioReplicate``.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis.qc import ICC
-from phenotypic.schema import METADATA
+from phenotypic.schema import CULTURE_METADATA, METADATA, SAMPLE_METADATA
 
 
 # --------------------------------------------------------------------------- #
@@ -28,8 +28,8 @@ from phenotypic.schema import METADATA
 def _make_group(matrix: np.ndarray, plate: str = "P1") -> pd.DataFrame:
     """Build a long-form QC frame from a subjects x raters matrix.
 
-    Rows are subjects (the default ``Metadata_Time`` repeated-measure axis),
-    columns are raters (``Metadata_Replicate``).
+    Rows are subjects (the default ``MetadataCulture_Time`` repeated-measure axis),
+    columns are raters (``MetadataSample_BioReplicate``).
     """
     rows = []
     n_subjects, n_raters = matrix.shape
@@ -39,8 +39,8 @@ def _make_group(matrix: np.ndarray, plate: str = "P1") -> pd.DataFrame:
                 "Plate": plate,
                 str(METADATA.IMAGE_NAME): f"{plate}_t{s}.png",
                 "Object_Label": s * n_raters + r + 1,
-                "Metadata_Time": s,
-                "Metadata_Replicate": r + 1,
+                "MetadataCulture_Time": s,
+                "MetadataSample_BioReplicate": r + 1,
                 "Size_Area": float(matrix[s, r]),
             })
     return pd.DataFrame(rows)
@@ -151,7 +151,7 @@ class TestNanGuardPaths:
     def test_missing_rater_column_is_nan_and_loud(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 1, 2],
+            "MetadataCulture_Time": [0, 1, 2],
             "Size_Area": [10.0, 20.0, 40.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -164,7 +164,7 @@ class TestNanGuardPaths:
     def test_missing_subject_column_is_nan_and_loud(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Replicate": [1, 2, 3],
+            "MetadataSample_BioReplicate": [1, 2, 3],
             "Size_Area": [10.0, 20.0, 40.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -175,7 +175,7 @@ class TestNanGuardPaths:
     def test_unmatched_groups_reset_between_runs(self) -> None:
         missing = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 1, 2],
+            "MetadataCulture_Time": [0, 1, 2],
             "Size_Area": [10.0, 20.0, 40.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -190,8 +190,8 @@ class TestNanGuardPaths:
         # Duplicate (Time=0, Replicate=1) makes the design ambiguous.
         data = pd.DataFrame({
             "Plate": ["P1"] * 5,
-            "Metadata_Time": [0, 0, 1, 1, 0],
-            "Metadata_Replicate": [1, 2, 1, 2, 1],
+            "MetadataCulture_Time": [0, 0, 1, 1, 0],
+            "MetadataSample_BioReplicate": [1, 2, 1, 2, 1],
             "Size_Area": [10.0, 11.0, 20.0, 21.0, 99.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -205,8 +205,8 @@ class TestNanGuardPaths:
         # 2 subjects x 2 raters but one cell absent.
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 1],
-            "Metadata_Replicate": [1, 2, 1],
+            "MetadataCulture_Time": [0, 0, 1],
+            "MetadataSample_BioReplicate": [1, 2, 1],
             "Size_Area": [10.0, 11.0, 20.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -218,8 +218,8 @@ class TestNanGuardPaths:
         # 3 subjects but only 1 rater -> k < 2.
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 1, 2],
-            "Metadata_Replicate": [1, 1, 1],
+            "MetadataCulture_Time": [0, 1, 2],
+            "MetadataSample_BioReplicate": [1, 1, 1],
             "Size_Area": [10.0, 20.0, 40.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -231,8 +231,8 @@ class TestNanGuardPaths:
         # 1 subject but 3 raters -> n < 2.
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
-            "Metadata_Replicate": [1, 2, 3],
+            "MetadataCulture_Time": [0, 0, 0],
+            "MetadataSample_BioReplicate": [1, 2, 3],
             "Size_Area": [10.0, 20.0, 40.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -262,8 +262,8 @@ class TestDisagreementSemantics:
         # which must flag as fail.
         data = pd.DataFrame({
             "Plate": ["P1"] * 6,
-            "Metadata_Time": [0, 0, 1, 1, 2, 2],
-            "Metadata_Replicate": [1, 2, 1, 2, 1, 2],
+            "MetadataCulture_Time": [0, 0, 1, 1, 2, 2],
+            "MetadataSample_BioReplicate": [1, 2, 1, 2, 1, 2],
             "Size_Area": [10.0, 40.0, 40.0, 10.0, 25.0, 25.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -279,8 +279,8 @@ class TestDisagreementSemantics:
         # agreement, so a fixed offset is correctly near-zero and fails.
         data = pd.DataFrame({
             "Plate": ["P1"] * 6,
-            "Metadata_Time": [0, 0, 1, 1, 2, 2],
-            "Metadata_Replicate": [1, 2, 1, 2, 1, 2],
+            "MetadataCulture_Time": [0, 0, 1, 1, 2, 2],
+            "MetadataSample_BioReplicate": [1, 2, 1, 2, 1, 2],
             "Size_Area": [10.0, 110.0, 20.0, 120.0, 30.0, 130.0],
         })
         chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -385,8 +385,8 @@ class TestBehavioralEdges:
 
     def test_default_axis_labels(self) -> None:
         chk = ICC(on="Size_Area", groupby=["Plate"])
-        assert chk.subject_label == "Metadata_Time"
-        assert chk.rater_label == "Metadata_Replicate"
+        assert chk.subject_label == str(CULTURE_METADATA.TIME)
+        assert chk.rater_label == str(SAMPLE_METADATA.BIO_REPLICATE)
 
     def test_threshold_defaults(self) -> None:
         chk = ICC(on="Size_Area", groupby=["Plate"])

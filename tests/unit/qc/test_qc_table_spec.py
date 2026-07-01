@@ -12,7 +12,7 @@ def _frame():
             str(METADATA.IMAGE_NAME): ["a.png", "a.png", "b.png", "b.png"],
             "Object_Label": [1, 2, 1, 2],
             "Plate": ["P1", "P1", "P1", "P1"],
-            "Metadata_Time": [0, 0, 1, 1],
+            "MetadataCulture_Time": [0, 0, 1, 1],
             "Size_Area": [10.0, 11.0, 100.0, 9.0],
         }
     )
@@ -41,7 +41,7 @@ def test_table_spec_describes_roles():
     assert spec.status_col == "QC_ZMax_Status"
     assert spec.supports_object_curation is True
     assert spec.member_key_cols == [str(METADATA.IMAGE_NAME), "Object_Label"]
-    assert spec.time_col == "Metadata_Time"   # ZMax declares a time_label field
+    assert spec.time_col == "MetadataCulture_Time"   # ZMax declares a time_label field
     assert spec.higher_is_bad is True
     assert "QC_ZMax_Median" in spec.extra_cols
 

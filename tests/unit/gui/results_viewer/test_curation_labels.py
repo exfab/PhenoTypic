@@ -29,7 +29,7 @@ def _master(n: int = 4) -> pl.DataFrame:
     return pl.DataFrame(
         {
             str(METADATA.IMAGE_NAME): ["plateA"] * n,
-            "Metadata_Dataset": ["ds1"] * n,
+            "MetadataExperiment_Dataset": ["ds1"] * n,
             "Object_Label": list(range(1, n + 1)),
             "Bbox_CenterRR": [10.0 * i for i in range(1, n + 1)],
             "Bbox_CenterCC": [20.0 * i for i in range(1, n + 1)],
@@ -309,7 +309,7 @@ def test_rekey_drops_when_two_labels_claim_one_object(tmp_path: Path):
     master = pl.DataFrame(
         {
             str(METADATA.IMAGE_NAME): ["plateA", "plateA", "plateA", "plateA"],
-            "Metadata_Dataset": ["ds1", "ds1", "ds1", "ds1"],
+            "MetadataExperiment_Dataset": ["ds1", "ds1", "ds1", "ds1"],
             "Object_Label": [1, 99, 3, 4],
             "Bbox_CenterRR": [10.0, 20.0, 30.0, 40.0],
             "Bbox_CenterCC": [20.0, 40.0, 60.0, 80.0],
@@ -361,7 +361,7 @@ def test_mark_across_multiple_images(tmp_path: Path):
     master = pl.DataFrame(
         {
             str(METADATA.IMAGE_NAME): ["pA", "pA", "pB", "pB"],
-            "Metadata_Dataset": ["ds1"] * 4,
+            "MetadataExperiment_Dataset": ["ds1"] * 4,
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],
             "Bbox_CenterCC": [10.0, 20.0, 10.0, 20.0],
@@ -489,7 +489,7 @@ def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
     base = tmp_path / "bundle" / "deliverables"
     base.mkdir(parents=True)
     df = pl.DataFrame(
-        {"Metadata_Dataset": ["p1"], str(METADATA.IMAGE_NAME): ["img001"], "Object_Label": [1]}
+        {"MetadataExperiment_Dataset": ["p1"], str(METADATA.IMAGE_NAME): ["img001"], "Object_Label": [1]}
     )
     df.write_parquet(base / "master_measurements.parquet")
     df.write_parquet(base / "measurements.parquet")

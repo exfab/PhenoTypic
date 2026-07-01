@@ -787,8 +787,8 @@ class TestLegacyMetadataKeyShim:
         loaded = phenotypic.Image.load_hdf5(path)
         prot = loaded._metadata.protected
 
-        # No bare framework keys survive; every protected key is Metadata_*-prefixed.
-        assert all(str(k).startswith("Metadata_") for k in prot)
+        # No bare framework keys survive; every protected key is MetadataImage_-prefixed.
+        assert all(str(k).startswith("MetadataImage_") for k in prot)
         assert "ImageName" not in prot and "BitDepth" not in prot
         assert loaded.bit_depth == 8
 
@@ -871,4 +871,6 @@ class TestLegacyMetadataKeyShim:
         assert loaded.bit_depth == 8
         assert loaded._metadata.public["Strain"] == "BY4741"
         # Protected keys are the prefixed METADATA members; no bare keys.
-        assert all(str(k).startswith("Metadata_") for k in loaded._metadata.protected)
+        assert all(
+            str(k).startswith("MetadataImage_") for k in loaded._metadata.protected
+        )

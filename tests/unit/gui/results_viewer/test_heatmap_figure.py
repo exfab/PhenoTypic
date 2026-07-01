@@ -42,7 +42,7 @@ def _make_minimal_frame(
                 if add_label:
                     rec["Object_Label"] = label_counter
                 if add_time:
-                    rec["Metadata_Time"] = 4
+                    rec["MetadataCulture_Time"] = 4
                 records.append(rec)
     return pl.from_dicts(records)
 
@@ -213,7 +213,7 @@ class TestTimeFilter:
                 "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 1, 1],
                 "Grid_ColNum": [1, 1, 1, 1],
-                "Metadata_Time": [4, 4, 8, 8],
+                "MetadataCulture_Time": [4, 4, 8, 8],
                 "Size_Area": [1.0, 3.0, 100.0, 200.0],
             }
         )

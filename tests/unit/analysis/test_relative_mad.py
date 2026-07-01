@@ -27,7 +27,7 @@ def tight_replicates() -> pd.DataFrame:
     """Replicates within ~0.5% of a median of 100 — metric below warn."""
     return pd.DataFrame({
         "Plate": ["P1"] * 6,
-        "Metadata_Time": [0, 0, 0, 1, 1, 1],
+        "MetadataCulture_Time": [0, 0, 0, 1, 1, 1],
         "Size_Area": [100.0, 100.5, 99.5, 200.0, 200.5, 199.5],
     })
 
@@ -41,7 +41,7 @@ def dispersed_replicates() -> pd.DataFrame:
     """
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
-        "Metadata_Time": [0, 0, 0],
+        "MetadataCulture_Time": [0, 0, 0],
         "Size_Area": [1.0, 5.0, 9.0],
     })
 
@@ -74,7 +74,7 @@ class TestStatisticalCorrectness:
     def test_num_members_count_correct(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 6,
-            "Metadata_Time": [0, 0, 0, 1, 1, 1],
+            "MetadataCulture_Time": [0, 0, 0, 1, 1, 1],
             "Size_Area": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -110,7 +110,7 @@ class TestMetricTriState:
         # median 100, MAD 15 -> rel-MAD 0.15 (in [0.10, 0.20) warn band).
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [85.0, 100.0, 115.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -133,7 +133,7 @@ class TestNanGuardPaths:
         # One member per (group, time); default min_replicates=2.
         data = pd.DataFrame({
             "Plate": ["P1", "P1"],
-            "Metadata_Time": [0, 1],
+            "MetadataCulture_Time": [0, 1],
             "Size_Area": [10.0, 20.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -144,7 +144,7 @@ class TestNanGuardPaths:
     def test_near_zero_median_nan_guard(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [0.0, 1e-12, -1e-12],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -155,7 +155,7 @@ class TestNanGuardPaths:
     def test_degenerate_bin_all_zeros(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [0.0, 0.0, 0.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -185,7 +185,7 @@ class TestBehavioralEdges:
     def test_emitted_columns_present(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [1.0, 5.0, 9.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])
@@ -226,7 +226,7 @@ class TestBehavioralEdges:
         # Two timepoints in one group; higher-is-bad -> worst = max metric.
         data = pd.DataFrame({
             "Plate": ["P1"] * 6,
-            "Metadata_Time": [0, 0, 0, 1, 1, 1],
+            "MetadataCulture_Time": [0, 0, 0, 1, 1, 1],
             "Size_Area": [
                 100.0, 100.5, 99.5,  # tight -> low metric
                 1.0, 5.0, 9.0,       # dispersed -> high metric
@@ -251,7 +251,7 @@ class TestBehavioralEdges:
             str(METADATA.IMAGE_NAME): ["plate1.png"] * 3,
             "Object_Label": [1, 2, 3],
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [1.0, 5.0, 9.0],
         })
         chk = RelativeMAD(on="Size_Area", groupby=["Plate"])

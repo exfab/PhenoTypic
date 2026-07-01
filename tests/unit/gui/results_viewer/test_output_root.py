@@ -21,7 +21,7 @@ def _seed_standalone_bundle(base: Path) -> None:
     base.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["plate1", "plate1"],
+            "MetadataExperiment_Dataset": ["plate1", "plate1"],
             str(METADATA.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
         }
@@ -40,7 +40,7 @@ def test_discover_standalone_deliverables_only(tmp_path: Path) -> None:
     _seed_standalone_bundle(base)
     root = OutputRoot.discover(base)
     assert root.has_results is False
-    assert "plate1" in root.master_df["Metadata_Dataset"].unique().to_list()
+    assert "plate1" in root.master_df["MetadataExperiment_Dataset"].unique().to_list()
     # Overlay-backed picker still works.
     assert root.has_overlay("plate1", "img001") is True
     assert root.hdf_path("plate1", "img001") is None

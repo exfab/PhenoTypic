@@ -59,7 +59,7 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
     """
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 4,
+            "MetadataExperiment_Dataset": ["d1"] * 4,
             str(METADATA.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [50, 60, 50, 60],
@@ -180,11 +180,11 @@ def test_build_recompute_frame_reads_mirror_not_master(tmp_path: Path) -> None:
     root = _write_output_root(tmp_path)
     # Rewrite the mirror with an extra metadata-only column.
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
-    mirror = mirror.with_columns(pl.lit("strainX").alias("Metadata_Strain"))
+    mirror = mirror.with_columns(pl.lit("strainX").alias("MetadataGenetic_Strain"))
     mirror.write_parquet(measurements_parquet_path(tmp_path))
 
     frame = _data.build_recompute_frame(root, set())
-    assert "Metadata_Strain" in frame.columns
+    assert "MetadataGenetic_Strain" in frame.columns
 
 
 # ---------------------------------------------------------------------------

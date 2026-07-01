@@ -48,10 +48,10 @@ def _build_group(
         for ti, yi in zip(t, y):
             rows.append(
                 {
-                    "Metadata_Time": float(ti),
+                    "MetadataCulture_Time": float(ti),
                     "Shape_Area": float(yi),
-                    "Metadata_Dataset": "Test",
-                    "Metadata_Strain": strain,
+                    "MetadataExperiment_Dataset": "Test",
+                    "MetadataGenetic_Strain": strain,
                     "Metadata_Replicate": rep,
                 }
             )
@@ -96,10 +96,10 @@ class TestBasics:
     def test_initialization(self):
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         assert m.on == "Shape_Area"
-        assert m.groupby == ["Metadata_Dataset", "Metadata_Strain"]
+        assert m.groupby == ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
         assert m.smax is None
         assert m.beta is None
         assert m.shoulder_slope_ratio == 0.05
@@ -117,7 +117,7 @@ class TestBasics:
     def test_schema(self, noisy_fixture):
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         results = m.analyze(noisy_fixture)
         expected = [
@@ -141,12 +141,12 @@ class TestBasics:
 
     def test_no_pruning_attr(self):
         """LinearCapAndLagModel does not prune — saturation IS the model."""
-        m = LinearCapAndLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+        m = LinearCapAndLagModel(on="Shape_Area", groupby=["MetadataGenetic_Strain"])
         # Sanity: ``_prepare_group`` is the base no-op (returns group unchanged).
         df = pd.DataFrame({
-            "Metadata_Time": np.linspace(0, 20, 30),
+            "MetadataCulture_Time": np.linspace(0, 20, 30),
             "Shape_Area": np.linspace(1, 50, 30),
-            "Metadata_Strain": "A",
+            "MetadataGenetic_Strain": "A",
         })
         out = m._prepare_group(df)
         assert len(out) == len(df)
@@ -159,9 +159,9 @@ class TestParameterRecovery:
     def test_recovers_ground_truth(self, clean_fixture):
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
-        results = m.analyze(clean_fixture).set_index("Metadata_Strain")
+        results = m.analyze(clean_fixture).set_index("MetadataGenetic_Strain")
 
         row1 = results.loc["Strain1"]
         assert abs(row1[LINEAR_CAP_AND_LAG_MODEL.v] - 5.0) < 0.3
@@ -181,16 +181,16 @@ class TestSmaxFallback:
     def test_per_group_observed_max(self, clean_fixture):
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
-        results = m.analyze(clean_fixture).set_index("Metadata_Strain")
+        results = m.analyze(clean_fixture).set_index("MetadataGenetic_Strain")
         assert abs(results.loc["Strain1", LINEAR_CAP_AND_LAG_MODEL.smax] - 50.0) < 1.0
         assert abs(results.loc["Strain2", LINEAR_CAP_AND_LAG_MODEL.smax] - 40.0) < 1.0
 
     def test_explicit_smax_overrides(self, clean_fixture):
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             smax=100.0,
         )
         results = m.analyze(clean_fixture)
@@ -210,7 +210,7 @@ class TestModeDispatch:
         )
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         res = m.analyze(df)
         assert res[LINEAR_CAP_AND_LAG_MODEL.mode].iloc[0] == "fitted_beta"
@@ -228,7 +228,7 @@ class TestModeDispatch:
         )
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             smax=50.0,
         )
         res = m.analyze(df)
@@ -245,7 +245,7 @@ class TestModeDispatch:
         )
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             beta=7.0,
         )
         res = m.analyze(df)
@@ -266,9 +266,9 @@ class TestModeDispatch:
         df = pd.concat([g_sharp, g_soft], ignore_index=True)
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
-        res = m.analyze(df).set_index("Metadata_Strain")
+        res = m.analyze(df).set_index("MetadataGenetic_Strain")
         for strain in ("SharpKnee", "SoftKnee"):
             assert res.loc[strain, LINEAR_CAP_AND_LAG_MODEL.mode] == "fitted_beta"
         beta_sharp = float(res.loc["SharpKnee", LINEAR_CAP_AND_LAG_MODEL.beta])
@@ -281,7 +281,7 @@ class TestModeDispatch:
             with pytest.raises(ValueError, match="beta must be None or"):
                 LinearCapAndLagModel(
                     on="Shape_Area",
-                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                     beta=bad,
                 )
 
@@ -290,7 +290,7 @@ class TestModeDispatch:
             with pytest.raises(ValueError, match="shoulder_slope_ratio"):
                 LinearCapAndLagModel(
                     on="Shape_Area",
-                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                     shoulder_slope_ratio=bad,
                 )
 
@@ -307,11 +307,11 @@ class TestShoulderDetection:
     def model(self):
         return LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
 
     def _wrap(self, t, y) -> pd.DataFrame:
-        return pd.DataFrame({"Metadata_Time": t, "Shape_Area": y})
+        return pd.DataFrame({"MetadataCulture_Time": t, "Shape_Area": y})
 
     def test_saturating_curve_detected(self, model):
         t = np.linspace(0, 20, 30)
@@ -347,7 +347,7 @@ class TestInoculumPrior:
         with pytest.raises(ValueError, match="mutually exclusive"):
             LinearCapAndLagModel(
                 on="Shape_Area",
-                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                 s0_prior=1.0,
                 s0_prior_cv=0.05,
                 s0_prior_sigma=0.5,
@@ -387,16 +387,16 @@ class TestDegenerateInput:
         for ti in t:
             rows.append(
                 {
-                    "Metadata_Time": float(ti),
+                    "MetadataCulture_Time": float(ti),
                     "Shape_Area": float("nan"),
-                    "Metadata_Dataset": "Test",
-                    "Metadata_Strain": "Broken",
+                    "MetadataExperiment_Dataset": "Test",
+                    "MetadataGenetic_Strain": "Broken",
                 }
             )
         df = pd.DataFrame(rows)
         m = LinearCapAndLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         res = m.analyze(df)
         assert len(res) == 1

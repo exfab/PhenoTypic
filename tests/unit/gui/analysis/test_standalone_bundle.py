@@ -41,7 +41,7 @@ def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> Non
     base.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["plate1", "plate1"],
+            "MetadataExperiment_Dataset": ["plate1", "plate1"],
             str(METADATA.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
             "Shape_Area": [12.0, 34.0],

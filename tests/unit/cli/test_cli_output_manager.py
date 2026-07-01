@@ -48,7 +48,7 @@ def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:
     """Build a synthetic master DataFrame matching *pipeline*'s features."""
     headers = _collect_feature_headers(pipeline)
     cols: dict[str, list] = {
-        "Metadata_Dataset": ["ds1", "ds1", "ds1"],
+        "MetadataExperiment_Dataset": ["ds1", "ds1", "ds1"],
         str(METADATA.IMAGE_NAME): ["img1", "img1", "img2"],
         "Object_Label": [1, 2, 1],
         "RowNum": [0, 0, 1],
@@ -165,7 +165,7 @@ class TestSplitMasterByFeature:
 
         for key in ("MeasureSize", "MeasureShape"):
             df = pl.read_csv(measurements_by_feature_dir(tmp_path) / f"{key}.csv")
-            for meta_col in ("Metadata_Dataset", str(METADATA.IMAGE_NAME),
+            for meta_col in ("MetadataExperiment_Dataset", str(METADATA.IMAGE_NAME),
                              "Object_Label", "RowNum", "ColNum"):
                 assert meta_col in df.columns, (
                     f"{meta_col} missing from {key} split"
@@ -208,7 +208,7 @@ class TestSplitMasterByFeature:
 
     def test_empty_meas_returns_empty(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline()  # no measurers
-        master = pl.DataFrame({"Metadata_Dataset": ["ds"], "Object_Label": [1]})
+        master = pl.DataFrame({"MetadataExperiment_Dataset": ["ds"], "Object_Label": [1]})
         assert split_master_by_feature(master, tmp_path, pipeline) == {}
         assert not measurements_by_feature_dir(tmp_path).exists()
 
@@ -246,7 +246,7 @@ class TestAggregateMeasurementsAutoResolve:
         ds_dir = output_dir / "results" / "ds1" / "measurements"
         ds_dir.mkdir(parents=True)
         row = pl.DataFrame({
-            "Metadata_Dataset": ["ds1"],
+            "MetadataExperiment_Dataset": ["ds1"],
             str(METADATA.IMAGE_NAME): ["img1"],
             "Object_Label": [1],
             "RowNum": [0],
@@ -307,7 +307,7 @@ class TestAggregateMeasurementsAutoResolve:
         ds_dir = output_dir / "results" / "ds1" / "measurements"
         ds_dir.mkdir(parents=True)
         pl.DataFrame({
-            "Metadata_Dataset": ["ds1"],
+            "MetadataExperiment_Dataset": ["ds1"],
             str(METADATA.IMAGE_NAME): ["img1"],
             "Object_Label": [1],
             "Size_Area": [10.0],
@@ -327,7 +327,7 @@ class TestAggregateMeasurementsAutoResolve:
         assert size_csv.exists()
         size_df = pl.read_csv(size_csv)
         assert size_df.columns == [
-            "Metadata_Dataset",
+            "MetadataExperiment_Dataset",
             str(METADATA.IMAGE_NAME),
             "Object_Label",
             "Size_Area",
@@ -352,7 +352,7 @@ class TestFinalizeReemitsErrorDeliverables:
             [rng.normal(100.0, 5.0, n_good), rng.normal(500.0, 5.0, n_err)]
         )
         return pl.DataFrame({
-            "Metadata_Dataset": ["ds1"] * n,
+            "MetadataExperiment_Dataset": ["ds1"] * n,
             str(METADATA.IMAGE_NAME): ["plateA"] * n,
             "Object_Label": labels,
             "Bbox_CenterRR": [10.0 * i for i in labels],
@@ -443,7 +443,7 @@ class TestFinalizeCopiesMetadataCsv:
     def _master_df() -> pl.DataFrame:
         return pl.DataFrame(
             {
-                "Metadata_Dataset": ["ds1", "ds1"],
+                "MetadataExperiment_Dataset": ["ds1", "ds1"],
                 str(METADATA.IMAGE_NAME): ["plateA", "plateA"],
                 "Object_Label": [1, 2],
                 "Size_Area": [100.0, 110.0],

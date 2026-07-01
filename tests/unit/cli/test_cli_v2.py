@@ -1740,8 +1740,8 @@ class TestAggregateMeasurements:
         assert result.name == "master_measurements.csv"
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert "Metadata_Dataset" in master.columns
-        assert list(master["Metadata_Dataset"].unique()) == ["ds1"]
+        assert "MetadataExperiment_Dataset" in master.columns
+        assert list(master["MetadataExperiment_Dataset"].unique()) == ["ds1"]
 
         # Verify master Parquet is also written
         master_parquet = master_measurements_parquet_path(temp_output_dir)
@@ -1770,8 +1770,8 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert set(master["Metadata_Dataset"]) == {"plate_A", "plate_B"}
-        assert master.loc[master["Metadata_Dataset"] == "plate_A", "area"].iloc[0] == 10
+        assert set(master["MetadataExperiment_Dataset"]) == {"plate_A", "plate_B"}
+        assert master.loc[master["MetadataExperiment_Dataset"] == "plate_A", "area"].iloc[0] == 10
 
     def test_aggregate_measurements_no_dataset_column(self, temp_output_dir):
         """include_dataset_column=False: no Metadata_Dataset column added."""
@@ -1791,7 +1791,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         master = pd.read_csv(result)
-        assert "Metadata_Dataset" not in master.columns
+        assert "MetadataExperiment_Dataset" not in master.columns
 
     def test_aggregate_measurements_empty(self, temp_output_dir):
         """No CSVs found returns None."""
@@ -1824,7 +1824,7 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 2
-        assert "Metadata_Dataset" in master.columns
+        assert "MetadataExperiment_Dataset" in master.columns
 
     def test_aggregate_measurements_with_metadata(self, temp_output_dir):
         """Metadata CSV with shared column joins correctly, new columns appear."""
@@ -2027,7 +2027,7 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert "Metadata_Dataset" in master.columns
+        assert "MetadataExperiment_Dataset" in master.columns
 
     def test_aggregate_measurements_post_seeds_post_applied_mirror(self, temp_output_dir):
         """Pipeline post ops are applied to measurements.{csv,parquet} only.

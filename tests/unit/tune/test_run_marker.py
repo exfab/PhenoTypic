@@ -40,7 +40,7 @@ _OPTUNA = importlib.util.find_spec("optuna") is not None
 def _spec(tmp_path) -> TuningSpec:
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
-        {"Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
          "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     return TuningSpec(
@@ -49,7 +49,7 @@ def _spec(tmp_path) -> TuningSpec:
             Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False))),
         )),
         scorer=QCScorer(check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["Metadata_ImageName"])),
+            metadata=str(csv), groupby=["MetadataImage_ImageName"])),
         evaluator=Evaluator(),
         strategy=GridConfig(),
         budget=Budget(),

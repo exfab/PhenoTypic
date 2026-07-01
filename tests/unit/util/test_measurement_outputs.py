@@ -22,7 +22,7 @@ def _base_measurements() -> pd.DataFrame:
     """Build a small mixed measurement table for split tests."""
     return pd.DataFrame(
         {
-            "Metadata_Dataset": ["ds1", "ds1"],
+            "MetadataExperiment_Dataset": ["ds1", "ds1"],
             str(OBJECT.LABEL): [1, 2],
             "Custom_Note": ["a", "b"],
             str(SIZE.AREA): [10.0, 20.0],
@@ -51,14 +51,14 @@ def test_split_measurements_groups_pandas_columns_without_pipeline() -> None:
     shape_df = splits["MeasureShape"]
     assert isinstance(size_df, pd.DataFrame)
     assert list(size_df.columns) == [
-        "Metadata_Dataset",
+        "MetadataExperiment_Dataset",
         str(OBJECT.LABEL),
         "Custom_Note",
         str(SIZE.AREA),
         str(SIZE.INTEGRATED_INTENSITY),
     ]
     assert list(shape_df.columns) == [
-        "Metadata_Dataset",
+        "MetadataExperiment_Dataset",
         str(OBJECT.LABEL),
         "Custom_Note",
         str(SHAPE.AREA),
@@ -75,7 +75,7 @@ def test_split_measurements_preserves_polars_input_type() -> None:
     assert set(splits) == {"MeasureSize", "MeasureShape"}
     assert isinstance(splits["MeasureSize"], pl.DataFrame)
     assert splits["MeasureSize"].columns == [
-        "Metadata_Dataset",
+        "MetadataExperiment_Dataset",
         str(OBJECT.LABEL),
         "Custom_Note",
         str(SIZE.AREA),
@@ -87,7 +87,7 @@ def test_split_measurements_groups_plural_measure_color_infoclasses() -> None:
     """``MeasureColor`` owns columns from every color ``MeasurementInfo`` enum."""
     frame = pd.DataFrame(
         {
-            "Metadata_Dataset": ["ds1"],
+            "MetadataExperiment_Dataset": ["ds1"],
             str(OBJECT.LABEL): [1],
             str(ColorLab.L_STAR_GEOMEDIAN): [55.0],
             str(ColorHSV.HUE_ROBUST_MEAN): [0.2],
@@ -98,7 +98,7 @@ def test_split_measurements_groups_plural_measure_color_infoclasses() -> None:
 
     assert set(splits) == {"MeasureColor"}
     assert list(splits["MeasureColor"].columns) == [
-        "Metadata_Dataset",
+        "MetadataExperiment_Dataset",
         str(OBJECT.LABEL),
         str(ColorLab.L_STAR_GEOMEDIAN),
         str(ColorHSV.HUE_ROBUST_MEAN),
@@ -109,7 +109,7 @@ def test_split_measurements_groups_model_metrics_with_linear_softplus() -> None:
     """Shared model metrics are included with a present model-specific split."""
     frame = pd.DataFrame(
         {
-            "Metadata_Strain": ["WT", "KO"],
+            "MetadataGenetic_Strain": ["WT", "KO"],
             str(LINEAR_LAG_MODEL.v): [1.1, 1.2],
             str(LINEAR_LAG_MODEL.s0): [0.1, 0.2],
             str(MODEL_METRICS.RMSE): [0.01, 0.02],

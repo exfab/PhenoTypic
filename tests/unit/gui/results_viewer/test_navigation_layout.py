@@ -170,7 +170,7 @@ def _make_output(tmp_path: Path) -> OutputRoot:
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"
     overlay_dir.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
-        {"Metadata_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [1.0]}
+        {"MetadataExperiment_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"], "Size_Area": [1.0]}
     )
     target = master_measurements_parquet_path(tmp_path)
     target.parent.mkdir(parents=True, exist_ok=True)
