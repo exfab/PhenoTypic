@@ -1,10 +1,12 @@
 """Standardized biological / experimental metadata-tag vocabulary.
 
-Seven ``MeasurementInfo`` subclasses grouping recommended ``Metadata_*`` tags for
-arrayed colony phenotyping. They all share the ``Metadata_`` namespace
-(``category() == "Metadata"``); the grouping is organizational, giving users
-canonical names + descriptions + auto-generated documentation tables that drop
-straight into the ``--metadata`` CSV join and the ``post/`` metadata operations.
+Eight ``MeasurementInfo`` subclasses grouping recommended metadata tags for
+arrayed colony phenotyping. Each returns its own per-topic Scheme-B category
+(``category() == "MetadataGenetic"``, ``"MetadataSample"``, ...), so members
+render as ``Metadata<Topic>_<Label>`` in the shared ``Metadata`` column family;
+the grouping gives users canonical names + descriptions + auto-generated
+documentation tables that drop straight into the ``--metadata`` CSV join and the
+``post/`` metadata operations.
 
 This is a *recommended vocabulary, not a validator* — arbitrary metadata columns are
 still accepted everywhere. Re-exported from :mod:`phenotypic.schema`:

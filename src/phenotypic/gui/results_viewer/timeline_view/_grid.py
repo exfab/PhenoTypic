@@ -48,7 +48,8 @@ def _measurement_prefixes() -> frozenset[str]:
     (spec §15.2), so a numeric measurement column (e.g. ``Size_Area``) would
     otherwise slip through the numeric-dtype eligibility path. We therefore
     union the colony baseline with every measurement category prefix derived
-    from the public ``phenotypic.schema`` enums — excluding ``Metadata``/
+    from the public ``phenotypic.schema`` enums — excluding the whole
+    ``Metadata*`` family (per-topic categories like ``MetadataCulture``) and
     ``Object`` (valid axis/identity namespaces, gated separately).
 
     The subclass tree is walked *transitively*: ``MeasurementInfo`` has
@@ -70,7 +71,7 @@ def _measurement_prefixes() -> frozenset[str]:
             category = cls.category()
         except Exception:  # abstract intermediate base — no category of its own
             continue
-        if category in ("Metadata", "Object"):
+        if category.startswith("Metadata") or category == "Object":
             continue
         prefixes.add(f"{category}_")
     return frozenset(prefixes)

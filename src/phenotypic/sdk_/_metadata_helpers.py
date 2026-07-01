@@ -62,12 +62,25 @@ def metadata_category_prefixes() -> tuple[str, ...]:
     return tuple(prefixes)
 
 
-def is_metadata_header(col: str) -> bool:
-    """True if ``col`` is a metadata-family column (any ``MetadataXxx_`` prefix)."""
-    return any(str(col).startswith(p) for p in metadata_category_prefixes())
-
-
+#: Fallback prefix for metadata columns whose bare label is not in the
+#: recommended vocabulary (routed to REMBI ``Uncategorized``). Every metadata
+#: column — per-topic or generic — belongs to the ``Metadata`` family.
 _GENERIC_PREFIX = "Metadata_"
+
+
+def is_metadata_header(col: str) -> bool:
+    """True if ``col`` is a metadata-family column.
+
+    Matches any per-topic ``Metadata<Topic>_`` prefix (e.g.
+    ``MetadataGenetic_``) *and* the generic ``Metadata_`` fallback used for
+    uncategorized user metadata, per the namespace design (spec §10.3): the
+    whole ``Metadata`` family is recognized, measurement/identity columns
+    (``Shape_``, ``Object_``, ...) are not.
+    """
+    s = str(col)
+    return s.startswith(_GENERIC_PREFIX) or any(
+        s.startswith(p) for p in metadata_category_prefixes()
+    )
 
 
 def ensure_metadata_prefix(name: str) -> str:
