@@ -6,18 +6,18 @@ from .._tiers import IdentityInfo
 
 
 class ACQUISITION_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags describing image acquisition.
+    """Recommended ``MetadataAcquisition_*`` tags describing image acquisition.
 
     These record how and by whom an image was captured (acquisition date,
     instrument, operator, resolution, exposure). Members render as
-    ``Metadata_<Label>`` (e.g. ``Metadata_ImagingDate``) and share the ``Metadata_``
-    namespace with the other experimental-tag enums. Recommended vocabulary, not a
-    validator.
+    ``MetadataAcquisition_<Label>`` (e.g. ``MetadataAcquisition_ImagingDate``) in the
+    ``Metadata`` column family shared with the other experimental-tag enums.
+    Recommended vocabulary, not a validator.
     """
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataAcquisition"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

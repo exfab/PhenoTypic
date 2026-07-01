@@ -21,19 +21,23 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from
   `__init__.py`.
 - `_metadata.py` — `METADATA`: framework-populated image bookkeeping
-  (`UUID`, `ImageName`, `BitDepth`, …). `category() == "Metadata"`, so members
-  render as `Metadata_<Label>`. These are `image.metadata` accessor keys set by
-  the pipeline, not user input.
+  (`UUID`, `ImageName`, `BitDepth`, …). `category() == "MetadataImage"`, so members
+  render as `MetadataImage_<Label>` (e.g. `MetadataImage_ImageName`). These are
+  `image.metadata` accessor keys set by the pipeline, not user input.
 - `_experimental_tags/` — eight `MeasurementInfo` subclasses
   (`GENETIC_METADATA`, `SAMPLE_METADATA`, `PLATE_METADATA`,
   `CONDITION_METADATA`, `CULTURE_METADATA`, `ACQUISITION_METADATA`,
   `EXPERIMENT_METADATA`, `STUDY_METADATA`), one per file, re-exported from
-  `__init__.py`. All
-  return `category() == "Metadata"`, so the grouping is organizational and every
-  member shares the `Metadata_` namespace (`SAMPLE_METADATA.REPLICATE` →
-  `Metadata_Replicate`). A **recommended vocabulary, not a validator**: it
-  standardizes `--metadata` CSV columns + `post/` ops but arbitrary columns are
-  still accepted.
+  `__init__.py`. Each returns its own per-topic Scheme-B category
+  (`MetadataGenetic`, `MetadataSample`, `MetadataPlate`, `MetadataCondition`,
+  `MetadataCulture`, `MetadataAcquisition`, `MetadataExperiment`, `MetadataStudy`),
+  so members render as `Metadata<Topic>_<Label>`
+  (`SAMPLE_METADATA.BIO_REPLICATE` → `MetadataSample_BioReplicate`). All prefixes
+  share the `Metadata` column family — recognize any of them via
+  `phenotypic.sdk_.is_metadata_header` rather than a bare `"Metadata_"` literal.
+  A **recommended vocabulary, not a validator**: it standardizes `--metadata` CSV
+  columns + `post/` ops but arbitrary columns are still accepted (unknown labels
+  fall back to a generic `Metadata_<Label>` → REMBI `Uncategorized`).
 
 ## Measurement classification (kind + tier)
 
@@ -113,6 +117,6 @@ stdlib and the sibling base (no other `phenotypic` imports) to keep the package
 import-light and preserve the package load-order trick in
 `phenotypic/__init__.py` (`abc_` imports the stdlib-only base from here before
 `sdk_.constants_` needs it). Metadata-naming enums (`METADATA` + the
-experimental tags) live here because they name `Metadata_*` columns/keys.
+experimental tags) live here because they name `Metadata<Topic>_*` columns/keys.
 Framework-config enums that are *not* about naming columns/keys (e.g.
 `GAMMA_ENCODINGS`, `PIPE_STATUS`, `IMAGE_MODE`) stay in `sdk_/constants_.py`.

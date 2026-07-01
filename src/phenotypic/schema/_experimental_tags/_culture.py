@@ -6,19 +6,19 @@ from .._tiers import IdentityInfo
 
 
 class CULTURE_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags describing culture and time course.
+    """Recommended ``MetadataCulture_*`` tags describing culture and time course.
 
     These capture the temporal and environmental culture parameters of an
     experiment (temperature, elapsed time, timepoint, generation, atmosphere).
     ``Time``/``Timepoint`` align with the QC time-series axis. Members render as
-    ``Metadata_<Label>`` (e.g. ``Metadata_Time``) and share the ``Metadata_``
-    namespace with the other experimental-tag enums. Recommended vocabulary, not a
-    validator.
+    ``MetadataCulture_<Label>`` (e.g. ``MetadataCulture_Time``) in the ``Metadata``
+    column family shared with the other experimental-tag enums. Recommended
+    vocabulary, not a validator.
     """
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataCulture"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

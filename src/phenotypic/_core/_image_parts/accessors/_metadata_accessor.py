@@ -301,7 +301,9 @@ class MetadataAccessor:
             - Only public and protected metadata are included (private metadata is excluded)
             - IMAGE_NAME metadata is populated from parent_image.name instead of the metadata dict
             - Columns are inserted from right to left at position 0, so iteration order determines final order
-            - Metadata columns without ``Metadata_`` prefix are automatically prefixed
+            - Metadata columns without a ``Metadata<Topic>_`` prefix are automatically prefixed
+              via the schema (e.g. ``Strain`` -> ``MetadataGenetic_Strain``; unknown labels
+              fall back to a generic ``Metadata_`` prefix)
 
         Examples:
             Insert metadata as DataFrame columns:
@@ -311,7 +313,7 @@ class MetadataAccessor:
             >>> img = Image(arr, name='sample')
             >>> img.metadata['resolution'] = 300
             >>> result_df = img.metadata.insert_metadata(df)
-            >>> # result_df now has Metadata_ImageName and Metadata_resolution columns at position 0
+            >>> # result_df now has MetadataImage_ImageName and Metadata_resolution columns at position 0
         """
         working_df = df if inplace else df.copy()
         # Insert metadata columns in canonical REMBI-module order (then alpha).
@@ -325,7 +327,10 @@ class MetadataAccessor:
 
         def _rank(item):
             k = item[0]
-            header = k if str(k).startswith("Metadata") else f"Metadata_{k}"
+            # Resolve the full schema header (e.g. bare "Strain" ->
+            # "MetadataGenetic_Strain") so the reverse index — keyed on the
+            # per-topic Scheme-B headers post-flip — resolves the REMBI module.
+            header = ensure_metadata_prefix(k)
             mod = idx.get(header, REMBI_MODULE.UNCATEGORIZED)
             return (order[mod], str(k))
 
@@ -365,12 +370,16 @@ class MetadataAccessor:
             *module*, in combined-metadata iteration order.
         """
         from phenotypic.schema import REMBI_MODULE, header_to_module
+        from phenotypic.sdk_ import ensure_metadata_prefix
 
         target = module if isinstance(module, REMBI_MODULE) else REMBI_MODULE(module)
         idx = header_to_module()
         out: dict = {}
         for key, value in self._combined_metadata.items():
-            header = key if str(key).startswith("Metadata") else f"Metadata_{key}"
+            # Resolve to the full schema header (bare "Strain" ->
+            # "MetadataGenetic_Strain") so the reverse index, keyed on the
+            # per-topic Scheme-B headers, resolves the REMBI module.
+            header = ensure_metadata_prefix(key)
             mod = idx.get(header)
             if mod is None:
                 mod = (

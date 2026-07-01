@@ -39,7 +39,12 @@ logger = logging.getLogger(__name__)
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
-# TODO(B-flip): _IMAGENAME_COL is the legacy master shim after the category flip; keep literal.
+# Legacy master column shim. Post category-flip the canonical image-stem column
+# is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
+# Masters written before the flip used the pre-namespace ``"Metadata_ImageName"``;
+# this literal recognizes those old masters so they still load (aliased below to
+# the canonical column). Keep the literal — it is a legacy recognizer, not a live
+# column name.
 _IMAGENAME_COL = "Metadata_ImageName"
 
 
@@ -414,14 +419,17 @@ def _ensure_required_columns(
     layout: BundleLayout,
     datasets: list[str],
 ) -> pl.DataFrame:
-    """Backfill ``Metadata_Dataset`` and ``Metadata_ImageName`` if missing.
+    """Backfill the dataset and image-stem key columns if missing.
 
     Real-world masters produced by older runs or by aggregators that
     skip ``include_dataset_column`` may lack one or both of these
     columns. The dataset is recoverable from the on-disk layout
     (``results/<dataset>/measurements/<stem>.parquet``) when a full-run
-    ``results/`` is present; the image stem can fall back to
-    ``Metadata_ImageName`` when present.
+    ``results/`` is present; the image stem (``KEY_IMAGE_FILE`` ==
+    ``MetadataImage_ImageName`` post category-flip) falls back to the
+    pre-flip legacy ``Metadata_ImageName`` column (``_IMAGENAME_COL``)
+    when present, so masters written before the namespace migration still
+    load.
 
     Args:
         df: Loaded master DataFrame.

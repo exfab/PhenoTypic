@@ -10,8 +10,8 @@ class METADATA(IdentityInfo):
 
     These labels are set automatically by the image pipeline (not by the user) and
     name the bookkeeping entries on the ``image.metadata`` accessor. Members render
-    as ``Metadata_<Label>`` (e.g. ``Metadata_ImageName``) so they share the
-    ``Metadata_`` namespace with the user-facing experimental tags in
+    as ``MetadataImage_<Label>`` (e.g. ``MetadataImage_ImageName``) in the
+    ``Metadata`` column family shared with the user-facing experimental tags in
     :mod:`phenotypic.schema` (see :class:`SAMPLE_METADATA` and siblings).
 
     For the standardized *biological/experimental* vocabulary users supply via the
@@ -20,7 +20,7 @@ class METADATA(IdentityInfo):
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataImage"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:

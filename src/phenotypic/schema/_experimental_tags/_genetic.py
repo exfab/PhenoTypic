@@ -6,19 +6,19 @@ from .._tiers import IdentityInfo
 
 
 class GENETIC_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags describing the organism and its genetics.
+    """Recommended ``MetadataGenetic_*`` tags describing the organism and its genetics.
 
     These name the genetic identity of the colonies on a plate (species, strain,
-    genotype, markers). Like all experimental-tag enums they share the
-    ``Metadata_`` namespace, so members render as ``Metadata_<Label>`` (e.g.
-    ``Metadata_Strain``) and slot directly into the ``--metadata`` CSV join and the
-    ``post/`` metadata operations. This is a recommended vocabulary, not a validator:
-    arbitrary metadata columns are still accepted.
+    genotype, markers). Like all experimental-tag enums they belong to the
+    ``Metadata`` column family, so members render as ``MetadataGenetic_<Label>``
+    (e.g. ``MetadataGenetic_Strain``) and slot directly into the ``--metadata`` CSV
+    join and the ``post/`` metadata operations. This is a recommended vocabulary,
+    not a validator: arbitrary metadata columns are still accepted.
     """
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataGenetic"
 
     @classmethod
     def rembi_module(cls) -> REMBI_MODULE:
