@@ -16,12 +16,12 @@ from pydantic import Field, PrivateAttr
 from phenotypic.schema import CULTURE_METADATA, MODEL_METRICS
 from phenotypic.sdk_ import ColumnRef
 
-_TIME = str(CULTURE_METADATA.TIME)
-
 from ._set_analyzer import SetAnalyzer
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 LossKind = Literal["linear", "soft_l1", "huber", "cauchy", "arctan"]

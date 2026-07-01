@@ -45,12 +45,12 @@ from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     build_heatmap_figure,
 )
 from phenotypic.schema import CULTURE_METADATA, METADATA
-
-_TIME_COL: str = str(CULTURE_METADATA.TIME)
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
+
+_TIME_COL: str = str(CULTURE_METADATA.TIME)
 
 logger = logging.getLogger(__name__)
 
