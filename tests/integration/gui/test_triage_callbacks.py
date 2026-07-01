@@ -36,6 +36,7 @@ from phenotypic.sdk_ import (
 )
 
 from tests._output_layout import write_master, write_measurements_mirror
+from phenotypic.schema import METADATA
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ def _master() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 4,
-            "Metadata_ImageFile": ["img-A", "img-A", "img-B", "img-B"],
+            str(METADATA.IMAGE_NAME): ["img-A", "img-A", "img-B", "img-B"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],
             "Bbox_CenterCC": [10.0, 20.0, 10.0, 20.0],
@@ -161,7 +162,7 @@ def test_toggle_via_filtered_state_writes_mirror(
     assert mirror_after.height == 3
     keys_after = set(
         zip(
-            mirror_after.get_column("Metadata_ImageFile").to_list(),
+            mirror_after.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             mirror_after.get_column("Object_Label").to_list(),
         )
     )
@@ -237,7 +238,7 @@ def test_colony_wedge_mark_writes_category_parquet_and_drops_mirror(
     debris = pl.read_parquet(debris_path)
     debris_keys = set(
         zip(
-            debris.get_column("Metadata_ImageFile").to_list(),
+            debris.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             debris.get_column("Object_Label").to_list(),
         )
     )
@@ -247,7 +248,7 @@ def test_colony_wedge_mark_writes_category_parquet_and_drops_mirror(
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     mirror_keys = set(
         zip(
-            mirror.get_column("Metadata_ImageFile").to_list(),
+            mirror.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             mirror.get_column("Object_Label").to_list(),
         )
     )
@@ -285,7 +286,7 @@ def test_colony_wedge_restore_round_trip(
     mirror = pl.read_parquet(measurements_parquet_path(tmp_path))
     mirror_keys = set(
         zip(
-            mirror.get_column("Metadata_ImageFile").to_list(),
+            mirror.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             mirror.get_column("Object_Label").to_list(),
         )
     )
@@ -376,7 +377,7 @@ def _post_status_cell_toggle(
 
     The ``_toggle_status_cell`` callback is an ALL-pattern over every card's
     details DataTable; it resolves the card by id, reads the clicked row's
-    ``(Metadata_ImageFile, Object_Label)`` from the table ``data``, and toggles
+    ``(Metadata_ImageName, Object_Label)`` from the table ``data``, and toggles
     the curated removal. Synthesizing one card's id + data + active_cell is
     enough to drive it without a fully-rendered card.
     """
@@ -385,7 +386,7 @@ def _post_status_cell_toggle(
     table_id = {"type": "card-details-table", "index": card_index}
     row = {
         "Status": "Removed",
-        "Metadata_ImageFile": image_file,
+        str(METADATA.IMAGE_NAME): image_file,
         "Object_Label": label,
     }
     return client.post(
@@ -492,7 +493,7 @@ def test_qc_wedge_mark_writes_category_parquet_and_drops_mirror(
     merged = pl.read_parquet(merged_path)
     merged_keys = set(
         zip(
-            merged.get_column("Metadata_ImageFile").to_list(),
+            merged.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             merged.get_column("Object_Label").to_list(),
         )
     )
@@ -614,7 +615,7 @@ def test_colony_bulk_mark_marks_whole_selection(
     debris = pl.read_parquet(error_category_parquet_path(tmp_path, "debris"))
     debris_keys = set(
         zip(
-            debris.get_column("Metadata_ImageFile").to_list(),
+            debris.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             debris.get_column("Object_Label").to_list(),
         )
     )

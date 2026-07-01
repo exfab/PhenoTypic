@@ -12,6 +12,7 @@ from phenotypic.gui.results_viewer._filter_offcanvas import (
     next_offcanvas_state,
     register_filter_offcanvas_callbacks,
 )
+from phenotypic.schema import METADATA
 
 
 class TestNextOffcanvasState:
@@ -48,7 +49,7 @@ class TestActiveFilterCount:
         spec = [
             {"id": "a", "column": "Size_Area", "method": "range",
              "range_min": 100, "range_max": None},
-            {"id": "b", "column": "Metadata_ImageFile", "method": "contains",
+            {"id": "b", "column": str(METADATA.IMAGE_NAME), "method": "contains",
              "text_pattern": "plate"},
             {"id": "c", "column": "Size_Area", "method": "range"},  # unset → 0
             {"id": "d", "column": "", "method": "is_any_of", "values": ["x"]},

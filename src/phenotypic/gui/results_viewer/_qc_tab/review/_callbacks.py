@@ -98,7 +98,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
     KEY_OBJECT_LABEL,
     decode_removed_keys_payload,
 )
-from phenotypic.schema import ErrorCategory
+from phenotypic.schema import ErrorCategory, METADATA
 from phenotypic.gui.results_viewer._qc_tab import _ids as qc_tab_ids
 from phenotypic.gui.results_viewer._qc_tab.review import (
     _data,
@@ -156,7 +156,7 @@ def _qc_crop_url(
 
     Args:
         dataset: ``Metadata_Dataset`` of the tile's colony.
-        image_file: ``Metadata_ImageFile`` of the tile's colony.
+        image_file: ``Metadata_ImageName`` of the tile's colony.
         label: ``Object_Label`` of the tile's colony.
         crop_size: Server crop side length, in pixels (``?size=``).
         dim_alpha: Tile-spotlight strength forwarded to the crop route as
@@ -1481,8 +1481,8 @@ def _crop_size_for(keys: list[tuple[str, str, int]], output_root) -> int:
         return default
     member_keys = {(im, lbl) for _ds, im, lbl in keys}
     subset = master.filter(
-        pl.struct(["Metadata_ImageFile", "Object_Label"]).map_elements(
-            lambda s: (str(s["Metadata_ImageFile"]), int(s["Object_Label"]))
+        pl.struct([str(METADATA.IMAGE_NAME), "Object_Label"]).map_elements(
+            lambda s: (str(s[str(METADATA.IMAGE_NAME)]), int(s["Object_Label"]))
             in member_keys,
             return_dtype=pl.Boolean,
         )
@@ -1514,7 +1514,7 @@ def toggle_review_tile(filtered, image_file: str, label: int) -> list[list]:
 
     Args:
         filtered: The shared :class:`FilteredMeasurements`.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -1540,7 +1540,7 @@ def mark_review_tile(
 
     Args:
         filtered: The shared :class:`CurationLabels`.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
         category: The category token to assign, or
             :data:`RADIAL_RESTORE_SENTINEL` to clear it.

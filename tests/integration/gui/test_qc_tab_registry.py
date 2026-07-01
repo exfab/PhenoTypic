@@ -26,6 +26,7 @@ from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master, write_measurements_mirror
+from phenotypic.schema import METADATA
 
 
 @pytest.fixture()
@@ -34,7 +35,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 3,
-            "Metadata_ImageFile": ["img-1"] * 3,
+            str(METADATA.IMAGE_NAME): ["img-1"] * 3,
             "Object_Label": [1, 2, 3],
             "Size_Area": [100.0, 101.0, 102.0],
         }

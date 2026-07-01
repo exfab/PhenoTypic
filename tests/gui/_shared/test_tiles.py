@@ -48,6 +48,7 @@ from phenotypic.gui.results_viewer._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master
+from phenotypic.schema import METADATA
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +515,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"],
-            "Metadata_ImageFile": ["img-1"],
+            str(METADATA.IMAGE_NAME): ["img-1"],
             "Object_Label": [7],
             "Bbox_CenterRR": [50],
             "Bbox_CenterCC": [50],
@@ -677,7 +678,7 @@ def output_root_no_bbox(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"],
-            "Metadata_ImageFile": ["img-1"],
+            str(METADATA.IMAGE_NAME): ["img-1"],
             "Object_Label": [7],
             "Bbox_CenterRR": [50],
             "Bbox_CenterCC": [50],

@@ -37,6 +37,7 @@ from phenotypic.gui._design import (
 from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui.results_viewer._heatmap_tab import _ids as ids
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.schema import METADATA
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +239,7 @@ def build_heatmap_tab_body(
     Args:
         output_root: Validated handle on the CLI output directory; used
             to seed the image picker's option list from the master
-            frame's unique ``Metadata_ImageFile`` values.
+            frame's unique ``Metadata_ImageName`` values.
         schema: Measurement schema cache; used to seed the color picker
             options at boot. The callbacks refresh both lists when QC
             recipe revisions or curation events fire.
@@ -252,10 +253,10 @@ def build_heatmap_tab_body(
     color_options = [{"label": c, "value": c} for c in column_names]
 
     image_files: list[str] = []
-    if "Metadata_ImageFile" in output_root.master_df.columns:
+    if str(METADATA.IMAGE_NAME) in output_root.master_df.columns:
         image_files = sorted(
             v
-            for v in output_root.master_df["Metadata_ImageFile"].unique().to_list()
+            for v in output_root.master_df[str(METADATA.IMAGE_NAME)].unique().to_list()
             if v is not None
         )
     image_options = [{"label": f, "value": f} for f in image_files]

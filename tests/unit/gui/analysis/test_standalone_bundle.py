@@ -27,6 +27,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.measure import MeasureShape
 from phenotypic.sdk_ import PIPELINE_JSON, BundleLayout
 from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
+from phenotypic.schema import METADATA
 
 
 def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> None:
@@ -41,7 +42,7 @@ def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> Non
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1", "plate1"],
-            "Metadata_ImageFile": ["img001", "img001"],
+            str(METADATA.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
             "Shape_Area": [12.0, 34.0],
         }

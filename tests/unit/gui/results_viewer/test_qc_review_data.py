@@ -35,6 +35,7 @@ from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 
 from tests._output_layout import write_master, write_measurements_mirror
+from phenotypic.schema import METADATA
 
 
 def _layout(tmp_path: Path) -> BundleLayout:
@@ -59,7 +60,7 @@ def _write_output_root(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 4,
-            "Metadata_ImageFile": ["img-1", "img-1", "img-2", "img-2"],
+            str(METADATA.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [50, 60, 50, 60],
             "Bbox_CenterCC": [50, 60, 50, 60],
@@ -99,7 +100,7 @@ def test_module_picker_options_from_catalog(tmp_path: Path) -> None:
         [
             QcRecipeEntry(
                 cls=MaxModifiedZScore,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
                 instance_id="qc-ZMax-00000001",
                 enabled=True,
             )
@@ -107,7 +108,7 @@ def test_module_picker_options_from_catalog(tmp_path: Path) -> None:
     )
     frame = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["img-1", "img-1", "img-2", "img-2"],
+            str(METADATA.IMAGE_NAME): ["img-1", "img-1", "img-2", "img-2"],
             "Object_Label": [1, 2, 1, 2],
             "Size_Area": [100.0, 102.0, 300.0, 80.0],
         }
@@ -164,7 +165,7 @@ def test_build_recompute_frame_anti_joins_removals(tmp_path: Path) -> None:
 
     frame = _data.build_recompute_frame(root, {("img-2", 1)})
     assert len(frame) == 3
-    remaining = set(zip(frame["Metadata_ImageFile"], frame["Object_Label"]))
+    remaining = set(zip(frame[str(METADATA.IMAGE_NAME)], frame["Object_Label"]))
     assert ("img-2", 1) not in remaining
     assert ("img-2", 2) in remaining
 

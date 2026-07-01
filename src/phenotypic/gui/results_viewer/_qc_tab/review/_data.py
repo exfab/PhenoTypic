@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from phenotypic.schema import METADATA
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import pandas as pd
 
@@ -28,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 #: Curation-key columns (mirrors ``_filtered_state.KEY_COLUMNS``; kept
 #: local so this pure module never imports the Dash-coupled state module).
-_KEY_IMAGE_FILE: str = "Metadata_ImageFile"
+_KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
 _KEY_OBJECT_LABEL: str = "Object_Label"
 _KEY_DATASET: str = "Metadata_Dataset"
 _KEY_TIME: str = "Metadata_Time"

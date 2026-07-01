@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 from ._cli_types import Dataset
 from ._cli_parquet_agg import aggregate_parquet_files
+from phenotypic.schema import METADATA
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -968,10 +969,10 @@ def aggregate_measurements(
         logger.warning("No valid measurements found for aggregation")
         return None
 
-    # Derive Metadata_ImageFile for the dashboard image viewer, then drop filename.
-    if "Metadata_ImageFile" not in master_df.columns and "filename" in master_df.columns:
+    # Derive Metadata_ImageName for the dashboard image viewer, then drop filename.
+    if str(METADATA.IMAGE_NAME) not in master_df.columns and "filename" in master_df.columns:
         master_df = master_df.with_columns(
-            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias("Metadata_ImageFile")
+            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias(str(METADATA.IMAGE_NAME))
         )
     if "filename" in master_df.columns:
         master_df = master_df.drop("filename")

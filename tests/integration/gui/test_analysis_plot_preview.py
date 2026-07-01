@@ -33,6 +33,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
+from phenotypic.schema import METADATA
 
 
 def _walk(component: Any) -> Iterator[Any]:
@@ -59,7 +60,7 @@ def _logistic_growth_frame() -> pl.DataFrame:
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
                 rows.append({
                     "Metadata_Dataset": "ds1",
-                    "Metadata_ImageFile": f"{strain}_t{t}",
+                    str(METADATA.IMAGE_NAME): f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,

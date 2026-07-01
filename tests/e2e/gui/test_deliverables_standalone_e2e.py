@@ -44,6 +44,7 @@ from tests._output_layout import (
     write_pipeline_json,
 )
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 # Single-threaded Werkzeug dev server + Dash callback-chain timing flakes on
 # GHA shared runners (skipped on CI via ``-m "not ci_flaky"``); the SUT is
@@ -69,7 +70,7 @@ def _build_master() -> pl.DataFrame:
                 rows.append(
                     {
                         "Metadata_Dataset": _DATASET,
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,

@@ -492,7 +492,7 @@ def crop_colony(
         output_root: Validated handle on the CLI output directory; supplies
             :meth:`hdf_path`, :meth:`has_overlay`, and :meth:`overlay_path`.
         dataset: Dataset name (matches ``Metadata_Dataset``).
-        stem: Image stem (matches ``Metadata_ImageFile`` minus its extension).
+        stem: Image stem (matches ``Metadata_ImageName`` minus its extension).
         layer: HDF layer to render when an HDF is the source (e.g. ``"rgb"``);
             ignored for the overlay fallback (overlays are pre-baked RGB).
         center_rr: Row coordinate (Y) of the colony centroid, in image pixels.
@@ -722,7 +722,7 @@ def register_crop_route(
 
         # --- 4. Lookup ----------------------------------------------------
         # Cast key columns explicitly so the comparison still matches when
-        # the master frame stores Metadata_ImageFile as Categorical or
+        # the master frame stores Metadata_ImageName as Categorical or
         # Object_Label as a narrower int type. Pull the bbox extent columns
         # alongside the centroid when present; older masters lacking them
         # fall through to bbox=None (no dimming).
@@ -856,7 +856,7 @@ def build_tile_cell(
     and popover) are appended after the frame via ``extra_children``.
 
     Args:
-        image_file: ``Metadata_ImageFile`` of the represented colony.
+        image_file: ``Metadata_ImageName`` of the represented colony.
         label: ``Object_Label`` of the represented colony.
         dataset: ``Metadata_Dataset`` of the represented colony.
         crop_size: Server crop side length, in pixels — passed to

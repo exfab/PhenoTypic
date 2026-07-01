@@ -2,7 +2,7 @@
 
 This module backs the viewer's "remove colony" feature. The pipeline writes
 ``master_measurements.parquet`` once and never touches it again; users curate
-that frame by marking ``(Metadata_ImageFile, Object_Label)`` keys as removed.
+that frame by marking ``(Metadata_ImageName, Object_Label)`` keys as removed.
 The curated view is mirrored to two sibling files in the output root, both
 seeded by the CLI as a fresh full copy of the master:
 
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 import polars as pl
 
-from phenotypic.schema import OBJECT
+from phenotypic.schema import METADATA, OBJECT
 from phenotypic.sdk_ import measurements_csv_path, measurements_parquet_path
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 KEY_DATASET: str = "Metadata_Dataset"
 
 #: Column name that identifies the source image of a colony.
-KEY_IMAGE_FILE: str = "Metadata_ImageFile"
+KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
 
 #: Column name that identifies a colony within its source image.
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
@@ -126,7 +126,7 @@ def get_curated_frame(
 
 
 def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
-    """Pull ``(Metadata_ImageFile, Object_Label)`` keys out of ``df``.
+    """Pull ``(Metadata_ImageName, Object_Label)`` keys out of ``df``.
 
     Args:
         df: A polars frame that must expose both key columns.
@@ -156,7 +156,7 @@ def _extract_keys(df: pl.DataFrame) -> set[tuple[str, int]]:
 class FilteredMeasurements:
     """In-memory curation state plus on-disk mirrors.
 
-    Removals are keyed by ``(Metadata_ImageFile, Object_Label)``. The class
+    Removals are keyed by ``(Metadata_ImageName, Object_Label)``. The class
     never mutates ``master_measurements.parquet``; instead it writes a
     curated copy to :attr:`parquet_path` and :attr:`csv_path`. Public
     mutators (:meth:`remove`, :meth:`restore`, :meth:`remove_many`,
@@ -224,7 +224,7 @@ class FilteredMeasurements:
             master_df: The full master measurements frame, used to compute
                 the removal set as ``master_keys − filtered_keys`` and
                 cached on the instance for subsequent saves. Must expose
-                both ``Metadata_ImageFile`` and ``Object_Label``.
+                both ``Metadata_ImageName`` and ``Object_Label``.
 
         Returns:
             A new :class:`FilteredMeasurements` whose :attr:`removed_keys`
@@ -285,7 +285,7 @@ class FilteredMeasurements:
         """Return whether ``(image_file, object_label)`` is currently removed.
 
         Args:
-            image_file: Value of ``Metadata_ImageFile`` for the colony.
+            image_file: Value of ``Metadata_ImageName`` for the colony.
             object_label: Value of ``Object_Label`` for the colony.
 
         Returns:
@@ -302,7 +302,7 @@ class FilteredMeasurements:
 
         Returns:
             The number of rows in ``df`` whose
-            ``(Metadata_ImageFile, Object_Label)`` is in
+            ``(Metadata_ImageName, Object_Label)`` is in
             :attr:`removed_keys`.
         """
         if df.is_empty() or not self.removed_keys:
@@ -316,7 +316,7 @@ class FilteredMeasurements:
         Implemented as an anti-join on a synthetic two-column polars frame
         built from :attr:`removed_keys`. The cast to ``str`` / ``Int64``
         mirrors the coercion done in :func:`_extract_keys`, so frames whose
-        ``Metadata_ImageFile`` is e.g. ``Categorical`` still match.
+        ``Metadata_ImageName`` is e.g. ``Categorical`` still match.
 
         Args:
             master_df: The full master measurements frame.
@@ -376,7 +376,7 @@ class FilteredMeasurements:
         rewritten.
 
         Args:
-            image_file: Value of ``Metadata_ImageFile`` for the colony.
+            image_file: Value of ``Metadata_ImageName`` for the colony.
             object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)
@@ -394,7 +394,7 @@ class FilteredMeasurements:
         on-disk mirrors are rewritten.
 
         Args:
-            image_file: Value of ``Metadata_ImageFile`` for the colony.
+            image_file: Value of ``Metadata_ImageName`` for the colony.
             object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)
@@ -449,7 +449,7 @@ class FilteredMeasurements:
         save fires exactly once.
 
         Args:
-            image_file: Value of ``Metadata_ImageFile`` for the colony.
+            image_file: Value of ``Metadata_ImageName`` for the colony.
             object_label: Value of ``Object_Label`` for the colony.
         """
         key = (image_file, object_label)

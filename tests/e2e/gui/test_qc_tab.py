@@ -11,7 +11,7 @@ The tests share a function-scoped sandbox helper that:
 1. Builds the standard E2E sandbox layout.
 2. Replaces the empty placeholder ``master_measurements.parquet`` with
    a real polars frame carrying the columns the QC machinery needs
-   (``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``,
+   (``Metadata_ImageName``, ``Metadata_Dataset``, ``Object_Label``,
    ``Size_Area``, ``Grid_RowNum``, ``Grid_ColNum``, ``Metadata_Time``).
 3. Pre-seeds the ``qc`` array of ``<output>/deliverables/pipeline.json``
    directly (the pipeline-backed recipe source the viewer reads via
@@ -36,6 +36,7 @@ from playwright.sync_api import Page, expect
 
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -82,7 +83,7 @@ def _build_real_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         "Metadata_Dataset": "ds1",
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -267,7 +268,7 @@ def _se_entry(
     *,
     instance_id: str,
     on: str = "Size_Area",
-    groupby: tuple[str, ...] = ("Metadata_ImageFile",),
+    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
     warn_threshold: float = 0.10,
     fail_threshold: float = 0.20,
     enabled: bool = True,
@@ -292,7 +293,7 @@ def _count_entry(
     *,
     instance_id: str,
     metadata_path: str,
-    groupby: tuple[str, ...] = ("Metadata_ImageFile",),
+    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
     enabled: bool = True,
 ) -> dict:
     """Build one ExpectedVsDetectedCount entry."""
@@ -316,7 +317,7 @@ def _write_count_metadata(output_dir: Path) -> Path:
     for image in _IMAGES:
         for _ in range(_NUM_ROWS * _NUM_COLS):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
+            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
     pl.DataFrame(rows).write_csv(csv_path)
     return csv_path
 
@@ -467,7 +468,7 @@ def test_add_count_check_with_metadata_path(
         '[role="listbox"] [role="option"]', state="attached", timeout=10_000
     )
     page.locator(
-        '[role="listbox"] [role="option"]', has_text="Metadata_ImageFile"
+        '[role="listbox"] [role="option"]', has_text=str(METADATA.IMAGE_NAME)
     ).first.click()
     # Close the multi-select overlay so it can't intercept the Save click.
     page.keyboard.press("Escape")
@@ -497,7 +498,7 @@ def test_add_count_check_with_metadata_path(
     )
     params = count_entries[0]["params"]
     assert params["metadata"] == str(csv_path)
-    assert params["groupby"] == ["Metadata_ImageFile"]
+    assert params["groupby"] == [str(METADATA.IMAGE_NAME)]
 
 
 def test_edit_check_modal(
@@ -934,7 +935,7 @@ def test_mark_flagged_pushes_to_removed_keys(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
+            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 

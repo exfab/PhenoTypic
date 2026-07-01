@@ -17,6 +17,7 @@ from phenotypic.gui.shell import SandboxRoot
 from phenotypic.gui.shell._app import compose_hub
 
 from tests._output_layout import write_master
+from phenotypic.schema import METADATA
 
 
 def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
@@ -34,7 +35,7 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
         pl.DataFrame(
             {
                 "Metadata_Dataset": [dataset, dataset],
-                "Metadata_ImageFile": ["a", "b"],
+                str(METADATA.IMAGE_NAME): ["a", "b"],
                 "Metadata_Strain": ["s1", "s2"],
                 "Object_Label": [1, 1],
                 "Size_Area": [100.0, 200.0],

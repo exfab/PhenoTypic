@@ -9,7 +9,7 @@ Order of operations (spec lines 1352-1356):
 
 1. Empty-state check - if the grid columns are absent, return a
    placeholder figure with an annotation explaining the gap.
-2. Filter by ``Metadata_ImageFile`` if the picker has a selection.
+2. Filter by ``Metadata_ImageName`` if the picker has a selection.
 3. Filter by ``Metadata_Time`` if a slider value is supplied.
 4. Aggregate the remaining rows over ``(Grid_RowNum, Grid_ColNum)``
    with the configured polars aggregator.
@@ -36,6 +36,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION
+from phenotypic.schema import METADATA
 from phenotypic.sdk_.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
 
 from .._filtered_state import KEY_OBJECT_LABEL
@@ -66,7 +67,7 @@ _REMOVED_MARKER_MAX: float = 14.0
 # object-label curation key is single-sourced from ``_filtered_state``
 # (imported above as :data:`KEY_OBJECT_LABEL`) so it can never drift from
 # the curation layer.
-_META_IMAGE_FILE: str = "Metadata_ImageFile"
+_META_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
 _META_TIME: str = "Metadata_Time"
 
 
@@ -91,7 +92,7 @@ def build_heatmap_figure(
         color_col: Name of the column whose values fill the heatmap
             cells. Typically a measurement column (e.g. ``Size_Area``)
             or a QC metric column (e.g. ``QC_Count_Metric``).
-        image_file: ``Metadata_ImageFile`` selection. Applied as a
+        image_file: ``Metadata_ImageName`` selection. Applied as a
             row filter *before* the aggregator so multi-image frames
             cannot leak across image boundaries (spec lines 1352-1356).
         time_value: ``Metadata_Time`` row filter. ``None`` skips the

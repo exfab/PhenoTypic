@@ -15,6 +15,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from phenotypic.phenotypicCLI import phenotypic_cli
+from phenotypic.schema import METADATA
 from phenotypic.sdk_ import metadata_csv_deliverable_path
 
 
@@ -22,7 +23,7 @@ def test_metadata_run_copies_source_csv_to_deliverables(
     tmp_path: Path, synth_plate_dir: Path, simple_pipeline_json: Path
 ) -> None:
     out = tmp_path / "out"
-    # A real, readable metadata CSV. ``Metadata_ImageFile`` is a column the
+    # A real, readable metadata CSV. ``Metadata_ImageName`` is a column the
     # measurement frame carries, so this also exercises a normal inner-join
     # onto the post-applied MIRROR (deliverables/measurements.parquet) — the
     # master_measurements.* archive stays metadata-free (spec §8.2). A non-ASCII
@@ -30,7 +31,8 @@ def test_metadata_run_copies_source_csv_to_deliverables(
     # refactor (a byte-for-byte copy preserves the UTF-8 bytes).
     source = tmp_path / "meta.csv"
     source.write_text(
-        "Metadata_ImageFile,Metadata_Strain\nplate_001,Säccharomyces\n",
+        str(METADATA.IMAGE_NAME)
+        + ",Metadata_Strain\nplate_001,Säccharomyces\n",
         encoding="utf-8",
     )
 

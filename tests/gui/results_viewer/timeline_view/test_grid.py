@@ -14,6 +14,7 @@ from phenotypic.gui.results_viewer.timeline_view._grid import (
     selectable_time_columns,
 )
 from tests._output_layout import write_master, write_measurements_mirror
+from phenotypic.schema import METADATA
 
 
 def _value_sets(df: pl.DataFrame) -> dict[str, list[str]]:
@@ -27,7 +28,7 @@ def _df() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "Metadata_Dataset": ["ds"] * 4,
-            "Metadata_ImageFile": ["a", "a", "b", "b"],
+            str(METADATA.IMAGE_NAME): ["a", "a", "b", "b"],
             "Metadata_ImageNumber": pl.Series([1, 2, 1, 2], dtype=pl.Int64),
             "Metadata_Time": ["09:00", "10:00", "09:00", "10:00"],
             "Metadata_PlateNum": ["1", "1", "2", "2"],
@@ -88,7 +89,7 @@ def test_empty_state_predicate_false_without_any_time_column() -> None:
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["ds", "ds"],
-            "Metadata_ImageFile": ["a", "b"],
+            str(METADATA.IMAGE_NAME): ["a", "b"],
             "Metadata_PlateNum": ["1", "2"],  # categorical, no name/dtype match
             "Object_Label": [1, 2],
             "Size_Area": [1.0, 2.0],

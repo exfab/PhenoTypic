@@ -36,6 +36,7 @@ from pydantic import ValidationError
 
 from phenotypic.analysis.qc import ReplicateAgreement
 from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.schema import METADATA
 
 # Renamed, prefixed summary columns per the contract (collision-proof).
 _SUMMARY_COLS = [
@@ -358,7 +359,7 @@ class TestGroupMembers:
             {
                 "Plate": ["P1", "P1", "P2"],
                 "Metadata_Time": [0, 0, 0],
-                "Metadata_ImageFile": ["a.png", "a.png", "b.png"],
+                str(METADATA.IMAGE_NAME): ["a.png", "a.png", "b.png"],
                 "Object_Label": [1, 2, 1],
                 "Size_Area": [10.0, 11.0, 50.0],
             }
@@ -372,7 +373,7 @@ class TestGroupMembers:
         assert ("P2",) in members
         p1 = members[("P1",)]
         assert len(p1) == 2
-        # Each member is (Metadata_ImageFile, Object_Label, member_value).
+        # Each member is (Metadata_ImageName, Object_Label, member_value).
         files = {m[0] for m in p1}
         labels = {m[1] for m in p1}
         values = {m[2] for m in p1}
@@ -381,7 +382,7 @@ class TestGroupMembers:
         assert values == {10.0, 11.0}
 
     def test_returns_empty_when_key_columns_absent(self) -> None:
-        # No Metadata_ImageFile / Object_Label -> empty mapping, no raise.
+        # No Metadata_ImageName / Object_Label -> empty mapping, no raise.
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],

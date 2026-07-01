@@ -27,6 +27,7 @@ from phenotypic.sdk_ import measurements_parquet_path, qc_duckdb_path
 from phenotypic._cli._cli_output_manager import finalize_post_master_outputs
 
 from tests._output_layout import write_master
+from phenotypic.schema import METADATA
 
 
 def _qc_module_instance_ids(output_dir: Path) -> set[str]:
@@ -49,7 +50,7 @@ def _master() -> pl.DataFrame:
     ]:
         for i, area in enumerate(areas, start=1):
             rows.append({
-                "Metadata_ImageFile": plate,
+                str(METADATA.IMAGE_NAME): plate,
                 "Object_Label": i,
                 "Size_Area": float(area),
             })
@@ -59,7 +60,7 @@ def _master() -> pl.DataFrame:
 def _qc_pipeline() -> ImagePipeline:
     return ImagePipeline(qc=[QcRecipeEntry(
         cls=ReplicateAgreement,
-        params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+        params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
         instance_id="qc-SE-fin",
         enabled=True,
     )])

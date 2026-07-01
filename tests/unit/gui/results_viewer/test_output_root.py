@@ -13,6 +13,7 @@ from pathlib import Path
 import polars as pl
 
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.schema import METADATA
 
 
 def _seed_standalone_bundle(base: Path) -> None:
@@ -21,7 +22,7 @@ def _seed_standalone_bundle(base: Path) -> None:
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1", "plate1"],
-            "Metadata_ImageFile": ["img001", "img001"],
+            str(METADATA.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
         }
     )

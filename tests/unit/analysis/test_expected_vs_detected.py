@@ -10,12 +10,13 @@ import plotly.graph_objects as go
 import pytest
 
 from phenotypic.analysis.qc import ExpectedVsDetectedCount
+from phenotypic.schema import METADATA
 
 
 def _make_96well_metadata(image_file: str = "plate1.png") -> pd.DataFrame:
     """Return a synthetic 96-well metadata frame with one row per well."""
     return pd.DataFrame({
-        "Metadata_ImageFile": [image_file] * 96,
+        str(METADATA.IMAGE_NAME): [image_file] * 96,
         "Object_Label": list(range(1, 97)),
     })
 
@@ -23,7 +24,7 @@ def _make_96well_metadata(image_file: str = "plate1.png") -> pd.DataFrame:
 def _make_measurements(image_file: str, n_detected: int) -> pd.DataFrame:
     """Return a synthetic measurement frame with ``n_detected`` rows."""
     return pd.DataFrame({
-        "Metadata_ImageFile": [image_file] * n_detected,
+        str(METADATA.IMAGE_NAME): [image_file] * n_detected,
         "Object_Label": list(range(1, n_detected + 1)),
         "Size_Area": np.linspace(100.0, 200.0, n_detected),
     })
@@ -36,7 +37,7 @@ class TestMetricCalculation:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 96)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -50,7 +51,7 @@ class TestMetricCalculation:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 95)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -65,7 +66,7 @@ class TestMetricCalculation:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 90)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -79,7 +80,7 @@ class TestMetricCalculation:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 80)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -93,7 +94,7 @@ class TestMetricCalculation:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 100)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -111,7 +112,7 @@ class TestUnmatchedGroups:
         metadata = _make_96well_metadata("plate1.png")
         measurements = _make_measurements("plate2.png", 10)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -127,7 +128,7 @@ class TestUnmatchedGroups:
         first = _make_measurements("plate2.png", 5)
         second = _make_measurements("plate3.png", 8)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         chk.analyze(first)
@@ -142,7 +143,7 @@ class TestMetadataValidation:
 
     def test_metadata_keyerror_on_missing_groupby_column(self) -> None:
         metadata = pd.DataFrame({
-            "Metadata_ImageFile": ["plate1.png"],
+            str(METADATA.IMAGE_NAME): ["plate1.png"],
             "Object_Label": [1],
         })
 
@@ -157,7 +158,7 @@ class TestMetadataValidation:
         metadata.to_csv(csv_path, index=False)
 
         chk = ExpectedVsDetectedCount(
-            metadata=str(csv_path), groupby=["Metadata_ImageFile"]
+            metadata=str(csv_path), groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         # ``metadata`` echoes the path verbatim; the resolved frame is on
@@ -165,7 +166,7 @@ class TestMetadataValidation:
         assert chk.metadata == str(csv_path)
         assert isinstance(chk._metadata, pd.DataFrame)
         assert len(chk._metadata) == 96
-        assert "Metadata_ImageFile" in chk._metadata.columns
+        assert str(METADATA.IMAGE_NAME) in chk._metadata.columns
 
     def test_metadata_accepts_pathlib_path(self, tmp_path) -> None:
         metadata = _make_96well_metadata()
@@ -173,7 +174,7 @@ class TestMetadataValidation:
         metadata.to_csv(csv_path, index=False)
 
         chk = ExpectedVsDetectedCount(
-            metadata=csv_path, groupby=["Metadata_ImageFile"]
+            metadata=csv_path, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         # A pathlib.Path is normalized to a plain str for round-tripping.
@@ -185,7 +186,7 @@ class TestMetadataValidation:
         with pytest.raises(FileNotFoundError):
             ExpectedVsDetectedCount(
                 metadata=str(tmp_path / "does_not_exist.csv"),
-                groupby=["Metadata_ImageFile"],
+                groupby=[str(METADATA.IMAGE_NAME)],
             )
 
 
@@ -196,7 +197,7 @@ class TestEmittedColumns:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 80)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         result = chk.analyze(measurements)
@@ -215,7 +216,7 @@ class TestEmittedColumns:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 80)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         chk.analyze(measurements)
@@ -236,7 +237,7 @@ class TestDash:
         metadata = _make_96well_metadata()
         measurements = _make_measurements("plate1.png", 96)
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
         chk.analyze(measurements)
 
@@ -248,7 +249,7 @@ class TestDash:
     def test_dash_raises_before_analyze(self) -> None:
         metadata = _make_96well_metadata()
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
 
         with pytest.raises(RuntimeError, match="analyze"):
@@ -270,7 +271,7 @@ class TestClassFlags:
     def test_class_attributes_match_spec(self) -> None:
         metadata = _make_96well_metadata()
         chk = ExpectedVsDetectedCount(
-            metadata=metadata, groupby=["Metadata_ImageFile"]
+            metadata=metadata, groupby=[str(METADATA.IMAGE_NAME)]
         )
         assert ExpectedVsDetectedCount.name == "Count"
         assert chk.warn_threshold == 0.05
@@ -280,7 +281,7 @@ class TestClassFlags:
         metadata = _make_96well_metadata()
         chk = ExpectedVsDetectedCount(
             metadata=metadata,
-            groupby=["Metadata_ImageFile"],
+            groupby=[str(METADATA.IMAGE_NAME)],
             warn_threshold=0.02,
             fail_threshold=0.20,
         )

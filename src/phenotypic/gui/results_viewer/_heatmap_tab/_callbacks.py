@@ -44,6 +44,7 @@ from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
     build_heatmap_figure,
 )
+from phenotypic.schema import METADATA
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
@@ -91,7 +92,7 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         Args:
             color: Selected color column. ``None`` short-circuits to an
                 empty-state figure.
-            image: Selected ``Metadata_ImageFile`` value. ``None``
+            image: Selected ``Metadata_ImageName`` value. ``None``
                 short-circuits to an empty-state figure.
             time_value: Slider value or ``None``. Compared as a float;
                 see :func:`._figure.build_heatmap_figure` for the
@@ -193,12 +194,12 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
                 column_names = list(frame.columns)
         color_options = [{"label": c, "value": c} for c in column_names]
 
-        # Image options: unique ``Metadata_ImageFile`` in the active
+        # Image options: unique ``Metadata_ImageName`` in the active
         # frame, or empty when the frame is missing.
         image_options: list[dict[str, str]] = []
-        if frame is not None and "Metadata_ImageFile" in frame.columns:
+        if frame is not None and str(METADATA.IMAGE_NAME) in frame.columns:
             unique = sorted(
-                v for v in frame["Metadata_ImageFile"].unique().to_list() if v is not None
+                v for v in frame[str(METADATA.IMAGE_NAME)].unique().to_list() if v is not None
             )
             image_options = [{"label": str(f), "value": str(f)} for f in unique]
 

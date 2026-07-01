@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Virtual source-path column. Named ``filename`` so callers that derive
-# ``Metadata_ImageFile`` from it (and drop it afterwards) are unchanged from
+# ``Metadata_ImageName`` from it (and drop it afterwards) are unchanged from
 # the previous DuckDB reader, which exposed the same column.
 SOURCE_PATH_COLUMN = "filename"
 
@@ -55,7 +55,7 @@ def aggregate_parquet_files(
             already carries that column.
         keep_filename: If ``True``, retain the ``filename`` source-path column
             in the output. Useful when callers need to derive per-file
-            metadata (e.g. ``Metadata_ImageFile``).
+            metadata (e.g. ``Metadata_ImageName``).
 
     Returns:
         A single Polars DataFrame with all measurements concatenated, or

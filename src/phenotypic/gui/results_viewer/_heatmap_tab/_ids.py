@@ -30,7 +30,7 @@ STORE_QC_AUGMENTED_REVISION = "store-qc-augmented-revision"
 HEATMAP_COLOR_PICKER_ID = "heatmap-color-picker"
 
 #: Dropdown selecting the source image whose colonies are pivoted.
-#: Restricted to unique ``Metadata_ImageFile`` values in the filtered
+#: Restricted to unique ``Metadata_ImageName`` values in the filtered
 #: frame.
 HEATMAP_IMAGE_PICKER_ID = "heatmap-image-picker"
 

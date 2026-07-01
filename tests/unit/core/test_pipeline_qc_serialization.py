@@ -27,13 +27,14 @@ from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureShape
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
+from phenotypic.schema import METADATA
 
 
 @pytest.fixture
 def layout_csv(tmp_path: Path) -> Path:
     """Write a 96-well layout CSV and return its path."""
     md = pd.DataFrame({
-        "Metadata_ImageFile": ["plate1.png"] * 96,
+        str(METADATA.IMAGE_NAME): ["plate1.png"] * 96,
         "Object_Label": list(range(1, 97)),
     })
     path = tmp_path / "layout.csv"
@@ -49,7 +50,7 @@ def _mixed_qc_pipeline(layout_csv: Path) -> ImagePipeline:
         qc=[
             QcRecipeEntry(
                 cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
                 instance_id="qc-SE-area0001",
                 enabled=True,
             ),
@@ -57,7 +58,7 @@ def _mixed_qc_pipeline(layout_csv: Path) -> ImagePipeline:
                 cls=ReplicateAgreement,
                 params={
                     "on": "Size_Perimeter",
-                    "groupby": ["Metadata_ImageFile"],
+                    "groupby": [str(METADATA.IMAGE_NAME)],
                 },
                 instance_id="qc-SE-perim002",
                 enabled=False,
@@ -66,7 +67,7 @@ def _mixed_qc_pipeline(layout_csv: Path) -> ImagePipeline:
                 cls=ExpectedVsDetectedCount,
                 params={
                     "metadata": str(layout_csv),
-                    "groupby": ["Metadata_ImageFile"],
+                    "groupby": [str(METADATA.IMAGE_NAME)],
                 },
                 instance_id="qc-Count-cnt003",
                 enabled=True,

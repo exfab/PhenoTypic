@@ -32,8 +32,9 @@ from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.schema import METADATA
 
-KEY_IMAGE_FILE = "Metadata_ImageFile"
+KEY_IMAGE_FILE = str(METADATA.IMAGE_NAME)
 KEY_OBJECT_LABEL = "Object_Label"
 
 
@@ -81,7 +82,7 @@ def _seed_qc_db(
 
     Runs a single :class:`MaxModifiedZScore` (a per-object,
     curation-supporting check) grouped by ``groupby`` over ``frame`` so the
-    member table's ``(Metadata_ImageFile, Object_Label)`` rows mirror a real
+    member table's ``(Metadata_ImageName, Object_Label)`` rows mirror a real
     QC artifact — exactly what the Error tab's verified-good derivation
     reads through the DuckDB catalog.
 

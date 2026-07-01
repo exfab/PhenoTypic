@@ -120,7 +120,7 @@ class OutputRoot:
             FileNotFoundError: If neither a deliverables bundle nor a run
                 output directory can be located at ``root`` (no
                 ``master_measurements.parquet``), or no datasets are found.
-            ValueError: If the master DataFrame lacks ``Metadata_ImageFile``
+            ValueError: If the master DataFrame lacks ``Metadata_ImageName``
                 (or the ``Metadata_ImageName`` fallback), or lacks
                 ``Metadata_Dataset`` with no ``results/`` to recover it from.
         """
@@ -254,7 +254,7 @@ class OutputRoot:
 
         Args:
             dataset: Dataset name (matches ``Metadata_Dataset``).
-            stem: Image stem (matches ``Metadata_ImageFile`` minus
+            stem: Image stem (matches ``Metadata_ImageName`` minus
                 its extension).
 
         Returns:
@@ -296,7 +296,7 @@ class OutputRoot:
 
         Args:
             df: Any DataFrame that has the ``Metadata_Dataset`` and
-                ``Metadata_ImageFile`` columns (typically a filtered
+                ``Metadata_ImageName`` columns (typically a filtered
                 slice of :attr:`master_df`).
 
         Returns:
@@ -413,7 +413,7 @@ def _ensure_required_columns(
     layout: BundleLayout,
     datasets: list[str],
 ) -> pl.DataFrame:
-    """Backfill ``Metadata_Dataset`` and ``Metadata_ImageFile`` if missing.
+    """Backfill ``Metadata_Dataset`` and ``Metadata_ImageName`` if missing.
 
     Real-world masters produced by older runs or by aggregators that
     skip ``include_dataset_column`` may lack one or both of these

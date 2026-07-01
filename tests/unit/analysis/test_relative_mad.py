@@ -14,6 +14,7 @@ import pytest
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.qc import RelativeMAD
+from phenotypic.schema import METADATA
 
 
 # --------------------------------------------------------------------------- #
@@ -247,7 +248,7 @@ class TestBehavioralEdges:
 
     def test_group_members_maps_keys_to_member_rows(self) -> None:
         data = pd.DataFrame({
-            "Metadata_ImageFile": ["plate1.png"] * 3,
+            str(METADATA.IMAGE_NAME): ["plate1.png"] * 3,
             "Object_Label": [1, 2, 3],
             "Plate": ["P1"] * 3,
             "Metadata_Time": [0, 0, 0],

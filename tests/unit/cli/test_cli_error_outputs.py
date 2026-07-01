@@ -19,6 +19,7 @@ import pytest
 
 import phenotypic.sdk_ as tools_
 from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
+from phenotypic.schema import METADATA
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -40,7 +41,7 @@ def _master_df(n_good: int = 30, n_err: int = 10) -> pl.DataFrame:
     area = np.concatenate([good_area, err_area])
     return pl.DataFrame(
         {
-            "Metadata_ImageFile": ["plateA"] * n,
+            str(METADATA.IMAGE_NAME): ["plateA"] * n,
             "Metadata_Dataset": ["ds1"] * n,
             "Object_Label": labels,
             "Bbox_CenterRR": [10.0 * i for i in labels],
@@ -58,14 +59,14 @@ def _write_labels_parquet(
     rows = master_df.filter(pl.col("Object_Label").is_in(error_labels))
     labels = pl.DataFrame(
         {
-            "Metadata_ImageFile": rows.get_column("Metadata_ImageFile").to_list(),
+            str(METADATA.IMAGE_NAME): rows.get_column(str(METADATA.IMAGE_NAME)).to_list(),
             "Object_Label": rows.get_column("Object_Label").to_list(),
             "Curation_Category": [category] * rows.height,
             "Bbox_CenterRR": rows.get_column("Bbox_CenterRR").to_list(),
             "Bbox_CenterCC": rows.get_column("Bbox_CenterCC").to_list(),
         },
         schema={
-            "Metadata_ImageFile": pl.String,
+            str(METADATA.IMAGE_NAME): pl.String,
             "Object_Label": pl.Int64,
             "Curation_Category": pl.String,
             "Bbox_CenterRR": pl.Float64,
@@ -123,14 +124,14 @@ def test_no_op_when_labels_store_empty(tmp_path: Path) -> None:
     master = _master_df()
     empty = pl.DataFrame(
         {
-            "Metadata_ImageFile": [],
+            str(METADATA.IMAGE_NAME): [],
             "Object_Label": [],
             "Curation_Category": [],
             "Bbox_CenterRR": [],
             "Bbox_CenterCC": [],
         },
         schema={
-            "Metadata_ImageFile": pl.String,
+            str(METADATA.IMAGE_NAME): pl.String,
             "Object_Label": pl.Int64,
             "Curation_Category": pl.String,
             "Bbox_CenterRR": pl.Float64,

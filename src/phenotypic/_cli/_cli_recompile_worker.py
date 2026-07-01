@@ -15,6 +15,7 @@ from ._cli_recompile_slurm_scripts import (
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
 )
+from phenotypic.schema import METADATA
 from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     DIR_RECOMPILE_SHARDS,
@@ -151,13 +152,13 @@ def _run_measurement_task(output_dir: Path, task: dict[str, Any]) -> None:
         raise RuntimeError("No valid measurements found for shard")
 
     if (
-        "Metadata_ImageFile" not in shard_df.columns
+        str(METADATA.IMAGE_NAME) not in shard_df.columns
         and "filename" in shard_df.columns
     ):
         shard_df = shard_df.with_columns(
             pl.col("filename")
             .str.extract(r"([^/\\]+)\.[^.]+$", 1)
-            .alias("Metadata_ImageFile")
+            .alias(str(METADATA.IMAGE_NAME))
         )
     if "filename" in shard_df.columns:
         shard_df = shard_df.drop("filename")
@@ -183,7 +184,7 @@ def _sort_measurement_shard(shard_df: Any) -> Any:
         column
         for column in (
             "Metadata_Dataset",
-            "Metadata_ImageFile",
+            str(METADATA.IMAGE_NAME),
             "Metadata_Well",
             "Object_Label",
         )

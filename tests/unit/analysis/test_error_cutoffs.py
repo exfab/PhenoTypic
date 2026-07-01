@@ -6,12 +6,13 @@ import pytest
 
 from phenotypic.analysis import ErrorCutoffFinder
 from phenotypic.analysis._error_cutoffs import RESULT_COLUMNS
+from phenotypic.schema import METADATA
 
 
 def _frame(values: dict[str, list[float]], n: int) -> pd.DataFrame:
     """Build a frame with the given measurement columns + filler metadata."""
     base = {
-        "Metadata_ImageFile": ["p.tif"] * n,
+        str(METADATA.IMAGE_NAME): ["p.tif"] * n,
         "Object_Label": list(range(1, n + 1)),
     }
     base.update(values)
@@ -34,7 +35,7 @@ def test_measurement_columns_detects_only_numeric_measurements():
     assert "Shape_Circularity" in cols
     assert "Intensity_MeanIntensity" in cols
     # Metadata / object-id / grid-context columns are excluded.
-    assert "Metadata_ImageFile" not in cols
+    assert str(METADATA.IMAGE_NAME) not in cols
     assert "Object_Label" not in cols
     assert "Grid_RowNum" not in cols
 
@@ -63,7 +64,7 @@ def _separating(n_good=40, n_err=20, seed=0):
     rng = np.random.default_rng(seed)
     good = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["p.tif"] * n_good,
+            str(METADATA.IMAGE_NAME): ["p.tif"] * n_good,
             "Object_Label": list(range(1, n_good + 1)),
             "Size_Area": rng.normal(0.0, 1.0, n_good),
             "Shape_Circularity": rng.normal(0.5, 0.05, n_good),
@@ -71,7 +72,7 @@ def _separating(n_good=40, n_err=20, seed=0):
     )
     error = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["p.tif"] * n_err,
+            str(METADATA.IMAGE_NAME): ["p.tif"] * n_err,
             "Object_Label": list(range(1, n_err + 1)),
             "Size_Area": rng.normal(4.0, 1.0, n_err),
             "Shape_Circularity": rng.normal(0.5, 0.05, n_err),

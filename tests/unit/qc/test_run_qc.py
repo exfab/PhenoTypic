@@ -30,6 +30,7 @@ from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
 from phenotypic.sdk_ import measurements_parquet_path, qc_duckdb_path
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.schema import METADATA
 
 
 def _measurements() -> pd.DataFrame:
@@ -42,7 +43,7 @@ def _measurements() -> pd.DataFrame:
         for i, area in enumerate(areas, start=1):
             rows.append(
                 {
-                    "Metadata_ImageFile": plate,
+                    str(METADATA.IMAGE_NAME): plate,
                     "Object_Label": i,
                     "Size_Area": float(area),
                 }
@@ -55,7 +56,7 @@ def layout_csv(tmp_path: Path) -> Path:
     """Layout where p1 expects 6 wells and p2 expects 8 (count mismatch)."""
     md = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["p1.png"] * 6 + ["p2.png"] * 8,
+            str(METADATA.IMAGE_NAME): ["p1.png"] * 6 + ["p2.png"] * 8,
             "Object_Label": list(range(1, 7)) + list(range(1, 9)),
         }
     )
@@ -69,7 +70,7 @@ def _pipeline(layout_csv: Path) -> ImagePipeline:
         qc=[
             QcRecipeEntry(
                 cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
                 instance_id="qc-SE-111",
                 enabled=True,
             ),
@@ -77,14 +78,14 @@ def _pipeline(layout_csv: Path) -> ImagePipeline:
                 cls=ExpectedVsDetectedCount,
                 params={
                     "metadata": str(layout_csv),
-                    "groupby": ["Metadata_ImageFile"],
+                    "groupby": [str(METADATA.IMAGE_NAME)],
                 },
                 instance_id="qc-Count-222",
                 enabled=True,
             ),
             QcRecipeEntry(
                 cls=ReplicateAgreement,
-                params={"on": "Size_Area", "groupby": ["Metadata_ImageFile"]},
+                params={"on": "Size_Area", "groupby": [str(METADATA.IMAGE_NAME)]},
                 instance_id="qc-SE-disabled",
                 enabled=False,
             ),
@@ -155,7 +156,7 @@ class TestCatalog:
             con.close()
         cls_name, name, groupby_cols, metric_col, status_col, curation = row
         assert cls_name == "ReplicateAgreement"
-        assert json.loads(groupby_cols) == ["Metadata_ImageFile"]
+        assert json.loads(groupby_cols) == [str(METADATA.IMAGE_NAME)]
         assert metric_col == ReplicateAgreement.metric_col()
         assert status_col == ReplicateAgreement.status_col()
         assert bool(curation) is True
@@ -175,7 +176,7 @@ class TestCatalog:
         params = json.loads(params_json)
         assert params  # non-empty
         assert params.get("on") == "Size_Area"
-        assert params.get("groupby") == ["Metadata_ImageFile"]
+        assert params.get("groupby") == [str(METADATA.IMAGE_NAME)]
 
 
 class TestPerModuleTables:
@@ -203,7 +204,7 @@ class TestPerModuleTables:
         # check's own QC_<name>_* columns.
         assert n_rows == 12
         assert any(c.startswith("QC_") and c.endswith("_Metric") for c in cols)
-        assert "Metadata_ImageFile" in cols
+        assert str(METADATA.IMAGE_NAME) in cols
 
     def test_summary_schema_and_worst_first_rank(
         self, tmp_path: Path, layout_csv: Path
@@ -232,7 +233,7 @@ class TestPerModuleTables:
         } <= set(scols)
         # Worst-first: rank 0 is the failing plate p2.
         worst = summ.row(0, named=True)
-        assert worst["Metadata_ImageFile"] == "p2.png"
+        assert worst[str(METADATA.IMAGE_NAME)] == "p2.png"
         assert worst["status"] == "fail"
         assert worst["flag"] is True
 
@@ -279,7 +280,7 @@ class TestTolerance:
                     cls=ReplicateAgreement,
                     params={
                         "on": "Size_Area",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-SE-ok",
                     enabled=True,
@@ -288,7 +289,7 @@ class TestTolerance:
                     cls=ExpectedVsDetectedCount,
                     params={
                         "metadata": "/nonexistent/layout.csv",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-Count-broken",
                     enabled=True,
@@ -328,7 +329,7 @@ class TestTolerance:
                     cls=ReplicateAgreement,
                     params={
                         "on": "Size_Area",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-SE-off",
                     enabled=False,
@@ -348,7 +349,7 @@ class TestTolerance:
                     cls=ReplicateAgreement,
                     params={
                         "on": "Size_Area",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-SE-off",
                     enabled=False,
@@ -367,7 +368,7 @@ class TestTolerance:
                     cls=ExpectedVsDetectedCount,
                     params={
                         "metadata": "/nonexistent/layout.csv",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-Count-broken",
                     enabled=True,
@@ -387,7 +388,7 @@ class TestTolerance:
                     cls=ExpectedVsDetectedCount,
                     params={
                         "metadata": "/nonexistent/layout.csv",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-Count-broken",
                     enabled=True,
@@ -409,18 +410,18 @@ class TestRankNaNLast:
         rows = [
             # fail group: scattered
             {
-                "Metadata_ImageFile": "bad.png",
+                str(METADATA.IMAGE_NAME): "bad.png",
                 "Object_Label": 1,
                 "Size_Area": 10.0,
             },
             {
-                "Metadata_ImageFile": "bad.png",
+                str(METADATA.IMAGE_NAME): "bad.png",
                 "Object_Label": 2,
                 "Size_Area": 1000.0,
             },
             # under-powered: single member -> NaN metric
             {
-                "Metadata_ImageFile": "thin.png",
+                str(METADATA.IMAGE_NAME): "thin.png",
                 "Object_Label": 1,
                 "Size_Area": 100.0,
             },
@@ -431,7 +432,7 @@ class TestRankNaNLast:
                     cls=ReplicateAgreement,
                     params={
                         "on": "Size_Area",
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                     },
                     instance_id="qc-SE-nan",
                     enabled=True,
@@ -449,8 +450,8 @@ class TestRankNaNLast:
         finally:
             con.close()
 
-        nan_row = summ[summ["Metadata_ImageFile"] == "thin.png"].iloc[0]
-        bad_row = summ[summ["Metadata_ImageFile"] == "bad.png"].iloc[0]
+        nan_row = summ[summ[str(METADATA.IMAGE_NAME)] == "thin.png"].iloc[0]
+        bad_row = summ[summ[str(METADATA.IMAGE_NAME)] == "bad.png"].iloc[0]
         assert np.isnan(nan_row["metric"])
         # NaN-metric group ranks after (higher rank number than) the finite one.
         assert nan_row["rank"] > bad_row["rank"]

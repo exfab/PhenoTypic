@@ -24,6 +24,7 @@ from playwright.sync_api import Page
 
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 # Tight DOM-poll budget on a fresh Werkzeug server: stochastically slow on GHA.
 pytestmark = pytest.mark.ci_flaky
@@ -45,7 +46,7 @@ def _timeline_master_df() -> pl.DataFrame:
             rows.append(
                 {
                     "Metadata_Dataset": _DATASET,
-                    "Metadata_ImageFile": f"p{plate}_t{img_no}",
+                    str(METADATA.IMAGE_NAME): f"p{plate}_t{img_no}",
                     "Metadata_ImageNumber": img_no,
                     "Metadata_PlateNum": str(plate),
                     "Object_Label": label,
@@ -68,7 +69,7 @@ def _no_time_master_df() -> pl.DataFrame:
             rows.append(
                 {
                     "Metadata_Dataset": _DATASET,
-                    "Metadata_ImageFile": f"p{plate}_t{rep}",
+                    str(METADATA.IMAGE_NAME): f"p{plate}_t{rep}",
                     # Categorical group only — String, no numeric/temporal dtype
                     # and no Metadata_Time-like name, so no eligible time axis.
                     "Metadata_PlateNum": str(plate),
@@ -160,7 +161,7 @@ def _open_timeline(page: Page, hub_url: str) -> None:
     page.wait_for_selector("a.nav-link", timeout=15_000)
     page.locator("a.nav-link", has_text="Timeline").first.click()
     page.wait_for_selector(".timeline-cell[data-src]", timeout=15_000)
-    # The alphabetical default Y is high-cardinality Metadata_ImageFile (one
+    # The alphabetical default Y is high-cardinality Metadata_ImageName (one
     # image per row → a sparse diagonal matrix). Pick the plate grouping so the
     # matrix is the dense 6-plate × 12-time-point grid the focus-navigate
     # assertions assume (X stays the only time option, Metadata_ImageNumber).

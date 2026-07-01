@@ -19,6 +19,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     progress_dir,
 )
+from phenotypic.schema import METADATA
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -400,16 +401,16 @@ def test_measurement_worker_writes_shard_with_dataset_and_image_file(
         / "shard_7.parquet"
     )
     assert shard.sort("Size_Area").select(
-        ["Metadata_Dataset", "Metadata_ImageFile", "Size_Area"]
+        ["Metadata_Dataset", str(METADATA.IMAGE_NAME), "Size_Area"]
     ).to_dicts() == [
         {
             "Metadata_Dataset": "plate_a",
-            "Metadata_ImageFile": "img1",
+            str(METADATA.IMAGE_NAME): "img1",
             "Size_Area": 10,
         },
         {
             "Metadata_Dataset": "plate_a",
-            "Metadata_ImageFile": "img2",
+            str(METADATA.IMAGE_NAME): "img2",
             "Size_Area": 20,
         },
     ]

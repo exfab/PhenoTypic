@@ -28,12 +28,12 @@ from typing import Literal
 
 import polars as pl
 
-from phenotypic.schema import CURATION, OBJECT, ErrorCategory
+from phenotypic.schema import CURATION, METADATA, OBJECT, ErrorCategory
 from phenotypic.sdk_ import BundleLayout
 
 logger = logging.getLogger(__name__)
 
-KEY_IMAGE_FILE: str = "Metadata_ImageFile"
+KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
 KEY_OBJECT_LABEL: str = str(OBJECT.LABEL)
 KEY_CATEGORY: str = str(CURATION.ERROR_CATEGORY)  # "Curation_Category"
 KEY_CENTER_RR: str = "Bbox_CenterRR"

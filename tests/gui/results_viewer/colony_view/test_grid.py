@@ -27,6 +27,7 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
 )
 
 from tests._output_layout import write_master
+from phenotypic.schema import METADATA
 
 
 # -------------------------------------------------------------------------
@@ -209,7 +210,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1"] * 4,
-            "Metadata_ImageFile": ["img-001", "img-001", "img-002", "img-002"],
+            str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
             "Bbox_MaxRR": [40, 45, 50, 55],
@@ -235,7 +236,7 @@ def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1"] * 2,
-            "Metadata_ImageFile": ["img-001", "img-002"],
+            str(METADATA.IMAGE_NAME): ["img-001", "img-002"],
             "Object_Label": [1, 1],
             "Bbox_MinRR": [0, 10],
             "Bbox_MaxRR": [40, 50],
@@ -340,7 +341,7 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate1"] * 4,
-            "Metadata_ImageFile": ["img-001", "img-001", "img-002", "img-002"],
+            str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
             "Bbox_MaxRR": [40, 45, 50, 55],

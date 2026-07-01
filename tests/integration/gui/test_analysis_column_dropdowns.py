@@ -19,6 +19,7 @@ from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
+from phenotypic.schema import METADATA
 
 
 def _walk(component: Any) -> Iterator[Any]:
@@ -42,7 +43,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d"] * 4,
-            "Metadata_ImageFile": ["a", "b", "c", "d"],
+            str(METADATA.IMAGE_NAME): ["a", "b", "c", "d"],
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],
@@ -63,7 +64,7 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d"] * 4,
-            "Metadata_ImageFile": ["a", "b", "c", "d"],
+            str(METADATA.IMAGE_NAME): ["a", "b", "c", "d"],
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],

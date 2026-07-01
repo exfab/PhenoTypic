@@ -23,6 +23,7 @@ import polars as pl
 import pytest
 
 from phenotypic.sdk_ import analysis_html_path, dashboard_html_path, progress_dir
+from phenotypic.schema import METADATA
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -339,7 +340,7 @@ class TestAnalysisData:
         df = pd.DataFrame(
             {
                 "Metadata_Dataset": ["plate1"] * 5,
-                "Metadata_ImageFile": [f"img{i:03d}" for i in range(5)],
+                str(METADATA.IMAGE_NAME): [f"img{i:03d}" for i in range(5)],
                 "Shape_Area": range(5),
             }
         )
@@ -352,7 +353,7 @@ class TestAnalysisData:
         meta_df = pd.DataFrame(
             {
                 "Metadata_Dataset": ["plate1"] * 5,
-                "Metadata_ImageFile": [f"img{i:03d}" for i in range(5)],
+                str(METADATA.IMAGE_NAME): [f"img{i:03d}" for i in range(5)],
                 "Metadata_Treatment": ["ctrl", "drugA", "drugB", "drugA", "ctrl"],
             }
         )

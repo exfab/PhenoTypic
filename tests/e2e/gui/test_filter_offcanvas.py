@@ -23,6 +23,7 @@ from playwright.sync_api import Page
 from playwright.sync_api import expect
 
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow. Locally these tests pass reliably; on GHA ubuntu-latest
@@ -59,7 +60,7 @@ def _build_master() -> pl.DataFrame:
                     rows.append(
                         {
                             "Metadata_Dataset": dataset,
-                            "Metadata_ImageFile": image,
+                            str(METADATA.IMAGE_NAME): image,
                             "Metadata_Time": 0.0,
                             "Object_Label": label,
                             "Grid_RowNum": r,

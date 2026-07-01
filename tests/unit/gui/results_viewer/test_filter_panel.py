@@ -18,6 +18,7 @@ from phenotypic.gui.results_viewer._filter_state import (
     METHOD_IS_ANY_OF,
     METHOD_RANGE,
 )
+from phenotypic.schema import METADATA
 
 
 def test_blank_row_has_all_keys_and_defaults() -> None:
@@ -119,7 +120,7 @@ def test_range_method_renders_min_max_inputs() -> None:
 
 def test_contains_method_renders_text_controls() -> None:
     row = _normalise_spec(
-        [{"id": "r1", "column": "Metadata_ImageFile", "method": METHOD_CONTAINS}]
+        [{"id": "r1", "column": str(METADATA.IMAGE_NAME), "method": METHOD_CONTAINS}]
     )[0]
     node = _render_filter_row("r1", row, [], is_numeric=False)
     ids_present = _type_ids(node)
@@ -189,7 +190,7 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     df = pl.DataFrame(
         {
             "Metadata_Dataset": ["d1", "d1"],
-            "Metadata_ImageFile": ["a", "b"],
+            str(METADATA.IMAGE_NAME): ["a", "b"],
             "Size_Area": [1.0, 2.0],
         }
     )

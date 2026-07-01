@@ -25,6 +25,7 @@ from phenotypic.sdk_ import measurements_parquet_path, pipeline_json_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +52,7 @@ def _seed_analysis_output(sandbox: Path) -> Path:
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
                 rows.append({
                     "Metadata_Dataset": "ds1",
-                    "Metadata_ImageFile": f"{strain}_t{t}",
+                    str(METADATA.IMAGE_NAME): f"{strain}_t{t}",
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,

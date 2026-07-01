@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 
 from phenotypic.analysis.qc import ICC
+from phenotypic.schema import METADATA
 
 
 # --------------------------------------------------------------------------- #
@@ -36,7 +37,7 @@ def _make_group(matrix: np.ndarray, plate: str = "P1") -> pd.DataFrame:
         for r in range(n_raters):
             rows.append({
                 "Plate": plate,
-                "Metadata_ImageFile": f"{plate}_t{s}.png",
+                str(METADATA.IMAGE_NAME): f"{plate}_t{s}.png",
                 "Object_Label": s * n_raters + r + 1,
                 "Metadata_Time": s,
                 "Metadata_Replicate": r + 1,
