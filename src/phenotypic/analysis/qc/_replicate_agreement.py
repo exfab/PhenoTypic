@@ -18,8 +18,10 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.schema import CULTURE_METADATA, QUALITY_SE
 from phenotypic.sdk_ import ColumnRef
-from phenotypic.schema import QUALITY_SE
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class ReplicateAgreement(QualityCheck):
@@ -134,7 +136,7 @@ class ReplicateAgreement(QualityCheck):
     warn_threshold: float = 0.10
     fail_threshold: float = 0.20
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     min_replicates: int = 2
     eps: float = 1e-9
 

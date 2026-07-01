@@ -40,14 +40,14 @@ if TYPE_CHECKING:
 
 import polars as pl
 
-from phenotypic.schema import METADATA, OBJECT
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT
 from phenotypic.sdk_ import measurements_csv_path, measurements_parquet_path
 
 logger = logging.getLogger(__name__)
 
 #: Column name that identifies the dataset (plate / condition group) a colony
 #: belongs to. Maps to the ``Metadata_Dataset`` column written by the CLI.
-KEY_DATASET: str = "Metadata_Dataset"
+KEY_DATASET: str = str(EXPERIMENT_METADATA.DATASET)
 
 #: Column name that identifies the source image of a colony.
 KEY_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)

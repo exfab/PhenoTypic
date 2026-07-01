@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
@@ -164,7 +165,11 @@ function renderScatterPlot() {
 
   var defaultX = numCols.find(function(c) { return c.indexOf('Area') >= 0; }) || numCols[0];
   var defaultY = numCols.find(function(c) { return c.indexOf('MeanIntensity') >= 0 || c.indexOf('Intensity') >= 0; }) || numCols[1];
-  var defaultColor = catCols.find(function(c) { return c === 'Metadata_Dataset'; }) || '';
+"""
+            + "  var defaultColor = catCols.find(function(c) { return c === '"
+            + str(EXPERIMENT_METADATA.DATASET)
+            + "'; }) || '';\n"
+            + """\
 
   var html = '';
   if (sampled) {

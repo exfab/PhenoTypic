@@ -25,8 +25,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_MAD
+from phenotypic.schema import CULTURE_METADATA, QUALITY_MAD
 from phenotypic.sdk_ import ColumnRef
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class RelativeMAD(QualityCheck):
@@ -146,7 +148,7 @@ class RelativeMAD(QualityCheck):
     warn_threshold: float = 0.10
     fail_threshold: float = 0.20
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     min_replicates: int = 2
     eps: float = 1e-9
 

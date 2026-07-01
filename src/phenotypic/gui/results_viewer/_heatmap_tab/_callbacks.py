@@ -44,7 +44,9 @@ from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
     build_heatmap_figure,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import CULTURE_METADATA, METADATA
+
+_TIME_COL: str = str(CULTURE_METADATA.TIME)
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
@@ -365,10 +367,10 @@ def _build_time_slider_state(
     empty: tuple[
         dict[float, str] | dict[str, str], float, float, float | None, dict[str, str], str
     ] = ({}, 0.0, 1.0, None, _TIME_WRAPPER_HIDDEN, "")
-    if frame is None or "Metadata_Time" not in frame.columns:
+    if frame is None or _TIME_COL not in frame.columns:
         return empty
 
-    raw = frame["Metadata_Time"].to_list()
+    raw = frame[_TIME_COL].to_list()
     coerced = pd.to_numeric(pd.Series(raw), errors="coerce")
     numeric = coerced.dropna()
     if numeric.empty:

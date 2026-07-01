@@ -24,8 +24,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation, modified_z_scores
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_ZMAX
+from phenotypic.schema import CULTURE_METADATA, QUALITY_ZMAX
 from phenotypic.sdk_ import ColumnRef
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class MaxModifiedZScore(QualityCheck):
@@ -129,7 +131,7 @@ class MaxModifiedZScore(QualityCheck):
     warn_threshold: float = 3.5
     fail_threshold: float = 5.0
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     min_replicates: int = 2
 
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:

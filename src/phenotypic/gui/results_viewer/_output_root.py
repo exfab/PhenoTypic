@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
+# TODO(B-flip): _IMAGENAME_COL is the legacy master shim after the category flip; keep literal.
 _IMAGENAME_COL = "Metadata_ImageName"
 
 
@@ -457,7 +458,7 @@ def _ensure_required_columns(
 
     if layout.results_dir is None:
         raise ValueError(
-            "Master measurements parquet is missing column 'Metadata_Dataset' and "
+            f"Master measurements parquet is missing column {KEY_DATASET!r} and "
             "this is a standalone deliverables bundle (no results/ to recover it "
             "from). Recompile the run with the current version: "
             "`python -m phenotypic --mode recompile --output <dir>`."

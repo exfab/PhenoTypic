@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field, model_validator
 
-from phenotypic.schema import METADATA, OBJECT, QUALITY_CHECK
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT, QUALITY_CHECK
 
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer
@@ -401,7 +401,7 @@ class QualityCheck(SetAnalyzer, ABC):
         qc_cols = [c for c in df.columns if c.startswith(f"QC_{self.name}_")]
         context = [
             c
-            for c in ("Metadata_Dataset", getattr(self, "time_label", None))
+            for c in (str(EXPERIMENT_METADATA.DATASET), getattr(self, "time_label", None))
             if c and c in df.columns
         ]
         keep: list[str] = []

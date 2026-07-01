@@ -180,6 +180,7 @@ from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
 )
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     dataset_overlays_dir,
@@ -200,6 +201,10 @@ from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 # Set up logger
 logger = logging.getLogger(__name__)
+
+# Resolved at import time so Click `help=` strings and echo messages track the
+# schema enum rather than hard-coding the column name literal.
+_DATASET_COL: str = str(EXPERIMENT_METADATA.DATASET)
 
 
 def setup_logging(debug: bool = False):
@@ -729,7 +734,7 @@ def _print_process_only_dry_run_plan(
     "--no-dataset-column",
     "no_dataset_column",
     is_flag=True,
-    help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
+    help=f"Exclude {_DATASET_COL!r} column from master_measurements.csv (included by default)",
 )
 @click.option(
     "--dry-run",

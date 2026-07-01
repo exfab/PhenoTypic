@@ -36,7 +36,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from phenotypic.gui._design import COLOR_MUTED, OI_VERMILION
-from phenotypic.schema import METADATA
+from phenotypic.schema import CULTURE_METADATA, METADATA
 from phenotypic.sdk_.viz.figures import SEQUENTIAL_COLORSCALE, apply_theme
 
 from .._filtered_state import KEY_OBJECT_LABEL
@@ -68,7 +68,7 @@ _REMOVED_MARKER_MAX: float = 14.0
 # (imported above as :data:`KEY_OBJECT_LABEL`) so it can never drift from
 # the curation layer.
 _META_IMAGE_FILE: str = str(METADATA.IMAGE_NAME)
-_META_TIME: str = "Metadata_Time"
+_META_TIME: str = str(CULTURE_METADATA.TIME)
 
 
 def build_heatmap_figure(

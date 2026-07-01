@@ -31,8 +31,12 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_ICC
+from phenotypic.schema import CULTURE_METADATA, QUALITY_ICC
 from phenotypic.sdk_ import ColumnRef
+
+# Module-level defaults for pydantic field annotations (cannot call
+# functions in annotated defaults; resolved once at import time).
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class ICC(QualityCheck):
@@ -167,7 +171,7 @@ class ICC(QualityCheck):
     warn_threshold: float = 0.75
     fail_threshold: float = 0.50
 
-    subject_label: ColumnRef = "Metadata_Time"
+    subject_label: ColumnRef = _TIME
     rater_label: ColumnRef = "Metadata_Replicate"
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:

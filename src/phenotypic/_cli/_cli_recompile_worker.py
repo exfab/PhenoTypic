@@ -15,7 +15,7 @@ from ._cli_recompile_slurm_scripts import (
     TASK_MEASUREMENTS,
     TASK_OVERLAY,
 )
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, SAMPLE_METADATA
 from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
     DIR_RECOMPILE_SHARDS,
@@ -183,9 +183,9 @@ def _sort_measurement_shard(shard_df: Any) -> Any:
     sort_columns = [
         column
         for column in (
-            "Metadata_Dataset",
+            str(EXPERIMENT_METADATA.DATASET),
             str(METADATA.IMAGE_NAME),
-            "Metadata_Well",
+            str(SAMPLE_METADATA.SOURCE_WELL),
             "Object_Label",
         )
         if column in shard_df.columns

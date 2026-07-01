@@ -9,9 +9,12 @@ import pandas as pd
 from joblib import Parallel, delayed
 from pydantic import PrivateAttr, field_validator
 
+from phenotypic.schema import CULTURE_METADATA
 from phenotypic.sdk_ import ColumnRef
 
 from ._set_analyzer import SetAnalyzer
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class EdgeCorrection(SetAnalyzer, ABC):
@@ -33,7 +36,7 @@ class EdgeCorrection(SetAnalyzer, ABC):
             diagonals).
     """
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     nrows: int = 8
     ncols: int = 12
     connectivity: int = 4

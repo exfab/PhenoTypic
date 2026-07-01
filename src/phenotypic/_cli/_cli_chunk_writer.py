@@ -28,7 +28,7 @@ import polars as pl
 from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write, join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
@@ -115,7 +115,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
     manifest_path = progress_dir / CHUNK_MANIFEST_JSON
     manifest = _read_json(manifest_path, default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0})
-    datasets_in_chunk = chunk_df["Metadata_Dataset"].unique().to_list()
+    datasets_in_chunk = chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
     manifest[ChunkManifestKey.CHUNKS].append(
         {
             ChunkManifestKey.NAME: chunk_name,
@@ -167,7 +167,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
         _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
 
-    for ds_name, ds_df in chunk_df.group_by("Metadata_Dataset"):
+    for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT_METADATA.DATASET)):
         _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
 
     logger.info(
@@ -263,10 +263,10 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
         try:
             df = lf.collect()
             df = _attach_image_identity(df, pq_path.stem)
-            if "Metadata_Dataset" not in df.columns:
+            if str(EXPERIMENT_METADATA.DATASET) not in df.columns:
                 dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
-                    0, pl.lit(dataset_name).alias("Metadata_Dataset")
+                    0, pl.lit(dataset_name).alias(str(EXPERIMENT_METADATA.DATASET))
                 )
             frames.append(df)
         except Exception as exc:

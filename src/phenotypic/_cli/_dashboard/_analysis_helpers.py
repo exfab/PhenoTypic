@@ -16,6 +16,7 @@ from typing import Any, Dict, List
 
 import polars as pl
 
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import metadata_category_prefixes
 
 from .._cli_output_manager import _atomic_write
@@ -26,7 +27,7 @@ from .._cli_output_manager import _atomic_write
 SCATTER_PREFIX_PRIORITY = (*metadata_category_prefixes(), "Grid_", "Shape_", "Intensity_", "Color_")
 
 # Column used to identify datasets throughout analysis plugins.
-DATASET_COL = "Metadata_Dataset"
+DATASET_COL = str(EXPERIMENT_METADATA.DATASET)
 
 
 # ---------------------------------------------------------------------------

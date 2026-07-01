@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List
 
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
@@ -210,7 +211,9 @@ class SummaryStatsPlugin(BaseAnalysisPlugin):
 
     def js(self) -> str:
         """Return JS including an ``initAnalysis_stats()`` function."""
-        return """\
+        # Python is the single source of truth for the dataset column name.
+        _ds_col = str(EXPERIMENT_METADATA.DATASET)
+        _js = """\
 var statsState = {
   selectedDatasets: null,
   filters: []
@@ -493,3 +496,4 @@ function updateFallbackStatsTable() {
   document.getElementById('stats-table-wrap').innerHTML = html;
 }
 """
+        return _js.replace("'Metadata_Dataset'", "'" + _ds_col + "'")

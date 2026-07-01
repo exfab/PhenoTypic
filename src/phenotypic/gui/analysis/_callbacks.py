@@ -29,6 +29,7 @@ from dash import (
     no_update,
 )
 
+from phenotypic.schema import CULTURE_METADATA, GENETIC_METADATA
 from phenotypic.sdk_ import ModulePath
 
 from phenotypic.gui._config import (
@@ -57,28 +58,28 @@ logger = logging.getLogger(__name__)
 # v1 placeholder defaults — users tune by editing pipeline.json until
 # per-section param forms ship in v2.
 _POST_DEFAULTS: dict[str, dict[str, Any]] = {
-    "PrependString": {"to_column": "Metadata_Strain", "string": "strain_"},
-    "AppendString": {"to_column": "Metadata_Strain", "string": "_x"},
+    "PrependString": {"to_column": str(GENETIC_METADATA.STRAIN), "string": "strain_"},
+    "AppendString": {"to_column": str(GENETIC_METADATA.STRAIN), "string": "_x"},
     "ExpandMetadata": {"on_column": KEY_IMAGE_FILE,
                        "split_pattern": "_",
                        "new_columns": ["A", "B"]},
     "MergeMetadata": {"metadata_path": "metadata.csv", "on": KEY_IMAGE_FILE},
 }
 _FILTER_DEFAULTS: dict[str, dict[str, Any]] = {
-    "TukeyOutlierRemover": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
+    "TukeyOutlierRemover": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)]},
 }
 _EDGE_DEFAULTS: dict[str, dict[str, Any]] = {
-    "EdgeCorrector": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
+    "EdgeCorrector": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)]},
 }
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
-    "LogGrowthModel": {"on": "Shape_Area", "groupby": ["Metadata_Strain"],
-                       "time_label": "Metadata_Time", "n_jobs": 1},
+    "LogGrowthModel": {"on": "Shape_Area", "groupby": [str(GENETIC_METADATA.STRAIN)],
+                       "time_label": str(CULTURE_METADATA.TIME), "n_jobs": 1},
     "LinearLagModel": {"on": "Shape_Area",
-                       "groupby": ["Metadata_Strain"],
-                       "time_label": "Metadata_Time"},
+                       "groupby": [str(GENETIC_METADATA.STRAIN)],
+                       "time_label": str(CULTURE_METADATA.TIME)},
     "LinearCapAndLagModel": {"on": "Shape_Area",
-                       "groupby": ["Metadata_Strain"],
-                       "time_label": "Metadata_Time"},
+                       "groupby": [str(GENETIC_METADATA.STRAIN)],
+                       "time_label": str(CULTURE_METADATA.TIME)},
 }
 
 

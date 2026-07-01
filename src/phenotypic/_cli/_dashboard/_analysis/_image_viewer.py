@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List
 
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_.register import register_analysis
 from phenotypic.sdk_ import overlays_dir, overlay_manifest_path
 
@@ -204,7 +204,7 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
             "      dataWrap.innerHTML = '" + no_data + "';\n"
             "      return;\n"
             "    }\n"
-            "    var dsCol = d['Metadata_Dataset'] || [];\n"
+            "    var dsCol = d['" + str(EXPERIMENT_METADATA.DATASET) + "'] || [];\n"
             "    var imgCol = d['" + str(METADATA.IMAGE_NAME) + "'] || [];\n"
             "    var matchIdx = [];\n"
             "    for (var i = 0; i < dsCol.length; i++) {\n"
@@ -216,7 +216,7 @@ class ImageViewerPlugin(BaseAnalysisPlugin):
             "      return;\n"
             "    }\n"
             "    var displayCols = cols.filter(function(c) {\n"
-            "      return c !== 'Metadata_Dataset'"
+            "      return c !== '" + str(EXPERIMENT_METADATA.DATASET) + "'"
             " && c !== '" + str(METADATA.IMAGE_NAME) + "'"
             " && c !== 'filename';\n"
             "    });\n"

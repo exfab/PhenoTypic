@@ -22,8 +22,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import tukey_fences, tukey_outlier_mask
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_TUKEY
+from phenotypic.schema import CULTURE_METADATA, QUALITY_TUKEY
 from phenotypic.sdk_ import ColumnRef
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class TukeyOutlierFraction(QualityCheck):
@@ -122,7 +124,7 @@ class TukeyOutlierFraction(QualityCheck):
     warn_threshold: float = 0.10
     fail_threshold: float = 0.25
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     k: float = 1.5
     min_replicates: int = 4
 

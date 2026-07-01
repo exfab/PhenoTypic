@@ -13,8 +13,10 @@ import scipy.optimize as optimize
 from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
 
+from phenotypic.schema import CULTURE_METADATA, MODEL_METRICS
 from phenotypic.sdk_ import ColumnRef
-from phenotypic.schema import MODEL_METRICS
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 from ._set_analyzer import SetAnalyzer
 
@@ -72,7 +74,7 @@ class ModelFitter(SetAnalyzer, ABC):
 
     _measurement_infoclass: ClassVar[type]
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     loss: LossKind = "huber"
     f_scale: float = Field(default=1.0, gt=0, allow_inf_nan=False)
     verbose: bool = False

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 from ._cli_types import Dataset
 from ._cli_parquet_agg import aggregate_parquet_files
-from phenotypic.schema import METADATA
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -1203,9 +1203,9 @@ class OutputManager:
             Path where measurements were saved
         """
         # Add dataset column if requested
-        if self.include_dataset_column and "Metadata_Dataset" not in measurements.columns:
+        if self.include_dataset_column and str(EXPERIMENT_METADATA.DATASET) not in measurements.columns:
             measurements = measurements.copy()
-            measurements.insert(0, "Metadata_Dataset", dataset_name)
+            measurements.insert(0, str(EXPERIMENT_METADATA.DATASET), dataset_name)
 
         output_path = self.get_output_path(dataset_name, "measurements", image_stem)
         parquet_df = pl.from_pandas(measurements)
