@@ -55,6 +55,7 @@ class READMEGenerator:
             self._generate_output_structure(datasets),
             self._generate_layers_section(),
             self._generate_measurements_section(),
+            self._generate_model_section(),
             self._generate_footer(),
         ]
 
@@ -252,6 +253,46 @@ No measurements configured in this pipeline."""
         except Exception as e:
             logger.warning(f"Could not generate table for {info_cls}: {e}")
             return ""
+
+    def _generate_model_section(self) -> str:
+        """Document the configured analysis model's metric-qualified columns.
+
+        Renders only when the pipeline has a ``model`` configured. Column
+        headers embed the fitted metric (``model.on``) so the README matches
+        the actual ``analysis.csv`` produced by this run.
+        """
+        from phenotypic.schema import MODEL_METRICS, qualified_header
+        from phenotypic.util._measurement_outputs import metric_token
+
+        model = self.pipeline.get_model()
+        if model is None:
+            return ""
+        info_cls = getattr(model, "_measurement_infoclass", None)
+        if info_cls is None:
+            return ""
+
+        token = metric_token(str(model.on))
+        model_name = type(model).__name__
+
+        lines = [
+            "## Models & Analysis",
+            "",
+            f"Model `{model_name}` fit on metric `{model.on}` "
+            "(output written to `deliverables/analysis.csv`).",
+            "",
+            "Output columns follow `<Model>_<metric>_<parameter>`; for this "
+            f"run `<metric>` = `{token}`.",
+            "",
+            "| Column | Description |",
+            "|--------|-------------|",
+        ]
+        for member in list(info_cls) + list(MODEL_METRICS):
+            header = qualified_header(member, token)
+            desc = (member.desc or "").replace("|", "\\|").replace("\n", " ")
+            if len(desc) > 200:
+                desc = desc[:197] + "..."
+            lines.append(f"| `{header}` | {desc} |")
+        return "\n".join(lines)
 
     def _generate_footer(self) -> str:
         """Generate README footer."""
