@@ -16,7 +16,13 @@ from phenotypic.analysis import LinearCapAndLagModel, LinearLagModel
 from phenotypic.schema import (
     LINEAR_LAG_MODEL,
     MODEL_METRICS,
+    qualified_header,
 )
+
+
+def _q(member):
+    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    return qualified_header(member, "Area")
 
 
 # ---------------------------------------------------------------------- #
@@ -166,7 +172,7 @@ class TestBasics:
             MODEL_METRICS.STATUS,
         ]
         for col in expected:
-            assert col in results.columns, f"missing column: {col}"
+            assert _q(col) in results.columns, f"missing column: {col}"
 
         # Schema *must not* carry smax/beta/mode — those moved to LinearCapAndLagModel.
         for forbidden in ("smax", "beta", "mode"):
@@ -182,7 +188,7 @@ class TestBasics:
             groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         results = m.analyze(noisy_fixture)
-        r2 = results[MODEL_METRICS.R2]
+        r2 = results[_q(MODEL_METRICS.R2)]
         assert r2.notna().all()
         assert np.isfinite(r2).all()
         assert (r2 <= 1.0 + 1e-6).all()
@@ -203,15 +209,15 @@ class TestParameterRecovery:
 
         # Strain1: v=5, s0=1, lam=2
         row1 = results.loc["Strain1"]
-        assert abs(row1[LINEAR_LAG_MODEL.v] - 5.0) < 0.3
-        assert abs(row1[LINEAR_LAG_MODEL.s0] - 1.0) < 0.5
-        assert abs(row1[LINEAR_LAG_MODEL.lam] - 2.0) < 0.5
+        assert abs(row1[_q(LINEAR_LAG_MODEL.v)] - 5.0) < 0.3
+        assert abs(row1[_q(LINEAR_LAG_MODEL.s0)] - 1.0) < 0.5
+        assert abs(row1[_q(LINEAR_LAG_MODEL.lam)] - 2.0) < 0.5
 
         # Strain2: v=3, s0=2, lam=3
         row2 = results.loc["Strain2"]
-        assert abs(row2[LINEAR_LAG_MODEL.v] - 3.0) < 0.3
-        assert abs(row2[LINEAR_LAG_MODEL.s0] - 2.0) < 0.5
-        assert abs(row2[LINEAR_LAG_MODEL.lam] - 3.0) < 0.5
+        assert abs(row2[_q(LINEAR_LAG_MODEL.v)] - 3.0) < 0.3
+        assert abs(row2[_q(LINEAR_LAG_MODEL.s0)] - 2.0) < 0.5
+        assert abs(row2[_q(LINEAR_LAG_MODEL.lam)] - 3.0) < 0.5
 
 
 # ---------------------------------------------------------------------- #
@@ -249,8 +255,8 @@ class TestWeighting:
         res_w = m_weighted.analyze(clean)
         res_u = m_unweighted.analyze(clean)
 
-        s0_w = float(res_w[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_u = float(res_u[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_w = float(res_w[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_u = float(res_u[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
         assert abs(s0_w - s0_u) > 1e-3
 
     def test_stderr_label_column_passed_through(self):
@@ -268,8 +274,8 @@ class TestWeighting:
             prune_saturated=False,
         )
         res = m.analyze(df)
-        assert np.isfinite(res[LINEAR_LAG_MODEL.v].iloc[0])
-        assert np.isfinite(res[LINEAR_LAG_MODEL.s0].iloc[0])
+        assert np.isfinite(res[_q(LINEAR_LAG_MODEL.v)].iloc[0])
+        assert np.isfinite(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
 
     def test_singleton_replicate_groups_fall_back_to_unweighted(self):
         """Singleton groups should not blow up — auto-SEM is NaN, fit
@@ -286,9 +292,9 @@ class TestWeighting:
             prune_saturated=False,
         )
         res = m.analyze(df)
-        v_fit = float(res[LINEAR_LAG_MODEL.v].iloc[0])
-        s0_fit = float(res[LINEAR_LAG_MODEL.s0].iloc[0])
-        lam_fit = float(res[LINEAR_LAG_MODEL.lam].iloc[0])
+        v_fit = float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0])
+        s0_fit = float(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        lam_fit = float(res[_q(LINEAR_LAG_MODEL.lam)].iloc[0])
         assert np.isfinite(v_fit)
         assert np.isfinite(s0_fit)
         assert np.isfinite(lam_fit)
@@ -523,8 +529,8 @@ class TestInoculumPrior:
             prune_saturated=False,
         )
 
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_yes = float(m_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_yes = float(m_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
 
         group_mean = float(df["Inoc_Size"].mean())
         assert abs(s0_yes - group_mean) < abs(s0_no - group_mean)
@@ -658,8 +664,8 @@ class TestInoculumPrior:
             groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_yes = float(m.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_yes = float(m.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
         assert abs(s0_yes - 0.5) < abs(s0_no - 0.5)
 
     def test_s0_prior_groupby_pools_across_fit_groups(self):
@@ -872,7 +878,7 @@ class TestDegenerateInput:
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert 0.0 <= float(res[LINEAR_LAG_MODEL.v].iloc[0]) <= 50.0
+        assert 0.0 <= float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0]) <= 50.0
 
     def test_nan_input_triggers_nan_row(self):
         t = np.linspace(0, 6, 15)
@@ -893,10 +899,10 @@ class TestDegenerateInput:
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.v].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.s0].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.lam].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.alpha].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.lam)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.alpha)].iloc[0]))
 
 
 # ---------------------------------------------------------------------- #

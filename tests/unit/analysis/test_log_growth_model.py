@@ -5,7 +5,12 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from phenotypic.analysis._log_growth_model import LogGrowthModel
-from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS
+from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS, qualified_header
+
+
+def _q(member):
+    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    return qualified_header(member, "Area")
 
 
 class TestLogGrowthModel:
@@ -140,25 +145,25 @@ class TestLogGrowthModel:
         ]
 
         for col in expected_columns:
-            assert col in results.columns
+            assert _q(col) in results.columns
 
         # Check that results are reasonable (not all NaN)
-        assert not results[LOG_GROWTH_MODEL.R_FIT].isna().all()
-        assert not results[LOG_GROWTH_MODEL.K_FIT].isna().all()
-        assert not results[LOG_GROWTH_MODEL.N0_FIT].isna().all()
+        assert not results[_q(LOG_GROWTH_MODEL.R_FIT)].isna().all()
+        assert not results[_q(LOG_GROWTH_MODEL.K_FIT)].isna().all()
+        assert not results[_q(LOG_GROWTH_MODEL.N0_FIT)].isna().all()
 
         # R^2 should be finite and at most 1.0 on the synthetic fixture
-        r2_values = results[MODEL_METRICS.R2]
+        r2_values = results[_q(MODEL_METRICS.R2)]
         assert r2_values.notna().all()
         assert np.isfinite(r2_values).all()
         assert (r2_values <= 1.0).all()
 
         # Check that growth rate is calculated correctly (r * K / 4)
-        r_values = results[LOG_GROWTH_MODEL.R_FIT]
-        k_values = results[LOG_GROWTH_MODEL.K_FIT]
+        r_values = results[_q(LOG_GROWTH_MODEL.R_FIT)]
+        k_values = results[_q(LOG_GROWTH_MODEL.K_FIT)]
         growth_rate_calc = (r_values*k_values)/4
         pd.testing.assert_series_equal(
-                results[LOG_GROWTH_MODEL.GROWTH_RATE], growth_rate_calc,
+                results[_q(LOG_GROWTH_MODEL.GROWTH_RATE)], growth_rate_calc,
                 check_names=False
         )
 
@@ -177,7 +182,7 @@ class TestLogGrowthModel:
         results = model.analyze(sample_data_with_kmax)
 
         # Check that K_max values match the specified column
-        assert (results[LOG_GROWTH_MODEL.K_MAX] == 1200).all()
+        assert (results[_q(LOG_GROWTH_MODEL.K_MAX)] == 1200).all()
 
     def test_parallel_processing(self, sample_data):
         """Test parallel processing functionality."""
@@ -373,9 +378,9 @@ class TestLogGrowthModel:
             assert not results.empty
 
             # Check that fitted parameters are reasonable
-            assert results[LOG_GROWTH_MODEL.R_FIT].notna().any()
-            assert results[LOG_GROWTH_MODEL.K_FIT].notna().any()
-            assert results[LOG_GROWTH_MODEL.N0_FIT].notna().any()
+            assert results[_q(LOG_GROWTH_MODEL.R_FIT)].notna().any()
+            assert results[_q(LOG_GROWTH_MODEL.K_FIT)].notna().any()
+            assert results[_q(LOG_GROWTH_MODEL.N0_FIT)].notna().any()
 
     def test_verbose_output(self, sample_data, capsys):
         """Test verbose output functionality."""
@@ -416,15 +421,15 @@ class TestLogGrowthModel:
         results = model.analyze(df)
 
         # Check that fitting succeeded (not NaN)
-        assert not np.isnan(results[LOG_GROWTH_MODEL.R_FIT].iloc[0])
-        assert not np.isnan(results[LOG_GROWTH_MODEL.K_FIT].iloc[0])
-        assert not np.isnan(results[LOG_GROWTH_MODEL.N0_FIT].iloc[0])
+        assert not np.isnan(results[_q(LOG_GROWTH_MODEL.R_FIT)].iloc[0])
+        assert not np.isnan(results[_q(LOG_GROWTH_MODEL.K_FIT)].iloc[0])
+        assert not np.isnan(results[_q(LOG_GROWTH_MODEL.N0_FIT)].iloc[0])
 
         # Check that fitted N0 is not below minimum bound (0)
-        assert results[LOG_GROWTH_MODEL.N0_FIT].iloc[0] >= 0
+        assert results[_q(LOG_GROWTH_MODEL.N0_FIT)].iloc[0] >= 0
 
         # Check that fitted r is within bounds
-        assert results[LOG_GROWTH_MODEL.R_FIT].iloc[0] >= 1e-5
+        assert results[_q(LOG_GROWTH_MODEL.R_FIT)].iloc[0] >= 1e-5
 
     def test_aggregation_functionality(self, sample_data):
         """Test different aggregation functions."""

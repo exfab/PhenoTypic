@@ -16,7 +16,13 @@ from phenotypic.analysis import LinearCapAndLagModel
 from phenotypic.schema import (
     LINEAR_CAP_AND_LAG_MODEL,
     MODEL_METRICS,
+    qualified_header,
 )
+
+
+def _q(member):
+    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    return qualified_header(member, "Area")
 
 
 # ---------------------------------------------------------------------- #
@@ -137,7 +143,7 @@ class TestBasics:
             MODEL_METRICS.STATUS,
         ]
         for col in expected:
-            assert col in results.columns, f"missing column: {col}"
+            assert _q(col) in results.columns, f"missing column: {col}"
 
     def test_no_pruning_attr(self):
         """LinearCapAndLagModel does not prune — saturation IS the model."""
@@ -164,14 +170,14 @@ class TestParameterRecovery:
         results = m.analyze(clean_fixture).set_index("MetadataGenetic_Strain")
 
         row1 = results.loc["Strain1"]
-        assert abs(row1[LINEAR_CAP_AND_LAG_MODEL.v] - 5.0) < 0.3
-        assert abs(row1[LINEAR_CAP_AND_LAG_MODEL.s0] - 1.0) < 0.5
-        assert abs(row1[LINEAR_CAP_AND_LAG_MODEL.lam] - 4.0) < 0.5
+        assert abs(row1[_q(LINEAR_CAP_AND_LAG_MODEL.v)] - 5.0) < 0.3
+        assert abs(row1[_q(LINEAR_CAP_AND_LAG_MODEL.s0)] - 1.0) < 0.5
+        assert abs(row1[_q(LINEAR_CAP_AND_LAG_MODEL.lam)] - 4.0) < 0.5
 
         row2 = results.loc["Strain2"]
-        assert abs(row2[LINEAR_CAP_AND_LAG_MODEL.v] - 3.0) < 0.3
-        assert abs(row2[LINEAR_CAP_AND_LAG_MODEL.s0] - 2.0) < 0.5
-        assert abs(row2[LINEAR_CAP_AND_LAG_MODEL.lam] - 6.0) < 0.5
+        assert abs(row2[_q(LINEAR_CAP_AND_LAG_MODEL.v)] - 3.0) < 0.3
+        assert abs(row2[_q(LINEAR_CAP_AND_LAG_MODEL.s0)] - 2.0) < 0.5
+        assert abs(row2[_q(LINEAR_CAP_AND_LAG_MODEL.lam)] - 6.0) < 0.5
 
 
 # ---------------------------------------------------------------------- #
@@ -184,8 +190,8 @@ class TestSmaxFallback:
             groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         results = m.analyze(clean_fixture).set_index("MetadataGenetic_Strain")
-        assert abs(results.loc["Strain1", LINEAR_CAP_AND_LAG_MODEL.smax] - 50.0) < 1.0
-        assert abs(results.loc["Strain2", LINEAR_CAP_AND_LAG_MODEL.smax] - 40.0) < 1.0
+        assert abs(results.loc["Strain1", _q(LINEAR_CAP_AND_LAG_MODEL.smax)] - 50.0) < 1.0
+        assert abs(results.loc["Strain2", _q(LINEAR_CAP_AND_LAG_MODEL.smax)] - 40.0) < 1.0
 
     def test_explicit_smax_overrides(self, clean_fixture):
         m = LinearCapAndLagModel(
@@ -194,7 +200,7 @@ class TestSmaxFallback:
             smax=100.0,
         )
         results = m.analyze(clean_fixture)
-        assert (results[LINEAR_CAP_AND_LAG_MODEL.smax] == 100.0).all()
+        assert (results[_q(LINEAR_CAP_AND_LAG_MODEL.smax)] == 100.0).all()
 
 
 # ---------------------------------------------------------------------- #
@@ -213,10 +219,10 @@ class TestModeDispatch:
             groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         res = m.analyze(df)
-        assert res[LINEAR_CAP_AND_LAG_MODEL.mode].iloc[0] == "fitted_beta"
-        beta_fit = float(res[LINEAR_CAP_AND_LAG_MODEL.beta].iloc[0])
+        assert res[_q(LINEAR_CAP_AND_LAG_MODEL.mode)].iloc[0] == "fitted_beta"
+        beta_fit = float(res[_q(LINEAR_CAP_AND_LAG_MODEL.beta)].iloc[0])
         assert 2.0 <= beta_fit <= 50.0
-        assert np.isfinite(float(res[LINEAR_CAP_AND_LAG_MODEL.smax].iloc[0]))
+        assert np.isfinite(float(res[_q(LINEAR_CAP_AND_LAG_MODEL.smax)].iloc[0]))
 
     def test_non_saturating_with_smax_uses_fixed_beta(self):
         """No shoulder + ``beta=None`` → ``fixed_beta`` at module default."""
@@ -232,9 +238,9 @@ class TestModeDispatch:
             smax=50.0,
         )
         res = m.analyze(df)
-        assert res[LINEAR_CAP_AND_LAG_MODEL.mode].iloc[0] == "fixed_beta"
-        assert float(res[LINEAR_CAP_AND_LAG_MODEL.smax].iloc[0]) == 50.0
-        assert float(res[LINEAR_CAP_AND_LAG_MODEL.beta].iloc[0]) == 10.0
+        assert res[_q(LINEAR_CAP_AND_LAG_MODEL.mode)].iloc[0] == "fixed_beta"
+        assert float(res[_q(LINEAR_CAP_AND_LAG_MODEL.smax)].iloc[0]) == 50.0
+        assert float(res[_q(LINEAR_CAP_AND_LAG_MODEL.beta)].iloc[0]) == 10.0
 
     def test_explicit_beta_forces_fixed_mode_even_with_shoulder(self):
         t = np.linspace(0, 20, 30)
@@ -249,8 +255,8 @@ class TestModeDispatch:
             beta=7.0,
         )
         res = m.analyze(df)
-        assert res[LINEAR_CAP_AND_LAG_MODEL.mode].iloc[0] == "fixed_beta"
-        assert float(res[LINEAR_CAP_AND_LAG_MODEL.beta].iloc[0]) == 7.0
+        assert res[_q(LINEAR_CAP_AND_LAG_MODEL.mode)].iloc[0] == "fixed_beta"
+        assert float(res[_q(LINEAR_CAP_AND_LAG_MODEL.beta)].iloc[0]) == 7.0
 
     def test_fitted_beta_recovers_distinct_ground_truth(self):
         t = np.linspace(0, 20, 40)
@@ -270,9 +276,9 @@ class TestModeDispatch:
         )
         res = m.analyze(df).set_index("MetadataGenetic_Strain")
         for strain in ("SharpKnee", "SoftKnee"):
-            assert res.loc[strain, LINEAR_CAP_AND_LAG_MODEL.mode] == "fitted_beta"
-        beta_sharp = float(res.loc["SharpKnee", LINEAR_CAP_AND_LAG_MODEL.beta])
-        beta_soft = float(res.loc["SoftKnee", LINEAR_CAP_AND_LAG_MODEL.beta])
+            assert res.loc[strain, _q(LINEAR_CAP_AND_LAG_MODEL.mode)] == "fitted_beta"
+        beta_sharp = float(res.loc["SharpKnee", _q(LINEAR_CAP_AND_LAG_MODEL.beta)])
+        beta_soft = float(res.loc["SoftKnee", _q(LINEAR_CAP_AND_LAG_MODEL.beta)])
         assert beta_sharp > beta_soft + 3.0
         assert abs(beta_soft - 4.0) < 3.0
 
@@ -400,6 +406,6 @@ class TestDegenerateInput:
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert np.isnan(float(res[LINEAR_CAP_AND_LAG_MODEL.v].iloc[0]))
-        assert pd.isna(res[LINEAR_CAP_AND_LAG_MODEL.beta].iloc[0])
-        assert pd.isna(res[LINEAR_CAP_AND_LAG_MODEL.mode].iloc[0])
+        assert np.isnan(float(res[_q(LINEAR_CAP_AND_LAG_MODEL.v)].iloc[0]))
+        assert pd.isna(res[_q(LINEAR_CAP_AND_LAG_MODEL.beta)].iloc[0])
+        assert pd.isna(res[_q(LINEAR_CAP_AND_LAG_MODEL.mode)].iloc[0])
