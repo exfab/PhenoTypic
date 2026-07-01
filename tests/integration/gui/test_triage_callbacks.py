@@ -48,7 +48,7 @@ def _master() -> pl.DataFrame:
     """Minimal 4-object master frame for two images."""
     return pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 4,
+            "MetadataExperiment_Dataset": ["d1"] * 4,
             str(METADATA.IMAGE_NAME): ["img-A", "img-A", "img-B", "img-B"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_CenterRR": [10.0, 20.0, 10.0, 20.0],

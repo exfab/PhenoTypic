@@ -90,7 +90,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     """Synthetic output dir with two replicate groups + a QC artifact."""
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 6,
+            "MetadataExperiment_Dataset": ["d1"] * 6,
             str(METADATA.IMAGE_NAME): ["img-1"] * 3 + ["img-2"] * 3,
             "Object_Label": [1, 2, 3, 1, 2, 3],
             "Bbox_CenterRR": [50] * 6,
@@ -228,7 +228,7 @@ def test_legacy_sidecar_is_migrated_into_pipeline(tmp_path: Path) -> None:
     # legacy sidecar carrying one.
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 2,
+            "MetadataExperiment_Dataset": ["d1"] * 2,
             str(METADATA.IMAGE_NAME): ["img-1", "img-1"],
             "Object_Label": [1, 2],
             "Bbox_CenterRR": [50, 50],

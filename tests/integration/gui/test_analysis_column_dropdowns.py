@@ -42,10 +42,10 @@ def output_root(tmp_path: Path) -> OutputRoot:
     """Build a CLI-shaped output root with a known measurements schema."""
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d"] * 4,
+            "MetadataExperiment_Dataset": ["d"] * 4,
             str(METADATA.IMAGE_NAME): ["a", "b", "c", "d"],
-            "Metadata_Strain": ["WT", "KO", "WT", "KO"],
-            "Metadata_Time": [0, 1, 2, 3],
+            "MetadataGenetic_Strain": ["WT", "KO", "WT", "KO"],
+            "MetadataCulture_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],
             "Shape_Area": [100.0, 200.0, 150.0, 250.0],
             "Intensity_MeanIntensity": [10.0, 20.0, 15.0, 25.0],
@@ -63,10 +63,10 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
     """Output root whose pipeline.json already configures a TukeyOutlierRemover filter."""
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d"] * 4,
+            "MetadataExperiment_Dataset": ["d"] * 4,
             str(METADATA.IMAGE_NAME): ["a", "b", "c", "d"],
-            "Metadata_Strain": ["WT", "KO", "WT", "KO"],
-            "Metadata_Time": [0, 1, 2, 3],
+            "MetadataGenetic_Strain": ["WT", "KO", "WT", "KO"],
+            "MetadataCulture_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],
             "Shape_Area": [100.0, 200.0, 150.0, 250.0],
         }
@@ -79,14 +79,14 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
     pipeline.set_filters({
         "tukey": TukeyOutlierRemover(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["MetadataGenetic_Strain"],
         )
     })
     pipeline.set_model(
         LogGrowthModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
+            groupby=["MetadataGenetic_Strain"],
+            time_label="MetadataCulture_Time",
         )
     )
     write_pipeline_json(tmp_path, pipeline)
@@ -102,7 +102,7 @@ class TestSchemaWiredIntoApp:
         assert schema is not None
         cols = schema.columns_for("measurements")
         assert "Shape_Area" in cols
-        assert "Metadata_Strain" in cols
+        assert "MetadataGenetic_Strain" in cols
 
 
 class TestColumnDropdownsRender:
@@ -112,7 +112,7 @@ class TestColumnDropdownsRender:
         app = create_app(output_root=output_root_with_filter)
         # Find the TukeyOutlierRemover's `on` widget and verify it's a dbc.Select
         # (dropdown) populated from measurements.parquet — not a text input.
-        cols = {"Metadata_Strain", "Metadata_Time", "Shape_Area"}
+        cols = {"MetadataGenetic_Strain", "MetadataCulture_Time", "Shape_Area"}
         seen_on_dropdown = False
         for component in _walk(app.layout):
             cid = getattr(component, "id", None)
@@ -166,6 +166,6 @@ class TestColumnDropdownsRender:
                 and cid.get("prefix", "").startswith("analysis-filter")
             ):
                 assert component.multi is True
-                assert component.value == ["Metadata_Strain"]
+                assert component.value == ["MetadataGenetic_Strain"]
                 return
         pytest.fail("groupby did not render as multi-dropdown")

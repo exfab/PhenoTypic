@@ -34,7 +34,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
     """A minimal CLI output dir that ``OutputRoot.discover`` accepts."""
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 3,
+            "MetadataExperiment_Dataset": ["d1"] * 3,
             str(METADATA.IMAGE_NAME): ["img-1"] * 3,
             "Object_Label": [1, 2, 3],
             "Size_Area": [100.0, 101.0, 102.0],

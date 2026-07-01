@@ -34,9 +34,9 @@ def _make_minimal_output(root: Path, dataset: str = "d1") -> None:
         root,
         pl.DataFrame(
             {
-                "Metadata_Dataset": [dataset, dataset],
+                "MetadataExperiment_Dataset": [dataset, dataset],
                 str(METADATA.IMAGE_NAME): ["a", "b"],
-                "Metadata_Strain": ["s1", "s2"],
+                "MetadataGenetic_Strain": ["s1", "s2"],
                 "Object_Label": [1, 1],
                 "Size_Area": [100.0, 200.0],
             }

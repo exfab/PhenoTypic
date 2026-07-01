@@ -30,7 +30,7 @@ def _seed_output(tmp_path: Path) -> Path:
     out.mkdir(parents=True)
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["ds1", "ds1"],
+            "MetadataExperiment_Dataset": ["ds1", "ds1"],
             str(METADATA.IMAGE_NAME): ["a.tif", "b.tif"],
             "Object_Label": [1, 2],
             "Size_Area": [100.0, 200.0],
