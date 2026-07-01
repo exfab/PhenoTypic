@@ -1168,6 +1168,30 @@ Expected: prints `OK:` with qualified headers; no assertion error.
 
 ---
 
+## Execution / orchestration (cluster-and-isolate)
+
+Dependency DAG (→ = must finish before): `T1,T2 → T3`; `T1,T2 → T4 → T5`;
+`T1,T2 → T6`; `T1 → T7`. Shared files: `T2`+`T3` share
+`util/_measurement_outputs.py`; `T1`+`T7` share the three `schema/_*_model.py` files.
+
+Clusters (one subagent each; gate before the next):
+
+1. **CL-Foundation** = Tasks 1 + 2 — schema header codec + `metric_token`. Keystone,
+   opus/high. Gate: `uv run pytest tests/unit/schema tests/unit/util/test_metric_token.py`.
+   Surface any Enum-MRO conflict (the design uses a `header_scheme()` classmethod +
+   module helpers, NOT a mixin).
+2. **CL-Recognition** = Task 3 — scheme-agnostic recognition. Keystone, opus/high.
+   After Foundation (shares `_measurement_outputs.py`).
+3. **CL-Fitter** = Task 4 — ModelFitter boundary rename. Seam, opus/high. Isolated gate.
+4. **CL-Readme** = Task 6. Leaf, sonnet/med. After Foundation.
+5. **CL-Docs** = Task 7. Sweep, sonnet/med. After Foundation.
+6. **CL-FitterTests** = Task 5. Sweep, sonnet/med. After CL-Fitter.
+
+CL-Recognition / CL-Fitter / CL-Readme / CL-Docs are file-disjoint and may run in
+parallel worktrees; default here is sequential for clean review gates. Gates: light
+(diff + tests) after each cluster; deep code-review (opus) over the combined
+Foundation+Recognition+Fitter diff; simplify + regression sweep at the end.
+
 ## Self-review notes (author)
 
 - **Spec coverage:** §4 recognition API → Task 1; §5 `metric_token` → Task 2; §6 boundary rename → Task 4; §7 generic recognition (incl. texture, per locked decision 4) → Task 3; §8 docs → Task 7; §9 README → Task 6; §10 tests → Tasks 1–7 (guardrail in Task 1, category enumeration in Task 2, plotting round-trip in Task 4, texture+qualified recognition in Task 3, model-test updates in Task 5, README in Task 6). §11 blast radius all covered. §12 non-goals respected (no `filters` docs, no read alias, no member changes).
