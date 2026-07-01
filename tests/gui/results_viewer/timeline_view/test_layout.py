@@ -48,7 +48,7 @@ def _walk_classnames(component) -> set[str]:
 def _root(tmp_path: Path, *, with_time: bool) -> OutputRoot:
     cli_out = tmp_path / "out"
     cols = {
-        "Metadata_Dataset": ["ds", "ds"],
+        "MetadataExperiment_Dataset": ["ds", "ds"],
         str(METADATA.IMAGE_NAME): ["a", "b"],
         "Metadata_PlateNum": ["1", "2"],
         "Object_Label": [1, 2],

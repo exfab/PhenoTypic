@@ -141,7 +141,7 @@ def client_and_root(tmp_path: Path):
     # master_measurements.parquet under deliverables/.
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": [dataset],
+            "MetadataExperiment_Dataset": [dataset],
             str(METADATA.IMAGE_NAME): [stem],
             "Object_Label": [1],
         }
@@ -307,7 +307,7 @@ def test_manifest_missing_hdf_layer_falls_back_to_overlay(
     dataset, stem = "d1", "missing-layer"
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": [dataset],
+            "MetadataExperiment_Dataset": [dataset],
             str(METADATA.IMAGE_NAME): [stem],
             "Object_Label": [1],
         }

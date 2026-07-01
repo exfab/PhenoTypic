@@ -28,7 +28,7 @@ def _output_root(tmp_path: Path) -> OutputRoot:
     cli_out = tmp_path / "out"
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["ds", "ds"],
+            "MetadataExperiment_Dataset": ["ds", "ds"],
             str(METADATA.IMAGE_NAME): ["a", "b"],
             "Metadata_ImageNumber": pl.Series([1, 2], dtype=pl.Int64),
             "Object_Label": [1, 2],

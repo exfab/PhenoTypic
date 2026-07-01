@@ -39,7 +39,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     """Columns with measurement prefixes are not offered as axis options."""
     df = pl.DataFrame(
         {
-            "Metadata_Strain": ["A", "B", "A"],
+            "MetadataGenetic_Strain": ["A", "B", "A"],
             "Bbox_MinRR": [1, 2, 3],
             "Shape_Area": [10, 20, 30],
             "Intensity_Mean": [0.1, 0.2, 0.3],
@@ -59,7 +59,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     assert "Intensity_Mean" not in out
     assert "TextureGray_AvgContrast" not in out
     # Metadata_* and Grid_* survive.
-    assert "Metadata_Strain" in out
+    assert "MetadataGenetic_Strain" in out
     assert "Grid_RowNum" in out
 
 
@@ -209,7 +209,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
     """
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["plate1"] * 4,
+            "MetadataExperiment_Dataset": ["plate1"] * 4,
             str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],
@@ -235,7 +235,7 @@ def _make_output_root(tmp_path: Path) -> OutputRoot:
 def _make_output_root_with_hdf_only(tmp_path: Path) -> OutputRoot:
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["plate1"] * 2,
+            "MetadataExperiment_Dataset": ["plate1"] * 2,
             str(METADATA.IMAGE_NAME): ["img-001", "img-002"],
             "Object_Label": [1, 1],
             "Bbox_MinRR": [0, 10],
@@ -340,7 +340,7 @@ def _make_output_root_with_overlays(tmp_path: Path) -> OutputRoot:
 
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["plate1"] * 4,
+            "MetadataExperiment_Dataset": ["plate1"] * 4,
             str(METADATA.IMAGE_NAME): ["img-001", "img-001", "img-002", "img-002"],
             "Object_Label": [1, 2, 1, 2],
             "Bbox_MinRR": [0, 5, 10, 15],

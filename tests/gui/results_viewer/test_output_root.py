@@ -66,9 +66,9 @@ def _make_minimal_output(
 
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": [dataset, dataset],
+            "MetadataExperiment_Dataset": [dataset, dataset],
             str(METADATA.IMAGE_NAME): ["a", "b"],
-            "Metadata_Strain": ["s1", "s2"],
+            "MetadataGenetic_Strain": ["s1", "s2"],
             "Size_Area": [100.0, 200.0],
         }
     )
@@ -90,7 +90,7 @@ def test_discover_succeeds_on_well_formed_root(tmp_path: Path) -> None:
 
     assert out.root == tmp_path.resolve()
     assert out.master_df.height == df.height
-    assert "Metadata_Strain" in out.column_value_sets
+    assert "MetadataGenetic_Strain" in out.column_value_sets
     assert out.cache_dir == tmp_path.resolve() / ".viewer_cache" / "dzi"
 
 
@@ -126,9 +126,9 @@ def test_discover_prefers_post_applied_mirror_over_master(
     # column simulates what _seed_measurements writes after post runs).
     mirror_df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1", "d1"],
+            "MetadataExperiment_Dataset": ["d1", "d1"],
             str(METADATA.IMAGE_NAME): ["a", "b"],
-            "Metadata_Strain": ["s1", "s2"],
+            "MetadataGenetic_Strain": ["s1", "s2"],
             "Size_Area": [100.0, 200.0],
             "post_tag": ["tagged", "tagged"],
         }
@@ -177,14 +177,14 @@ def test_discover_without_results_dir_boots_standalone(tmp_path: Path) -> None:
     """
 
     df = pl.DataFrame(
-        {"Metadata_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
+        {"MetadataExperiment_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
     )
     _write_master_parquet(tmp_path, df)
 
     out = OutputRoot.discover(tmp_path)
     assert out.has_results is False
     assert out.hdf_path("d1", "a") is None
-    assert "d1" in out.master_df["Metadata_Dataset"].to_list()
+    assert "d1" in out.master_df["MetadataExperiment_Dataset"].to_list()
 
 
 def test_discover_dataset_from_master_with_empty_results(
@@ -194,7 +194,7 @@ def test_discover_dataset_from_master_with_empty_results(
 
     (tmp_path / "results").mkdir()
     df = pl.DataFrame(
-        {"Metadata_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
+        {"MetadataExperiment_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
     )
     _write_master_parquet(tmp_path, df)
 
@@ -209,7 +209,7 @@ def test_discover_results_with_no_overlays_succeeds(
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     df = pl.DataFrame(
-        {"Metadata_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
+        {"MetadataExperiment_Dataset": ["d1"], str(METADATA.IMAGE_NAME): ["a"]}
     )
     _write_master_parquet(tmp_path, df)
 
@@ -225,7 +225,7 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     _write_master_parquet(
-        tmp_path, pl.DataFrame({"Metadata_Dataset": ["d1"], "Other": ["x"]})
+        tmp_path, pl.DataFrame({"MetadataExperiment_Dataset": ["d1"], "Other": ["x"]})
     )
     with pytest.raises(ValueError) as excinfo:
         OutputRoot.discover(tmp_path)
@@ -235,14 +235,18 @@ def test_discover_missing_imagefile_column_raises(tmp_path: Path) -> None:
 def test_discover_aliases_imagename_when_imagefile_absent(
     tmp_path: Path,
 ) -> None:
-    """``Metadata_ImageName`` alone satisfies the image-stem column requirement."""
+    """Legacy ``Metadata_ImageName`` alone satisfies the image-stem requirement.
+
+    A pre-flip master carries the legacy ``Metadata_ImageName`` column and lacks
+    the canonical ``MetadataImage_ImageName``; discovery must alias it forward.
+    """
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True)
     (tmp_path / "results" / "d1" / "measurements" / "a.parquet").touch()
     _write_master_parquet(
         tmp_path,
         pl.DataFrame(
-            {"Metadata_Dataset": ["d1"], "Metadata_ImageName": ["a"]}
+            {"MetadataExperiment_Dataset": ["d1"], "Metadata_ImageName": ["a"]}
         ),
     )
 
@@ -266,7 +270,7 @@ def test_discover_backfills_dataset_from_filesystem(tmp_path: Path) -> None:
     )
 
     out = OutputRoot.discover(tmp_path)
-    assert "Metadata_Dataset" in out.master_df.columns
+    assert "MetadataExperiment_Dataset" in out.master_df.columns
     pairs = out.image_pairs(out.master_df)
     assert pairs == [("d1", "a"), ("d2", "b")]
 
@@ -278,7 +282,7 @@ def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:
     out = OutputRoot.discover(tmp_path)
 
     cvs = out.column_value_sets
-    assert cvs["Metadata_Strain"] == ["s1", "s2"]
+    assert cvs["MetadataGenetic_Strain"] == ["s1", "s2"]
     # Numeric column rendered as string.
     assert cvs["Size_Area"] == sorted({"100.0", "200.0"})
     # Every column on the master frame is represented.
@@ -329,7 +333,7 @@ def test_image_pairs_returns_sorted_unique_tuples(tmp_path: Path) -> None:
     # Feed a frame with shuffled order and a duplicate row.
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1", "d1", "d1"],
+            "MetadataExperiment_Dataset": ["d1", "d1", "d1"],
             str(METADATA.IMAGE_NAME): ["b", "a", "a"],
         }
     )
@@ -394,9 +398,9 @@ def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
     overlays.mkdir(parents=True)
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"] * 3,
+            "MetadataExperiment_Dataset": ["d1"] * 3,
             str(METADATA.IMAGE_NAME): ["a", "b", "c"],
-            "Metadata_Time": ["10", "2", "1"],
+            "MetadataCulture_Time": ["10", "2", "1"],
         }
     )
     _write_master_parquet(tmp_path, df)
@@ -404,14 +408,14 @@ def test_column_value_sets_sorts_numeric_columns_numerically(tmp_path) -> None:
         (overlays / f"{stem}.png").touch()
 
     out = OutputRoot.discover(tmp_path)
-    assert out.column_value_sets["Metadata_Time"] == ["1", "2", "10"]
+    assert out.column_value_sets["MetadataCulture_Time"] == ["1", "2", "10"]
 
 
 def test_column_value_sets_keeps_lexical_for_text_columns(tmp_path) -> None:
     df = _make_minimal_output(tmp_path)  # has Metadata_Strain = s1, s2
     out = OutputRoot.discover(tmp_path)
-    assert out.column_value_sets["Metadata_Strain"] == sorted(
-        df.get_column("Metadata_Strain").to_list()
+    assert out.column_value_sets["MetadataGenetic_Strain"] == sorted(
+        df.get_column("MetadataGenetic_Strain").to_list()
     )
 
 
@@ -427,20 +431,20 @@ def test_is_numeric_column_true_for_numeric_string_metadata(tmp_path) -> None:
     overlays.mkdir(parents=True)
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1", "d1"],
+            "MetadataExperiment_Dataset": ["d1", "d1"],
             str(METADATA.IMAGE_NAME): ["a", "b"],
-            "Metadata_Time": ["6", "24"],
+            "MetadataCulture_Time": ["6", "24"],
         }
     )
     _write_master_parquet(tmp_path, df)
     for stem in ("a", "b"):
         (overlays / f"{stem}.png").touch()
     out = OutputRoot.discover(tmp_path)
-    assert out.is_numeric_column("Metadata_Time") is True
+    assert out.is_numeric_column("MetadataCulture_Time") is True
 
 
 def test_is_numeric_column_false_for_text_and_missing(tmp_path) -> None:
     _make_minimal_output(tmp_path)  # Metadata_Strain = s1, s2
     out = OutputRoot.discover(tmp_path)
-    assert out.is_numeric_column("Metadata_Strain") is False
+    assert out.is_numeric_column("MetadataGenetic_Strain") is False
     assert out.is_numeric_column("NoSuchColumn") is False

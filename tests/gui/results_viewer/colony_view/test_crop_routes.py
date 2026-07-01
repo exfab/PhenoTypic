@@ -33,7 +33,7 @@ def app_client(tmp_path: Path):
     # 1. master_measurements.parquet (under deliverables/)
     master = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1"],
+            "MetadataExperiment_Dataset": ["d1"],
             str(METADATA.IMAGE_NAME): ["img-1"],
             "Object_Label": [7],
             "Bbox_CenterRR": [50],
