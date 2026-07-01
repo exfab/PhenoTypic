@@ -69,7 +69,7 @@ class ReplicateAgreement(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"Metadata_Time"``.
+            group. Defaults to ``"MetadataCulture_Time"``.
         min_replicates: Minimum replicate count required before SE is
             considered meaningful. Bins below this threshold receive
             ``metric = NaN``.
@@ -92,7 +92,7 @@ class ReplicateAgreement(QualityCheck):
         >>> times = [0, 1, 2, 3]
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 12,
-        ...     "Metadata_Time": [t for t in times for _ in range(3)],
+        ...     "MetadataCulture_Time": [t for t in times for _ in range(3)],
         ...     "Replicate": [1, 2, 3] * 4,
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9,
@@ -104,7 +104,7 @@ class ReplicateAgreement(QualityCheck):
         >>> chk = ReplicateAgreement(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="Metadata_Time",
+        ...     time_label="MetadataCulture_Time",
         ... )
         >>> result = chk.analyze(data)  # doctest: +SKIP
         >>> "QC_SE_Metric" in result.columns  # doctest: +SKIP
@@ -115,7 +115,7 @@ class ReplicateAgreement(QualityCheck):
 
         >>> singleton = pd.DataFrame({
         ...     "Plate": ["P1", "P1"],
-        ...     "Metadata_Time": [0, 1],
+        ...     "MetadataCulture_Time": [0, 1],
         ...     "Size_Area": [10.0, 20.0],
         ... })
         >>> chk = ReplicateAgreement(

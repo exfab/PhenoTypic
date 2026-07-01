@@ -7,6 +7,7 @@ from pathlib import Path
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.gui._config import tune_presets_dir
+from phenotypic.schema import METADATA
 from phenotypic.gui.tune._space import space_to_spec
 from phenotypic.sdk_ import CONFIG_SUFFIX_TUNING, matches_any_suffix
 from phenotypic.tune import TuningSpec
@@ -51,7 +52,7 @@ def write_authored_setup_spec(
         pipeline_or_spec_path: Existing pipeline or tuning spec selected in Setup.
         metadata_path: Layout CSV/Parquet used by the default QC scorer.
         metadata_groupby: Metadata columns used to group expected counts. Defaults
-            to ``["Metadata_ImageName"]``.
+            to ``[str(METADATA.IMAGE_NAME)]`` (``"MetadataImage_ImageName"``).
 
     Returns:
         The typed ``.json.pht-tune`` file written under the GUI tune presets dir.
@@ -65,7 +66,7 @@ def write_authored_setup_spec(
     if not metadata_path.is_file():
         raise FileNotFoundError(metadata_path)
 
-    groupby = metadata_groupby or ["Metadata_ImageName"]
+    groupby = metadata_groupby or [str(METADATA.IMAGE_NAME)]
     pipeline_or_spec = _load_pipeline_or_spec(pipeline_or_spec_path)
     spec = (
         pipeline_or_spec

@@ -201,7 +201,7 @@ def _left_join_qc_columns(
             (pandas). Carries QC columns plus whatever rows the check
             iterated over.
         on: Join key columns. Defaults to
-            :data:`KEY_COLUMNS` (``("Metadata_ImageName", "Object_Label")``)
+            :data:`KEY_COLUMNS` (``("MetadataImage_ImageName", "Object_Label")``)
             — the curation key used by ``STORE_REMOVED_KEYS``.
 
     Returns:

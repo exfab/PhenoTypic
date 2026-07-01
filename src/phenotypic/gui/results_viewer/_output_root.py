@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
 # Legacy master column shim. Post category-flip the canonical image-stem column
 # is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
-# Masters written before the flip used the pre-namespace ``"Metadata_ImageName"``;
+# Masters written before the flip used the pre-namespace ``Metadata_ImageName``;
 # this literal recognizes those old masters so they still load (aliased below to
 # the canonical column). Keep the literal — it is a legacy recognizer, not a live
 # column name.
@@ -172,7 +172,8 @@ class OutputRoot:
         if not datasets:
             raise FileNotFoundError(
                 f"No datasets found in {layout.deliverables_base!s}. Expected a "
-                "Metadata_Dataset column or deliverables/overlays/<dataset>/ dirs."
+                "MetadataExperiment_Dataset column or "
+                "deliverables/overlays/<dataset>/ dirs."
             )
 
         master_df = _ensure_required_columns(master_df, layout, datasets)

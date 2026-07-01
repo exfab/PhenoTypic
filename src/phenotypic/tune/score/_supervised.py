@@ -119,13 +119,13 @@ class SupervisedScorer(Scorer):
         >>> tmp = Path(tempfile.mkdtemp())
         >>> counts = tmp / "counts.csv"
         >>> _ = pd.DataFrame(
-        ...     {"Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+        ...     {"MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
         ...      "Object_Label": list(range(96))}
         ... ).to_csv(counts, index=False)
         >>> scorer = SupervisedScorer(
         ...     gt=GroundTruthMasks(gt_masks_source=counts),
         ...     count_check=ExpectedVsDetectedCount(
-        ...         metadata=str(counts), groupby=["Metadata_ImageName"]
+        ...         metadata=str(counts), groupby=["MetadataImage_ImageName"]
         ...     ),
         ... )
         >>> scorer.gt.modality()

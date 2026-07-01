@@ -524,13 +524,13 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
 #: Post-applied mirror columns that source the REMBI manifest's per-image
 #: ``image_data`` block, mapped to the bare keys
 #: :func:`phenotypic.sdk_._rembi_manifest.build_rembi_manifest` reads. Only the
-#: columns the mirror carries today are listed; ``Metadata_UUID`` is private and
-#: absent from the measurement frame, so it is naturally omitted.
+#: columns the mirror carries today are listed; ``MetadataImage_UUID`` is private
+#: and absent from the measurement frame, so it is naturally omitted.
 _REMBI_IMAGE_META_COLUMNS: Final[dict[str, str]] = {
-    "Metadata_ImageName": "ImageName",
-    "Metadata_BitDepth": "BitDepth",
-    "Metadata_ImageType": "ImageType",
-    "Metadata_UUID": "UUID",
+    str(METADATA.IMAGE_NAME): "ImageName",
+    str(METADATA.BIT_DEPTH): "BitDepth",
+    str(METADATA.IMAGE_TYPE): "ImageType",
+    str(METADATA.UUID): "UUID",
 }
 
 
@@ -581,7 +581,7 @@ def finalize_post_master_outputs(
        used for the mirror picks up the external metadata columns. The
        join runs **before** post so :class:`PostMeasurement` ops can
        reference joined columns (e.g.
-       ``EdgeCorrector(groupby="Metadata_Strain")``).
+       ``EdgeCorrector(groupby="MetadataGenetic_Strain")``).
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
@@ -647,7 +647,7 @@ def finalize_post_master_outputs(
     migrate_legacy_qc(output_dir)
 
     # Metadata join runs first so PostMeasurement ops can reference joined
-    # columns (e.g. ``EdgeCorrector(groupby="Metadata_Strain")``). The
+    # columns (e.g. ``EdgeCorrector(groupby="MetadataGenetic_Strain")``). The
     # master archive on disk is already written by the caller and stays
     # clean — only this in-memory working frame picks up the join.
     working_df = master_df

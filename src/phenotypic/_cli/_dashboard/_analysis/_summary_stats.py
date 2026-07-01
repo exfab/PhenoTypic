@@ -279,7 +279,7 @@ function buildStatsFilterUI() {
   var html = '';
 
   var datasets = [];
-  var dsCol = sharedParquetState.allData['Metadata_Dataset'];
+  var dsCol = sharedParquetState.allData['__DATASET_COLUMN__'];
   if (dsCol) {
     var seen = {};
     for (var di = 0; di < dsCol.length; di++) {
@@ -378,7 +378,7 @@ function onStatsDatasetChange() {
 function getFilteredIndices() {
   var n = sharedParquetState.nRows;
   var indices = [];
-  var dsCol = sharedParquetState.allData['Metadata_Dataset'];
+  var dsCol = sharedParquetState.allData['__DATASET_COLUMN__'];
 
   for (var i = 0; i < n; i++) {
     if (statsState.selectedDatasets && dsCol) {
@@ -496,4 +496,4 @@ function updateFallbackStatsTable() {
   document.getElementById('stats-table-wrap').innerHTML = html;
 }
 """
-        return _js.replace("'Metadata_Dataset'", "'" + _ds_col + "'")
+        return _js.replace("'__DATASET_COLUMN__'", "'" + _ds_col + "'")

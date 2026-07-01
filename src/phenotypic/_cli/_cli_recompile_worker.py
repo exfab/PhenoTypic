@@ -185,7 +185,7 @@ def _sort_measurement_shard(shard_df: Any) -> Any:
         for column in (
             str(EXPERIMENT_METADATA.DATASET),
             str(METADATA.IMAGE_NAME),
-            "Metadata_Well",  # TODO(B-flip): no WELL schema member; keep literal (≠ SourceWell)
+            "Metadata_Well",  # legacy sort key: no WELL schema member (≠ SourceWell); keep literal
             "Object_Label",
         )
         if column in shard_df.columns

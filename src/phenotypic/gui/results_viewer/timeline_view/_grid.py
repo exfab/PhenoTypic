@@ -80,10 +80,10 @@ def _measurement_prefixes() -> frozenset[str]:
 #: uncapped time-axis predicate excludes (colony baseline ∪ schema categories).
 _TIME_AXIS_MEASUREMENT_PREFIXES: frozenset[str] = _measurement_prefixes()
 
-#: Case-insensitive name match for a "Metadata_Time-like" column. Seeded from
-#: Heatmap's hardcoded ``"Metadata_Time"`` (``_heatmap_tab/_callbacks.py:367``)
-#: but generalized so e.g. ``Metadata_Timepoint`` / ``Metadata_ImageNumber``
-#: also surface. Numeric/temporal dtype is an independent eligibility path.
+#: Case-insensitive name match for a "time-like" column. Seeded from Heatmap's
+#: time column (``str(CULTURE_METADATA.TIME)`` == ``MetadataCulture_Time``) but
+#: generalized so e.g. ``MetadataCulture_Timepoint`` / a ``Metadata_ImageNumber``
+#: column also surface. Numeric/temporal dtype is an independent eligibility path.
 _TIME_NAME_RE = re.compile(
     r"(?:^|_)(time|timepoint|imagenumber|frame)(?:_|$|\d)", re.IGNORECASE
 )

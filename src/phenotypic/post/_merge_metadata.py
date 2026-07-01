@@ -17,11 +17,12 @@ class MergeMetadata(PostMeasurement):
     composite keys (e.g., combining Strain and Condition into SampleID).
 
     Args:
-        columns: Names of the metadata columns to merge. ``Metadata_``
-            prefix is added automatically if missing. Must contain at
-            least 2 names.
-        label: Name for the new merged column. ``Metadata_`` prefix is
-            added automatically if missing.
+        columns: Names of the metadata columns to merge. The schema
+            category prefix is added automatically if missing (e.g.
+            ``Strain`` -> ``MetadataGenetic_Strain``; unknown labels get a
+            generic ``Metadata_`` prefix). Must contain at least 2 names.
+        label: Name for the new merged column. The schema category prefix
+            is added automatically if missing.
         delimiter: String used to join the column values. Defaults to
             ``"_"``.
 
@@ -40,7 +41,7 @@ class MergeMetadata(PostMeasurement):
         >>> import pandas as pd
         >>> from phenotypic.post import MergeMetadata
         >>> df = pd.DataFrame({
-        ...     "Metadata_Strain": ["WT", "mut"],
+        ...     "MetadataGenetic_Strain": ["WT", "mut"],
         ...     "Metadata_Condition": ["30C", "37C"],
         ...     "Object_Label": [1, 2],
         ... })
@@ -50,7 +51,7 @@ class MergeMetadata(PostMeasurement):
         ...     delimiter="_",
         ... )
         >>> result = merge.apply(df)
-        >>> list(result["Metadata_SampleID"])
+        >>> list(result["MetadataSample_SampleID"])
         ['WT_30C', 'mut_37C']
     """
 
@@ -61,7 +62,7 @@ class MergeMetadata(PostMeasurement):
     @field_validator("columns", mode="before")
     @classmethod
     def _prefix_columns(cls, columns: List[str] | None) -> List[str]:
-        """Add the ``Metadata_`` prefix and reject a single-column merge.
+        """Add the schema metadata prefix and reject a single-column merge.
 
         Accepts ``None``/``[]`` (the "unset" state) and normalizes to an
         empty list. A genuinely-invalid *single*-column list raises; the
@@ -75,7 +76,7 @@ class MergeMetadata(PostMeasurement):
     @field_validator("label")
     @classmethod
     def _prefix_label(cls, label: str) -> str:
-        """Prepend the ``Metadata_`` prefix to a non-empty label."""
+        """Prepend the schema metadata prefix to a non-empty label."""
         return ensure_metadata_prefix(label) if label else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

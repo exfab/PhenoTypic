@@ -66,7 +66,7 @@ class TukeyOutlierFraction(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"Metadata_Time"``.
+            group. Defaults to ``"MetadataCulture_Time"``.
         k: IQR multiplier for the fences. ``1.5`` flags standard outliers;
             ``3.0`` flags only extreme outliers. Defaults to ``1.5``.
         min_replicates: Minimum member count required before the outlier
@@ -87,7 +87,7 @@ class TukeyOutlierFraction(QualityCheck):
         ... )
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 10,
-        ...     "Metadata_Time": [0] * 10,
+        ...     "MetadataCulture_Time": [0] * 10,
         ...     "Size_Area": [
         ...         10.0, 11.0, 12.0, 13.0, 14.0,
         ...         10.5, 11.5, 12.5, 13.5, 200.0,
@@ -96,7 +96,7 @@ class TukeyOutlierFraction(QualityCheck):
         >>> chk = TukeyOutlierFraction(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="Metadata_Time",
+        ...     time_label="MetadataCulture_Time",
         ... )
         >>> result = chk.analyze(data)
         >>> "QC_Tukey_Metric" in result.columns
@@ -107,7 +107,7 @@ class TukeyOutlierFraction(QualityCheck):
 
         >>> sparse = pd.DataFrame({
         ...     "Plate": ["P1", "P1", "P1"],
-        ...     "Metadata_Time": [0, 0, 0],
+        ...     "MetadataCulture_Time": [0, 0, 0],
         ...     "Size_Area": [10.0, 11.0, 12.0],
         ... })
         >>> chk = TukeyOutlierFraction(on="Size_Area", groupby=["Plate"])

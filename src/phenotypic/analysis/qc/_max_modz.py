@@ -73,7 +73,7 @@ class MaxModifiedZScore(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"Metadata_Time"``.
+            group. Defaults to ``"MetadataCulture_Time"``.
         min_replicates: Minimum member count required before the modified
             Z-score is considered meaningful. Bins below this threshold
             receive ``metric = NaN``.
@@ -90,7 +90,7 @@ class MaxModifiedZScore(QualityCheck):
         >>> from phenotypic.analysis.qc import MaxModifiedZScore
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 8,
-        ...     "Metadata_Time": [0, 0, 0, 0, 1, 1, 1, 1],
+        ...     "MetadataCulture_Time": [0, 0, 0, 0, 1, 1, 1, 1],
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9, 10.2,
         ...         20.0, 20.1, 19.9, 60.0,
@@ -99,7 +99,7 @@ class MaxModifiedZScore(QualityCheck):
         >>> chk = MaxModifiedZScore(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="Metadata_Time",
+        ...     time_label="MetadataCulture_Time",
         ... )
         >>> result = chk.analyze(data)
         >>> "QC_ZMax_Metric" in result.columns
@@ -110,7 +110,7 @@ class MaxModifiedZScore(QualityCheck):
 
         >>> singleton = pd.DataFrame({
         ...     "Plate": ["P1", "P1"],
-        ...     "Metadata_Time": [0, 1],
+        ...     "MetadataCulture_Time": [0, 1],
         ...     "Size_Area": [10.0, 20.0],
         ... })
         >>> chk = MaxModifiedZScore(

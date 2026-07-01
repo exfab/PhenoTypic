@@ -73,10 +73,10 @@ _GENERIC_PREFIX = "Metadata_"
 def ensure_metadata_prefix(name: str) -> str:
     """Prefix a bare metadata label with its schema category, else generic.
 
-    ``'Strain' -> 'MetadataGenetic_Strain'`` (the owning enum's category);
-    an unknown ``'Foo' -> 'Metadata_Foo'`` (kept, uncategorized). Names that
-    already carry a metadata prefix -- any ``Metadata<Topic>_`` category prefix
-    or the generic ``Metadata_`` -- pass through unchanged.
+    ``Strain -> MetadataGenetic_Strain`` (the owning enum's category); an
+    unknown ``Foo -> Metadata_Foo`` (kept, uncategorized). Names that already
+    carry a metadata prefix -- any ``Metadata<Topic>_`` category prefix or the
+    generic ``Metadata_`` -- pass through unchanged.
     """
     if is_metadata_header(name) or name.startswith(_GENERIC_PREFIX):
         return name
