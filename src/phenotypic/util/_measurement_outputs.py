@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Iterable, TypeAlias, TypeGuard
@@ -229,6 +230,44 @@ def _is_info_class(value: object) -> TypeGuard[type[MeasurementInfo]]:
         and issubclass(value, MeasurementInfo)
         and value is not MeasurementInfo
     )
+
+
+_SANITIZE_TOKEN_RE = re.compile(r"\s+")
+
+
+@lru_cache(maxsize=1)
+def _known_categories() -> tuple[str, ...]:
+    """All public schema categories, sorted longest-first for prefix matching."""
+    import phenotypic.schema as schema
+
+    cats: set[str] = set()
+    for name in getattr(schema, "__all__", ()):
+        obj = getattr(schema, name, None)
+        if not _is_info_class(obj):
+            continue
+        try:
+            cats.add(obj.category())
+        except NotImplementedError:  # member-less classification bases
+            continue
+    return tuple(sorted(cats, key=len, reverse=True))
+
+
+def _sanitize_token(token: str) -> str:
+    return _SANITIZE_TOKEN_RE.sub("", token.strip())
+
+
+def metric_token(on: str) -> str:
+    """Derive the ``<metric>`` header segment from a fitter's ``on`` column.
+
+    Strips the longest known schema **category** prefix if present
+    (``Shape_Area`` → ``Area``), else returns the value verbatim
+    (``x`` → ``x``); then removes whitespace.
+    """
+    value = str(on).strip()
+    for category in _known_categories():
+        if value.startswith(category + "_"):
+            return _sanitize_token(value[len(category) + 1:])
+    return _sanitize_token(value)
 
 
 @lru_cache(maxsize=1)
