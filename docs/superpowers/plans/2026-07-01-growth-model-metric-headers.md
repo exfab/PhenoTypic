@@ -1000,6 +1000,7 @@ git commit -m "feat(cli): document metric-qualified model columns in run README"
 - Modify: `src/phenotypic/schema/_linear_lag_model.py`, `_linear_cap_and_lag_model.py`, `_log_growth_model.py` (add class docstrings)
 - Modify: `src/phenotypic/analysis/_linear_lag_model.py`, `_linear_cap_and_lag_model.py`, `_log_growth_model.py` (add an "Output column naming" note)
 - Modify: `docs/source/explanation/notebooks/linear_softplus_model.ipynb` (prose fix)
+- Modify: `src/phenotypic/schema/CLAUDE.md` (add a "Dynamic output headers" contributor section)
 
 **Interfaces:**
 - Consumes: the `metric_qualified` scheme (Task 1). Docs are illustrative RST prose (no doctests).
@@ -1040,19 +1041,82 @@ Add the analogous paragraph to `LinearCapAndLagModel` and `LogGrowthModel` (adju
 
 Use `uv run python -c "import json,glob"` or a JSON-aware edit; keep it a markdown cell (no code cell reads the column).
 
-- [ ] **Step 4: Verify the docstrings import and the enum tables still build.**
+- [ ] **Step 4: Add the "Dynamic output headers" contributor section to `src/phenotypic/schema/CLAUDE.md`.** Append this section (place it after the "Measurement classification" sections, before "Downstream users import headers directly:"):
+
+````markdown
+## Dynamic output headers (recognition schemes)
+
+Output column names are an *encoding* of `(member, runtime-params)`. Each enum owns
+**both** directions — emit and decode — so downstream code
+(`util/_measurement_outputs.py` `split_measurements`/`generate_output_key`, the CLI
+README, Sphinx) is scheme-agnostic and only ever calls the recognition interface on the
+base:
+
+- `header_scheme() -> "static" | "metric_qualified" | "texture"` — dispatch hint
+  (default `"static"`).
+- `member_for_header(column) -> member | None` — decode a column to its member.
+- `owns_header(column) -> bool` — `member_for_header(...) is not None`; **never** override.
+
+Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
+
+- **static** — the header *is* `member.value` (`Shape_Area`); base default, no override.
+- **metric_qualified** — `{cat}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
+  `qualified_header(member, token)` / `parse_qualified_header(info_cls, column)`; the enum
+  sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
+  The token comes from `metric_token(on)` in `util/_measurement_outputs.py`
+  (strips the longest known category prefix from `self.on`).
+- **texture** — `{cat}_{label}-deg###-scale##` / `-avg-scale##`:
+  `TEXTURE.get_headers(scale, matrix_name)` plus a `member_for_header` regex override.
+
+**Invariant:** the format must be invertible — `parse(emit(member, token)) == (token,
+member)`. `metric_qualified` anchors on the category prefix + the known member-label
+suffix, so a guardrail in `tests/unit/schema/test_dynamic_headers.py` asserts no label is
+a `_`-suffix of another. Emission (in the producer) and recognition (on the enum) live in
+two files that must agree; the round-trip test keeps them honest. Docs/`rst_table` render
+the **base** labels; only run-specific surfaces (the CLI README) fill in the real token.
+
+### Adding a new dynamic scheme
+
+1. Pick an invertible format — the member label must be recoverable without the token.
+2. Add an emission helper — co-locate on the enum (like `get_headers`) or a shared func;
+   reuse `qualified_header`/`parse_qualified_header` if the shape is the
+   `{cat}_{token}_{label}` infix (then you only set `header_scheme()`, no parser).
+3. Override `member_for_header` on the enum (and set `header_scheme()`). `owns_header`
+   is inherited.
+4. In the producer, name columns via the helper and declare
+   `_measurement_infoclass = <enum>` — that one attribute wires
+   split/output-key/recognition. (For the CLI README's measurement tables only, also add
+   the measurer to `_get_measurement_infoclasses` in `_cli/_cli_readme_generator.py`.)
+
+A `MeasureFeatures` emits via the enum (never hand-built strings):
+
+    class MeasureTexture(MeasureFeatures):
+        _measurement_infoclass: ClassVar[type] = TEXTURE
+        scale: List[int] = [5]
+        def _operate(self, image):
+            cols = TEXTURE.get_headers(self.scale[0], "Gray")   # runtime params -> headers
+            meas = pd.DataFrame(data, columns=cols)
+            meas.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+            return meas
+
+`ModelFitter` subclasses are the exception: they stay member-keyed internally and the ABC
+(`analyze()`) renames to qualified headers at the boundary, so a fitter never touches
+header strings.
+````
+
+- [ ] **Step 5: Verify the docstrings import and the enum tables still build.**
 
 Run: `uv run python -c "import phenotypic.schema as s; print(s.LINEAR_LAG_MODEL.__doc__.splitlines()[0]); print(s.LINEAR_LAG_MODEL.rst_table()[:60])"`
 Expected: prints the new first docstring line and an RST list-table header (base labels), no exception.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/phenotypic/schema/_linear_lag_model.py src/phenotypic/schema/_linear_cap_and_lag_model.py \
         src/phenotypic/schema/_log_growth_model.py src/phenotypic/analysis/_linear_lag_model.py \
         src/phenotypic/analysis/_linear_cap_and_lag_model.py src/phenotypic/analysis/_log_growth_model.py \
-        docs/source/explanation/notebooks/linear_softplus_model.ipynb
-git commit -m "docs: explain metric-qualified growth-model header convention"
+        docs/source/explanation/notebooks/linear_softplus_model.ipynb src/phenotypic/schema/CLAUDE.md
+git commit -m "docs: explain metric-qualified growth-model header convention + dynamic-header contributor guide"
 ```
 
 ---
@@ -1100,7 +1164,7 @@ PY
 ```
 Expected: prints `OK:` with qualified headers; no assertion error.
 
-- [ ] **Step 4: Regenerate CLAUDE.md guidance if needed** — if the schema/analysis header conventions warrant a note, update `src/phenotypic/schema/CLAUDE.md` (mention `header_scheme`/`owns_header`/`member_for_header` and the metric-qualified emission). Otherwise skip.
+- [ ] **Step 4: Confirm the CLAUDE.md contributor section landed** — the "Dynamic output headers" section is added in Task 7 Step 4. Verify it is present in `src/phenotypic/schema/CLAUDE.md` and mentions `header_scheme`/`owns_header`/`member_for_header`, the three schemes, and the round-trip invariant.
 
 ---
 
