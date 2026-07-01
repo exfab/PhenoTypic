@@ -54,6 +54,34 @@ _UNSAFE_CHARS = re.compile(r"[^a-z0-9._-]+")
 #: (image_file, object_label) curation key.
 LabelKey = tuple[str, int]
 
+#: Retired ad-hoc image-stem column that older ``curation_labels.parquet``
+#: files were keyed on before the consolidation onto the canonical
+#: ``Metadata_ImageName``. Kept only so :func:`_migrate_legacy_imagefile`
+#: can recognize and rename it on load.
+_LEGACY_IMAGE_FILE = "Metadata_ImageFile"
+
+
+def _migrate_legacy_imagefile(df: pl.DataFrame) -> pl.DataFrame:
+    """Rename a legacy image-stem column to the canonical image-name column.
+
+    Old ``curation_labels.parquet`` files were keyed on the retired ad-hoc
+    column tracked by :data:`_LEGACY_IMAGE_FILE`. When such a frame is read,
+    rename that column to :data:`~phenotypic.schema.METADATA.IMAGE_NAME` so the
+    durable curation state survives the consolidation. A frame that already
+    carries the canonical column (or lacks the legacy one) is returned
+    unchanged.
+
+    Args:
+        df: The frame just read from ``curation_labels.parquet``.
+
+    Returns:
+        The frame with the legacy column renamed when present, else *df*.
+    """
+    canonical = str(METADATA.IMAGE_NAME)
+    if _LEGACY_IMAGE_FILE in df.columns and canonical not in df.columns:
+        return df.rename({_LEGACY_IMAGE_FILE: canonical})
+    return df
+
 
 def sanitize_category(name: str) -> str:
     """Coerce a free-text category name to a filename-safe bare token.
@@ -357,6 +385,9 @@ class CurationLabels:
     def _read_labels_parquet(path: Path) -> list[tuple[str, int, str, float, float]]:
         """Read the labels parquet into raw tuples (no re-keying)."""
         df = pl.read_parquet(path)
+        # Rename-on-load: legacy parquets keyed on the retired ad-hoc column
+        # must be migrated to the canonical key before any lookup/join.
+        df = _migrate_legacy_imagefile(df)
         rows: list[tuple[str, int, str, float, float]] = []
         for row in df.iter_rows(named=True):
             rows.append(
