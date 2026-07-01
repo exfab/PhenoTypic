@@ -10,6 +10,7 @@ Import-light: stdlib only (see schema package load-order rule).
 from __future__ import annotations
 
 from enum import Enum
+from functools import lru_cache
 
 
 class REMBI_MODULE(str, Enum):
@@ -24,12 +25,17 @@ class REMBI_MODULE(str, Enum):
     UNCATEGORIZED = "Uncategorized"
 
 
+@lru_cache(maxsize=1)
 def header_to_module() -> "dict[str, REMBI_MODULE]":
     """Map every known column header to its REMBI module.
 
     Walks every ``MeasurementInfo`` subclass exported from ``phenotypic.schema``
-    and reads each member's ``resolved_rembi_module``. Built fresh on each call
-    (cheap; <1k members). Used by the manifest builder's column router.
+    and reads each member's ``resolved_rembi_module``. Cached (``lru_cache``):
+    the mapping derives entirely from the import-time schema enums, which are
+    fixed once the package is imported, so there is no staleness concern and
+    the hot-path callers (manifest builder + metadata accessor) skip the walk
+    on every call after the first. The returned dict is read-only by contract;
+    callers must not mutate it (mirrors :func:`_label_to_category`).
     """
     from . import __all__ as _names
     from . import _measurement_info as _mi

@@ -62,7 +62,7 @@ class MergeMetadata(PostMeasurement):
     @field_validator("columns", mode="before")
     @classmethod
     def _prefix_columns(cls, columns: List[str] | None) -> List[str]:
-        """Add the schema metadata prefix and reject a single-column merge.
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) and reject a single-column merge.
 
         Accepts ``None``/``[]`` (the "unset" state) and normalizes to an
         empty list. A genuinely-invalid *single*-column list raises; the
@@ -76,7 +76,7 @@ class MergeMetadata(PostMeasurement):
     @field_validator("label")
     @classmethod
     def _prefix_label(cls, label: str) -> str:
-        """Prepend the schema metadata prefix to a non-empty label."""
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty label."""
         return ensure_metadata_prefix(label) if label else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

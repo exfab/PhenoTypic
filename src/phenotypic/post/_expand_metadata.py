@@ -67,13 +67,13 @@ class ExpandMetadata(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Prepend the schema metadata prefix to a non-empty column name."""
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
         return ensure_metadata_prefix(column) if column else ""
 
     @field_validator("labels", mode="before")
     @classmethod
     def _prefix_labels(cls, labels: List[str] | None) -> List[str]:
-        """Add the schema metadata prefix to each label.
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to each label.
 
         Accepts ``None``/``[]`` (the "unset" state) unchanged so the empty
         default validates cleanly (``model_validate`` / assignment

@@ -14,6 +14,8 @@ import pandas as pd
 
 from phenotypic.schema import REMBI_MODULE, header_to_module
 
+from ._metadata_helpers import is_metadata_header
+
 # module -> manifest section key
 _SECTION = {
     REMBI_MODULE.STUDY: "study",
@@ -22,7 +24,6 @@ _SECTION = {
     REMBI_MODULE.IMAGE_ACQUISITION: "image_acquisition",
     REMBI_MODULE.UNCATEGORIZED: "uncategorized",
 }
-_METADATA_FAMILY = "Metadata"
 
 
 def _distinct(series: pd.Series) -> Any:
@@ -47,7 +48,7 @@ def build_rembi_manifest(
 
     # --- distinct-collapse sections (study/biosample/specimen/acquisition/uncat)
     for col in measurements.columns:
-        if not str(col).startswith(_METADATA_FAMILY):
+        if not is_metadata_header(str(col)):
             continue  # measurement/locator columns handled in analyzed_data
         module = idx.get(col, REMBI_MODULE.UNCATEGORIZED)
         section = _SECTION.get(module)
@@ -83,7 +84,7 @@ def build_rembi_manifest(
     features: dict[str, list[str]] = {}
     for col in measurements.columns:
         col = str(col)
-        if col.startswith(_METADATA_FAMILY) or "_" not in col:
+        if is_metadata_header(col) or "_" not in col:
             continue
         cat, label = col.split("_", 1)
         features.setdefault(cat, []).append(label)

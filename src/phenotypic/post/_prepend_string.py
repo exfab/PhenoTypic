@@ -47,7 +47,7 @@ class PrependString(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Prepend the schema metadata prefix to a non-empty column name."""
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
         return ensure_metadata_prefix(column) if column else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

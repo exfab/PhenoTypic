@@ -66,6 +66,29 @@ def test_prefixes_cover_genetic_and_framework_enums():
     assert f"{METADATA.category()}_" in prefixes  # IMAGE_DATA framework enum
 
 
+def test_prefix_order_follows_rembi_module_rank():
+    """Prefixes group by REMBI-module rank: a lower-ranked module's prefix
+    sorts before a higher-ranked one.
+
+    Algorithm-independent: derived from the *public* ``REMBI_MODULE`` definition
+    order plus each owning enum's live ``category()`` -- not the helper's private
+    walk (unlike ``test_prefixes_match_schema_derivation``, which re-derives it).
+    Flip-stable: in the decouple phase the two categories coincide and the guard
+    makes the ordering check vacuous; post-flip it pins Biosample
+    (``GENETIC_METADATA``, rank 1) ahead of the ImageData framework enum
+    (``METADATA``, rank 4).
+    """
+    order = {m: i for i, m in enumerate(REMBI_MODULE)}
+    # Anchor on the public taxonomy the helper must honour.
+    assert order[REMBI_MODULE.BIOSAMPLE] < order[REMBI_MODULE.IMAGE_DATA]
+
+    prefixes = metadata_category_prefixes()
+    biosample = f"{GENETIC_METADATA.category()}_"  # REMBI Biosample
+    image_data = f"{METADATA.category()}_"         # REMBI ImageData
+    if biosample != image_data:  # distinct only after the category flip
+        assert prefixes.index(biosample) < prefixes.index(image_data)
+
+
 def test_is_metadata_header_true_for_live_enum_value():
     # "Metadata_Strain" now, "MetadataGenetic_Strain" after the flip.
     assert is_metadata_header(str(GENETIC_METADATA.STRAIN))
