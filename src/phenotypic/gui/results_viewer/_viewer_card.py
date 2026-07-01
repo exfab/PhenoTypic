@@ -93,6 +93,7 @@ from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
+from phenotypic.sdk_ import is_metadata_header
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +101,6 @@ logger = logging.getLogger(__name__)
 # Hard cap on rows projected into the per-object DataTable. DataTable
 # paginates natively, but very large frames slow client-side rendering.
 _MAX_DETAILS_ROWS = 5000
-
-#: Prefix used to recognise metadata columns (``Metadata_Dataset`` etc.).
-_METADATA_PREFIX = "Metadata_"
 
 #: Default OSD canvas height; CSS in ``_assets/results_viewer.css`` may override.
 _OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
@@ -562,7 +560,7 @@ def _project_details_columns(
     dragging in the full measurement payload.
     """
     available = set(df.columns)
-    metadata_cols = [c for c in df.columns if c.startswith(_METADATA_PREFIX)]
+    metadata_cols = [c for c in df.columns if is_metadata_header(c)]
     object_label_cols = [KEY_OBJECT_LABEL] if KEY_OBJECT_LABEL in available else []
     seen = set(metadata_cols) | set(object_label_cols)
     extra = [c for c in filter_columns if c in available and c not in seen]

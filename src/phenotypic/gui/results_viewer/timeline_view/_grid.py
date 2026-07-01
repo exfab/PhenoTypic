@@ -24,6 +24,7 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     _OBJECT_LABEL_COL,
 )
 from phenotypic.schema import MeasurementInfo
+from phenotypic.sdk_ import is_metadata_header
 
 __all__ = [
     "selectable_time_columns",
@@ -108,8 +109,8 @@ def selectable_time_columns(
     A column is eligible iff it is NOT measurement-prefixed and NOT
     ``Object_Label``, AND either its name matches a ``Metadata_Time``-like
     pattern OR its dtype is numeric/temporal. There is **no cardinality cap**
-    (spec §15.2). ``Metadata_*`` time-like names sort first, then everything
-    else, alphabetically within each bucket.
+    (spec §15.2). Metadata-family time-like columns (``is_metadata_header``)
+    sort first, then everything else, alphabetically within each bucket.
 
     Args:
         df: The frame to inspect (typically the filtered master mirror).
@@ -133,7 +134,7 @@ def selectable_time_columns(
             eligible.append(col)
 
     def _bucket(name: str) -> int:
-        return 0 if (name.startswith("Metadata_") and _is_time_like_name(name)) else 1
+        return 0 if (is_metadata_header(name) and _is_time_like_name(name)) else 1
 
     eligible.sort(key=lambda name: (_bucket(name), name))
     return eligible

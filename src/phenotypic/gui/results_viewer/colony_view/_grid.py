@@ -52,6 +52,7 @@ from phenotypic.gui.results_viewer._ids import (
     colony_cell_popover_data_id,
 )
 from phenotypic.schema import ErrorCategory
+from phenotypic.sdk_ import is_metadata_header
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
@@ -94,8 +95,7 @@ def _url_prefix() -> str:
     return MOUNT_HOME
 
 
-#: Sort buckets — Metadata_ first, then Grid_, then everything else.
-_METADATA_PREFIX = "Metadata_"
+#: Sort buckets — metadata-family first (via is_metadata_header), then Grid_, then everything else.
 _GRID_PREFIX = "Grid_"
 
 #: Minimum crop side length, even on degenerate (tiny / empty) frames.
@@ -134,9 +134,9 @@ def selectable_axis_columns(
     - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 
-    The returned list is sorted in three buckets: ``Metadata_*`` first
-    (alphabetic within), then ``Grid_*`` (alphabetic), then everything
-    else (alphabetic).
+    The returned list is sorted in three buckets: metadata-family columns
+    (``is_metadata_header``) first (alphabetic within), then ``Grid_*``
+    (alphabetic), then everything else (alphabetic).
 
     Args:
         df: The frame to inspect (typically the master frame after the
@@ -177,7 +177,7 @@ def selectable_axis_columns(
         suitable.append(col)
 
     def _bucket(name: str) -> int:
-        if name.startswith(_METADATA_PREFIX):
+        if is_metadata_header(name):
             return 0
         if name.startswith(_GRID_PREFIX):
             return 1

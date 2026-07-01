@@ -28,6 +28,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
+    is_metadata_header,
     migrate_legacy_qc,
 )
 
@@ -544,9 +545,6 @@ def _scan_overlay_index(
     return frozenset(pairs)
 
 
-_METADATA_PREFIX = "Metadata_"
-
-
 def _all_parse_as_float(values: list[str]) -> bool:
     """Return True iff ``values`` is non-empty and every entry parses as float.
 
@@ -568,7 +566,7 @@ def _all_parse_as_float(values: list[str]) -> bool:
 class _LazyColumnValueSets(Mapping[str, list[str]]):
     """Sorted unique string values per column, computed on first access.
 
-    Eagerly materialises ``Metadata_*`` columns (always small, always
+    Eagerly materialises metadata-family columns (always small, always
     surfaced in the filter sidebar) and defers everything else until a
     callback actually asks for it. Avoids the multi-MB string allocation
     that would otherwise happen at boot for wide masters with hundreds
@@ -579,7 +577,7 @@ class _LazyColumnValueSets(Mapping[str, list[str]]):
         self._df = df
         self._cache: dict[str, list[str]] = {}
         for column in df.columns:
-            if column.startswith(_METADATA_PREFIX):
+            if is_metadata_header(column):
                 self._cache[column] = self._compute(column)
 
     def _compute(self, column: str) -> list[str]:

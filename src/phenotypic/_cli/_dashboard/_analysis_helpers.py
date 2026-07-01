@@ -16,10 +16,14 @@ from typing import Any, Dict, List
 
 import polars as pl
 
+from phenotypic.sdk_ import metadata_category_prefixes
+
 from .._cli_output_manager import _atomic_write
 
-# Prefix priority for column selection in scatter data.
-SCATTER_PREFIX_PRIORITY = ("Metadata_", "Grid_", "Shape_", "Intensity_", "Color_")
+# Prefix priority for column selection in scatter data.  Derived from the
+# centralized helper so the list tracks the metadata namespace automatically
+# (today ``Metadata_``; after B2 flip: ``MetadataGenetic_`` etc.).
+SCATTER_PREFIX_PRIORITY = (*metadata_category_prefixes(), "Grid_", "Shape_", "Intensity_", "Color_")
 
 # Column used to identify datasets throughout analysis plugins.
 DATASET_COL = "Metadata_Dataset"
