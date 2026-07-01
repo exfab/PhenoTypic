@@ -15,7 +15,12 @@ bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
 standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
 """
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import (
+    Entry,
+    MeasurementInfo,
+    parse_qualified_header,
+    qualified_header,
+)
 from ._rembi import REMBI_MODULE as REMBI_MODULE, header_to_module as header_to_module
 from ._tiers import (
     DerivedMeasure as DerivedMeasure,
@@ -73,6 +78,8 @@ from ._texture import TEXTURE
 __all__ = [
     "Entry",
     "MeasurementInfo",
+    "parse_qualified_header",
+    "qualified_header",
     "REMBI_MODULE",
     "header_to_module",
     "METADATA",

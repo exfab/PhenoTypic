@@ -9,6 +9,10 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
     def category(cls) -> str:
         return "LogGrowthModel"
 
+    @classmethod
+    def header_scheme(cls) -> str:
+        return "metric_qualified"
+
     R_FIT = Entry("r", "The intrinsic growth rate",
                   tier=1, derivation_type="parameterization", derives_from="SIZE")
     K_FIT = Entry("K", "The carrying capacity",

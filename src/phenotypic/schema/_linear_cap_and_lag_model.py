@@ -9,6 +9,10 @@ class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
     def category(cls) -> str:
         return "LinearCapAndLagModel"
 
+    @classmethod
+    def header_scheme(cls) -> str:
+        return "metric_qualified"
+
     v = Entry("v", "The post-lag phase growth rate.",
               tier=1, derivation_type="parameterization", derives_from="SIZE")
     s0 = Entry("s0", "The initial size",

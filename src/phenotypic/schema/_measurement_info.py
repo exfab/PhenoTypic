@@ -372,6 +372,33 @@ class MeasurementInfo(str, Enum):
         """REMBI module for this enum, or None until a subclass declares it."""
         return None
 
+    @classmethod
+    def header_scheme(cls) -> str:
+        """Naming scheme for this enum's DataFrame output headers.
+
+        ``"static"`` (default) → exact ``{category}_{label}``;
+        ``"metric_qualified"`` → ``{category}_{metric}_{label}`` (growth
+        models + model metrics, where ``{metric}`` is a runtime value);
+        ``"texture"`` → TEXTURE's ``-deg/-scale`` suffix scheme.
+        """
+        return "static"
+
+    @classmethod
+    def member_for_header(cls, column: str) -> "MeasurementInfo | None":
+        """Return the member *column* is an output header for, or ``None``."""
+        if cls.header_scheme() == "metric_qualified":
+            parsed = parse_qualified_header(cls, column)
+            return parsed[1] if parsed is not None else None
+        for member in cls:
+            if member.value == column:
+                return member
+        return None
+
+    @classmethod
+    def owns_header(cls, column: str) -> bool:
+        """Whether *column* is one of this enum's output headers."""
+        return cls.member_for_header(column) is not None
+
     @property
     def CATEGORY(self) -> str:
         """Get the category name for this measurement instance.
@@ -569,3 +596,36 @@ class MeasurementInfo(str, Enum):
         else:
             doc = module.__doc__ or ""
             return doc + "\n\n" + cls.rst_table()
+
+
+def qualified_header(member: "MeasurementInfo", token: str) -> str:
+    """Runtime output header ``{Category}_{token}_{label}``.
+
+    Embeds the fitted-metric *token* so a reader can tell which measurement a
+    growth-model parameter was trained on. Inverse of
+    :func:`parse_qualified_header`.
+    """
+    return f"{member.CATEGORY}_{token}_{member.label}"
+
+
+def parse_qualified_header(
+    info_cls: "type[MeasurementInfo]", column: str
+) -> "tuple[str, MeasurementInfo] | None":
+    """Inverse of :func:`qualified_header` for one enum.
+
+    Returns ``(metric_token, member)`` when *column* is a metric-qualified
+    header of *info_cls* (``{cat}_{metric}_{label}`` with a non-empty metric),
+    else ``None``. Anchors on the longest matching member-label suffix, so an
+    underscore inside the metric token stays unambiguous.
+    """
+    prefix = info_cls.category() + "_"
+    if not column.startswith(prefix):
+        return None
+    best: "tuple[str, MeasurementInfo] | None" = None
+    for member in info_cls:
+        suffix = "_" + member.label
+        if column.endswith(suffix):
+            metric = column[len(prefix): len(column) - len(suffix)]
+            if metric and (best is None or len(member.label) > len(best[1].label)):
+                best = (metric, member)
+    return best

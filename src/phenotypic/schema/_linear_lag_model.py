@@ -9,6 +9,10 @@ class LINEAR_LAG_MODEL(DerivedMeasure):
     def category(cls) -> str:
         return "LinearLagModel"
 
+    @classmethod
+    def header_scheme(cls) -> str:
+        return "metric_qualified"
+
     v = Entry("v", "The post-lag phase growth rate.",
               bio_desc="The post-lag phase growth rate "
                        "using the target metric (usually radius)",
