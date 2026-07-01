@@ -67,7 +67,7 @@ def _seeded_plates(n: int = 4) -> list[GridImage]:
 def _layout_csv(tmp_path, names) -> str:
     """A layout CSV declaring 96 expected objects per plate (for the count check)."""
     rows = [
-        {"Metadata_ImageName": name, "Object_Label": j}
+        {"MetadataImage_ImageName": name, "Object_Label": j}
         for name in names
         for j in range(_EXPECTED)
     ]
@@ -88,7 +88,7 @@ def _spec(tmp_path, names) -> TuningSpec:
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=_layout_csv(tmp_path, names),
-                groupby=["Metadata_ImageName"],
+                groupby=["MetadataImage_ImageName"],
             )
         ),
         evaluator=Evaluator(),
