@@ -110,6 +110,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -257,6 +272,15 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">add a Frangi/Sato vesselness channel to <span class="term">assemble_composite_cost</span> so faint thin hyphae survive thresholding</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Sato et al. 1998</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>smaller-magnitude Hessian eigenvalue; near 0 along a tube's axis</dd>
+            <dt>λ₂</dt><dd>larger-magnitude Hessian eigenvalue; large-negative across a bright tube</dd>
+            <dt>σ</dt><dd>Gaussian filter scale (px); the tube is enhanced most at σ ≈ its radius</dd>
+            <dt>∂²/∂x²</dt><dd>second spatial derivative — the operator forming the Hessian</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (b) three tortuosity definitions -->
@@ -311,6 +335,26 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">per-hypha waviness once retraced — the <span class="term">MEAN_TORTUOSITY</span> member plus DM/ICM/SOAM variants</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et al. 2003; Hart et al. 1999</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM / ICM / SOAM</b> — path-vs-chord, bend-count, and integrated-turning waviness of one strand (a retraced hypha)</dd>
+            <dt>Units</dt><dd>dimensionless (≥1; DM = ICM = 1 for a straight strand, SOAM = 0)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a more meandering, tightly-curling strand path; near-minimum ⇒ a taut, near-straight run</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>Distance-Metric tortuosity = L / C (dimensionless; 1 = straight)</dd>
+            <dt>ICM</dt><dd>Inflection-Count Metric = n · DM (bend-weighted)</dd>
+            <dt>SOAM</dt><dd>Sum-of-Angles Metric = Σθ / L (integrated turning per unit length, rad/px)</dd>
+            <dt>L</dt><dd>path length along the strand (px)</dd>
+            <dt>C</dt><dd>chord = straight-line end-to-end distance (px)</dd>
+            <dt>n</dt><dd>number of inflection points (sign changes of curvature)</dd>
+            <dt>θ</dt><dd>local turning angle summed along the path (rad)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (c) degree-4 resolution -->
@@ -362,6 +406,12 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">degree-classification pass after <span class="term">extract_fragment_paths</span> — separates branch vs crossing vs anastomosis</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger et al. 2015 (NEFI); vascular A/V topology</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton-graph vertex with 4 incident edges (node degree = 4)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (d) density on untraceable bed -->
@@ -410,6 +460,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask / grayscale</span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the 🟢 <span class="term">COMPLEXITY</span> family — area fraction, mass FD, lacunarity — for mats too dense to retrace</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zudaire et al. 2011 (AngioTool); Zahid et al. 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area % · D · junction ρ</b> — coverage fraction, box-counting fractal dimension, and branch-points-per-area of a confluent mat</dd>
+            <dt>Units</dt><dd>percent · dimensionless · count·area⁻¹</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a denser, more plane-filling, more junction-rich mycelial bed; lower ⇒ sparse, open coverage</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area %</dt><dd>vessel-area percent = foreground pixels ÷ field area × 100</dd>
+            <dt>FD (box)</dt><dd>box-counting fractal dimension — log–log slope of occupied boxes vs scale</dd>
+            <dt>junction ρ</dt><dd>junction density = branch-point count ÷ field area (per unit area)</dd>
+          </dl>
         </div>
       </article>
 
@@ -475,6 +541,23 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">coverage fraction + junction density per area as 🟢 mask-level branchiness proxies (vs fragile tip/node counts)</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zudaire et al. 2011 (AngioTool); Niemistö et al. 2005 (AngioQuant)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area % · ρⱼ · #endpoints</b> — coverage fraction, junction density, and free-terminal count of the mycelial field</dd>
+            <dt>Units</dt><dd>percent · count·area⁻¹ · integer</dd>
+            <dt>Reads as</dt><dd>higher area %/ρⱼ ⇒ denser, more branch-crowded coverage; more end-points ⇒ more free hyphal tips</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area %</dt><dd>vessel-area percent = Σ foreground pixels ÷ field area × 100</dd>
+            <dt>ρⱼ</dt><dd>junction density = junction (branch-point) count ÷ field area</dd>
+            <dt>#∘</dt><dd>count of graph junction nodes in the field</dd>
+            <dt>end-point count</dt><dd>number of free terminals (degree-1 skeleton nodes)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 2. Calibre & branching laws -->
@@ -523,6 +606,24 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">cord/rhizomorph calibre classes &amp; Rall/Murray junction exponent — aspirational until retracing + sub-px width are reliable</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Patton et al. 2006; Barry &amp; Williams 2015 (AnaMorf)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d · x · R<sub>b</sub></b> — strand diameter, Murray junction exponent (d₀<sup>x</sup> = d₁<sup>x</sup> + d₂<sup>x</sup>), and cross-order bifurcation ratio of a cord/rhizomorph tree</dd>
+            <dt>Units</dt><dd>d in px (µm); x and R<sub>b</sub> dimensionless (x ≈ 3, R<sub>b</sub> typically 3–5)</dd>
+            <dt>Reads as</dt><dd>larger d ⇒ thicker cords; x near 3 ⇒ diameters split by a near-optimal cube law; higher R<sub>b</sub> ⇒ more segments added per branch order</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d₀</dt><dd>parent (pre-bifurcation) vessel diameter (px)</dd>
+            <dt>d₁, d₂</dt><dd>the two daughter vessel diameters after the bifurcation (px)</dd>
+            <dt>d₀³ = d₁³ + d₂³</dt><dd>Murray's law — cube of parent diameter equals sum of daughter cubes (junction exponent ≈ 3)</dd>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio = N<sub>ω</sub> ÷ N<sub>ω+1</sub> (segment counts across successive branch orders)</dd>
+            <dt>N<sub>ω</sub></dt><dd>number of segments at Strahler order ω</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 3. Curvature / tortuosity -->
@@ -562,6 +663,25 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Neuro</span><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">per-hypha waviness / contraction (<span class="term">MEAN_TORTUOSITY</span> + DM/ICM/SOAM); robust per-branch once a strand is retraced</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et al. 2003; Hart et al. 1999</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM / ICM / SOAM</b> — detour, bend-count, and integrated-curvature waviness of a single retraced hypha</dd>
+            <dt>Units</dt><dd>dimensionless (DM, ICM ≥ 1; 1 = perfectly straight; SOAM ≥ 0)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a more winding, sharply-coiling hyphal centerline; near-minimum ⇒ a straight, direct run</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>Distance-Metric = L / C (path length ÷ Euclidean chord; 1 = straight)</dd>
+            <dt>ICM</dt><dd>Inflection-Count Metric = (#inflections) · DM</dd>
+            <dt>SOAM</dt><dd>Sum-of-Angles Metric = Σθ / L (integrated turning per unit length, rad/px)</dd>
+            <dt>L</dt><dd>geodesic path length along the branch (px)</dd>
+            <dt>C</dt><dd>Euclidean chord = straight end-to-end distance (px)</dd>
+            <dt>θ</dt><dd>local turning angle summed along the branch (rad)</dd>
+          </dl>
         </div>
       </article>
 
@@ -612,6 +732,23 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the core 🟢 <span class="term">COMPLEXITY</span> members — mass FD, lacunarity, multifractal width — for confluent mats</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Masters 2004; Zahid et al. 2016; Stošić &amp; Stošić 2006</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D / Λ</b> — box-counting fractal dimension and lacunarity of a confluent mycelial mat</dd>
+            <dt>Units</dt><dd>dimensionless (D between 1 and 2 for a 2-D bed; Λ ≥ 0)</dd>
+            <dt>Reads as</dt><dd>higher D ⇒ more space-filling, self-similar branching; higher Λ ⇒ gappier, more clumped coverage at equal D</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>box-counting fractal dimension = slope of log N(ε) vs log(1/ε)</dd>
+            <dt>N(ε)</dt><dd>count of occupied boxes at box size ε</dd>
+            <dt>ε</dt><dd>box (tile) edge length, shrunk across scales (px)</dd>
+            <dt>Λ</dt><dd>lacunarity = gliding-box variance ÷ mean² of occupancy vs scale (gappiness)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 5. Inter-segment space metrics -->
@@ -656,6 +793,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">enclosed-hole count / mean hole size + the <span class="term">EULER_NUMBER</span> member as a loop/mesh proxy</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vickerman et al. 2009 (VESGEN); Carpentier et al. 2020</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mesh area &amp; count</b> — size and number of avascular zones fully enclosed by the network (the inter-hyphal gaps of a mat)</dd>
+            <dt>Units</dt><dd>area in px² (mm²); count is an integer (≈ inverse of branch density)</dd>
+            <dt>Reads as</dt><dd>smaller, more numerous meshes ⇒ a denser, more finely-reticulated net; larger, fewer meshes ⇒ an open, sparsely-branched net</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>mesh area</dt><dd>area of a background region fully enclosed by the network (px² per hole)</dd>
+            <dt>mesh count</dt><dd>number of enclosed avascular zones ≈ 1 ÷ (branch density)</dd>
+            <dt>Euler number</dt><dd>connected components − enclosed holes; counts loops/meshes from the mask</dd>
+          </dl>
         </div>
       </article>
 
@@ -702,6 +855,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Astronomy</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a Frangi/Sato vesselness term in <span class="term">assemble_composite_cost</span> — the single strongest transfer for recovering faint hyphae</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Sato et al. 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>smaller-magnitude Hessian eigenvalue; ≈ 0 along a tube's axis</dd>
+            <dt>λ₂</dt><dd>larger-magnitude Hessian eigenvalue; large-negative across a bright tube (|λ₂| ≫ |λ₁|)</dd>
+            <dt>σ</dt><dd>Gaussian scale (px); vesselness peaks where σ ≈ local tube radius</dd>
+          </dl>
         </div>
       </article>
 
@@ -759,6 +920,12 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">post-<span class="term">extract_fragment_paths</span> degree-classification so crossings are traversed, not mis-read as branch points</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger et al. 2015 (NEFI); vascular A/V topology</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton-graph vertex with 4 incident edges (node degree = 4)</dd>
+          </dl>
         </div>
       </article>
 
@@ -875,6 +1042,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the safe 🟢 backbone for confluent mycelium — coverage %, mass FD, lacunarity in the <span class="term">COMPLEXITY</span> family</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zahid et al. 2016; Zudaire et al. 2011 (AngioTool)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>vessel-density % · perfusion fraction · D</b> — coverage percent, occupied-area fraction, and box-counting fractal dimension of a too-dense-to-trace mat</dd>
+            <dt>Units</dt><dd>percent · fraction 0–1 · dimensionless (D between 1 and 2)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a denser, more plane-filling mycelial bed; lower ⇒ sparse, open coverage — all stable where tip/node counts collapse</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>vessel-density %</dt><dd>foreground (vessel) pixels ÷ field area × 100</dd>
+            <dt>perfusion-area fraction</dt><dd>fraction of field occupied by perfused vessels (0–1)</dd>
+            <dt>D</dt><dd>box-counting fractal dimension — log–log slope of occupied boxes vs scale</dd>
+          </dl>
         </div>
       </article>
 

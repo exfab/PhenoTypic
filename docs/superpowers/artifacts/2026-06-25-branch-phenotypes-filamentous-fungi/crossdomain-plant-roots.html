@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -241,6 +256,21 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Colony hull/solidity + branch-emergence angle map straight onto mycelium territory and lateral-branch angle.</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012 (GiA Roots); Pound 2013 (RootNav)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — emergence (insertion) angle of a lateral off its parent</dd>
+            <dt>Units</dt><dd>degrees (0–90° off the parent axis)</dd>
+            <dt>Reads as</dt><dd>near 0° = lateral hugs the parent axis (narrow, forward-swept); near 90° = lateral splays out perpendicular, spreading the network wider</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>emergence ∠</dt><dd>insertion angle of a lateral off its parent root (degrees)</dd>
+            <dt>convex hull</dt><dd>smallest convex polygon enclosing the whole root system (foraged territory)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (b) topological index — herringbone vs dichotomous -->
@@ -282,6 +312,22 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Distinguishes apical-dominant hyphal trees from richly dichotomous tip-splitting morphotypes — but needs a clean parent/child graph, so it sits behind retracing.</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter 1987; Delory 2016 (archiDART)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>TI</b> — topological index from log(altitude) vs log(magnitude)</dd>
+            <dt>Units</dt><dd>dimensionless (≈1 herringbone, ≈0.5 dichotomous); altitude and magnitude are integers</dd>
+            <dt>Reads as</dt><dd>TI near 1 = one dominant axis carrying all laterals (main-axis-dominant); TI near 0.5 = branching spread evenly, every branch splitting again</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>TI</dt><dd>topological index — slope of log(altitude) vs log(magnitude); ≈1 herringbone, ≈0.5 dichotomous</dd>
+            <dt>altitude</dt><dd>number of links in the longest tip→base path</dd>
+            <dt>magnitude</dt><dd>number of tips in the tree</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (c) A* least-cost path through a crossing -->
@@ -321,6 +367,13 @@
         <div class="meta">
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">PhenoTypic already runs multi-source Dijkstra least-cost paths; the borrowed refinement is direction-continuity edge pairing at junctions.</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Pound 2013 (RootNav, EM + A&#42;)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A&#42;</dt><dd>heuristic least-cost pathfinding, run apex→seed</dd>
+            <dt>cost</dt><dd>per-pixel traversal cost — "how un-root-like is this pixel?" (cheap where root-like)</dd>
+          </dl>
         </div>
       </article>
 
@@ -405,6 +458,13 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">The hyphal crossing-vs-anastomosis problem verbatim. Resolve degree-4 nodes by smallest-turning-angle continuity; X-ray-CT / RSAtrace3D physically removes the ambiguity when throughput allows.</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Pound 2013; Teramoto 2020 (RSAtrace3D)</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton node with four incident edges — two roots crossing</dd>
+            <dt>degree-3 node</dt><dd>skeleton node with three incident edges — one real branch</dd>
+          </dl>
+        </div>
       </article>
 
     </div>
@@ -449,6 +509,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012; Seethepalli 2021 (RhizoVision)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L</b> total length · <b>A<sub>hull</sub></b> convex-hull area · <b>solidity</b></dd>
+            <dt>Units</dt><dd>L → px (µm/cm calibrated); A<sub>hull</sub> → px² (mm²); solidity → dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>↑ L / ↑ hull = larger, more-spread system; solidity ≈ 1 = compact/dense fill, ↓ = diffuse/exploratory with large voids</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>total root length</dt><dd>sum of all traced segment lengths (graph-level)</dd>
+            <dt>convex hull</dt><dd>smallest convex polygon enclosing the mask (foraged territory)</dd>
+            <dt>solidity</dt><dd>network area ÷ hull area — how densely the hull is filled</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 2. Lateral branching density + emergence angle -->
@@ -487,6 +563,22 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Branching frequency φ and mean branch angle are the direct hyphal analogs (catalog Family F/G) — both flagged 🔴 because angles collapse at overlap.</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lobet 2011 (SmartRoot); Delory 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>lateral density</b> &amp; <b>θ</b> — laterals per unit parent length and each lateral's emergence angle</dd>
+            <dt>Units</dt><dd>density in laterals·cm⁻¹; θ in degrees (0–90°)</dd>
+            <dt>Reads as</dt><dd>high density = tightly spaced side branches (finely subdivided net); wide θ = laterals splay perpendicular, spreading coverage sideways</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ emergence</dt><dd>insertion angle of a lateral off its parent root</dd>
+            <dt>lateral density</dt><dd>number of laterals per unit length of parent root (n laterals per length)</dd>
+            <dt>φ</dt><dd>hyphal branching frequency (the → Fungi analog)</dd>
+          </dl>
         </div>
       </article>
 
@@ -528,6 +620,24 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter 1987; Delory 2016 (archiDART); Strahler 1957; Shreve 1966</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>magnitude</b>, <b>altitude</b>, <b>TI</b> — tip count, longest tip→base depth, and their log-log slope</dd>
+            <dt>Units</dt><dd>magnitude &amp; altitude integers; TI dimensionless (≈1 herringbone, ≈0.5 dichotomous)</dd>
+            <dt>Reads as</dt><dd>high magnitude = many terminal tips; high altitude relative to magnitude (TI→1) = one deep dominant path; low (TI→0.5) = evenly, repeatedly splitting tree</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>magnitude</dt><dd>number of tips in the rooted tree</dd>
+            <dt>altitude</dt><dd>number of links in the longest tip→base path</dd>
+            <dt>P<sub>E</sub></dt><dd>total exterior path length — Σ over all tips of the path length to base</dd>
+            <dt>TI</dt><dd>topological index — log-altitude vs log-magnitude slope</dd>
+            <dt>Strahler / Shreve</dt><dd>segment-ordering schemes (Strahler: equal orders merge to order+1; Shreve: orders sum)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 4. Interbranch distance + tortuosity -->
@@ -561,6 +671,23 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Mean internode distance &amp; mean tortuosity are 🟡 in the catalog — robust per-branch once retracing produces a correct segment.</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Vascular</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lobet 2011 (SmartRoot); Nunez-Iglesias 2018 (skan)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>τ</b> — tortuosity, geodesic ÷ Euclidean length of a segment</dd>
+            <dt>Units</dt><dd>dimensionless ≥ 1 (1 = perfectly straight); interbranch distance in px/µm</dd>
+            <dt>Reads as</dt><dd>τ near 1 = straight, direct segment; τ well above 1 = a wandering, meandering path between branch points</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>geodesic</dt><dd>path length measured along the root</dd>
+            <dt>Euclidean</dt><dd>straight-line (chord) distance between the two endpoints</dd>
+            <dt>tortuosity</dt><dd>geodesic ÷ Euclidean (≥ 1)</dd>
+            <dt>interbranch distance</dt><dd>arc length between consecutive branch points along a root</dd>
+          </dl>
         </div>
       </article>
 
@@ -601,6 +728,23 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Identical to the catalog's highest-value 🟢 additions (COMPLEXITY): mass/surface FD + lacunarity are the safe backbone for confluent mycelium.</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Physics</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bouda 2016 (box-counting roots); Plotnick 1996 (lacunarity)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> &amp; <b>Λ</b> — box-counting fractal dimension and lacunarity of the silhouette</dd>
+            <dt>Units</dt><dd>D dimensionless (1–2 for a plane-filling net); Λ dimensionless ≥ 0</dd>
+            <dt>Reads as</dt><dd>higher D = more space-filling, finely ramified coverage; higher Λ = gappier, more clumped occupancy at a given D</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>ε</dt><dd>box size in the box-counting grid</dd>
+            <dt>N(ε)</dt><dd>number of occupied boxes at box size ε</dd>
+            <dt>D</dt><dd>box-counting fractal dimension — slope of log N(ε) vs log(1/ε)</dd>
+            <dt>Λ</dt><dd>lacunarity — gliding-box variance ÷ mean² of occupancy (gappiness)</dd>
+          </dl>
         </div>
       </article>
 

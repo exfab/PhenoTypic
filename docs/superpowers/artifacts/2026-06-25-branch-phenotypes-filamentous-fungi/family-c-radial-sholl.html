@@ -116,6 +116,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -428,6 +443,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl 1953; Ferreira 2014</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N(r)</b> — mask crossings counted on each concentric ring vs radius</dd>
+            <dt>Units</dt><dd>count per ring (integer ≥ 0) plotted against radius r in px (µm)</dd>
+            <dt>Reads as</dt><dd>tall sustained profile = many strands persisting outward; steep drop to 0 = compact silhouette confined near the origin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r</dd>
+            <dt>r</dt><dd>radial distance from the colony origin (pixels)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 2 · Critical radius -->
@@ -458,6 +488,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ferreira 2014</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>r<sub>c</sub></b> — radius at which N(r) reaches its peak (argmax)</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large r<sub>c</sub> = densest crossing band sits far out, a wide annular silhouette; small r<sub>c</sub> = mass concentrated close to the origin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r<sub>c</sub></dt><dd>critical radius — the radius at which N(r) peaks</dd>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 3 · Max intersections -->
@@ -487,6 +532,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl 1953</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>m</sub></b> — the peak height of N(r), the most crossings on any single ring</dd>
+            <dt>Units</dt><dd>count (integer ≥ 0)</dd>
+            <dt>Reads as</dt><dd>high N<sub>m</sub> = a heavily populated growth band, many strands abreast at one radius; low N<sub>m</sub> = a thin, sparsely crossed silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N<sub>m</sub></dt><dd>max intersections — the peak height of N(r)</dd>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r</dd>
+            <dt>r<sub>c</sub></dt><dd>critical radius — the radius where the peak occurs</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 4 · Enclosing radius -->
@@ -515,6 +576,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ferreira 2014</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>r<sub>enc</sub></b> — largest radius whose ring still crosses the mask (last non-zero N(r))</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large r<sub>enc</sub> = far-reaching silhouette; small r<sub>enc</sub> = tightly bounded outline near the origin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r</dd>
+            <dt>r</dt><dd>radial distance from the colony origin (pixels); the enclosing radius is the largest r where N(r) &gt; 0</dd>
+          </dl>
         </div>
       </article>
 
@@ -548,6 +624,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl 1953</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>k</b> — slope of log N(r) regressed on r (density decay rate)</dd>
+            <dt>Units</dt><dd>per px (µm⁻¹); typically negative — steeper (more negative) = faster falloff</dd>
+            <dt>Reads as</dt><dd>steep k = crossings thin out quickly, a compact core with a bare margin; shallow k = crossings persist, an evenly filled outline out to the edge</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>Sholl regression coefficient — slope of log N(r) versus r</dd>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r</dd>
+            <dt>r</dt><dd>radial distance from the colony origin (pixels)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 6 · Sholl polynomial decomposition -->
@@ -578,6 +670,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ferreira 2014</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{a<sub>0</sub>…a<sub>n</sub>}</b> — coefficients of a polynomial fitted to N(r)</dd>
+            <dt>Units</dt><dd>N(r) is a count vs radius r in px (µm); each a<sub>i</sub> carries the units of count ÷ pxⁱ</dd>
+            <dt>Reads as</dt><dd>a single broad hump = one dominant growth band; multi-lobed fit = several concentric density shells in the outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N(r)</dt><dd>number of mask crossings on the ring of radius r (the profile being fitted)</dd>
+            <dt>r</dt><dd>radial distance from the colony origin (pixels)</dd>
+          </dl>
         </div>
       </article>
 
@@ -615,6 +722,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ferreira 2014</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>RI = N<sub>m</sub> ÷ primary</b> — peak crossings per trunk leaving the origin</dd>
+            <dt>Units</dt><dd>dimensionless ratio (≥ 1)</dd>
+            <dt>Reads as</dt><dd>high RI = few trunks fanning into many outer crossings, a bushy branched outline; RI ≈ 1 = little multiplication, near-radial spokes</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>N<sub>m</sub></dt><dd>max intersections — the peak height of N(r)</dd>
+            <dt>primary</dt><dd>number of primary hyphae leaving the origin (trunk count)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 8 · Radial mass distribution / density falloff -->
@@ -650,6 +772,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ρ(r)</b> — occupied-pixel fraction of each annulus vs radius</dd>
+            <dt>Units</dt><dd>dimensionless 0–1 per ring, plotted against radius r in px (µm)</dd>
+            <dt>Reads as</dt><dd>high, flat ρ(r) = a solidly filled disc at every radius; sharp drop = dense core fading to a sparse, hairy margin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the colony origin (pixels)</dd>
+            <dt>occupied fraction</dt><dd>mask pixels ÷ annulus area, measured per concentric ring, plotted against r</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 9 · Core/annulus split & RAD -->
@@ -683,6 +820,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Veiter 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>RAD = (d_total − d_core) ÷ d_total</b> — fraction of the radius that is loose outer zone</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>RAD → 0 = compact pellet, almost all core; RAD → 1 = thin core inside a broad diffuse/hairy annulus</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>RAD</dt><dd>relative annular diameter = (d_total − d_core) ÷ d_total; 0 = compact pellet, 1 = diffuse/hairy</dd>
+            <dt>d_total</dt><dd>full diameter of the colony's total extent</dd>
+            <dt>d_core</dt><dd>diameter of the dense compact core</dd>
+          </dl>
         </div>
       </article>
 
@@ -727,6 +880,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Rodríguez-Iturbe &amp; Rinaldo 1997</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>W(x)</b> — count of tips/segments in each shell at topological distance x</dd>
+            <dt>Units</dt><dd>count per shell vs along-network distance x in px (µm)</dd>
+            <dt>Reads as</dt><dd>W(x) rising then broadening = a branching, fanning tree; a narrow spike = few parallel paths of similar length</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>W(x)</dt><dd>width function — count of tips/segments at topological distance x from the origin</dd>
+            <dt>x</dt><dd>topological (along-network) distance from the origin</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 11 · Bushiness -->
@@ -762,6 +930,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>B = max ÷ median</b> — busiest scan-line crossing count over the typical one</dd>
+            <dt>Units</dt><dd>dimensionless ratio (≥ 1)</dd>
+            <dt>Reads as</dt><dd>high B = growth clumps into a few thick bands, a peaky uneven silhouette; B ≈ 1 = crossings spread evenly across scan lines</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>bushiness</dt><dd>max ÷ median strand-crossing count over a family of scan lines</dd>
+            <dt>max</dt><dd>crossing count of the busiest scan line</dd>
+            <dt>median</dt><dd>crossing count of the typical (median) scan line</dd>
+          </dl>
         </div>
       </article>
 

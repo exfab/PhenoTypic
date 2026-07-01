@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -242,6 +257,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras et&nbsp;al. 2010</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L<sub>seg</sub></b> — arc length of each inter-node skeleton segment (mean, max, histogram)</dd>
+            <dt>Units</dt><dd>px (or µm)</dd>
+            <dt>Reads as</dt><dd>↑ L<sub>seg</sub> = longer, sparser strides between nodes; ↓ = finely subdivided, many short segments</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2. Internode / inter-branch distance — MARQUEE (c) ===== -->
@@ -280,6 +303,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry &amp; Williams 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d<sub>internode</sub></b> — centre-line arc length between two consecutive branch points</dd>
+            <dt>Units</dt><dd>px (or µm)</dd>
+            <dt>Reads as</dt><dd>↑ d<sub>internode</sub> = sparse, widely-spaced branching; ↓ = frequent, densely packed branch points</dd>
+          </dl>
         </div>
       </article>
 
@@ -325,6 +356,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008; Lamour et&nbsp;al. 2022</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — parent-to-daughter branch angle, reported both local and remote</dd>
+            <dt>Units</dt><dd>degrees (0–180°)</dd>
+            <dt>Reads as</dt><dd>↑ θ = daughter departs at a wider, more sideways angle; ↓ θ = daughter hugs the parent axis (narrow fork)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ (local)</dt><dd>angle between parent and daughter from the daughter's first few pixels leaving the node (degrees)</dd>
+            <dt>θ (remote)</dt><dd>angle between parent and daughter measured toward the next node downstream (degrees)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 4. Bifurcation tilt & torque ===== -->
@@ -365,6 +411,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">3-D skeleton graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>tilt, torque</b> — parent-to-daughter-plane angle, and its twist between successive nodes</dd>
+            <dt>Units</dt><dd>degrees (both)</dd>
+            <dt>Reads as</dt><dd>↑ tilt = daughter plane leans further off the parent axis; ↑ torque = plane spins more sharply node-to-node (0° = coplanar, untwisted)</dd>
+          </dl>
         </div>
       </article>
 
@@ -408,6 +462,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">van&nbsp;Pelt et&nbsp;al. 1992; Scorcioni et&nbsp;al. 2008</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A<sub>p</sub></b> — |n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2), tip-count imbalance at a bifurcation</dd>
+            <dt>Units</dt><dd>dimensionless (0–1)</dd>
+            <dt>Reads as</dt><dd>↑ A<sub>p</sub> = lopsided, herringbone fork (one daughter owns the subtree); A<sub>p</sub>=0 = perfectly even dichotomous split</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>n<sub>L</sub></dt><dd>number of tips carried by the left daughter subtree (count)</dd>
+            <dt>n<sub>R</sub></dt><dd>number of tips carried by the right daughter subtree (count)</dd>
+            <dt>|n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2)</dt><dd>partition asymmetry: 0 for an even split, near 1 when one daughter owns almost the whole subtree</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 6. Caulescence / tree asymmetry ===== -->
@@ -441,6 +511,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">rooted tree graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Torben-Nielsen 2014</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C</b> — caulescence: how much of the tree's length &amp; tips a single dominant main path monopolises</dd>
+            <dt>Units</dt><dd>dimensionless (0–1)</dd>
+            <dt>Reads as</dt><dd>↑ C = one straight backbone with stub laterals (stem-and-side-branch); ↓ C = repeated even forks, no privileged axis</dd>
+          </dl>
         </div>
       </article>
 
@@ -477,6 +555,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Nunez-Iglesias et&nbsp;al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>τ</b> — tortuosity: path length ÷ straight-line Euclidean distance between endpoints</dd>
+            <dt>Units</dt><dd>dimensionless (≥&nbsp;1)</dd>
+            <dt>Reads as</dt><dd>↑ τ = wavier, more meandering hypha; τ=1 = ruler-straight segment</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>τ</dt><dd>tortuosity: path length ÷ Euclidean distance (dimensionless, ≥&nbsp;1)</dd>
+            <dt>path length</dt><dd>arc length traced along the hypha between its endpoints (pixels)</dd>
+            <dt>Euclidean</dt><dd>straight-line distance between the two endpoints (pixels)</dd>
+          </dl>
         </div>
       </article>
 
@@ -515,6 +609,24 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et&nbsp;al. 2003; Hart et&nbsp;al. 1999</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM, ICM, SOAM, ∫κ²</b> — four waviness scores over the same traced centre line</dd>
+            <dt>Units</dt><dd>DM dimensionless (≥&nbsp;1); ICM a count; SOAM radians; ∫κ² in 1/px</dd>
+            <dt>Reads as</dt><dd>↑ any = wavier path; DM tracks broad end-to-end displacement, ICM/SOAM/∫κ² spike on many sharp local kinks</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>distance-metric tortuosity: path length ÷ chord (dimensionless)</dd>
+            <dt>ICM</dt><dd>inflection-count metric: number of curve inflections along the path (count)</dd>
+            <dt>SOAM</dt><dd>sum-of-angles metric: Σ of turning angles along the path (radians)</dd>
+            <dt>∫κ²</dt><dd>integrated squared curvature along the path</dd>
+            <dt>κ</dt><dd>local curvature of the centre line (1/pixels)</dd>
+          </dl>
         </div>
       </article>
 
@@ -556,6 +668,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Nunez-Iglesias et&nbsp;al. 2018</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>w = 2·DT</b> — hyphal thickness: the distance-transform radius at each skeleton point, doubled</dd>
+            <dt>Units</dt><dd>px (or µm), typically a few px across</dd>
+            <dt>Reads as</dt><dd>↑ w = thicker, fuller strand; ↓ w = thinner filament (fragile — a few px wide)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DT</dt><dd>distance transform: distance from a skeleton point to the nearest mask edge (pixels)</dd>
+            <dt>width = 2·DT</dt><dd>hyphal thickness — the inscribed radius doubled (pixels)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 10. Diameter classes ===== -->
@@ -589,6 +716,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask + distance transform</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli et&nbsp;al. 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L<sub>class</sub></b> — total length (or area) binned by width threshold: fine hyphae vs thick cords / rhizomorphs</dd>
+            <dt>Units</dt><dd>px (or µm) of length per class; bins keyed by width in px (or µm)</dd>
+            <dt>Reads as</dt><dd>mass shifting to wide bins = coarse cord-dominated network; mass in narrow bins = fine, thread-like network</dd>
+          </dl>
         </div>
       </article>
 
@@ -627,6 +762,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry &amp; Williams 2015</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>taper</b> — slope of width regressed against arc length, base toward tip</dd>
+            <dt>Units</dt><dd>dimensionless (µm width per µm length), sign carries direction</dd>
+            <dt>Reads as</dt><dd>steeper negative taper = hypha narrows faster toward the tip; taper≈0 = uniform-diameter tube</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>taper</dt><dd>taper rate: slope of width regressed against arc length (pixels width per pixel length)</dd>
+            <dt>width</dt><dd>hyphal diameter sampled along the centre line (pixels)</dd>
+            <dt>arc length</dt><dd>distance measured along the hypha from the base (pixels)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 12. Rall / Murray ratio & junction exponent ===== -->
@@ -664,6 +815,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Patton et&nbsp;al. 2006</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>x</b> — junction exponent solving d₀ˣ = d₁ˣ + d₂ˣ, with the Rall ratio (d₁ʳ+d₂ʳ)/d₀ʳ</dd>
+            <dt>Units</dt><dd>dimensionless (x typically ≈2–3)</dd>
+            <dt>Reads as</dt><dd>↑ x = parent much thicker than the daughters it splits into; x≈3 = area-preserving cubic split (very diameter-noise-sensitive)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d₀</dt><dd>parent diameter at the junction (pixels)</dd>
+            <dt>d₁, d₂</dt><dd>the two daughter diameters at the junction (pixels)</dd>
+            <dt>r</dt><dd>Rall power the diameters are raised to in (d₁ʳ+d₂ʳ)/d₀ʳ</dd>
+            <dt>x</dt><dd>junction exponent solving d₀ˣ = d₁ˣ + d₂ˣ (optimal near 3)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 13. Surface area / biovolume ===== -->
@@ -700,6 +868,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + radii</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>S, V</b> — network lateral surface area and enclosed biovolume, summed over per-segment frusta</dd>
+            <dt>Units</dt><dd>S in px² (µm²); V in px³ (µm³)</dd>
+            <dt>Reads as</dt><dd>↑ S, V = longer and/or thicker network overall; the S:V ratio rises as strands thin toward fine hyphae</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r₀</dt><dd>radius at one end of the segment's frustum (pixels)</dd>
+            <dt>r₁</dt><dd>radius at the other end of the segment's frustum (pixels)</dd>
+            <dt>Σ</dt><dd>sum of frustum lateral surface and enclosed volume over all segments in the network</dd>
+          </dl>
         </div>
       </article>
 

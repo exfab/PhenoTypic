@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -268,6 +283,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Haralick 1973</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>contrast, homogeneity, energy, entropy, correlation</b> — summary numbers read off the grey-level co-occurrence matrix</dd>
+            <dt>Units</dt><dd>dimensionless</dd>
+            <dt>Reads as</dt><dd>high contrast/entropy = busy fine-grained texture; high homogeneity/energy = smooth uniform surface</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>(Δx,Δy)</dt><dd>pixel offset — the fixed step separating the two grey levels counted into each matrix entry (pixels)</dd>
+            <dt>i</dt><dd>grey level of the first pixel in the pair (matrix row)</dd>
+            <dt>j</dt><dd>grey level of the second pixel in the pair (matrix column)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2. Directional GLCM anisotropy ===== -->
@@ -318,6 +349,20 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Haralick 1973</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>anisotropy</b> — peak-to-trough swing of a Haralick feature across the four offset angles</dd>
+            <dt>Units</dt><dd>dimensionless (0 = flat/isotropic)</dd>
+            <dt>Reads as</dt><dd>large swing = texture aligned along one axis (directional grain); flat = no preferred direction (isotropic)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>0°, 45°, 90°, 135°</dt><dd>the four offset directions along which the Haralick feature is recomputed and compared</dd>
+          </dl>
         </div>
       </article>
 
@@ -372,6 +417,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">OrientationJ</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ<sub>dom</sub>, spectral slope</b> — dominant orientation from the angular profile; coarseness from the radial profile</dd>
+            <dt>Units</dt><dd>θ in degrees (0–180°); spectral slope dimensionless</dd>
+            <dt>Reads as</dt><dd>a sharp angular peak = strongly oriented striped texture; a steep radial slope = coarse large-scale texture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>angle</dt><dd>angular coordinate in the power spectrum; its energy profile gives the preferred growth orientation</dd>
+            <dt>radius</dt><dd>radial coordinate (spatial frequency) in the power spectrum; its profile gives coarseness / texture scale</dd>
+          </dl>
         </div>
       </article>
 
@@ -428,6 +488,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">standard texture analysis</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Gabor energy</b> — response magnitude in each orientation/scale channel of the filter bank</dd>
+            <dt>Units</dt><dd>dimensionless (energy per orientation)</dd>
+            <dt>Reads as</dt><dd>a single dominant channel = aligned directional texture; energy spread across scales = fine multiscale detail</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>0°, 45°, 90°, 135°</dt><dd>the orientations the Gabor wavelet bank is tuned to; the peak-response channel reveals branch direction</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 5. Local-orientation angle histogram ===== -->
@@ -477,6 +551,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>angle histogram</b> — pooled distribution of per-window dominant orientations (peak, spread)</dd>
+            <dt>Units</dt><dd>dimensionless (normalised counts vs angle in degrees)</dd>
+            <dt>Reads as</dt><dd>a sharp peak = one preferred growth direction (anisotropic); a broad flat histogram = scattered orientations (isotropic)</dd>
+          </dl>
         </div>
       </article>
 
@@ -534,6 +616,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob 1997</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>S</b> — order parameter; concentration of local growth directions about their common axis</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>S → 1 = strongly aligned parallel grain; S → 0 = randomly oriented, radially spread growth</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>S</dt><dd>order parameter — concentration of the local growth directions about their common axis (0 = random, 1 = perfectly aligned)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 7. Angular power spectrum of boundary ===== -->
@@ -581,6 +677,20 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask (boundary)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>n</b> — dominant angular harmonic of the boundary orientation distribution</dd>
+            <dt>Units</dt><dd>dimensionless (n-fold peak, integer harmonic index)</dd>
+            <dt>Reads as</dt><dd>a strong harmonic n = n-fold branching symmetry in the margin; a single low-order peak = one preferred margin direction</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>n</dt><dd>angular harmonic index; a dominant harmonic n flags an n-fold growth symmetry in the margin</dd>
+          </dl>
         </div>
       </article>
 

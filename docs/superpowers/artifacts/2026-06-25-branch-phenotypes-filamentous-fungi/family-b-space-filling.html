@@ -110,6 +110,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -239,6 +254,22 @@
             line through <b>log N(ε)</b> vs <b>log(1/ε)</b> has slope <b>D</b> — the space-filling
             index. Because it fits a slope across many scales, a few mis-thresholded pixels barely move it.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — box-counting fractal (space-filling) dimension</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0 in the plane)</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling / branched; ≈1 = sparse, near-linear</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>ε</dt><dd>box (grid) size used to tile the mask</dd>
+            <dt>N(ε)</dt><dd>count of boxes occupied by the structure at size ε</dd>
+            <dt>D</dt><dd>fractal (space-filling) dimension — slope of log N(ε) vs log(1/ε)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (b) mass-FD (filled) vs surface-FD (outline) -->
@@ -269,6 +300,21 @@
             the surface dimension. When the two agree the growth is a true mass fractal (dispersed);
             when they diverge a dense filled core hides behind a rugged front (pelleted).</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mass D, surface D</b> — filled-mask vs outline-only fractal dimensions</dd>
+            <dt>Units</dt><dd>dimensionless (each ≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>mass D ≈ surface D = branchy throughout (dispersed); surface D &gt; mass D = smooth filled core behind a rugged front (pelleted)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>mass D</dt><dd>fractal dimension of the filled silhouette (every pixel)</dd>
+            <dt>surface D</dt><dd>fractal dimension of the outline (border only)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (c) lacunarity: same D, different gappiness, with gliding box -->
@@ -309,6 +355,22 @@
             makes the box's catch swing wildly — high <b>Λ = var/mean²</b>. Lacunarity is the texture
             axis fractal dimension misses.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ</b> — lacunarity (gappiness), var/mean² of box occupancy</dd>
+            <dt>Units</dt><dd>dimensionless (≥1)</dd>
+            <dt>Reads as</dt><dd>↑ Λ = gappier, clumped with large voids; ≈1 = evenly spread, uniform texture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ</dt><dd>lacunarity — gappiness index, var/mean² of box occupancy</dd>
+            <dt>r</dt><dd>side length of the gliding box</dd>
+            <dt>D</dt><dd>fractal dimension (shared by both panels)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (d) Euler / Minkowski χ = objects − holes -->
@@ -340,6 +402,20 @@
             number read off the silhouette: as a mesh closes loops — hyphal fusions, inter-strand
             voids — the hole count climbs and χ falls. It indexes loopiness without any graph.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>χ</b> — Euler number, connected objects minus enclosed holes</dd>
+            <dt>Units</dt><dd>integer (objects − holes)</dd>
+            <dt>Reads as</dt><dd>↓ χ (more negative) = more enclosed loops / holes, meshier silhouette; ↑ χ = fewer holes, simpler blobs</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>χ</dt><dd>Euler number = connected objects − enclosed holes</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- (e) DLA → compact morphotype axis -->
@@ -375,6 +451,21 @@
             foraging fronts; <b>D → 2</b> is compact area-filling. The DLA/DBM fit and dense-branching
             signature read the growth regime straight off the mask.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (with η ≈ 1/D) — morphotype position on the ramified⇄compact axis</dd>
+            <dt>Units</dt><dd>dimensionless (D ≈ 1.71–2.0; η a dimensionless exponent)</dd>
+            <dt>Reads as</dt><dd>D ≈ 1.71 = sparse, ramified, open front; D → 2 = compact, area-filling silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>measured fractal dimension (≈1.71 ramified → 2 compact)</dd>
+            <dt>η</dt><dd>effective Laplacian-growth exponent, η ≈ 1/D</dd>
+          </dl>
+        </div>
       </article>
 
     </div>
@@ -429,6 +520,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Obert 1990; Papagianni 2006</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BM</sub></b> — box-counting mass fractal dimension of the filled mask</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.2 sparse → 2.0 area-filling)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>BM</sub> = denser, more space-filling / branched interior; ≈1.2 = sparse, near-linear foraging</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BM</sub></dt><dd>box-counting mass fractal dimension (≈1.2 sparse → 2.0 area-filling)</dd>
+            <dt>ε</dt><dd>box (grid) size used to tile the filled mask</dd>
+            <dt>N(ε)</dt><dd>count of occupied boxes at size ε</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 2. Surface fractal dimension -->
@@ -469,6 +576,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni 2006</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BS</sub></b> — box-counting surface / border fractal dimension of the outline</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0 smooth disc → ~2.0 highly convoluted)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>BS</sub> = crinklier, fjord-like margin; ≈1 = smooth, near-circular edge</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BS</sub></dt><dd>box-counting surface/border fractal dimension (margin ruggedness; ≈1 for a smooth disc)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 3. Mass-vs-surface FD divergence -->
@@ -508,6 +629,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BS</sub> − D<sub>BM</sub></b> — divergence between surface and mass dimensions</dd>
+            <dt>Units</dt><dd>dimensionless (≈0 when the two agree)</dd>
+            <dt>Reads as</dt><dd>≈0 = branchy throughout (dispersed mass fractal); ↑ (surface exceeds mass) = smooth filled core behind a rugged front (pelleted)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BM</sub></dt><dd>mass fractal dimension (filled mask)</dd>
+            <dt>D<sub>BS</sub></dt><dd>surface fractal dimension (outline only)</dd>
+          </dl>
         </div>
       </article>
 
@@ -553,6 +689,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Plotnick 1996; Allain &amp; Cloitre 1991</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ(r)</b> — gliding-box lacunarity curve, var/mean² of occupancy vs scale</dd>
+            <dt>Units</dt><dd>dimensionless (≥1 at each r)</dd>
+            <dt>Reads as</dt><dd>↑ Λ = gappier, clumped with large inter-hyphal voids; ≈1 = evenly spread, uniform fill</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ(r)</dt><dd>lacunarity at box size r — var/mean² of box occupancy (gappiness)</dd>
+            <dt>r</dt><dd>side length of the gliding box</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 5. Multifractal spectrum -->
@@ -590,6 +741,25 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Halsey 1986; Stošić 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Δα</b> — width of the multifractal singularity spectrum f(α)</dd>
+            <dt>Units</dt><dd>dimensionless (spectrum width; ≈0 for monofractal)</dd>
+            <dt>Reads as</dt><dd>↑ Δα = more heterogeneous, dense and sparse zones scale differently; ≈0 = uniform space-filling</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f(α)</dt><dd>multifractal singularity spectrum</dd>
+            <dt>α</dt><dd>local scaling (singularity) exponent</dd>
+            <dt>Δα</dt><dd>spectrum width = α<sub>max</sub> − α<sub>min</sub> (heterogeneity)</dd>
+            <dt>α<sub>min</sub></dt><dd>smallest local scaling exponent</dd>
+            <dt>α<sub>max</sub></dt><dd>largest local scaling exponent</dd>
+            <dt>D<sub>q</sub></dt><dd>generalized dimensions reweighted by exponent q</dd>
+          </dl>
         </div>
       </article>
 
@@ -632,6 +802,20 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mecke 2000</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area, perimeter, χ</b> — the three additive Minkowski functionals (χ is the standout)</dd>
+            <dt>Units</dt><dd>area / perimeter in pixels; χ integer (objects − holes)</dd>
+            <dt>Reads as</dt><dd>↓ χ (more negative) = more enclosed loops / meshier silhouette; ↑ perimeter at fixed area = rougher boundary</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>χ</dt><dd>Euler number = connected objects − enclosed holes (connectivity)</dd>
+          </dl>
         </div>
       </article>
 
@@ -678,6 +862,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Florindo &amp; Bruno 2018</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — Minkowski–Bouligand (dilation / "sausage") fractal dimension</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling / branched; ≈1 = sparse, near-linear (gap-tolerant reading of D)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>δ</dt><dd>dilation radius the structure is thickened by</dd>
+            <dt>A(δ)</dt><dd>area of the dilated ("sausage") region at radius δ</dd>
+            <dt>D</dt><dd>Minkowski–Bouligand dimension from the A(δ) scaling</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 8. Mass-radius scaling -->
@@ -722,6 +922,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — radial mass-fractal dimension, exponent in M(R) ∝ R<sup>D</sup></dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>D → 2 = stays solid out to the edge (compact); D &lt; 2 = mass thins with reach (sparse, radially foraging)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R</dt><dd>radius of the circle grown from the colony centre</dd>
+            <dt>M(R)</dt><dd>mass (occupied pixels) enclosed within radius R</dd>
+            <dt>D</dt><dd>radial mass-fractal dimension in M(R) ∝ R<sup>D</sup></dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 9. Perimeter-area fractal dim -->
@@ -764,6 +980,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask (contour)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mandelbrot 1983</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>PA</sub></b> — perimeter–area fractal dimension, from the log P vs log A slope</dd>
+            <dt>Units</dt><dd>dimensionless (≈1 smooth boundary → 2 highly convoluted)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>PA</sub> = fjord-like, ramified margin (more perimeter per area); ≈1 = smooth, compact outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter (boundary length) of a shape</dd>
+            <dt>A</dt><dd>area (filled region) of that shape</dd>
+            <dt>D<sub>PA</sub></dt><dd>perimeter–area fractal dimension — slope of log P vs log A</dd>
+          </dl>
         </div>
       </article>
 
@@ -808,6 +1040,24 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (from slope −(d−D)) and knee <b>ξ</b> — fractal dimension plus mesh correlation length</dd>
+            <dt>Units</dt><dd>D dimensionless (≈1.0–2.0); ξ in pixels</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling; larger ξ = wider typical inter-branch gap / coarser mesh</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>C(r)</dt><dd>two-point density correlation at separation r</dd>
+            <dt>r</dt><dd>separation distance between a pair of occupied pixels</dd>
+            <dt>d</dt><dd>embedding (Euclidean) dimension of the image (2)</dd>
+            <dt>D</dt><dd>fractal dimension, from the power-law slope −(d−D)</dd>
+            <dt>ξ</dt><dd>correlation length — knee marking characteristic branch spacing</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 11. DLA/DBM regime fit -->
@@ -848,6 +1098,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Niemeyer 1984; Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>η, D<sub>f</sub></b> — effective Laplacian-growth exponent (η ≈ 1/D) and fitted growth-form dimension</dd>
+            <dt>Units</dt><dd>both dimensionless (D<sub>f</sub> ≈ 1.71–2.0; η a dimensionless exponent)</dd>
+            <dt>Reads as</dt><dd>D<sub>f</sub> ≈ 1.71 = ramified, open DLA-type front; D<sub>f</sub> → 2 = compact, area-filling silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>η</dt><dd>effective Laplacian-growth exponent, η ≈ 1/D</dd>
+            <dt>D</dt><dd>measured fractal dimension (DLA ≈ 1.71 → 2 compact)</dd>
+            <dt>D<sub>f</sub></dt><dd>fitted fractal dimension of the growth form</dd>
+          </dl>
         </div>
       </article>
 
@@ -892,6 +1158,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DBM flag</b> — categorical label from branch-width/gap ratio + branch-length distribution shape</dd>
+            <dt>Units</dt><dd>ratio dimensionless (≈1 when width ≈ gap); distribution tested for exponential fit</dd>
+            <dt>Reads as</dt><dd>width/gap ≈ 1 with exponential lengths = dense space-filling by regular tip-splitting; departures = other morphotype</dd>
+          </dl>
         </div>
       </article>
 

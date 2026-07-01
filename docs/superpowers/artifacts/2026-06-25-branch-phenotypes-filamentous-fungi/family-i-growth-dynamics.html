@@ -116,6 +116,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -243,6 +258,25 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1971</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>K<sub>r</sub></b> — constant slope of margin radius vs time (ΔR ÷ Δt)</dd>
+            <dt>Units</dt><dd>mm·h⁻¹ (or µm·h⁻¹); constant through the linear regime after the lag</dd>
+            <dt>Reads as</dt><dd>high K<sub>r</sub> = a fast-advancing colony front; low = a slowly spreading margin; a longer flat lag before the slope delays onset without changing the eventual edge speed</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R</dt><dd>colony radius (equivalent radius of the mask)</dd>
+            <dt>dR/dt</dt><dd>rate the margin advances outward (µm/h or mm/day)</dd>
+            <dt>K<sub>r</sub></dt><dd>radial growth rate — constant slope ΔR ÷ Δt in the linear regime</dd>
+            <dt>K<sub>m</sub></dt><dd>the same slope taken per individual colony</dd>
+            <dt>ΔR</dt><dd>change in radius over the interval</dd>
+            <dt>Δt</dt><dd>elapsed time over the interval</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2. Radial expansion / colonization rate ===== -->
@@ -283,6 +317,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Camy 2023</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>dArea/dt</b> — rate the colonized 2-D footprint grows</dd>
+            <dt>Units</dt><dd>mm²·h⁻¹ (area per unit time); rises then can taper as the plate fills</dd>
+            <dt>Reads as</dt><dd>high = a colony claiming new territory quickly across the whole silhouette; low = a footprint enlarging slowly; unlike K<sub>r</sub> it grows with the perimeter, so it accelerates as the disc widens</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>dArea/dt</dt><dd>rate the colonized footprint grows (area per unit time)</dd>
+            <dt>K<sub>r</sub></dt><dd>radial (1-D edge) growth rate, for contrast</dd>
+            <dt>t<sub>0</sub>, t<sub>1</sub>, t<sub>2</sub></dt><dd>successive time points (nested outlines)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 3. Specific (biomass) growth rate µ ===== -->
@@ -320,6 +370,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1969</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>µ</b> — specific growth rate, the slope of ln(biomass) vs time</dd>
+            <dt>Units</dt><dd>h⁻¹; constant while the log-biomass line stays straight</dd>
+            <dt>Reads as</dt><dd>high µ = biomass accumulating fast, including interior thickening the edge rate misses; low or falling µ = the network densifying more slowly or saturating as overlap hides new material</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>µ</dt><dd>specific growth rate — exponential rate of biomass accumulation (per unit time)</dd>
+            <dt>L</dt><dd>total hyphal length (or a mask-derived biomass proxy)</dd>
+            <dt>d ln(L)/dt</dt><dd>slope of log-biomass vs time; equals µ when constant</dd>
+            <dt>K<sub>r</sub></dt><dd>edge growth rate, for contrast (edge advance, not thickening)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 4. Peripheral growth-zone width w ===== -->
@@ -354,6 +421,22 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">high (derived) · 🟢⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1971</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>w</b> — width of the active peripheral annulus, derived as K<sub>r</sub> ÷ µ</dd>
+            <dt>Units</dt><dd>mm (or µm); a length, typically a narrow band relative to colony radius</dd>
+            <dt>Reads as</dt><dd>wide w = a broad leading zone of active hyphae driving fast spread per unit µ; narrow w = a thin front over a large inert core; it widens when edge advance outpaces biomass accumulation</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>w</dt><dd>peripheral growth-zone width — active outer annulus (length units), = K<sub>r</sub> ÷ µ</dd>
+            <dt>K<sub>r</sub></dt><dd>radial (edge) growth rate</dd>
+            <dt>µ</dt><dd>specific (biomass) growth rate</dd>
+          </dl>
         </div>
       </article>
 
@@ -404,6 +487,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lecault 2009</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>FD(t)</b> — box-counting fractal dimension of the mask, tracked per frame</dd>
+            <dt>Units</dt><dd>dimensionless vs time; bounded 1 (sparse strand) → 2 (area-filling)</dd>
+            <dt>Reads as</dt><dd>rising FD(t) = the network densifying, filling gaps between hyphae; flat FD(t) = self-similar expansion without getting denser; FD approaching 2 marks a near-solid, space-filling mat</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>FD</dt><dd>box-counting fractal dimension of the mask (1 = sparse, → 2 = area-filling)</dd>
+            <dt>FD(t)</dt><dd>that dimension tracked frame by frame; rising FD = densifying network</dd>
+            <dt>t</dt><dd>time (registered frame index)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 6. Growth-front anisotropy ===== -->
@@ -437,6 +536,22 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">high · 🟢⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Held 2019</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A</b> — growth-front anisotropy, the fitted-ellipse axis ratio tracked over time</dd>
+            <dt>Units</dt><dd>dimensionless, 0 (circular) → 1 (highly elongated)</dd>
+            <dt>Reads as</dt><dd>near 0 = isotropic, circular spread; rising toward 1 = the outline stretching along one axis, a directional growth bias; a steady climb signals sustained anisotropic expansion</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>major, minor</dt><dd>the fitted ellipse's long and short axes; their ratio scores anisotropy</dd>
+            <dt>t<sub>0</sub></dt><dd>early frame — a near-circular, isotropic outline</dd>
+            <dt>t<sub>1</sub></dt><dd>later frame — an elongated, anisotropic outline</dd>
+          </dl>
         </div>
       </article>
 
@@ -472,6 +587,21 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">med · 🟡⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ritz &amp; Crawford 1995</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d(coverage)/dt</b> — rate the occupied-area fraction rises toward full occupancy</dd>
+            <dt>Units</dt><dd>h⁻¹ (fraction per unit time); peaks at the steepest-rise point, then decays to 0 at saturation</dd>
+            <dt>Reads as</dt><dd>high = the colony rapidly filling its reachable area, blending expansion and densification; the rate softens and the curve flattens as strands touch and coverage nears 100%</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>coverage</dt><dd>occupied fraction inside the convex hull or field of view (0–1)</dd>
+            <dt>d(coverage)/dt</dt><dd>rate that fraction rises; peaks at the steepest-rise point, then saturates toward 100%</dd>
+          </dl>
         </div>
       </article>
 
@@ -525,6 +655,24 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Spitzer 2017</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d(tip position)/dt</b> — elongation velocity of one tracked apex along its own axis</dd>
+            <dt>Units</dt><dd>µm·h⁻¹ (per-tip displacement over time)</dd>
+            <dt>Reads as</dt><dd>high = a fast-elongating individual tip — the cellular engine beneath the colony's radial rate; the per-tip distribution's spread reflects how uniformly apices extend, and drops to 0 where a tip stalls or fuses</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d(tip position)/dt</dt><dd>elongation velocity of one apex along its own axis</dd>
+            <dt>Δposition</dt><dd>displacement of the tracked tip between frames</dd>
+            <dt>Δt</dt><dd>elapsed time between frames</dd>
+            <dt>K<sub>r</sub></dt><dd>colony collective edge speed, for contrast</dd>
+            <dt>t<sub>0</sub>, t<sub>1</sub>, t<sub>2</sub></dt><dd>successive frames of the same tip</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 9. Branching rate ===== -->
@@ -561,6 +709,22 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>dN<sub>b</sub>/dt</b> — new branch points appearing per unit time (staircase slope)</dd>
+            <dt>Units</dt><dd>new branches·h⁻¹ (events per unit time)</dd>
+            <dt>Reads as</dt><dd>high = growing points multiplying rapidly, a denser, more-textured network; low = a sparsely branching, tip-dominated architecture; its balance against tip extension sets colony texture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>#branches</dt><dd>count of branch points (degree-≥3 nodes) per frame</dd>
+            <dt>steps</dt><dd>upward jumps in that count — each is one new-branch event (+1 branch)</dd>
+            <dt>rate</dt><dd>branching rate = steps ÷ time</dd>
+          </dl>
         </div>
       </article>
 
@@ -603,6 +767,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Katz 1972</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>freq</b> — new tips per unit hyphal length per unit time, new tips ÷ (L · Δt)</dd>
+            <dt>Units</dt><dd>tips·µm⁻¹·h⁻¹ (branching rate normalised by length)</dd>
+            <dt>Reads as</dt><dd>high = branches packed densely along the filament regardless of colony size — a fine, intricate mesh; low = long unbranched runs between splits, a sparse open architecture; size-independent, so it compares small and large colonies directly</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>freq</dt><dd>specific branching frequency = new tips ÷ (L · Δt)</dd>
+            <dt>new tips</dt><dd>count of newly formed branch tips in the interval</dd>
+            <dt>L</dt><dd>traced hyphal length available for branching</dd>
+            <dt>Δt</dt><dd>elapsed time over the interval</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 11. Apical vs lateral branching kinetics ===== -->
@@ -643,6 +824,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Katz 1972</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>r<sub>apical</sub>, r<sub>lateral</sub></b> — separate rates of tip-splitting and side-branch events</dd>
+            <dt>Units</dt><dd>new branches·h⁻¹ per stream (two rates, or their apical:lateral ratio)</dd>
+            <dt>Reads as</dt><dd>apical-dominant = dichotomous, tip-splitting growth (branches at the advancing front); lateral-dominant = subapical side-branching behind the tip; the ratio fingerprints where new branches form independent of the overall branching rate</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 12. First-branch lag ===== -->
@@ -682,6 +871,21 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Spitzer 2017</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>t<sub>lag</sub></b> — elapsed time from germination to the germling's first branch point</dd>
+            <dt>Units</dt><dd>h (a single-event latency)</dd>
+            <dt>Reads as</dt><dd>long lag = the hypha extends far as one unbranched tube before committing to its first split — a delayed onset of branching; short lag = early commitment to a branched architecture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>t<sub>0</sub></dt><dd>start of tracking — spore germination</dd>
+            <dt>first-branch lag</dt><dd>elapsed time from t<sub>0</sub> to the germling's first branch point</dd>
+          </dl>
         </div>
       </article>
 
@@ -726,6 +930,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>dβ₁/dt</b> — persistent loop-forming fusions per unit time (rate the 1st Betti number rises)</dd>
+            <dt>Units</dt><dd>fusions·h⁻¹ (new persistent loops per unit time)</dd>
+            <dt>Reads as</dt><dd>high = hyphae frequently welding tip-to-tip or tip-to-side into a loop-rich, interconnected mesh; low = a tree-like network that stays branched without closing loops; time-persistence separates true fusions from transient crossings</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>1st Betti number</dt><dd>count of independent closed loops in the graph; a new persistent loop = one fusion</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 14. Negative autotropism — MARQUEE (d) ===== -->
@@ -762,6 +980,14 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hutchinson / Meškauskas 2004</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Δθ</b> — trajectory deflection of a tip away from a neighbouring hypha</dd>
+            <dt>Units</dt><dd>degrees of turn (or a dimensionless avoidance index averaged over encounters)</dd>
+            <dt>Reads as</dt><dd>large deflection away = strong self-avoidance spacing the network out for even coverage; near-zero = tips grow straight through, ignoring neighbours; a consistent turn-away marks an evenly dispersed, non-overlapping front</dd>
+          </dl>
         </div>
       </article>
 
@@ -806,6 +1032,14 @@
           <div class="mrow"><span class="mk">Fit</span><span class="mv">low · 🔴⏱</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Moore 2024; Nordzieke 2020</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>β</b> — directedness index: mean alignment of tip heading with the gradient axis</dd>
+            <dt>Units</dt><dd>dimensionless, 0 (no bias) → 1 (fully aligned); sign gives toward/away from the gradient</dd>
+            <dt>Reads as</dt><dd>near 1 = tips steer sharply up-gradient, a strongly directed front; near 0 = random heading with no gradient response; negative = tips turning down-gradient, away from the source</dd>
+          </dl>
         </div>
       </article>
 

@@ -114,6 +114,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -233,6 +248,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mean R/G/B or L*a*b*</b> — colony-averaged colour over all colony pixels</dd>
+            <dt>Units</dt><dd>colour-space value (0–255 per channel, or L*a*b*)</dd>
+            <dt>Reads as</dt><dd>low L* / high saturation = dark, deeply-hued colony; high L* / low saturation = pale, washed-out growth</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2. Pigment radial gradient (MARQUEE a) ===== -->
@@ -282,6 +305,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d(colour)/dr</b> — slope of the colour/intensity profile along the centre-to-edge radius</dd>
+            <dt>Units</dt><dd>colour-space value·px⁻¹</dd>
+            <dt>Reads as</dt><dd>steep negative = dark core fading to a pale margin; positive = pale centre with a darker rim; flat = uniform hue across the radius</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radius — distance along the transect from the inoculum (centre) out to the colony edge</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 3. Concentric ring / zonation strength (MARQUEE b) ===== -->
@@ -329,6 +366,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cesbron 2024</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Δr, zonation strength</b> — ring period from the dominant radial FFT peak, plus that peak's amplitude</dd>
+            <dt>Units</dt><dd>Δr in mm; strength dimensionless (peak amplitude)</dd>
+            <dt>Reads as</dt><dd>strong peak = sharp, regularly-spaced concentric banding; weak/absent = smooth, unbanded colour field</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Δr</dt><dd>band spacing — radial period between concentric rings, from the dominant FFT peak of the radial intensity profile</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 4. Circadian conidiation banding period ===== -->
@@ -370,6 +421,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dunlap &amp; Loros 2007</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>T = Δx ÷ growth-rate</b> — band spacing converted to a temporal banding period</dd>
+            <dt>Units</dt><dd>h (≈24 h in circadian strains)</dd>
+            <dt>Reads as</dt><dd>evenly-spaced bands at fixed T = regular clock-driven banding pattern; irregular spacing = arrhythmic, uneven zonation</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>T</dt><dd>banding period — time between conidiation bands (hours; ≈24 h in circadian strains)</dd>
+            <dt>Δx</dt><dd>band spacing — distance between adjacent conidiation bands along the growth axis (mm)</dd>
+            <dt>growth-rate</dt><dd>radial extension rate of the colony (mm·h⁻¹) used to convert spacing to time</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 5. Sectoring (MARQUEE c) ===== -->
@@ -403,6 +470,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vicente 2025</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>sectored fraction, sector count</b> — Σ wedge angle ÷ 360° and the number of departing wedges</dd>
+            <dt>Units</dt><dd>fraction 0–1 (count dimensionless)</dd>
+            <dt>Reads as</dt><dd>0 = uniform radial colour; rising = more of the disc split into distinctly-coloured angular wedges</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>α, β</dt><dd>individual sectors — angular wedges whose colour/morphology departs from the colony median</dd>
+            <dt>Σ wedge angle</dt><dd>total angular span of all sectors; divided by 360° gives the sectored fraction</dd>
+          </dl>
         </div>
       </article>
 
@@ -444,6 +526,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Yagüe-type pattern analysis</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>aerial fraction</b> — bright/high-texture (aerial) area over total colony area</dd>
+            <dt>Units</dt><dd>fraction 0–1</dd>
+            <dt>Reads as</dt><dd>high = fluffy, bright, raised aerial nap dominates; low = dark, flat, substrate-embedded mat</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 7. Exudate / guttation droplets ===== -->
@@ -481,6 +571,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">RGB (specular)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hernández-Lauzardo 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>droplet count &amp; area</b> — number and summed area of specular-highlight blobs, with their spatial spread</dd>
+            <dt>Units</dt><dd>count and area (px²) per colony</dd>
+            <dt>Reads as</dt><dd>many bright glints = heavily droplet-studded surface; few/none = clean, un-beaded mycelium</dd>
+          </dl>
         </div>
       </article>
 
@@ -521,6 +619,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale (calibrated)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Linde 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>conidia density field</b> — per-pixel spore density from the gray-value↔count calibration</dd>
+            <dt>Units</dt><dd>conidia·mm⁻² (density map)</dd>
+            <dt>Reads as</dt><dd>dark high-density zones = heavy sporulation patches; pale zones = sparse or non-sporulating surface</dd>
+          </dl>
         </div>
       </article>
 
@@ -563,6 +669,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zapanta et al. 2025 (PUPMCR)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ΔL*</b> — drop in CIELAB lightness of a colony zone (magnitude and rate over time)</dd>
+            <dt>Units</dt><dd>ΔL* (CIELAB lightness units, over time)</dd>
+            <dt>Reads as</dt><dd>large negative ΔL* = zones darkening steeply toward black; near zero = stable, unchanged lightness</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>L*</dt><dd>CIELAB lightness of a colony zone; its fall over time tracks melanin accumulation</dd>
+            <dt>t₀, t₁, t₂</dt><dd>successive time points at which lightness is sampled</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 10. Colony colour heterogeneity ===== -->
@@ -604,6 +725,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vicente 2025</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>colour variance / entropy</b> — spread of the colony's colour histogram over all pixels</dd>
+            <dt>Units</dt><dd>dimensionless (variance / entropy)</dd>
+            <dt>Reads as</dt><dd>high = patchy, multi-toned, mottled colony; low = uniform, single-toned lawn</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 11. Colour→biomass/toxin proxy (MARQUEE e) ===== -->
@@ -642,6 +771,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">RGB</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Belmonte 2019</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ŷ = a·colour + b</b> — regression-predicted biomass (or toxin) from colour features</dd>
+            <dt>Units</dt><dd>biomass in mg (or toxin concentration)</dd>
+            <dt>Reads as</dt><dd>darker/denser colour maps to higher predicted biomass; pale colour to lower — a colour-driven amount readout</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>ŷ</dt><dd>predicted target — estimated biomass or toxin (e.g. DON) from the fitted regression</dd>
+            <dt>a</dt><dd>regression slope mapping the colour feature onto the target</dd>
+            <dt>b</dt><dd>regression intercept</dd>
+          </dl>
         </div>
       </article>
 

@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -251,6 +266,22 @@
             <b>inoculum</b> and N(r) reads the same as <b>concentric hyphal-density rings</b> —
             no branch separation required.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N(r)</b> — arbor–ring crossings as a function of radius</dd>
+            <dt>Units</dt><dd>count per ring (integer ≥ 0), profiled over radius r</dd>
+            <dt>Reads as</dt><dd>higher N(r) = denser branch coverage at that radius; the radius of peak N marks the widest-spread annulus</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the soma / inoculum</dd>
+            <dt>r<sub>1</sub>..r<sub>n</sub></dt><dd>the successive ring radii, innermost to outermost</dd>
+            <dt>N(r)</dt><dd>number of arbor–ring crossings at radius r (radial density profile)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== MARQUEE (b) centrifugal vs Horton-Strahler ===== -->
@@ -301,6 +332,21 @@
             (tips=1; two equal orders merge to k+1). Same hyphal tree → centrifugal indexes
             <b>depth from inoculum</b>, Strahler indexes <b>trunk vs twig</b> hierarchy.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>k</b> — branch order assigned to each segment</dd>
+            <dt>Units</dt><dd>integer ≥ 1 (centrifugal: root=1; Strahler: tips=1)</dd>
+            <dt>Reads as</dt><dd>high centrifugal k = deep, many-times-split segment far from the origin; high Strahler k = a thick trunk fed by many tributaries</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>the order of a segment (branch rank in the tree)</dd>
+            <dt>k+1</dt><dd>the promoted order when two equal-order (k) segments merge</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== MARQUEE (c) TMD persistence barcode ===== -->
@@ -354,6 +400,22 @@
             merges. Birth–death pairs become a barcode / persistence diagram — an
             <b>order-invariant fingerprint that degrades gracefully</b> under tracing error.</figcaption>
         </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{(birth, death)}</b> — persistence barcode / persistence-image vector of the branch tree</dd>
+            <dt>Units</dt><dd>vector of dimensionless persistence values (birth/death along the radial-distance function)</dd>
+            <dt>Reads as</dt><dd>encodes the radial birth(tip)→death(bifurcation) structure as an order-invariant fingerprint — longer bars = branches that persist across a wider radial span; degrades gracefully under tracing error</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f</dt><dd>radial distance function walked up the tree (the filtration value)</dd>
+            <dt>birth</dt><dd>value of f where a branch starts — at its tip</dd>
+            <dt>death</dt><dd>value of f where a branch ends — at the bifurcation it merges into</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== MARQUEE (d) flood-filling dense tracing ===== -->
@@ -458,6 +520,25 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl 1953; Ferreira et al. 2014</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>m</sub></b>, <b>r<sub>c</sub></b>, <b>k</b> — peak crossings, its radius, and the decay slope read off N(r)</dd>
+            <dt>Units</dt><dd>N<sub>m</sub> count; r<sub>c</sub> distance (px/µm); k per-distance (semi-log slope)</dd>
+            <dt>Reads as</dt><dd>large N<sub>m</sub> = densely branched arbor; large r<sub>c</sub> = spread pushed outward from the origin; steep k = coverage falls off quickly past the peak</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the soma / origin</dd>
+            <dt>N(r)</dt><dd>Sholl profile — number of arbor crossings at radius r</dd>
+            <dt>r<sub>c</sub></dt><dd>critical radius — the radius where N(r) peaks</dd>
+            <dt>N<sub>m</sub></dt><dd>maximum intersections — the peak value of N(r)</dd>
+            <dt>k</dt><dd>regression coefficient — semi-log decay slope of N(r)</dd>
+            <dt>ramification index</dt><dd>N<sub>m</sub> ÷ primary-process count</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 2 — branch order ===== -->
@@ -513,6 +594,24 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Branch hierarchy of a retraced hyphal tree — <span class="term">StrahlerMaxOrder</span> + <span class="term">BifurcationRatio</span>; centrifugal order indexes depth from the inoculum. Gated on retracing closing loops cleanly.</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957; Scorcioni et al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub></b> — bifurcation ratio across the Strahler spectrum</dd>
+            <dt>Units</dt><dd>dimensionless ratio (typical branched trees ≈ 3–5); max order is an integer ≥ 1</dd>
+            <dt>Reads as</dt><dd>large R<sub>b</sub> = many fine twigs per trunk (elongated, sparsely rejoining tree); small R<sub>b</sub> = bushy, evenly splitting hierarchy</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>the order of a segment (root=1 centrifugal; tips=1 Strahler)</dd>
+            <dt>k+1</dt><dd>promoted order where two equal-order (k) segments meet</dd>
+            <dt>ω</dt><dd>a Strahler order index</dd>
+            <dt>N<sub>ω</sub></dt><dd>count of segments of order ω</dd>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio — N<sub>ω</sub> ÷ N<sub>ω+1</sub> (Horton's law)</dd>
+          </dl>
         </div>
       </article>
 
@@ -574,6 +673,26 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Per-hypha geometry on a retraced network — <span class="term">MeanBranchAngle</span>, <span class="term">PartitionAsymmetry</span>, <span class="term">MeanTortuosity</span>; tortuosity is the most overlap-tolerant (per-branch once traced).</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et al. 2008; van Pelt 1992; Nunez-Iglesias et al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b>, partition asymmetry, <b>τ</b> — bifurcation angle, subtree imbalance, and segment tortuosity</dd>
+            <dt>Units</dt><dd>θ degrees (0–180°); asymmetry 0–1; τ dimensionless ≥ 1</dd>
+            <dt>Reads as</dt><dd>wide θ = splayed forking; asymmetry near 1 = one daughter carries almost all the subtree; τ well above 1 = a strongly meandering segment</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>bifurcation angle at a node — local (at node) or remote (to a downstream point)</dd>
+            <dt>n<sub>L</sub></dt><dd>number of tips in the left subtree at a node</dd>
+            <dt>n<sub>R</sub></dt><dd>number of tips in the right subtree at a node</dd>
+            <dt>partition asymmetry</dt><dd>|n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2)</dd>
+            <dt>L</dt><dd>geodesic path length of a segment (along the branch)</dd>
+            <dt>d</dt><dd>Euclidean endpoint-to-endpoint distance of the segment</dd>
+            <dt>τ</dt><dd>tortuosity = L ÷ d (≥ 1)</dd>
+          </dl>
         </div>
       </article>
 
@@ -637,6 +756,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Kanari et al. 2018</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{(birth, death)}</b> — the set of branch birth–death pairs, as a persistence barcode / diagram vectorizable into a persistence image</dd>
+            <dt>Units</dt><dd>dimensionless persistence values along the distance function f (each bar's length = death − birth)</dd>
+            <dt>Reads as</dt><dd>a compact order-invariant descriptor of the tree — long bars far from the diagonal = branches spanning a wide radial extent before merging; one mis-traced branch shifts a single point, so the summary stays readable</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f</dt><dd>distance function (usually radial) walked up the rooted tree</dd>
+            <dt>birth</dt><dd>value of f at a branch's tip, where it is born</dd>
+            <dt>death</dt><dd>value of f at the bifurcation where the branch merges and dies</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 5 — dense-tracing toolkit ===== -->
@@ -681,6 +816,14 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">The transfer is the <em>refinements</em>: a vesselness term in the cost surface, degree-4 junction resolution by direction continuity, and a DIADEM-style validation gate for the retracing module.</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots (A*)</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Januszewski et al. 2018; Zhou et al. 2018; Xiao &amp; Peng 2013; Longair et al. 2011</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A\*</dt><dd>heuristic least-cost pathfinding algorithm (SNT minimal-path tracer)</dd>
+            <dt>cost</dt><dd>per-pixel traversal cost (low where the pixel looks filament-like)</dd>
+            <dt>degree-4</dt><dd>a skeleton node with four incident edges — a crossing to resolve, not a branch</dd>
+          </dl>
         </div>
       </article>
 

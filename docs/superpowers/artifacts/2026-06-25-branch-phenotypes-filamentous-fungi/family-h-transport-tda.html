@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -248,6 +263,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fricker et al. 2007</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>g</b> — per-edge conductance weight (∝ d⁴)</dd>
+            <dt>Units</dt><dd>relative (dimensionless weight); spans orders of magnitude across an image since g ∝ d⁴</dd>
+            <dt>Reads as</dt><dd>high g = thick trunk cord carrying most flux; low g = fine peripheral tip; a wide g spread means a few dominant cords over many thin strands</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>g</dt><dd>edge (cord) conductance — how easily fluid moves through a segment</dd>
+            <dt>d</dt><dd>cord diameter (width); conductance scales as d⁴</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 2 — Betweenness centrality ===== -->
@@ -293,6 +323,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">weighted graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fricker et al. 2007; Bebber et al. 2007</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C<sub>B</sub></b> — fraction of weighted shortest paths routed through a node/edge</dd>
+            <dt>Units</dt><dd>dimensionless, normalised to 0–1</dd>
+            <dt>Reads as</dt><dd>high = a load-bearing bottleneck cord that most transport funnels through; low = a peripheral edge on few paths; a single high-C<sub>B</sub> spike marks one dominant trunk, a flat profile marks a redundant mesh</dd>
+          </dl>
         </div>
       </article>
 
@@ -346,6 +384,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Heaton et al. 2012</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>E, R</b> — transport efficiency and robustness (mean connected-core fraction retained under edge removal)</dd>
+            <dt>Units</dt><dd>dimensionless, 0–1 (R = surviving core fraction; E = delivered flux per unit cost)</dd>
+            <dt>Reads as</dt><dd>high R = loop-rich network that reroutes and barely fragments when a cord is cut; low R = tree-like architecture that sheds isolated fragments; high E = lean network delivering flux with little building material</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 4 — Mesoscale community structure ===== -->
@@ -398,6 +444,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lee, Fricker &amp; Porter 2017</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>partition(γ)</b> — community assignment of edges/nodes across a resolution sweep</dd>
+            <dt>Units</dt><dd>categorical (a multiscale partition / community-count profile vs resolution γ)</dd>
+            <dt>Reads as</dt><dd>many small stable communities = a compartmentalised, modular architecture; few large ones merging early = a diffuse, uniformly connected network; how quickly modules split as γ rises fingerprints the mesoscale texture</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 5 — Network "traits" trade-off ===== -->
@@ -438,6 +492,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">weighted graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Aguilar-Trigueros et al. 2022</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>(cost, efficiency, resilience)</b> — a colony's position in trait space, reducible to one composite index</dd>
+            <dt>Units</dt><dd>dimensionless composite index (each trait normalised, combined into one descriptor)</dd>
+            <dt>Reads as</dt><dd>toward the efficiency/resilience corner = a costly, loop-heavy, robust network; toward the cost corner = a sparse, cheap, exploratory tree; shifts along the axis track a foraging-vs-conservation architecture</dd>
+          </dl>
         </div>
       </article>
 
@@ -500,6 +562,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">rooted hyphal tree</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Kanari et al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{(birth, death)}</b> — a persistence barcode: one bar per branch, binned into a fixed-size persistence-image vector</dd>
+            <dt>Units</dt><dd>vector / barcode of dimensionless persistence values (each bar length in radial-distance units of r)</dd>
+            <dt>Reads as</dt><dd>long bars (far from the diagonal) = deep, long-lived structural branches; short bars = shallow peripheral twigs; a barcode weighted toward long bars marks a deeply hierarchical tree, toward short bars a shallow, bushy one</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the tree root (the persistence axis)</dd>
+            <dt>birth</dt><dd>radial distance where a branch (tip) first appears</dd>
+            <dt>death</dt><dd>radial distance where that branch merges at a bifurcation</dd>
+          </dl>
         </div>
       </article>
 

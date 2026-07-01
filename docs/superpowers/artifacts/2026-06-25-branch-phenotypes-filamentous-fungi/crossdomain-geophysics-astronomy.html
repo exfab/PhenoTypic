@@ -110,6 +110,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -283,6 +298,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957; Shreve 1966</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ω<sub>max</sub></b>, <b>n</b> — Strahler order of the trunk &amp; Shreve source-link magnitude</dd>
+            <dt>Units</dt><dd>integer (ω<sub>max</sub> ~1–5; n ≥ tip count)</dd>
+            <dt>Reads as</dt><dd>high → deep, many-tiered hierarchy with many nested tips; low → shallow tree, few merge levels</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>Strahler stream order of a segment (terminals = 1)</dd>
+            <dt>k+1</dt><dd>order after two equal order-k segments meet</dd>
+            <dt>Shreve magnitude</dt><dd>count of upstream source links feeding a segment</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.2 Bifurcation ratio (Horton's law) ===== -->
@@ -319,6 +350,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub></b> — mean segment-count ratio between successive Strahler orders</dd>
+            <dt>Units</dt><dd>dimensionless (typically 3–5)</dd>
+            <dt>Reads as</dt><dd>high → each tier fans out into many finer branches (bushy); low → near-binary splitting, sparse tiering</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R_b</dt><dd>bifurcation ratio (typically 3–5, dimensionless)</dd>
+            <dt>ω</dt><dd>Strahler stream order</dd>
+            <dt>N_ω</dt><dd>number of segments at order ω</dd>
+            <dt>N_(ω+1)</dt><dd>number of segments at the next-higher order</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.3 Stream-length ratio ===== -->
@@ -352,6 +400,25 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (rooted tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945; La Barbera &amp; Rosso 1989</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>L</sub></b> — geometric growth factor of mean segment length per Strahler order</dd>
+            <dt>Units</dt><dd>dimensionless (typically ~2)</dd>
+            <dt>Reads as</dt><dd>high → higher-order segments much longer than tips (coarse trunks, stubby twigs); low → length nearly uniform across tiers</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R_L</dt><dd>stream-length ratio (geometric growth of mean length per order)</dd>
+            <dt>ω</dt><dd>Strahler stream order</dd>
+            <dt>L_ω</dt><dd>mean segment length at order ω</dd>
+            <dt>L_(ω+1)</dt><dd>mean segment length at the next-higher order</dd>
+            <dt>R_b</dt><dd>bifurcation ratio</dd>
+            <dt>D</dt><dd>network fractal dimension, log R_b ÷ log R_L</dd>
+          </dl>
         </div>
       </article>
 
@@ -399,6 +466,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Peckham 1995</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>(a, c)</b> — side-tributary base count &amp; geometric ratio across order differences</dd>
+            <dt>Units</dt><dd>dimensionless (self-similar tree c≈2; a≈1–2)</dd>
+            <dt>Reads as</dt><dd>high a/c → dense lateral in-branching at every scale (feathery); low → few side tributaries, near-bifurcating skeleton</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>T_k</dt><dd>mean number of order-difference-k side tributaries per stream</dd>
+            <dt>k</dt><dd>order difference between a stream and its side tributaries</dd>
+            <dt>a</dt><dd>Tokunaga first coefficient, T₁</dd>
+            <dt>c</dt><dd>Tokunaga geometric ratio, Tₖ/Tₖ₋₁</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.5 Hack's law ===== -->
@@ -441,6 +525,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hack 1957 (USGS PP 294-B)</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>h</b> — scaling exponent of longest-path length against occupied area, L ∝ A<sup>h</sup></dd>
+            <dt>Units</dt><dd>dimensionless (≈0.57; h=½ is self-similar)</dd>
+            <dt>Reads as</dt><dd>high (&gt;½) → elongated, reach-dominated growth; low (→½) → compact, near-isotropic space-filling</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>L</dt><dd>mainstream (longest-path) length</dd>
+            <dt>A</dt><dd>drainage area</dd>
+            <dt>h</dt><dd>Hack exponent (≈0.57; deviation from ½ measures elongation)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.6 Drainage density ===== -->
@@ -479,6 +579,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Melton 1958</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>d</sub></b> — total skeleton length per unit enclosing area, ΣL ⁄ A</dd>
+            <dt>Units</dt><dd>length·area⁻¹ (px⁻¹, or mm⁻¹)</dd>
+            <dt>Reads as</dt><dd>high → finely dissected, densely branched fill; low → sparse, open network with wide gaps</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D_d</dt><dd>drainage density (channel length per unit area)</dd>
+            <dt>ΣL</dt><dd>total channel (skeleton) length in the basin</dd>
+            <dt>A</dt><dd>enclosing basin area</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.7 Junction angle ===== -->
@@ -514,6 +630,20 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (geom)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945; Lamour 2022</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — angle between parent and daughter segments at a junction (distribution mean/spread)</dd>
+            <dt>Units</dt><dd>degrees (0–180°)</dd>
+            <dt>Reads as</dt><dd>wide θ → splayed, dichotomous forking; narrow θ → acute, forward-swept herringbone lateral branching</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>confluence/branch angle between parent and daughter segments (degrees)</dd>
+          </dl>
         </div>
       </article>
 
@@ -565,6 +695,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981; Niemeyer 1984; Saffman &amp; Taylor 1958; Ben-Jacob &amp; Garik 1990</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (with effective <b>η</b>) — box-counting fractal dimension placed on the Laplacian-growth axis</dd>
+            <dt>Units</dt><dd>dimensionless (D≈1.71 ramified → 2 compact)</dd>
+            <dt>Reads as</dt><dd>low D (→1.71) → open, ramified, diffusion-limited front; high D (→2) → dense, area-filling compact silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>fractal dimension of the growth front (≈1.71 for DLA, →2 for compact)</dd>
+            <dt>η</dt><dd>dielectric-breakdown effective exponent controlling ramification (η≈1 gives DLA)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.9 Minkowski functionals ===== -->
@@ -609,6 +754,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mecke 2000</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A, P, χ</b> — area, perimeter, and Euler characteristic (components − holes) vs threshold</dd>
+            <dt>Units</dt><dd>A in px², P in px, χ integer</dd>
+            <dt>Reads as</dt><dd>high P at fixed A → rugged, filamentous boundary; χ &lt; 1 → enclosed loops/holes (anastomosis); χ &gt; 1 → many disconnected pieces</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area</dt><dd>filled area of the binary set (0-D Minkowski functional)</dd>
+            <dt>perimeter</dt><dd>boundary length of the set (1-D Minkowski functional)</dd>
+            <dt>χ</dt><dd>Euler characteristic = connected components − holes (2-D functional)</dd>
+          </dl>
         </div>
       </article>
 
@@ -662,6 +823,25 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Plotnick 1996; Allain &amp; Cloitre 1991; Halsey 1986</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ</b>, <b>Δα</b> — gliding-box lacunarity &amp; multifractal spectrum width</dd>
+            <dt>Units</dt><dd>dimensionless (both scale-free)</dd>
+            <dt>Reads as</dt><dd>high Λ → clumped, gappy texture; high Δα → strongly heterogeneous space-filling across the pattern; low both → even, monofractal fill</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ(r)</dt><dd>lacunarity at box size r: gliding-box variance/mean² of mask occupancy</dd>
+            <dt>r</dt><dd>gliding-box scale (side length)</dd>
+            <dt>α</dt><dd>local (Hölder) singularity strength / space-filling exponent</dd>
+            <dt>f(α)</dt><dd>multifractal spectrum: fractal dimension of the set with exponent α</dd>
+            <dt>Δα</dt><dd>width of the f(α) spectrum (heterogeneity of scaling)</dd>
+            <dt>D_q</dt><dd>generalized (Rényi) dimensions, Legendre-transformed to f(α)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 1.11 Perimeter–area fractal dimension ===== -->
@@ -703,6 +883,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">mask (contour)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mandelbrot 1983</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>f</sub></b> — margin-ruggedness fractal dimension from the log P vs log A slope</dd>
+            <dt>Units</dt><dd>dimensionless (D<sub>f</sub>≈1 smooth → ~2 maximally convoluted)</dd>
+            <dt>Reads as</dt><dd>high → deeply indented, fjord-like filamentous margin; low (→1) → smooth, near-circular outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>contour perimeter of the shape</dd>
+            <dt>A</dt><dd>enclosed area of the shape</dd>
+            <dt>D</dt><dd>perimeter–area (margin-ruggedness) fractal dimension from the log P vs log A slope (D≈1 smooth)</dd>
+          </dl>
         </div>
       </article>
 
@@ -899,6 +1095,14 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">faint straight-hypha detection &amp; enhancement by line integration</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vio &amp; Andreani 2016; Nir et al. 2018</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>SNR</dt><dd>signal-to-noise ratio of the detection; grows as √(pixels integrated)</dd>
+            <dt>Radon transform</dt><dd>integral of image intensity along every candidate line (angle, offset)</dd>
+            <dt>template</dt><dd>line-shaped kernel matched to the signal, cross-correlated with the image</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2.2 Rolling Hough Transform ===== -->
@@ -946,6 +1150,13 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">noise-robust hyphal orientation / anisotropy field; tip orientation</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Clark, Peek &amp; Putman 2014</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>local linear orientation returned at each pixel (degrees)</dd>
+            <dt>P(linear)</dt><dd>probability the pixel belongs to a coherent linear structure</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2.3 DisPerSE Morse-persistence skeleton ===== -->
@@ -986,6 +1197,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">grid / point set</span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">noise-robust skeleton; persistence = per-branch confidence ranking</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sousbie 2011</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>persistence</dt><dd>density contrast from a feature's birth to its death; pruning threshold = significance</dd>
+            <dt>max</dt><dd>density maximum (critical point) anchoring a ridge</dd>
+            <dt>saddle</dt><dd>saddle critical point at the other end of the ridge</dd>
+          </dl>
         </div>
       </article>
 
@@ -1033,6 +1252,15 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">variable-width faint-hypha enhancement before segmentation</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Cautun et al. 2013</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>Hessian eigenvalue along the tube (≈0)</dd>
+            <dt>λ₂</dt><dd>Hessian eigenvalue across the tube (large negative, ≪0)</dd>
+            <dt>vesselness</dt><dd>eigenvalue-ratio response; peaks at the scale matching tube width</dd>
+            <dt>scale</dt><dd>Gaussian smoothing scale swept to match hyphal width</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2.5 Steger unbiased curvilinear detector ===== -->
@@ -1074,6 +1302,13 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">subpixel hyphal centreline + width at poor resolution</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Steger 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>w</dt><dd>recovered line/hypha width from the transverse intensity profile</dd>
+            <dt>2nd directional derivative</dt><dd>Hessian of Gaussian; its extremum locates the subpixel centreline</dd>
+          </dl>
         </div>
       </article>
 
@@ -1163,6 +1398,13 @@
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">deblend overlapping/touching hyphae via multi-threshold tree</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bertin &amp; Arnouts 1996</span></div>
         </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>σ</dt><dd>background noise standard deviation; detection threshold is a multiple of σ above the mesh</dd>
+            <dt>saddle</dt><dd>flux level between two peaks where a blended blob is split</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2.8 FilFinder spine + width ===== -->
@@ -1197,6 +1439,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale → mask → spine</span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">hyphal centreline, length/branch-count, and diameter</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Koch &amp; Rosolowsky 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>w</b>, <b>ℓ</b>, <b>κ</b> — FWHM spine width, spine length, and curvature per filament</dd>
+            <dt>Units</dt><dd>w, ℓ in px (µm after calibration); κ in px⁻¹</dd>
+            <dt>Reads as</dt><dd>large ℓ, low κ → long straight spines; high κ → tortuous, meandering spines; large w → thick or bundled filaments</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>FWHM</dt><dd>full width at half maximum of the perpendicular intensity profile = spine width</dd>
+            <dt>medial axis</dt><dd>1-pixel-wide skeleton (spine) of the mask</dd>
+          </dl>
         </div>
       </article>
 
@@ -1248,6 +1505,14 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">image + pixel masks</span></div>
           <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">imbalance-aware pixel-wise hyphal segmentation</span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Jeong et al. 2024</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>BCE</dt><dd>binary cross-entropy, the per-pixel classification loss term</dd>
+            <dt>Dice</dt><dd>Dice-overlap loss term, robust to thin/sparse-positive class imbalance</dd>
+            <dt>Combo loss</dt><dd>weighted sum of BCE + Dice used to train the network</dd>
+          </dl>
         </div>
       </article>
 

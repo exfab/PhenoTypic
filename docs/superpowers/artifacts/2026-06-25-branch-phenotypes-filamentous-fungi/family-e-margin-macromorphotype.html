@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -300,6 +315,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">morphotyping; CNN classifiers</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>margin type</b> — one named edge class assigned from boundary shape</dd>
+            <dt>Units</dt><dd>categorical (entire / undulate / lobate / filamentous / rhizoid)</dd>
+            <dt>Reads as</dt><dd>entire = smooth rim; through undulate and lobate = increasingly wavy/bayed; to filamentous/rhizoid = fringed, root-like edge</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 2 — Convex-perimeter deficit / convexity ===== -->
@@ -335,6 +358,21 @@
           <div class="mrow"><span class="mk">Robust</span><span class="mv">medium</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>convexity = P<sub>h</sub> / P</b> — convex-hull perimeter over actual perimeter</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>near 1 = smooth taut disc-like edge; falling toward 0 = deeply bayed, indented, ragged margin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>colony perimeter — length of the actual (indented) mask boundary</dd>
+            <dt>P_h</dt><dd>convex-hull perimeter — length of the taut hull wrapping the mask</dd>
+          </dl>
         </div>
       </article>
 
@@ -374,6 +412,21 @@
           <div class="mrow"><span class="mk">Robust</span><span class="mv">medium</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>P / A</b> — boundary length divided by enclosed area (or the scale-free P²/A form)</dd>
+            <dt>Units</dt><dd>px⁻¹ (P²/A dimensionless)</dd>
+            <dt>Reads as</dt><dd>low = compact smooth disc; climbing = frayed, filament-fringed, high-perimeter outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter — boundary length of the colony mask (pixels)</dd>
+            <dt>A</dt><dd>area — number of foreground (colony) pixels enclosed</dd>
+          </dl>
         </div>
       </article>
 
@@ -418,6 +471,14 @@
           <div class="mrow"><span class="mk">Robust</span><span class="mv">low — needs filaments resolved</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>hairy length</b> — summed or mean reach of filaments protruding past the compact core boundary</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>short/zero = clean tightly-bounded rim; long = shaggy, hairy fringe of loose filaments beyond the core</dd>
+          </dl>
         </div>
       </article>
 
@@ -464,6 +525,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992; Wucherpfennig 2019</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>macromorphology class</b> — one label from a bundle of silhouette features</dd>
+            <dt>Units</dt><dd>categorical (pellet / clump / dispersed)</dd>
+            <dt>Reads as</dt><dd>pellet = compact, round, filled; clump = looser, rougher aggregate; dispersed = diffuse, high-perimeter mycelium</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 6 — Smooth-vs-hairy pellet class ===== -->
@@ -507,6 +576,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>pellet class</b> — thresholded on edge roughness / RAD / compactness</dd>
+            <dt>Units</dt><dd>categorical (smooth / hairy)</dd>
+            <dt>Reads as</dt><dd>smooth = clean dense rim, RAD near 0; hairy = fuzzy filamentous corona ringing the core</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>RAD</dt><dd>relative annular diameter — fraction of the pellet radius taken up by the loose outer filament zone; thresholded to split smooth from hairy</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== CARD 7 — Elevation / surface texture ===== -->
@@ -549,6 +632,14 @@
           <div class="mrow"><span class="mk">Robust</span><span class="mv">medium–low — needs shading / 3-D</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">morphotyping</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>elevation &amp; surface class</b> — relief profile plus surface nap read from shading / 3-D</dd>
+            <dt>Units</dt><dd>categorical (flat / raised / umbonate; smooth / fuzzy / cottony)</dd>
+            <dt>Reads as</dt><dd>flat → raised → umbonate = rising central relief; smooth → fuzzy → cottony = increasingly napped surface</dd>
+          </dl>
         </div>
       </article>
 

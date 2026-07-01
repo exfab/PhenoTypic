@@ -115,6 +115,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -252,6 +267,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Vascular</span><span class="prov">NEFI</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; vascular A/V topology</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>deg(v)</b> — node degree, tallied into tips (1), junctions (3), crossings (4)</dd>
+            <dt>Units</dt><dd>integer degree per node; class counts are integer counts</dd>
+            <dt>Reads as</dt><dd>↑ share of deg-3 = more branched; ↑ deg-4 nodes = more overlapping/meshed skeleton</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree</dt><dd>number of skeleton segments meeting at a node</dd>
+            <dt>deg 1 · tip</dt><dd>degree-1 node — a free hyphal tip</dd>
+            <dt>deg 3</dt><dd>degree-3 node — a true junction (branch)</dd>
+            <dt>deg 4 · crossing</dt><dd>degree-4 node — likely two hyphae crossing, not a branch</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (b) — Horton-Strahler ordering -->
@@ -297,6 +329,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Ω</b> — maximum Strahler order (the trunk's order)</dd>
+            <dt>Units</dt><dd>integer order; small trees Ω ≈ 2–4, deeper networks higher</dd>
+            <dt>Reads as</dt><dd>↑ Ω = deeper, more hierarchically nested branching tree</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>Strahler order of a segment (terminal twigs = 1)</dd>
+            <dt>k+1</dt><dd>promoted order when two order-k segments meet</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (c) — Hyphal Growth Unit -->
@@ -336,6 +383,23 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>HGU = L<sub>t</sub> / N<sub>tips</sub></b> — mean hyphal length supporting one tip</dd>
+            <dt>Units</dt><dd>length per tip (px/tip, or µm/tip calibrated)</dd>
+            <dt>Reads as</dt><dd>↓ HGU = denser lateral branching (compact mat); ↑ HGU = long sparse runners</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>HGU</dt><dd>hyphal growth unit — mean hypha length per tip</dd>
+            <dt>L<sub>t</sub></dt><dd>total skeleton length (Σ of all segments)</dd>
+            <dt>N<sub>tips</sub></dt><dd>number of degree-1 tips</dd>
+            <dt>Σ</dt><dd>sum over all skeleton segments</dd>
+          </dl>
         </div>
       </article>
 
@@ -381,6 +445,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; Carpentier 2020</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>β₁ = E − V + C</b> — number of independent loops closed by fusion</dd>
+            <dt>Units</dt><dd>integer count (β₁ = 0 for a pure tree)</dd>
+            <dt>Reads as</dt><dd>↑ β₁ = more meshed, cyclic network; β₁ = 0 = strictly tree-like wiring</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>β₁</dt><dd>first Betti number — count of independent loops</dd>
+            <dt>E</dt><dd>number of edges (segments)</dd>
+            <dt>V</dt><dd>number of vertices (nodes)</dd>
+            <dt>C</dt><dd>number of connected components</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- MARQUEE (e) — bifurcation ratio -->
@@ -421,6 +502,23 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub> = N<sub>ω</sub> / N<sub>ω+1</sub></b> — mean segment-count ratio between successive orders</dd>
+            <dt>Units</dt><dd>dimensionless ratio; R<sub>b</sub> ≈ 3–5 typical of self-similar trees</dd>
+            <dt>Reads as</dt><dd>near-constant R<sub>b</sub> across orders = self-similar branching; ↑ R<sub>b</sub> = each order fans into more sub-segments</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio — segment counts of successive orders</dd>
+            <dt>N<sub>ω</sub></dt><dd>number of segments at Strahler order ω</dd>
+            <dt>ω</dt><dd>Strahler order index (1, 2, 3, …)</dd>
+            <dt>R<sub>L</sub></dt><dd>stream-length ratio — mean segment length across orders</dd>
+          </dl>
         </div>
       </article>
 
@@ -466,6 +564,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras 2010</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L<sub>t</sub> = Σ ℓ<sub>i</sub></b> — total arc length of all skeleton segments</dd>
+            <dt>Units</dt><dd>length in px (or µm calibrated)</dd>
+            <dt>Reads as</dt><dd>↑ L<sub>t</sub> = more total hypha built (larger/denser network)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>L<sub>t</sub></dt><dd>total hyphal length (sum of all segments)</dd>
+            <dt>ℓ<sub>i</sub></dt><dd>arc length of skeleton segment i</dd>
+            <dt>Σ</dt><dd>sum over all segments</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 2 — Tip / apex count -->
@@ -498,6 +612,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974; Arganda-Carreras 2010</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>tips</sub></b> — count of degree-1 nodes (free hyphal apices)</dd>
+            <dt>Units</dt><dd>integer count</dd>
+            <dt>Reads as</dt><dd>↑ N<sub>tips</sub> = more growing fronts pushing outward; falls first under overlap as crossings fuse tips</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-1</dt><dd>node where one segment ends — a free hyphal tip</dd>
+            <dt>crossing</dt><dd>overlap node that fuses / hides two real tips</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 3 — Branch-point / node count -->
@@ -528,6 +657,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras 2010</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>bp</sub></b> — count of degree-≥3 nodes (deg-3 branches kept apart from deg-4 crossings)</dd>
+            <dt>Units</dt><dd>integer count</dd>
+            <dt>Reads as</dt><dd>↑ deg-3 count = more branched network; deg-4 count inflates it as false branches</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>deg 3</dt><dd>degree-3 node — a true branch point</dd>
+            <dt>deg 4</dt><dd>degree-4 node — likely a false node from a crossing</dd>
+          </dl>
         </div>
       </article>
 
@@ -561,6 +705,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ro</span><span class="prov">Va</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Riquelme 2019</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>φ = N<sub>bp</sub> / L<sub>t</sub></b> — branch points per unit hyphal length</dd>
+            <dt>Units</dt><dd>per unit length (mm⁻¹, or px⁻¹)</dd>
+            <dt>Reads as</dt><dd>↑ φ = colony splits more densely per length of hypha (finer branching), size-independent</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>φ</dt><dd>branching frequency — branch points per unit length</dd>
+            <dt>L<sub>t</sub></dt><dd>total hyphal length</dd>
+            <dt>Σℓ</dt><dd>sum of all segment lengths (= L<sub>t</sub>)</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 5 — Junction / branch density -->
@@ -591,6 +751,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry 2015; Zudaire 2011</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ρ<sub>J</sub> = N<sub>J</sub> / A</b> — junctions per unit colony area</dd>
+            <dt>Units</dt><dd>count·area⁻¹ (mm⁻², or px⁻²)</dd>
+            <dt>Reads as</dt><dd>↑ ρ<sub>J</sub> = more branch points packed per footprint area (denser mesh)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>density</dt><dd>junctions per unit area</dd>
+            <dt>A</dt><dd>colony footprint area</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 6 — Hyphal Growth Unit -->
@@ -620,6 +795,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Trinci 1974</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>HGU = L<sub>t</sub> / N<sub>tips</sub></b> — mean hyphal length per growing tip</dd>
+            <dt>Units</dt><dd>length per tip (px/tip, or µm/tip calibrated)</dd>
+            <dt>Reads as</dt><dd>↓ HGU = more branched colony; ↑ HGU = sparser, longer runs between tips</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>HGU</dt><dd>hyphal growth unit — mean hypha length per tip</dd>
+            <dt>L<sub>t</sub></dt><dd>total hyphal length</dd>
+            <dt>N<sub>tips</sub></dt><dd>number of degree-1 tips</dd>
+          </dl>
         </div>
       </article>
 
@@ -655,6 +846,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni 2008</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>o</b> — centrifugal branch order of a segment (trunk = 0, +1 per split outward)</dd>
+            <dt>Units</dt><dd>integer order; max order summarises depth</dd>
+            <dt>Reads as</dt><dd>↑ maximum order = more deeply nested branching from the main axis outward</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 8 — Horton-Strahler order -->
@@ -686,6 +885,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Ω</b> — maximum Horton–Strahler order in the tree</dd>
+            <dt>Units</dt><dd>integer order; typically Ω ≈ 2–5</dd>
+            <dt>Reads as</dt><dd>↑ Ω = deeper, more hierarchically layered branching architecture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>Strahler order of a segment (terminal twigs = 1)</dd>
+            <dt>k+1</dt><dd>promoted order when two order-k segments meet</dd>
+            <dt>max order</dt><dd>largest order in the tree — its Strahler depth</dd>
+          </dl>
         </div>
       </article>
 
@@ -720,6 +935,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Shreve 1966</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>μ</b> — Shreve magnitude; trunk μ equals the total tip count</dd>
+            <dt>Units</dt><dd>integer count (upstream source links)</dd>
+            <dt>Reads as</dt><dd>↑ trunk μ = more tips draining through the network (larger branching load)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>μ</dt><dd>Shreve magnitude — upstream tips draining into a segment</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 10 — Bifurcation ratio -->
@@ -749,6 +978,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ne</span><span class="prov">Ro</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub> = N<sub>ω</sub> / N<sub>ω+1</sub></b> — mean segment-count ratio across orders</dd>
+            <dt>Units</dt><dd>dimensionless ratio; R<sub>b</sub> ≈ 3–5 in self-similar trees</dd>
+            <dt>Reads as</dt><dd>stable R<sub>b</sub> across orders = self-similar tree; ↑ R<sub>b</sub> = higher fan-out per order</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio between successive orders</dd>
+            <dt>N<sub>ω</sub></dt><dd>number of segments at Strahler order ω</dd>
+            <dt>ω</dt><dd>Strahler order index (1, 2, 3, …)</dd>
+          </dl>
         </div>
       </article>
 
@@ -780,6 +1025,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>L</sub> = L̄<sub>ω+1</sub> / L̄<sub>ω</sub></b> — mean segment-length ratio across orders</dd>
+            <dt>Units</dt><dd>dimensionless ratio; R<sub>L</sub> &gt; 1 when higher orders are longer</dd>
+            <dt>Reads as</dt><dd>↑ R<sub>L</sub> = trunk-side segments grow proportionally longer per order (elongating hierarchy)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R<sub>L</sub></dt><dd>stream-length ratio between successive orders</dd>
+            <dt>L̄<sub>ω</sub></dt><dd>mean segment length at Strahler order ω</dd>
+            <dt>ω</dt><dd>Strahler order index (1, 2, 3, …)</dd>
+          </dl>
         </div>
       </article>
 
@@ -816,6 +1077,24 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Peckham 1995</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>(a, c)</b> — fitted amplitude and geometric ratio of T<sub>k</sub> = a·c<sup>k−1</sup></dd>
+            <dt>Units</dt><dd>dimensionless pair (both ratios/indices)</dd>
+            <dt>Reads as</dt><dd>↑ a = more side tributaries at each order; ↑ c = tributaries reach further across order gaps (more side-branched, less strictly dichotomous)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>T<sub>k</sub></dt><dd>mean number of side tributaries k orders below</dd>
+            <dt>a</dt><dd>Tokunaga amplitude — tributaries at the nearest order</dd>
+            <dt>c</dt><dd>Tokunaga geometric ratio across order gaps</dd>
+            <dt>k</dt><dd>order gap between a segment and its tributary</dd>
+            <dt>i, j</dt><dd>Strahler orders of the parent segment and its tributary</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 13 — Topological index TI -->
@@ -848,6 +1127,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter / Delory 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>TI</b> — slope of log(altitude) vs log(magnitude) across subtrees</dd>
+            <dt>Units</dt><dd>dimensionless index (log–log slope)</dd>
+            <dt>Reads as</dt><dd>↑ TI = more herringbone (altitude grows fast, elongated); ↓ TI = more dichotomous/spreading tree</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>TI</dt><dd>topological index — slope on the herringbone ↔ dichotomous axis</dd>
+            <dt>magnitude</dt><dd>number of tips draining a subtree</dd>
+            <dt>altitude</dt><dd>longest base→tip path of a subtree</dd>
+          </dl>
         </div>
       </article>
 
@@ -883,6 +1178,23 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (tree)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter / Delory 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>magnitude, altitude, P<sub>e</sub></b> — tip count, longest base→tip link path, and summed base→tip paths</dd>
+            <dt>Units</dt><dd>magnitude &amp; altitude = integer link counts; P<sub>e</sub> = integer summed path length</dd>
+            <dt>Reads as</dt><dd>↑ magnitude = more tips; ↑ altitude = deeper/longer trunk path; ↑ P<sub>e</sub> = larger, more elongated tree</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>magnitude</dt><dd>number of tips in the tree</dd>
+            <dt>altitude</dt><dd>longest base→tip link path</dd>
+            <dt>P<sub>e</sub></dt><dd>total exterior path length — sum of base→tip paths</dd>
+            <dt>Σ</dt><dd>sum over every base→tip path</dd>
+          </dl>
         </div>
       </article>
 
@@ -920,6 +1232,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Ro</span><span class="prov">Ne</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Delory 2016; Scorcioni 2008</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>ext</sub>, N<sub>int</sub>, L̄<sub>ext</sub>, L̄<sub>int</sub></b> — counts and mean lengths of external (junction→tip) vs internal (junction→junction) links</dd>
+            <dt>Units</dt><dd>counts = integer; mean lengths = px (or µm calibrated)</dd>
+            <dt>Reads as</dt><dd>↑ N<sub>ext</sub>/N<sub>int</sub> ratio = tip-heavy, shallow branching; longer L̄<sub>int</sub> = more spread-out interior scaffold</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 16 — Anastomosis / fusion -->
@@ -951,6 +1271,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph (+ time)</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dikec 2020</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>anast</sub></b> — count of loop-closing hyphal fusions (and its rate over time)</dd>
+            <dt>Units</dt><dd>integer count (rate = count·time⁻¹)</dd>
+            <dt>Reads as</dt><dd>↑ N<sub>anast</sub> = network turning from tree toward meshed, cyclic wiring</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>t₀</dt><dd>earlier time frame — hyphae approaching</dd>
+            <dt>t₁</dt><dd>later time frame — fusion made, loop persists</dd>
+          </dl>
         </div>
       </article>
 
@@ -987,6 +1322,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Va</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015; Carpentier 2020</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>β₁ = E − V + C</b> — number of independent cycles (meshes) in the network</dd>
+            <dt>Units</dt><dd>integer count (β₁ = 0 for a tree)</dd>
+            <dt>Reads as</dt><dd>↑ β₁ = more loopy, meshed wiring; β₁ = 0 = strictly tree-like</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>β₁</dt><dd>first Betti number — count of independent loops</dd>
+            <dt>E</dt><dd>number of edges (segments)</dd>
+            <dt>V</dt><dd>number of vertices (nodes)</dd>
+            <dt>C</dt><dd>number of connected components</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- 18 — Euler number -->
@@ -1017,6 +1369,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span><span class="prov">Ge</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">scikit-image</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>χ = objects − holes</b> — connectivity number read off the binary mask</dd>
+            <dt>Units</dt><dd>integer (can be negative when holes outnumber objects)</dd>
+            <dt>Reads as</dt><dd>↓ χ (more negative) = more enclosed holes = more meshed/looped silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>χ</dt><dd>Euler number — connected objects minus enclosed holes</dd>
+            <dt>objects</dt><dd>count of connected foreground regions on the mask</dd>
+            <dt>holes</dt><dd>count of enclosed background regions on the mask</dd>
+          </dl>
         </div>
       </article>
 
@@ -1051,6 +1419,25 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">graph</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">My</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>α, β, γ</b> — meshedness, edge/node ratio (E/V), and edge/max-edge ratio (E/E<sub>max</sub>)</dd>
+            <dt>Units</dt><dd>dimensionless; α, γ ∈ [0, 1]; β ≈ 1 for a tree, &gt; 1 when looped</dd>
+            <dt>Reads as</dt><dd>↑ α/β/γ = more richly interconnected, meshed network; α ≈ 0 = tree-like</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>α</dt><dd>meshedness — realised ÷ maximum independent loops</dd>
+            <dt>β</dt><dd>edges ÷ nodes (E/V)</dd>
+            <dt>γ</dt><dd>edges ÷ maximum possible edges (E/E<sub>max</sub>)</dd>
+            <dt>E</dt><dd>number of edges (segments)</dd>
+            <dt>V</dt><dd>number of nodes</dd>
+            <dt>E<sub>max</sub></dt><dd>maximum possible number of edges</dd>
+          </dl>
         </div>
       </article>
 

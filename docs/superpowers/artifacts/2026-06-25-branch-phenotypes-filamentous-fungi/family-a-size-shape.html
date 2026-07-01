@@ -116,6 +116,21 @@
     border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
   .cite{font-style:italic;color:var(--text-dim)}
 
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
   /* ---- callout ---- */
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
     border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
@@ -234,6 +249,21 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A</b> — projected footprint, foreground mask pixels × pixel area</dd>
+            <dt>Units</dt><dd>px² (mm²)</dd>
+            <dt>Reads as</dt><dd>large A = a big silhouette covering more surface; small A = a compact footprint — pure extent, independent of outline shape</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A</dt><dd>projected area = Σ mask pixels × physical area of one pixel</dd>
+            <dt>P</dt><dd>perimeter — length of the colony boundary contour</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 2. Perimeter ===== -->
@@ -278,6 +308,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>P</b> — boundary length, summed steps of the chain-coded contour walk</dd>
+            <dt>Units</dt><dd>px (mm); scale-sensitive — a raggeder margin lengthens it</dd>
+            <dt>Reads as</dt><dd>long P for a given area = a crenulated, filamentous margin; short P = a smooth, taut outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter — summed step lengths of the chain-coded boundary walk</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 3. Equivalent diameter ===== -->
@@ -315,6 +359,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni &amp; Mattey 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d = √(4A/π)</b> — diameter of the circle with the same area</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large d = a bigger silhouette on one length axis; small d = a smaller one — a size scalar that ignores how ragged the outline is</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d</dt><dd>equivalent diameter = √(4A/π) — diameter of the equal-area circle</dd>
+            <dt>A</dt><dd>colony area (foreground mask pixels)</dd>
+          </dl>
         </div>
       </article>
 
@@ -355,6 +414,22 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C = 4πA ÷ P²</b> — how disc-like the silhouette is</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>C ≈ 1 = a compact smooth disc; ↓ toward 0 = a filamentous, lobed margin that inflates P relative to A</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>C</dt><dd>circularity / form factor = 4πA ÷ P²; 1 = perfect circle, →0 as the margin filaments out</dd>
+            <dt>A</dt><dd>colony area (foreground mask pixels)</dd>
+            <dt>P</dt><dd>perimeter — length of the colony boundary</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 5. Solidity (template-adapted) ===== -->
@@ -386,6 +461,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>S = area ÷ hull area</b> — how fully the outline fills its convex hull</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>S ≈ 1 = a convex compact disc; ↓ toward 0 = deep concave bays between filaments, an indented star-like margin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Solidity</dt><dd>colony area ÷ convex-hull area; ≈1 for a compact disc, &lt;1 with concave voids</dd>
+            <dt>area</dt><dd>colony's actual area (foreground mask pixels)</dd>
+            <dt>hull</dt><dd>area of the smallest convex polygon enclosing the mask</dd>
+          </dl>
         </div>
       </article>
 
@@ -426,6 +517,14 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A<sub>hull</sub></b> — area of the smallest convex polygon wrapping the colony</dd>
+            <dt>Units</dt><dd>px² (mm²)</dd>
+            <dt>Reads as</dt><dd>large A<sub>hull</sub> = the outline reaches far, its extreme points span a wide territory; small = a tightly bounded outer envelope, gaps between filaments included</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 7. Hull occupancy / coverage ===== -->
@@ -463,6 +562,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl/SNT</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>φ = area ÷ hull area</b> — fraction of the reached territory the mask actually covers</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>φ → 1 = a densely packed front filling its envelope; ↓ toward 0 = sparse, space-filling strands spanning the same reach</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>occupancy</dt><dd>network (mask) area ÷ convex-hull area; high = dense fill, low = sparse</dd>
+            <dt>hull</dt><dd>area of the convex hull (the reached territory)</dd>
+          </dl>
         </div>
       </article>
 
@@ -505,6 +619,23 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>e = c/a</b> — elongation of the best-fit ellipse</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>e ≈ 0 = a round, non-directional silhouette; ↑ toward 1 = an increasingly stretched, oval, one-directional outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>e</dt><dd>eccentricity = c/a; 0 = circle, →1 as the colony elongates</dd>
+            <dt>a</dt><dd>semi-major axis of the best-fit ellipse</dd>
+            <dt>b</dt><dd>semi-minor axis of the best-fit ellipse</dd>
+            <dt>c</dt><dd>focal distance — centre-to-focus distance of the ellipse</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 9. Major/minor ellipse axes ===== -->
@@ -542,6 +673,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>major, minor</b> — the two axis lengths of the best-fit ellipse</dd>
+            <dt>Units</dt><dd>px (µm) each</dd>
+            <dt>Reads as</dt><dd>large major with small minor = a long thin silhouette; major ≈ minor = a round outline — absolute spans in the longest and shortest directions</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>major</dt><dd>major-axis length of the best-fit ellipse — the colony's longest-direction extent</dd>
+            <dt>minor</dt><dd>minor-axis length of the best-fit ellipse — the shortest-direction extent</dd>
+          </dl>
         </div>
       </article>
 
@@ -582,6 +728,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>width, depth, width:depth</b> — bounding-box spans and their ratio</dd>
+            <dt>Units</dt><dd>width, depth in px (mm); the ratio is dimensionless (1 = square envelope)</dd>
+            <dt>Reads as</dt><dd>ratio ≫ 1 or ≪ 1 = an outline stretched along one image axis; ratio ≈ 1 = an axis-balanced bounding envelope</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>width</dt><dd>horizontal extent of the axis-aligned bounding box</dd>
+            <dt>depth</dt><dd>vertical extent of the axis-aligned bounding box</dd>
+            <dt>width : depth</dt><dd>their ratio — spread anisotropy relative to the image axes</dd>
+          </dl>
         </div>
       </article>
 
@@ -625,6 +787,22 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cox &amp; Thomas (in Paul &amp; Thomas 1998)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>g</sub> = √(Σr² ÷ N)</b> — RMS distance of occupied pixels from the centroid</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large R<sub>g</sub> = mass flung outward, a spread-out silhouette; small R<sub>g</sub> = mass clustered near the centre, a compact outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R<sub>g</sub></dt><dd>radius of gyration = √(Σr² ÷ N) — RMS distance of pixels from the centroid</dd>
+            <dt>r</dt><dd>distance of an occupied pixel from the centroid</dd>
+            <dt>N</dt><dd>number of occupied (mask) pixels</dd>
+          </dl>
         </div>
       </article>
 
@@ -677,6 +855,20 @@
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">CellProfiler</span></div>
         </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>|Z<sub>n,m</sub>|</b> — magnitudes of the Zernike coefficients (a rotation-invariant shape fingerprint)</dd>
+            <dt>Units</dt><dd>dimensionless (normalized on the unit disc)</dd>
+            <dt>Reads as</dt><dd>energy in low modes = a smooth near-circular outline; strong high-order magnitudes = fine lobed, wavy boundary detail — matched regardless of orientation</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>|Z|</dt><dd>magnitude of a Zernike coefficient — one entry of the rotation-invariant shape fingerprint</dd>
+          </dl>
+        </div>
       </article>
 
       <!-- ===== 13. Enclosed holes / mean hole size ===== -->
@@ -711,6 +903,21 @@
           <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
           <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
           <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>n<sub>holes</sub>, ā</b> — count of enclosed interior gaps and their mean area</dd>
+            <dt>Units</dt><dd>count is an integer; ā in px² (mm²)</dd>
+            <dt>Reads as</dt><dd>many/large holes = a lacy, perforated silhouette riddled with interior voids; zero holes = a solid, gap-free outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>count</dt><dd>number of fully enclosed interior background holes</dd>
+            <dt>mean area</dt><dd>Σ hole areas ÷ count — average size of an enclosed hole</dd>
+          </dl>
         </div>
       </article>
 
