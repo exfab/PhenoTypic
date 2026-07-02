@@ -164,25 +164,104 @@ items = sorted(self._public_protected_metadata.items(), key=_key, reverse=True)
 ```
 
 No other logic in `insert_metadata` changes; `MetadataImage_` is still inserted here
-and relocated downstream by `measure()`'s `_order_measurement_columns` (from #180).
+and relocated downstream by the shared `order_measurement_columns` helper (§5).
+
+### 5. Shared column-order helper + the polars mirror pass
+
+There are **two** ordering surfaces, and today only the first is covered:
+
+- **Per-image parquets** — the pandas `measure()` path
+  (`_cli_process_single.py` → `apply_and_measure(..., apply_post=False)`,
+  `include_metadata=True`). Ordered by #180's `_order_measurement_columns`; this spec
+  makes its front-metadata block cluster-ordered via `insert_metadata` (§4).
+- **The mirror `measurements.*` + per-feature splits + `analysis.*`** — built
+  separately in `finalize_post_master_outputs` (`_cli_output_manager.py`) on a **polars**
+  frame:
+  `master_df` (clean) → `join_metadata(master_df, metadata_csv)` → `_apply_post_to_master`
+  → `_seed_measurements`. **`join_metadata` puts the external CSV's columns on the left in
+  CSV column order** (`metadata_df.join(df, on=common, how="inner")`, line 123), so joined
+  metadata lands front-but-unordered and post-added metadata columns land wherever post
+  put them. This path never sees the canonical order.
+
+**Fix — one shared ordering function, two call sites.** Extract the partition-and-order
+logic (currently inline in #180's pandas-only `_order_measurement_columns`) into a
+framework-agnostic helper in `_metadata_helpers.py` that operates purely on column-name
+strings:
+
+```python
+def order_measurement_columns(columns: Sequence[str]) -> list[str]:
+    """Canonical column order: [front metadata] -> [measurements]
+    -> [MetadataImage_] -> [Object_Label, Bbox_*, Grid_*].
+
+    Front metadata is cluster/definition ordered via canonical_metadata_order();
+    info-block columns are detected by name (OBJECT.LABEL / Bbox_ / Grid_)."""
+    rank = canonical_metadata_order()
+    image_prefix = f"{METADATA.category()}_"
+    front, image_meta, info, meas = [], [], [], []
+    for c in columns:
+        if c.startswith(image_prefix):        image_meta.append(c)
+        elif is_metadata_header(c):           front.append(c)
+        elif c == OBJECT.LABEL or c.startswith("Bbox_") or c.startswith("Grid_"):
+                                              info.append(c)
+        else:                                 meas.append(c)
+    front.sort(key=lambda c: (rank.get(c, len(rank)), str(c)))
+    return front + meas + image_meta + info
+```
+
+Then:
+- **pandas path** — `ImagePipelineCore._order_measurement_columns` becomes a thin wrapper:
+  `return df[order_measurement_columns(list(df.columns))]`. (#180's `info_cols` param is
+  dropped — info columns are now detected by name, matching the test classifier. This
+  removes the only reason `_order_measurement_columns` needed the pre-merge `info_cols`
+  capture.)
+- **polars path** — in `finalize_post_master_outputs`, after `_apply_post_to_master`,
+  before `_seed_measurements`:
+  ```python
+  post_df = _apply_post_to_master(working_df, pipeline)
+  post_df = post_df.select(order_measurement_columns(post_df.columns))  # NEW
+  _seed_measurements(output_dir, post_df)
+  ```
+  `post_df.columns` is a plain `list[str]`, so the same helper drives the reorder; the
+  mirror, per-feature splits, and `analysis.*` (all derived from `post_df`) inherit the
+  canonical cluster order. The **clean master on disk is untouched** — only the in-memory
+  working/post frame is reordered.
+
+This makes the cluster order a single source of truth across *both* the pandas per-image
+parquets and the polars mirror, and folds #180's relocation into the same helper.
+
+**Info-block detection is collision-free.** Only the `GRID` and `BBOX` schema enums emit
+`Grid_*` / `Bbox_*` columns (categories `Grid` / `Bbox`). The neighboring quality enums
+`GRID_LINREG_STATS` and `GRID_SPREAD` render as `GridLinReg_*` / `GridSpread_*`, which do
+**not** match the `"Grid_"` prefix (the underscore guards them), so detecting the info
+block by name is equivalent to #180's explicit `info_cols` — verified against the current
+schema. A guard test (below) pins this so a future enum named `Grid…`/`Bbox…` can't
+silently leak into the info block.
 
 ## Interaction with PR #180
 
-`#180` splits `MetadataImage_` to the trailing region **inside `measure()`**, so in the
-`measurements.*` mirror `MetadataImage_` is never actually part of the front block —
-the cluster order governs the user-metadata prefix ahead of the measurements. For
-**non-`measure()` surfaces** that read `metadata_category_prefixes()` directly
-(dashboard scatter priority, README/split bucketing), `MetadataImage_` is listed **last**
-in the cluster order, giving the same "framework bookkeeping trails user data" intent
-without a relocation step.
+`#180` splits `MetadataImage_` to the trailing region **inside `measure()`** (the pandas
+path), which governs the **per-image parquets**. The `measurements.*` **mirror** is built
+on the separate polars path and picks up the identical placement from the shared
+`order_measurement_columns` helper (Design §5) — so both surfaces agree without
+duplicating the rule. This spec **folds #180's pandas-only `_order_measurement_columns`
+into that shared helper**: #180's method becomes a thin wrapper, the polars mirror gains
+the same ordering, and the `MetadataImage_`-after-measurements placement plus the cluster
+front-block order live in exactly one place.
+
+For **prefix-list surfaces** that read `metadata_category_prefixes()` directly (dashboard
+scatter priority, README/split bucketing), `MetadataImage_` is listed **last** in the
+cluster order, giving the same "framework bookkeeping trails user data" intent without a
+relocation step.
 
 ## Files to modify
 
 | File | Change |
 |------|--------|
-| `src/phenotypic/sdk_/_metadata_helpers.py` | Add `_METADATA_CLUSTER_ORDER`, `canonical_metadata_order()`, a `_cluster_ordered_enums()` helper; reorder `metadata_category_prefixes()` |
-| `src/phenotypic/sdk_/__init__.py` | Export `canonical_metadata_order` |
+| `src/phenotypic/sdk_/_metadata_helpers.py` | Add `_METADATA_CLUSTER_ORDER`, `canonical_metadata_order()`, a `_cluster_ordered_enums()` helper, and `order_measurement_columns()`; reorder `metadata_category_prefixes()` |
+| `src/phenotypic/sdk_/__init__.py` | Export `canonical_metadata_order`, `order_measurement_columns` |
 | `src/phenotypic/_core/_image_parts/accessors/_metadata_accessor.py` | `insert_metadata()` sort key → canonical order; docstring note (REMBI → cluster) |
+| `src/phenotypic/_core/_pipeline_parts/_image_pipeline_core.py` | `_order_measurement_columns` → thin wrapper over shared `order_measurement_columns` (drop `info_cols` param + its capture) |
+| `src/phenotypic/_cli/_cli_output_manager.py` | Add the canonical-order `post_df.select(...)` pass after `_apply_post_to_master`, before `_seed_measurements` |
 | `docs/source/explanation/metadata_namespace.md` | Add a "Column order (bio-semantic clusters)" section; clarify REMBI is a separate axis |
 | `src/phenotypic/schema/CLAUDE.md` | One line: front-block order is cluster-driven, REMBI is provenance-only |
 
@@ -193,22 +272,22 @@ without a relocation step.
 - **Per-feature splits + README bucketing** — metadata buckets render in cluster order.
 - **`measurements.*` mirror** — front-block column order changes (the visible goal).
 
-## Open questions
+## Resolved decisions (formerly open questions)
 
-1. **Uncategorized vs `MetadataImage_` in non-relocated surfaces.** In the `measure()`
-   mirror this is moot (#180 relocates Image; uncategorized ends the front block). But
-   in split/README/scatter surfaces the prefix list ends `… Acquisition, Image`, so an
-   *unknown* `Metadata_Foo` (rank = end) sorts **after** `MetadataImage_`. If we'd
-   rather unknown user tags always outrank framework bookkeeping everywhere, we'd special
-   -case `MetadataImage_` to sort after the generic fallback in those surfaces.
-   **Recommendation:** accept `… Acquisition → Image → uncategorized` for the secondary
-   surfaces (simpler, and those surfaces rarely carry unknown tags).
-2. **External `--metadata` CSV join.** Joined columns flow through
-   `_cli_output_manager.py` / `_cli_chunk_writer.py` / `post/`. Need to confirm the join
-   either routes through `insert_metadata` / a canonical re-sort, or append columns that
-   should then be re-ordered. If the join bypasses ordering, add a single
-   canonical-order pass after the join. **To confirm during implementation** — may be a
-   no-op if the mirror is rebuilt via `insert_metadata`.
+1. **Uncategorized vs `MetadataImage_` in secondary surfaces — ACCEPTED as recommended.**
+   In the mirror this is moot (`order_measurement_columns` puts `MetadataImage_` after
+   the measurements and uncategorized user tags at the tail of the *front* block). In the
+   secondary prefix-list surfaces (dashboard scatter priority, README/split bucketing) the
+   list ends `… Acquisition, Image`, so an *unknown* `Metadata_Foo` sorts after
+   `MetadataImage_`. We accept this — those surfaces rarely carry unknown tags, and no
+   special-casing is added.
+2. **External `--metadata` CSV join — RESOLVED (add the pass).** Traced: the join
+   (`join_metadata`, `_cli_output_manager.py:92`) is a **polars** inner join with the
+   external CSV on the left, so joined columns land front in CSV order, bypassing the
+   canonical order; the mirror/splits/analysis derive from that frame. Fix specified in
+   Design §5 — a single `post_df.select(order_measurement_columns(post_df.columns))` pass
+   after post, before `_seed_measurements`, sharing the same ordering helper as the pandas
+   path. The clean master on disk is untouched.
 
 ## Verification
 
@@ -221,12 +300,24 @@ without a relocation step.
    - `canonical_metadata_order()`: within-category definition order; unknown → end.
    - **Coverage gate**: `set(_METADATA_CLUSTER_ORDER) == {e.category() for e in
      _metadata_enums()}` so a new metadata enum forces a cluster placement.
+   - **Info-block guard**: assert no non-`GRID`/`BBOX` schema enum renders headers that
+     match the `"Grid_"` / `"Bbox_"` prefix, so name-based info detection can't misclassify
+     a future measurement column into the trailing info block.
 3. **Update pinned tests** — `tests/unit/sdk_/test_metadata_helpers.py`
    (`_expected_metadata_prefixes` → cluster order); any REMBI-order assertions in
    `tests/unit/sdk_/test_metadata_io.py` / `test_metadata_by_module.py`.
-4. **Regression** — `test_cli_output_manager`, `test_measurement_outputs`, split tests,
-   dashboard scatter tests.
-5. `uv run ruff check --fix` + `uv run mypy src/phenotypic` on changed files.
+4. **Mirror + external join (polars path)** — a small CLI/E2E test: run with a
+   `--metadata` CSV whose columns are deliberately in a non-canonical order, then assert
+   `deliverables/measurements.parquet` column order matches the canonical contract
+   (cluster-ordered front metadata → measurements → `MetadataImage_` → info block) and
+   that the clean `master_measurements.parquet` is unchanged.
+5. **Shared helper parity** — `order_measurement_columns` unit test on a shuffled column
+   list; assert the pandas `_order_measurement_columns` wrapper and a `polars.select`
+   using the same helper produce identical column order.
+6. **Regression** — `test_cli_output_manager`, `test_measurement_outputs`, split tests,
+   dashboard scatter tests, and #180's `test_measure_column_order_*` (must still pass
+   after the wrapper refactor).
+7. `uv run ruff check --fix` + `uv run mypy src/phenotypic` on changed files.
 
 ## Ship
 
