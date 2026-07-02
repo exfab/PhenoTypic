@@ -132,3 +132,24 @@ def test_cluster_ordered_enums_follow_constant():
 
     cats = [e.category() for e in _cluster_ordered_enums()]
     assert cats == list(_METADATA_CLUSTER_ORDER)
+
+
+def test_canonical_order_clusters_then_definition_order():
+    from phenotypic.schema import GENETIC_METADATA, SAMPLE_METADATA
+    from phenotypic.sdk_ import canonical_metadata_order
+
+    order = canonical_metadata_order()
+
+    # Identity (Sample) ranks before Strain (Genetic): whole clusters ordered.
+    assert order[SAMPLE_METADATA.SAMPLE_ID.value] < order[GENETIC_METADATA.ORGANISM.value]
+    # Within Genetic: definition order (Organism declared before Strain).
+    assert order[GENETIC_METADATA.ORGANISM.value] < order[GENETIC_METADATA.STRAIN.value]
+    # MetadataImage_ ranks last among categories.
+    from phenotypic.schema import METADATA
+    assert order[METADATA.IMAGE_NAME.value] > order[GENETIC_METADATA.STRAIN.value]
+
+
+def test_canonical_order_unknown_header_absent():
+    from phenotypic.sdk_ import canonical_metadata_order
+
+    assert "Metadata_TotallyUnknownTag" not in canonical_metadata_order()

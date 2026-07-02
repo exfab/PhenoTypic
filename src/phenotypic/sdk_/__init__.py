@@ -207,6 +207,7 @@ from ._io_constants import (
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
 from ._metadata_helpers import (
+    canonical_metadata_order,
     ensure_metadata_prefix,
     is_metadata_header,
     metadata_category_for_label,
@@ -227,6 +228,7 @@ __all__ = [
     "LazyWidgetMixin",
     "atomic_write_bytes",
     "atomic_write_text",
+    "canonical_metadata_order",
     "colourspace",
     "constants_",
     "exceptions_",
