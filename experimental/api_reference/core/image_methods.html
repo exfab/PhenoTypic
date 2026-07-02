@@ -809,7 +809,11 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -880,6 +884,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.recompile_status_dir.html">phenotypic.sdk_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.rembi_manifest_path.html">phenotypic.sdk_.rembi_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.resolve_best_pipeline_path.html">phenotypic.sdk_.resolve_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.resolve_event_log_path.html">phenotypic.sdk_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.resolve_execution_mode.html">phenotypic.sdk_.resolve_execution_mode</a></li>
@@ -8108,6 +8113,29 @@ Private metadata cannot be modified.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.by_module">
+<span class="sig-name descname"><span class="pre">by_module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.by_module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.by_module" title="Link to this definition">#</a></dt>
+<dd><p>Group metadata keys/values by REMBI module (read-only view).</p>
+<p>Framework private/protected keys (e.g. <code class="docutils literal notranslate"><span class="pre">ImageName</span></code>, <code class="docutils literal notranslate"><span class="pre">UUID</span></code>) map to
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">IMAGE_DATA</span></code>; public tags resolve
+via the schema reverse index; unrecognized keys fall to
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">UNCATEGORIZED</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>module</strong> – A <code class="xref py py-class docutils literal notranslate"><span class="pre">REMBI_MODULE</span></code> or its string
+value (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;ImageData&quot;</span></code>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{key:</span> <span class="pre">value}</span></code> for every metadata entry resolving to
+<em>module</em>, in combined-metadata iteration order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.get">
 <span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/_core/_image_parts/accessors/_metadata_accessor.html#MetadataAccessor.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.get" title="Link to this definition">#</a></dt>
 <dd><p>Retrieve a metadata value with a default fallback.</p>
@@ -8172,7 +8200,9 @@ Defaults to False.</p></li>
 <li><p>Only public and protected metadata are included (private metadata is excluded)</p></li>
 <li><p>IMAGE_NAME metadata is populated from parent_image.name instead of the metadata dict</p></li>
 <li><p>Columns are inserted from right to left at position 0, so iteration order determines final order</p></li>
-<li><p>Metadata columns without <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix are automatically prefixed</p></li>
+<li><p>Metadata columns without a <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_</span></code> prefix are automatically prefixed
+via the schema (e.g. <code class="docutils literal notranslate"><span class="pre">Strain</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>; unknown labels
+fall back to a generic <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix)</p></li>
 </ul>
 </div>
 <div class="admonition-examples admonition">
@@ -8183,7 +8213,7 @@ Defaults to False.</p></li>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;sample&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;resolution&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">300</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result_df</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">insert_metadata</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># result_df now has Metadata_ImageName and Metadata_resolution columns at position 0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># result_df now has MetadataImage_ImageName and Metadata_resolution columns at position 0</span>
 </pre></div>
 </div>
 </div>
@@ -8655,6 +8685,7 @@ of the <cite>other</cite> object. Returns False otherwise.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.__getitem__"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.__getitem__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.__init__"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.__init__()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.__setitem__"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.__setitem__()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.by_module"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.by_module()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.get"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.get()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.insert_metadata"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.insert_metadata()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic._core._image_parts.accessors._metadata_accessor.MetadataAccessor.items"><code class="docutils literal notranslate"><span class="pre">MetadataAccessor.items()</span></code></a></li>

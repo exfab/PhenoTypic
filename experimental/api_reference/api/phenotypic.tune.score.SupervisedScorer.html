@@ -809,7 +809,11 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -880,6 +884,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_status_dir.html">phenotypic.sdk_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.rembi_manifest_path.html">phenotypic.sdk_.rembi_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_best_pipeline_path.html">phenotypic.sdk_.resolve_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_event_log_path.html">phenotypic.sdk_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_execution_mode.html">phenotypic.sdk_.resolve_execution_mode</a></li>
@@ -1206,13 +1211,13 @@ modality-tiered availability gate only; numeric GT scoring is deferred):</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">tmp</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">counts</span> <span class="o">=</span> <span class="n">tmp</span> <span class="o">/</span> <span class="s2">&quot;counts.csv&quot;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
-<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Synthetic96PlateWithObjects&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="p">{</span><span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Synthetic96PlateWithObjects&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
 <span class="gp">... </span>     <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">))}</span>
 <span class="gp">... </span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">scorer</span> <span class="o">=</span> <span class="n">SupervisedScorer</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">gt</span><span class="o">=</span><span class="n">GroundTruthMasks</span><span class="p">(</span><span class="n">gt_masks_source</span><span class="o">=</span><span class="n">counts</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="n">count_check</span><span class="o">=</span><span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
-<span class="gp">... </span>        <span class="n">metadata</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">counts</span><span class="p">),</span> <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageName&quot;</span><span class="p">]</span>
+<span class="gp">... </span>        <span class="n">metadata</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">counts</span><span class="p">),</span> <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">]</span>
 <span class="gp">... </span>    <span class="p">),</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">scorer</span><span class="o">.</span><span class="n">gt</span><span class="o">.</span><span class="n">modality</span><span class="p">()</span>

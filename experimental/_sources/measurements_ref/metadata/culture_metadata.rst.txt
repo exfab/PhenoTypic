@@ -1,47 +1,47 @@
-INCUBATION_METADATA
-===================
+CULTURE_METADATA
+================
 
-Python object: ``phenotypic.schema._experimental_tags._incubation.INCUBATION_METADATA``
+Python object: ``phenotypic.schema._experimental_tags._culture.CULTURE_METADATA``
 
-Recommended ``Metadata_*`` tags describing incubation and time course.
+Recommended ``MetadataCulture_*`` tags describing culture and time course.
 
-These capture the temporal and environmental incubation parameters of an
+These capture the temporal and environmental culture parameters of an
 experiment (temperature, elapsed time, timepoint, generation, atmosphere).
 ``Time``/``Timepoint`` align with the QC time-series axis. Members render as
-``Metadata_<Label>`` (e.g. ``Metadata_Time``) and share the ``Metadata_``
-namespace with the other experimental-tag enums. Recommended vocabulary, not a
-validator.
+``MetadataCulture_<Label>`` (e.g. ``MetadataCulture_Time``) in the ``Metadata``
+column family shared with the other experimental-tag enums. Recommended
+vocabulary, not a validator.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataCulture**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_Temperature``
-     - Incubation temperature in degrees Celsius.
+   * - ``MetadataCulture_Temperature``
+     - Culture temperature in degrees Celsius.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Time``
+   * - ``MetadataCulture_Time``
      - Elapsed growth time.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_TimeUnit``
+   * - ``MetadataCulture_TimeUnit``
      - Unit for the Time value (e.g. hours, days).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Timepoint``
+   * - ``MetadataCulture_Timepoint``
      - Human-readable label for a discrete timepoint in a time series (e.g. '24h', 'stationary'); may be non-numeric. For the integer capture ordinal, use FrameIndex.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_FrameIndex``
+   * - ``MetadataCulture_FrameIndex``
      - 1-based ordinal index of the image within the time-course capture sequence; the monotonic-integer companion to the free-form Timepoint label.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Day``
+   * - ``MetadataCulture_Day``
      - Day index of the experiment.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Generation``
+   * - ``MetadataCulture_Generation``
      - Generation or passage number.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Humidity``
-     - Relative humidity during incubation.
+   * - ``MetadataCulture_Humidity``
+     - Relative humidity during culture.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Atmosphere``
+   * - ``MetadataCulture_Atmosphere``
      - Atmospheric condition (e.g. aerobic, anaerobic).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

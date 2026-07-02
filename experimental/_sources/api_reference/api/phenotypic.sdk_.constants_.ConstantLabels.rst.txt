@@ -19,6 +19,10 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.category
       ~ConstantLabels.kind
       ~ConstantLabels.tier
+      ~ConstantLabels.rembi_module
+      ~ConstantLabels.header_scheme
+      ~ConstantLabels.member_for_header
+      ~ConstantLabels.owns_header
       ~ConstantLabels.get_labels
       ~ConstantLabels.get_headers
       ~ConstantLabels.rst_table
@@ -83,6 +87,7 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.CATEGORY
       ~ConstantLabels.resolved_kind
       ~ConstantLabels.resolved_tier
+      ~ConstantLabels.resolved_rembi_module
       ~ConstantLabels.use_label
       ~ConstantLabels.use_badge
       ~ConstantLabels.label
@@ -93,5 +98,6 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.tier_override
       ~ConstantLabels.derivation_type
       ~ConstantLabels.derives_from
+      ~ConstantLabels.rembi_module_override
    
    

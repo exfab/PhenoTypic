@@ -809,7 +809,11 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -880,6 +884,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_status_dir.html">phenotypic.sdk_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.rembi_manifest_path.html">phenotypic.sdk_.rembi_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_best_pipeline_path.html">phenotypic.sdk_.resolve_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_event_log_path.html">phenotypic.sdk_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_execution_mode.html">phenotypic.sdk_.resolve_execution_mode</a></li>
@@ -1245,16 +1250,16 @@ one well:</p>
 <span class="gp">... </span>    <span class="n">ExpectedVsDetectedCount</span><span class="p">,</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">)),</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">95</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">95</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">95</span><span class="p">)),</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="s2">&quot;QC_Count_Metric&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">columns</span>
@@ -1264,16 +1269,16 @@ one well:</p>
 <p>Advanced — a measurement group has no metadata counterpart, so
 the metric is infinite and the key is recorded:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">metadata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate1.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">96</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">96</span><span class="p">)),</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">measurements</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
-<span class="gp">... </span>    <span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate2.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;plate2.png&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s2">&quot;Object_Label&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)),</span>
 <span class="gp">... </span><span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span> <span class="o">=</span> <span class="n">ExpectedVsDetectedCount</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
-<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Metadata_ImageFile&quot;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">groupby</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;MetadataImage_ImageName&quot;</span><span class="p">],</span>
 <span class="gp">... </span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">chk</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">chk</span><span class="o">.</span><span class="n">unmatched_groups</span>
@@ -1356,7 +1361,7 @@ the metric is infinite and the key is recorded:</p>
 <td><p>Return the flag column name for this check.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys" title="phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flagged_keys</span></code></a></p></td>
-<td><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code>) pairs to curate.</p></td>
+<td><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code>) pairs to curate.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.from_orm" title="phenotypic.analysis.ExpectedVsDetectedCount.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
 <td><p></p></td>
@@ -1891,9 +1896,9 @@ In that case, it will be called later, when the model is rebuilt automatically o
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys">
 <span class="sig-name descname"><span class="pre">flagged_keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys" title="Link to this definition">#</a></dt>
-<dd><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code>) pairs to curate.</p>
+<dd><p>Return (<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code>) pairs to curate.</p>
 <p>Used by the GUI “Mark all flagged for removal” button. Requires
-the analyzed frame to carry both <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> and
+the analyzed frame to carry both <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code> and
 <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> columns (the curation key used by
 <code class="docutils literal notranslate"><span class="pre">STORE_REMOVED_KEYS</span></code>). Returns an empty list when those
 columns are absent or when no rows were flagged.</p>
@@ -1927,12 +1932,12 @@ for rows where <code class="docutils literal notranslate"><span class="pre">Flag
 <dd><p>Map each group key to its member rows for worklists/galleries.</p>
 <p>Walks the most recent analyzed frame and, for every group key
 produced by <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False)</span></code>, collects
-the rows that belong to it as <code class="docutils literal notranslate"><span class="pre">(Metadata_ImageFile,</span> <span class="pre">Object_Label,</span>
+the rows that belong to it as <code class="docutils literal notranslate"><span class="pre">(Metadata_ImageName,</span> <span class="pre">Object_Label,</span>
 <span class="pre">member_value)</span></code> tuples, where <code class="docutils literal notranslate"><span class="pre">member_value</span></code> is the row’s
 <code class="docutils literal notranslate"><span class="pre">self.on</span></code> value (the column the check operates on). The mapping
 preserves group iteration order.</p>
 <p>Mirrors <a class="reference internal" href="#phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys" title="phenotypic.analysis.ExpectedVsDetectedCount.flagged_keys"><code class="xref py py-meth docutils literal notranslate"><span class="pre">flagged_keys()</span></code></a>’s guard: if the analyzed frame lacks
-either <code class="docutils literal notranslate"><span class="pre">Metadata_ImageFile</span></code> or the object-label column, an empty
+either <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code> or the object-label column, an empty
 mapping is returned rather than raising.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -1972,7 +1977,7 @@ when the curation key columns are absent.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.analysis.ExpectedVsDetectedCount.member_key_cols">
-<span class="sig-name descname"><span class="pre">member_key_cols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('Metadata_ImageFile',</span> <span class="pre">'Object_Label')</span></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.member_key_cols" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">member_key_cols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('MetadataImage_ImageName',</span> <span class="pre">'Object_Label')</span></em><a class="headerlink" href="#phenotypic.analysis.ExpectedVsDetectedCount.member_key_cols" title="Link to this definition">#</a></dt>
 <dd><p>Per-object curation-key columns. Empty tuple when the check has no
 per-object key. Subclasses may narrow this.</p>
 </dd></dl>

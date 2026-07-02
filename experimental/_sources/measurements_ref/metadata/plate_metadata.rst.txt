@@ -3,28 +3,28 @@ PLATE_METADATA
 
 Python object: ``phenotypic.schema._experimental_tags._plate.PLATE_METADATA``
 
-Recommended ``Metadata_*`` tags describing the assay plate and its array.
+Recommended ``MetadataPlate_*`` tags describing the assay plate and its array.
 
 These capture plate-level grouping and physical layout (plate id, batch, array
-density, incubator position). Members render as ``Metadata_<Label>`` (e.g.
-``Metadata_PlateID``) and share the ``Metadata_`` namespace with the other
-experimental-tag enums. Recommended vocabulary, not a validator.
+density, incubator position). Members render as ``MetadataPlate_<Label>`` (e.g.
+``MetadataPlate_PlateID``) in the ``Metadata`` column family shared with the
+other experimental-tag enums. Recommended vocabulary, not a validator.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataPlate**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_PlateID``
+   * - ``MetadataPlate_PlateID``
      - Identifier of the assay/imaging plate.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Batch``
+   * - ``MetadataPlate_Batch``
      - Experimental batch grouping.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ArrayDensity``
+   * - ``MetadataPlate_ArrayDensity``
      - Colony array density, i.e. wells per plate (e.g. 96, 384, 1536).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_IncubatorPosition``
+   * - ``MetadataPlate_IncubatorPosition``
      - Physical position of the plate within the incubator.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

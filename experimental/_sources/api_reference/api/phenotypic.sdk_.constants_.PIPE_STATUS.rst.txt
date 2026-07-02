@@ -19,6 +19,10 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.category
       ~PIPE_STATUS.kind
       ~PIPE_STATUS.tier
+      ~PIPE_STATUS.rembi_module
+      ~PIPE_STATUS.header_scheme
+      ~PIPE_STATUS.member_for_header
+      ~PIPE_STATUS.owns_header
       ~PIPE_STATUS.get_labels
       ~PIPE_STATUS.get_headers
       ~PIPE_STATUS.rst_table
@@ -83,6 +87,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.CATEGORY
       ~PIPE_STATUS.resolved_kind
       ~PIPE_STATUS.resolved_tier
+      ~PIPE_STATUS.resolved_rembi_module
       ~PIPE_STATUS.use_label
       ~PIPE_STATUS.use_badge
       ~PIPE_STATUS.PROCESSED
@@ -95,5 +100,6 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.tier_override
       ~PIPE_STATUS.derivation_type
       ~PIPE_STATUS.derives_from
+      ~PIPE_STATUS.rembi_module_override
    
    

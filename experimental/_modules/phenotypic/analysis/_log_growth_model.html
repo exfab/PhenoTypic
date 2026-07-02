@@ -652,6 +652,13 @@
 <span class="sd">        :math:`\beta`: penalty term for deviations in carrying capacity relative to</span>
 <span class="sd">            the largest measurement</span>
 
+<span class="sd">    Output column naming:</span>
+<span class="sd">        ``analyze`` emits metric-qualified columns</span>
+<span class="sd">        ``LogGrowthModel_&lt;metric&gt;_&lt;parameter&gt;`` (e.g. fitting</span>
+<span class="sd">        ``on=&quot;Shape_Area&quot;`` yields ``LogGrowthModel_Area_r`` and</span>
+<span class="sd">        ``LogGrowthModel_Area_µmax``), plus qualified fit-quality columns</span>
+<span class="sd">        ``ModelMetrics_&lt;metric&gt;_&lt;label&gt;``. The ``&lt;metric&gt;`` segment is</span>
+<span class="sd">        ``self.on`` with a recognized measurement-category prefix stripped.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        lam (float): The penalty factor applied to growth rates.</span>

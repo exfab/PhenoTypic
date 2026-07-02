@@ -1,0 +1,6 @@
+phenotypic.sdk\_.ensure\_metadata\_prefix
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: ensure_metadata_prefix

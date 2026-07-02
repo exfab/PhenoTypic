@@ -680,6 +680,14 @@
 <span class="sd">            which the tail slope counts as a saturation shoulder for</span>
 <span class="sd">            mode dispatch. Defaults to ``0.05``.</span>
 
+<span class="sd">    Output column naming:</span>
+<span class="sd">        ``analyze`` emits metric-qualified columns</span>
+<span class="sd">        ``LinearCapAndLagModel_&lt;metric&gt;_&lt;parameter&gt;`` (e.g. fitting</span>
+<span class="sd">        ``on=&quot;Shape_Area&quot;`` yields ``LinearCapAndLagModel_Area_v``), plus</span>
+<span class="sd">        qualified fit-quality columns ``ModelMetrics_&lt;metric&gt;_&lt;label&gt;``. The</span>
+<span class="sd">        ``&lt;metric&gt;`` segment is ``self.on`` with a recognized</span>
+<span class="sd">        measurement-category prefix stripped.</span>
+
 <span class="sd">    .. note::</span>
 <span class="sd">        **``f_scale`` is unit-sensitive only on the unweighted fit</span>
 <span class="sd">        path.** The inherited ``f_scale`` (see :class:`ModelFitter`) is</span>

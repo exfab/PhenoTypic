@@ -3,47 +3,48 @@ SAMPLE_METADATA
 
 Python object: ``phenotypic.schema._experimental_tags._sample.SAMPLE_METADATA``
 
-Recommended ``Metadata_*`` tags identifying a sample and its provenance.
+Recommended ``MetadataSample_*`` tags identifying a sample and its provenance.
 
 These distinguish individual biological samples and track where each colony came
 from (replicate, clone, source plate/well, library). Members render as
-``Metadata_<Label>`` (e.g. ``Metadata_Replicate``) and share the ``Metadata_``
-namespace with the other experimental-tag enums. Recommended vocabulary, not a
-validator: arbitrary metadata columns are still accepted.
+``MetadataSample_<Label>`` (e.g. ``MetadataSample_BioReplicate``) in the
+``Metadata`` column family shared with the other experimental-tag enums.
+Recommended vocabulary, not a validator: arbitrary metadata columns are still
+accepted.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataSample**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_SampleID``
+   * - ``MetadataSample_SampleID``
      - Unique identifier for the biological sample.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_BioReplicate``
+   * - ``MetadataSample_BioReplicate``
      - Biological replicate identifier. Biological replicates are parallel measurements of biologically distinct samples that capture random biological variation.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_CondReplicate``
+   * - ``MetadataSample_CondReplicate``
      - Experimental Conditional replicate identifier. An example  of an experimental replicate would be a pinned colony of  the same strain on another plate being subjected to the same conditions.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_TechReplicate``
+   * - ``MetadataSample_TechReplicate``
      - Technical replicate identifier.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Clone``
+   * - ``MetadataSample_Clone``
      - Clone or isolate identifier.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_LibraryID``
+   * - ``MetadataSample_LibraryID``
      - Source library or collection identifier (e.g. a deletion collection).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_SourcePlate``
+   * - ``MetadataSample_SourcePlate``
      - Identifier of the source plate the sample was pinned from.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_SourceWell``
+   * - ``MetadataSample_SourceWell``
      - Well position on the source plate (e.g. A1).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Barcode``
+   * - ``MetadataSample_Barcode``
      - Molecular or sample barcode.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Control``
+   * - ``MetadataSample_Control``
      - Control designation (e.g. positive, negative, blank).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

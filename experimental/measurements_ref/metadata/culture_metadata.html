@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>INCUBATION_METADATA &#8212; PhenoTypic</title>
+    <title>CULTURE_METADATA &#8212; PhenoTypic</title>
   
   
   
@@ -51,7 +51,7 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'measurements_ref/metadata/incubation_metadata';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'measurements_ref/metadata/culture_metadata';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
@@ -59,11 +59,11 @@
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
-    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/metadata/incubation_metadata.html" />
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/metadata/culture_metadata.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="PLATE_METADATA" href="plate_metadata.html" />
-    <link rel="prev" title="GENETIC_METADATA" href="genetic_metadata.html" />
+    <link rel="next" title="EXPERIMENT_METADATA" href="experiment_metadata.html" />
+    <link rel="prev" title="CONDITION_METADATA" href="condition_metadata.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.17.3" />
@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Metadata</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">MetadataCulture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -652,7 +653,7 @@
     
     <li class="breadcrumb-item"><a href="index.html" class="nav-link">Metadata</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">INCUBATION_METADATA</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">CULTURE_METADATA</span></li>
   </ul>
 </nav>
 </div>
@@ -669,18 +670,18 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="incubation-metadata">
-<h1>INCUBATION_METADATA<a class="headerlink" href="#incubation-metadata" title="Link to this heading">#</a></h1>
-<p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._experimental_tags._incubation.INCUBATION_METADATA</span></code></p>
-<p>Recommended <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags describing incubation and time course.</p>
-<p>These capture the temporal and environmental incubation parameters of an
+  <section id="culture-metadata">
+<h1>CULTURE_METADATA<a class="headerlink" href="#culture-metadata" title="Link to this heading">#</a></h1>
+<p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._experimental_tags._culture.CULTURE_METADATA</span></code></p>
+<p>Recommended <code class="docutils literal notranslate"><span class="pre">MetadataCulture_*</span></code> tags describing culture and time course.</p>
+<p>These capture the temporal and environmental culture parameters of an
 experiment (temperature, elapsed time, timepoint, generation, atmosphere).
 <code class="docutils literal notranslate"><span class="pre">Time</span></code>/<code class="docutils literal notranslate"><span class="pre">Timepoint</span></code> align with the QC time-series axis. Members render as
-<code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">Metadata_Time</span></code>) and share the <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code>
-namespace with the other experimental-tag enums. Recommended vocabulary, not a
-validator.</p>
+<code class="docutils literal notranslate"><span class="pre">MetadataCulture_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code>) in the <code class="docutils literal notranslate"><span class="pre">Metadata</span></code>
+column family shared with the other experimental-tag enums. Recommended
+vocabulary, not a validator.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>Metadata</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>MetadataCulture</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -688,39 +689,39 @@ validator.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Temperature</span></code></p></td>
-<td><p>Incubation temperature in degrees Celsius.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Temperature</span></code></p></td>
+<td><p>Culture temperature in degrees Celsius.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Time</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Time</span></code></p></td>
 <td><p>Elapsed growth time.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_TimeUnit</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_TimeUnit</span></code></p></td>
 <td><p>Unit for the Time value (e.g. hours, days).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Timepoint</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Timepoint</span></code></p></td>
 <td><p>Human-readable label for a discrete timepoint in a time series (e.g. ‘24h’, ‘stationary’); may be non-numeric. For the integer capture ordinal, use FrameIndex.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_FrameIndex</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_FrameIndex</span></code></p></td>
 <td><p>1-based ordinal index of the image within the time-course capture sequence; the monotonic-integer companion to the free-form Timepoint label.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Day</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Day</span></code></p></td>
 <td><p>Day index of the experiment.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Generation</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Generation</span></code></p></td>
 <td><p>Generation or passage number.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Humidity</span></code></p></td>
-<td><p>Relative humidity during incubation.</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Humidity</span></code></p></td>
+<td><p>Relative humidity during culture.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Atmosphere</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCulture_Atmosphere</span></code></p></td>
 <td><p>Atmospheric condition (e.g. aerobic, anaerobic).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
@@ -748,7 +749,7 @@ validator.</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="../../_sources/measurements_ref/metadata/incubation_metadata.rst.txt"
+      <li><a href="../../_sources/measurements_ref/metadata/culture_metadata.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div></div>

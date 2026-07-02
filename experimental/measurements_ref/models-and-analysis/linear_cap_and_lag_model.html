@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../metadata/index.html">Metadata</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../metadata/sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../metadata/study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -672,6 +673,15 @@
   <section id="linear-cap-and-lag-model">
 <h1>LINEAR_CAP_AND_LAG_MODEL<a class="headerlink" href="#linear-cap-and-lag-model" title="Link to this heading">#</a></h1>
 <p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._linear_cap_and_lag_model.LINEAR_CAP_AND_LAG_MODEL</span></code></p>
+<p>Fitted parameters of the double-softplus growth model (with saturation).</p>
+<p>Output columns are <strong>metric-qualified</strong>: each header is
+<code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_&lt;metric&gt;_&lt;parameter&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code> records
+the measurement the model was fit on (<code class="docutils literal notranslate"><span class="pre">self.on</span></code> with its category prefix
+stripped, e.g. <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code> → <code class="docutils literal notranslate"><span class="pre">Area</span></code>). For example, fitting on
+<code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code> emits <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_Area_v</span></code> (post-lag growth rate)
+and <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_Area_s0</span></code> (initial size). The labels below are
+the <code class="docutils literal notranslate"><span class="pre">&lt;parameter&gt;</span></code> segment; the <code class="docutils literal notranslate"><span class="pre">&lt;metric&gt;</span></code> infix is filled in at fit
+time.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
 <caption><span class="caption-text">Category: <strong>LinearCapAndLagModel</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>

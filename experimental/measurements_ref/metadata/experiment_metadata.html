@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="GENETIC_METADATA" href="genetic_metadata.html" />
-    <link rel="prev" title="CONDITION_METADATA" href="condition_metadata.html" />
+    <link rel="prev" title="CULTURE_METADATA" href="culture_metadata.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.17.3" />
@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Metadata</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -672,14 +673,15 @@
   <section id="experiment-metadata">
 <h1>EXPERIMENT_METADATA<a class="headerlink" href="#experiment-metadata" title="Link to this heading">#</a></h1>
 <p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._experimental_tags._experiment.EXPERIMENT_METADATA</span></code></p>
-<p>Recommended <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags for experiment-level bookkeeping.</p>
+<p>Recommended <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_*</span></code> tags for experiment-level bookkeeping.</p>
 <p>These group results by experiment/project and carry free-form provenance
 (experiment id, project, dataset, protocol, notes). <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> matches the
-CLI-emitted <code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code> column. Members render as <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code>
-(e.g. <code class="docutils literal notranslate"><span class="pre">Metadata_ExperimentID</span></code>) and share the <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> namespace with the
-other experimental-tag enums. Recommended vocabulary, not a validator.</p>
+CLI-emitted <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Dataset</span></code> column. Members render as
+<code class="docutils literal notranslate"><span class="pre">MetadataExperiment_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_ExperimentID</span></code>) in the
+<code class="docutils literal notranslate"><span class="pre">Metadata</span></code> column family shared with the other experimental-tag enums.
+Recommended vocabulary, not a validator.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>Metadata</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>MetadataExperiment</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -687,23 +689,23 @@ other experimental-tag enums. Recommended vocabulary, not a validator.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_ExperimentID</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_ExperimentID</span></code></p></td>
 <td><p>Unique identifier for the experiment.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Project</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Project</span></code></p></td>
 <td><p>Project name or identifier.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code></p></td>
-<td><p>Dataset name (matches the CLI-emitted Metadata_Dataset column).</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Dataset</span></code></p></td>
+<td><p>Dataset name (matches the CLI-emitted MetadataExperiment_Dataset column).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Protocol</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Protocol</span></code></p></td>
 <td><p>Protocol name or version followed.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Notes</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataExperiment_Notes</span></code></p></td>
 <td><p>Free-text notes or comments.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>

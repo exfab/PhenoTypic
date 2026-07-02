@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Metadata</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -673,14 +674,15 @@ DataFrame column labels and descriptions.</p>
 <div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Metadata</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l1"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </div>
 <section id="metadata-tag-overview">
@@ -705,17 +707,17 @@ DataFrame column labels and descriptions.</p>
 <td><p>Media, nutrients, supplements, treatments, compounds, doses, and stress conditions applied to colonies.</p></td>
 <td><p>Use when comparing phenotypes across growth environments or perturbations.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="experiment_metadata.html"><span class="doc">EXPERIMENT_METADATA</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="culture_metadata.html"><span class="doc">CULTURE_METADATA</span></a></p></td>
+<td><p>Temperature, elapsed time, time units, timepoints, day indices, generation, humidity, and atmosphere.</p></td>
+<td><p>Use for time-course analyses and culture-condition grouping.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="experiment_metadata.html"><span class="doc">EXPERIMENT_METADATA</span></a></p></td>
 <td><p>Experiment-level bookkeeping, including experiment IDs, projects, datasets, protocols, and notes.</p></td>
 <td><p>Use when organizing outputs across projects, protocols, or datasets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="genetic_metadata.html"><span class="doc">GENETIC_METADATA</span></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="genetic_metadata.html"><span class="doc">GENETIC_METADATA</span></a></p></td>
 <td><p>Organism and genetic identity, including species, strain, genotype, background, alleles, plasmids, markers, mating type, and ploidy.</p></td>
 <td><p>Use when grouping or filtering colonies by genetic background.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="incubation_metadata.html"><span class="doc">INCUBATION_METADATA</span></a></p></td>
-<td><p>Temperature, elapsed time, time units, timepoints, day indices, generation, humidity, and atmosphere.</p></td>
-<td><p>Use for time-course analyses and incubation-condition grouping.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="plate_metadata.html"><span class="doc">PLATE_METADATA</span></a></p></td>
 <td><p>Assay plate and physical layout, including plate IDs, batches, array density, and incubator position.</p></td>
@@ -724,6 +726,10 @@ DataFrame column labels and descriptions.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="sample_metadata.html"><span class="doc">SAMPLE_METADATA</span></a></p></td>
 <td><p>Sample identity and provenance, including sample IDs, replicates, clones, source plate/well, library IDs, barcodes, and controls.</p></td>
 <td><p>Use for sample-level biological identity and for linking colonies back to source materials.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="study_metadata.html"><span class="doc">STUDY_METADATA</span></a></p></td>
+<td><p>Study-level descriptors for one run: title, description, keywords, authors, license, funding, publications, links, and acknowledgements.</p></td>
+<td><p>Use when recording REMBI Study-component provenance for a dataset.</p></td>
 </tr>
 </tbody>
 </table>

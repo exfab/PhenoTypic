@@ -66,6 +66,10 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.category
       ~MeasurementInfo.kind
       ~MeasurementInfo.tier
+      ~MeasurementInfo.rembi_module
+      ~MeasurementInfo.header_scheme
+      ~MeasurementInfo.member_for_header
+      ~MeasurementInfo.owns_header
       ~MeasurementInfo.get_labels
       ~MeasurementInfo.get_headers
       ~MeasurementInfo.rst_table
@@ -83,6 +87,7 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.CATEGORY
       ~MeasurementInfo.resolved_kind
       ~MeasurementInfo.resolved_tier
+      ~MeasurementInfo.resolved_rembi_module
       ~MeasurementInfo.use_label
       ~MeasurementInfo.use_badge
       ~MeasurementInfo.label
@@ -93,5 +98,6 @@ phenotypic.abc\_.MeasurementInfo
       ~MeasurementInfo.tier_override
       ~MeasurementInfo.derivation_type
       ~MeasurementInfo.derives_from
+      ~MeasurementInfo.rembi_module_override
    
    

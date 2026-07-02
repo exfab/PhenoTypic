@@ -62,7 +62,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/metadata/condition_metadata.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="EXPERIMENT_METADATA" href="experiment_metadata.html" />
+    <link rel="next" title="CULTURE_METADATA" href="culture_metadata.html" />
     <link rel="prev" title="ACQUISITION_METADATA" href="acquisition_metadata.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Metadata</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">MetadataCondition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample_metadata.html">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -672,14 +673,14 @@
   <section id="condition-metadata">
 <h1>CONDITION_METADATA<a class="headerlink" href="#condition-metadata" title="Link to this heading">#</a></h1>
 <p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._experimental_tags._condition.CONDITION_METADATA</span></code></p>
-<p>Recommended <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags describing media and experimental conditions.</p>
+<p>Recommended <code class="docutils literal notranslate"><span class="pre">MetadataCondition_*</span></code> tags describing media and experimental conditions.</p>
 <p>These name the chemical environment and perturbations applied to the colonies
 (medium, carbon/nitrogen source, supplements, treatments, compounds, stress).
-Members render as <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">Metadata_Treatment</span></code>) and share the
-<code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> namespace with the other experimental-tag enums. Recommended
-vocabulary, not a validator.</p>
+Members render as <code class="docutils literal notranslate"><span class="pre">MetadataCondition_&lt;Label&gt;</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">MetadataCondition_Treatment</span></code>) in the <code class="docutils literal notranslate"><span class="pre">Metadata</span></code> column family shared with
+the other experimental-tag enums. Recommended vocabulary, not a validator.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>Metadata</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>MetadataCondition</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -687,51 +688,51 @@ vocabulary, not a validator.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Media</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Media</span></code></p></td>
 <td><p>Growth medium name (e.g. YPD, SC, LB).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_CarbonSource</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_CarbonSource</span></code></p></td>
 <td><p>Primary carbon source (e.g. glucose, galactose).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_NitrogenSource</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_NitrogenSource</span></code></p></td>
 <td><p>Primary nitrogen source.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_pH</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_pH</span></code></p></td>
 <td><p>pH of the growth medium.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Supplement</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Supplement</span></code></p></td>
 <td><p>Medium supplement or additive.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Antibiotic</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Antibiotic</span></code></p></td>
 <td><p>Antibiotic added to the medium.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Inducer</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Inducer</span></code></p></td>
 <td><p>Inducing agent (e.g. galactose, IPTG, doxycycline).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Treatment</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Treatment</span></code></p></td>
 <td><p>Experimental treatment or perturbation.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Compound</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Compound</span></code></p></td>
 <td><p>Chemical compound or drug applied.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Concentration</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Concentration</span></code></p></td>
 <td><p>Concentration of the compound or treatment.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Dose</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Dose</span></code></p></td>
 <td><p>Dose applied to the sample.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Stress</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataCondition_Stress</span></code></p></td>
 <td><p>Applied stress condition (e.g. heat, osmotic, oxidative).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>

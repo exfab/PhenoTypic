@@ -751,16 +751,16 @@
 <span class="sd">        ...     ExpectedVsDetectedCount,</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 96,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 95,</span>
+<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 95,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(95)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
 <span class="sd">        ...     metadata=metadata,</span>
-<span class="sd">        ...     groupby=[&quot;Metadata_ImageFile&quot;],</span>
+<span class="sd">        ...     groupby=[&quot;MetadataImage_ImageName&quot;],</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; result = chk.analyze(measurements)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; &quot;QC_Count_Metric&quot; in result.columns  # doctest: +SKIP</span>
@@ -770,16 +770,16 @@
 <span class="sd">        the metric is infinite and the key is recorded:</span>
 
 <span class="sd">        &gt;&gt;&gt; metadata = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate1.png&quot;] * 96,</span>
+<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate1.png&quot;] * 96,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(96)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; measurements = pd.DataFrame({</span>
-<span class="sd">        ...     &quot;Metadata_ImageFile&quot;: [&quot;plate2.png&quot;] * 10,</span>
+<span class="sd">        ...     &quot;MetadataImage_ImageName&quot;: [&quot;plate2.png&quot;] * 10,</span>
 <span class="sd">        ...     &quot;Object_Label&quot;: list(range(10)),</span>
 <span class="sd">        ... })</span>
 <span class="sd">        &gt;&gt;&gt; chk = ExpectedVsDetectedCount(</span>
 <span class="sd">        ...     metadata=metadata,</span>
-<span class="sd">        ...     groupby=[&quot;Metadata_ImageFile&quot;],</span>
+<span class="sd">        ...     groupby=[&quot;MetadataImage_ImageName&quot;],</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; _ = chk.analyze(measurements)  # doctest: +SKIP</span>
 <span class="sd">        &gt;&gt;&gt; chk.unmatched_groups  # doctest: +SKIP</span>

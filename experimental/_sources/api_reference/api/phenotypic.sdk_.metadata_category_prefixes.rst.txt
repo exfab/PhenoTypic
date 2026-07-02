@@ -1,0 +1,6 @@
+phenotypic.sdk\_.metadata\_category\_prefixes
+=============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: metadata_category_prefixes

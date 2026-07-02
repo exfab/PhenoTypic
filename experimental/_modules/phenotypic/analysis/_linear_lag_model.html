@@ -673,6 +673,13 @@
 <span class="sd">        prune_saturated (bool): Whether to drop post-saturation timepoints</span>
 <span class="sd">            before fitting. Defaults to ``True``.</span>
 
+<span class="sd">    Output column naming:</span>
+<span class="sd">        ``analyze`` emits metric-qualified columns</span>
+<span class="sd">        ``LinearLagModel_&lt;metric&gt;_&lt;parameter&gt;`` (e.g. fitting ``on=&quot;Shape_Area&quot;``</span>
+<span class="sd">        yields ``LinearLagModel_Area_v``), plus qualified fit-quality columns</span>
+<span class="sd">        ``ModelMetrics_&lt;metric&gt;_&lt;label&gt;``. The ``&lt;metric&gt;`` segment is</span>
+<span class="sd">        ``self.on`` with a recognized measurement-category prefix stripped.</span>
+
 <span class="sd">    .. note::</span>
 <span class="sd">        **``f_scale`` is unit-sensitive only on the unweighted fit</span>
 <span class="sd">        path.** The inherited ``f_scale`` (see :class:`ModelFitter`) is</span>

@@ -62,7 +62,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/measurements_ref/metadata/sample_metadata.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="API Reference" href="../../api_reference/index.html" />
+    <link rel="next" title="STUDY_METADATA" href="study_metadata.html" />
     <link rel="prev" title="PLATE_METADATA" href="plate_metadata.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -596,14 +596,15 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Metadata</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="metadata.html">METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">ACQUISITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">CONDITION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">EXPERIMENT_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">GENETIC_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="incubation_metadata.html">INCUBATION_METADATA</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">PLATE_METADATA</a></li>
-<li class="toctree-l2 current active"><a class="current reference internal" href="#">SAMPLE_METADATA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="metadata.html">MetadataImage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="acquisition_metadata.html">MetadataAcquisition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="condition_metadata.html">MetadataCondition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="culture_metadata.html">MetadataCulture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="experiment_metadata.html">MetadataExperiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="genetic_metadata.html">MetadataGenetic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plate_metadata.html">MetadataPlate</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">MetadataSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="study_metadata.html">MetadataStudy</a></li>
 </ul>
 </details></li>
 </ul>
@@ -672,14 +673,15 @@
   <section id="sample-metadata">
 <h1>SAMPLE_METADATA<a class="headerlink" href="#sample-metadata" title="Link to this heading">#</a></h1>
 <p>Python object: <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._experimental_tags._sample.SAMPLE_METADATA</span></code></p>
-<p>Recommended <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags identifying a sample and its provenance.</p>
+<p>Recommended <code class="docutils literal notranslate"><span class="pre">MetadataSample_*</span></code> tags identifying a sample and its provenance.</p>
 <p>These distinguish individual biological samples and track where each colony came
 from (replicate, clone, source plate/well, library). Members render as
-<code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">Metadata_Replicate</span></code>) and share the <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code>
-namespace with the other experimental-tag enums. Recommended vocabulary, not a
-validator: arbitrary metadata columns are still accepted.</p>
+<code class="docutils literal notranslate"><span class="pre">MetadataSample_&lt;Label&gt;</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">MetadataSample_BioReplicate</span></code>) in the
+<code class="docutils literal notranslate"><span class="pre">Metadata</span></code> column family shared with the other experimental-tag enums.
+Recommended vocabulary, not a validator: arbitrary metadata columns are still
+accepted.</p>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>Metadata</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>MetadataSample</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -687,43 +689,43 @@ validator: arbitrary metadata columns are still accepted.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SampleID</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SampleID</span></code></p></td>
 <td><p>Unique identifier for the biological sample.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_BioReplicate</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_BioReplicate</span></code></p></td>
 <td><p>Biological replicate identifier. Biological replicates are parallel measurements of biologically distinct samples that capture random biological variation.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_CondReplicate</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_CondReplicate</span></code></p></td>
 <td><p>Experimental Conditional replicate identifier. An example  of an experimental replicate would be a pinned colony of  the same strain on another plate being subjected to the same conditions.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_TechReplicate</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_TechReplicate</span></code></p></td>
 <td><p>Technical replicate identifier.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Clone</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Clone</span></code></p></td>
 <td><p>Clone or isolate identifier.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_LibraryID</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_LibraryID</span></code></p></td>
 <td><p>Source library or collection identifier (e.g. a deletion collection).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SourcePlate</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SourcePlate</span></code></p></td>
 <td><p>Identifier of the source plate the sample was pinned from.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_SourceWell</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_SourceWell</span></code></p></td>
 <td><p>Well position on the source plate (e.g. A1).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Barcode</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Barcode</span></code></p></td>
 <td><p>Molecular or sample barcode.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Metadata_Control</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MetadataSample_Control</span></code></p></td>
 <td><p>Control designation (e.g. positive, negative, blank).</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-muted sd-bg-text-muted reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Identity / design</span></a></p></td>
 </tr>

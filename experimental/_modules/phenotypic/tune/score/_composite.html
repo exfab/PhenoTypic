@@ -703,11 +703,11 @@
 <span class="sd">        &gt;&gt;&gt; from phenotypic.analysis import ExpectedVsDetectedCount</span>
 <span class="sd">        &gt;&gt;&gt; from phenotypic.tune.score import CompositeScorer, QCScorer</span>
 <span class="sd">        &gt;&gt;&gt; layout = pd.DataFrame(</span>
-<span class="sd">        ...     {&quot;Metadata_ImageName&quot;: [&quot;p&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
+<span class="sd">        ...     {&quot;MetadataImage_ImageName&quot;: [&quot;p&quot;] * 96, &quot;Object_Label&quot;: list(range(96))}</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; qc = QCScorer(</span>
 <span class="sd">        ...     check=ExpectedVsDetectedCount(</span>
-<span class="sd">        ...         metadata=layout, groupby=[&quot;Metadata_ImageName&quot;]</span>
+<span class="sd">        ...         metadata=layout, groupby=[&quot;MetadataImage_ImageName&quot;]</span>
 <span class="sd">        ...     )</span>
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; comp = CompositeScorer(scorers=[qc, qc])</span>

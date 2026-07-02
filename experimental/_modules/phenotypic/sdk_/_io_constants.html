@@ -787,6 +787,12 @@
 <span class="c1">#: run; a missing/unreadable source is logged and skipped.</span>
 <span class="n">DELIVERABLES_METADATA_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata.csv&quot;</span>
 
+<span class="c1">#: REMBI run manifest filename, flat under deliverables/ beside metadata.csv.</span>
+<span class="c1">#: Written best-effort by</span>
+<span class="c1">#: :func:`phenotypic.sdk_._rembi_manifest.write_rembi_manifest` in finalize;</span>
+<span class="c1">#: folds the post-applied measurements mirror up to each REMBI module&#39;s scope.</span>
+<span class="n">REMBI_MANIFEST_YAML</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;rembi.yaml&quot;</span>
+
 <span class="c1">#: Output filename of the model-fit summary written by the CLI when the</span>
 <span class="c1">#: pipeline has a ``model`` configured (and re-emitted by the analysis</span>
 <span class="c1">#: GUI&#39;s &quot;Run analysis&quot; button). Human-readable mirror of</span>
@@ -1505,6 +1511,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_csv_deliverable_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/metadata.csv`` (co-located ``--metadata`` copy).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DELIVERABLES_METADATA_CSV</span></div>
+
+
+
+<div class="viewcode-block" id="rembi_manifest_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.rembi_manifest_path.html#phenotypic.sdk_.rembi_manifest_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rembi_manifest_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/rembi.yaml`` — the REMBI run manifest.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">REMBI_MANIFEST_YAML</span></div>
 
 
 

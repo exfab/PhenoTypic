@@ -3,32 +3,32 @@ ACQUISITION_METADATA
 
 Python object: ``phenotypic.schema._experimental_tags._acquisition.ACQUISITION_METADATA``
 
-Recommended ``Metadata_*`` tags describing image acquisition.
+Recommended ``MetadataAcquisition_*`` tags describing image acquisition.
 
 These record how and by whom an image was captured (acquisition date,
 instrument, operator, resolution, exposure). Members render as
-``Metadata_<Label>`` (e.g. ``Metadata_ImagingDate``) and share the ``Metadata_``
-namespace with the other experimental-tag enums. Recommended vocabulary, not a
-validator.
+``MetadataAcquisition_<Label>`` (e.g. ``MetadataAcquisition_ImagingDate``) in the
+``Metadata`` column family shared with the other experimental-tag enums.
+Recommended vocabulary, not a validator.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataAcquisition**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_ImagingDate``
+   * - ``MetadataAcquisition_ImagingDate``
      - Date the image was acquired.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Instrument``
+   * - ``MetadataAcquisition_Instrument``
      - Imaging instrument or scanner model.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Experimenter``
+   * - ``MetadataAcquisition_Experimenter``
      - Person who acquired the image or ran the experiment.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Resolution``
+   * - ``MetadataAcquisition_Resolution``
      - Image resolution (e.g. DPI or pixels per mm).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_ExposureTime``
+   * - ``MetadataAcquisition_ExposureTime``
      - Camera exposure time.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

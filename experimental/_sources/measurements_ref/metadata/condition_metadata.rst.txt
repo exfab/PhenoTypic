@@ -3,53 +3,53 @@ CONDITION_METADATA
 
 Python object: ``phenotypic.schema._experimental_tags._condition.CONDITION_METADATA``
 
-Recommended ``Metadata_*`` tags describing media and experimental conditions.
+Recommended ``MetadataCondition_*`` tags describing media and experimental conditions.
 
 These name the chemical environment and perturbations applied to the colonies
 (medium, carbon/nitrogen source, supplements, treatments, compounds, stress).
-Members render as ``Metadata_<Label>`` (e.g. ``Metadata_Treatment``) and share the
-``Metadata_`` namespace with the other experimental-tag enums. Recommended
-vocabulary, not a validator.
+Members render as ``MetadataCondition_<Label>`` (e.g.
+``MetadataCondition_Treatment``) in the ``Metadata`` column family shared with
+the other experimental-tag enums. Recommended vocabulary, not a validator.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataCondition**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_Media``
+   * - ``MetadataCondition_Media``
      - Growth medium name (e.g. YPD, SC, LB).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_CarbonSource``
+   * - ``MetadataCondition_CarbonSource``
      - Primary carbon source (e.g. glucose, galactose).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_NitrogenSource``
+   * - ``MetadataCondition_NitrogenSource``
      - Primary nitrogen source.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_pH``
+   * - ``MetadataCondition_pH``
      - pH of the growth medium.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Supplement``
+   * - ``MetadataCondition_Supplement``
      - Medium supplement or additive.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Antibiotic``
+   * - ``MetadataCondition_Antibiotic``
      - Antibiotic added to the medium.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Inducer``
+   * - ``MetadataCondition_Inducer``
      - Inducing agent (e.g. galactose, IPTG, doxycycline).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Treatment``
+   * - ``MetadataCondition_Treatment``
      - Experimental treatment or perturbation.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Compound``
+   * - ``MetadataCondition_Compound``
      - Chemical compound or drug applied.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Concentration``
+   * - ``MetadataCondition_Concentration``
      - Concentration of the compound or treatment.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Dose``
+   * - ``MetadataCondition_Dose``
      - Dose applied to the sample.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Stress``
+   * - ``MetadataCondition_Stress``
      - Applied stress condition (e.g. heat, osmotic, oxidative).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

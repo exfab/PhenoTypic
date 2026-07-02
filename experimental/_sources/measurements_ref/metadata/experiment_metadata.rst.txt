@@ -3,32 +3,33 @@ EXPERIMENT_METADATA
 
 Python object: ``phenotypic.schema._experimental_tags._experiment.EXPERIMENT_METADATA``
 
-Recommended ``Metadata_*`` tags for experiment-level bookkeeping.
+Recommended ``MetadataExperiment_*`` tags for experiment-level bookkeeping.
 
 These group results by experiment/project and carry free-form provenance
 (experiment id, project, dataset, protocol, notes). ``Dataset`` matches the
-CLI-emitted ``Metadata_Dataset`` column. Members render as ``Metadata_<Label>``
-(e.g. ``Metadata_ExperimentID``) and share the ``Metadata_`` namespace with the
-other experimental-tag enums. Recommended vocabulary, not a validator.
+CLI-emitted ``MetadataExperiment_Dataset`` column. Members render as
+``MetadataExperiment_<Label>`` (e.g. ``MetadataExperiment_ExperimentID``) in the
+``Metadata`` column family shared with the other experimental-tag enums.
+Recommended vocabulary, not a validator.
 
-.. list-table:: Category: **Metadata**
+.. list-table:: Category: **MetadataExperiment**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``Metadata_ExperimentID``
+   * - ``MetadataExperiment_ExperimentID``
      - Unique identifier for the experiment.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Project``
+   * - ``MetadataExperiment_Project``
      - Project name or identifier.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Dataset``
-     - Dataset name (matches the CLI-emitted Metadata_Dataset column).
+   * - ``MetadataExperiment_Dataset``
+     - Dataset name (matches the CLI-emitted MetadataExperiment_Dataset column).
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Protocol``
+   * - ``MetadataExperiment_Protocol``
      - Protocol name or version followed.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
-   * - ``Metadata_Notes``
+   * - ``MetadataExperiment_Notes``
      - Free-text notes or comments.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`

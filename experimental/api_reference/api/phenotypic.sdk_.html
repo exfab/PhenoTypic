@@ -809,7 +809,11 @@
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.sdk_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -880,6 +884,7 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.read_run_manifest.html">phenotypic.sdk_.read_run_manifest</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_dir.html">phenotypic.sdk_.recompile_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.recompile_status_dir.html">phenotypic.sdk_.recompile_status_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.rembi_manifest_path.html">phenotypic.sdk_.rembi_manifest_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_best_pipeline_path.html">phenotypic.sdk_.resolve_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_event_log_path.html">phenotypic.sdk_.resolve_event_log_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.resolve_execution_mode.html">phenotypic.sdk_.resolve_execution_mode</a></li>
@@ -1170,8 +1175,20 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html#phenotypic.sdk_.atomic_write_text" title="phenotypic.sdk_.atomic_write_text"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_write_text</span></code></a></p></td>
 <td><p>Atomically write <code class="docutils literal notranslate"><span class="pre">text</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask" title="phenotypic.sdk_.is_binary_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_binary_mask</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html#phenotypic.sdk_.ensure_metadata_prefix" title="phenotypic.sdk_.ensure_metadata_prefix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_metadata_prefix</span></code></a></p></td>
+<td><p>Prefix a bare metadata label with its schema category, else generic.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask" title="phenotypic.sdk_.is_binary_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_binary_mask</span></code></a></p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header" title="phenotypic.sdk_.is_metadata_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_metadata_header</span></code></a></p></td>
+<td><p>True if <code class="docutils literal notranslate"><span class="pre">col</span></code> is a metadata-family column.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label" title="phenotypic.sdk_.metadata_category_for_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_for_label</span></code></a></p></td>
+<td><p>Category that owns a bare label (<code class="docutils literal notranslate"><span class="pre">'Strain'</span> <span class="pre">-&gt;</span> <span class="pre">'MetadataGenetic'</span></code>), or None.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html#phenotypic.sdk_.metadata_category_prefixes" title="phenotypic.sdk_.metadata_category_prefixes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_prefixes</span></code></a></p></td>
+<td><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in REMBI order.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.timed_execution.html#phenotypic.sdk_.timed_execution" title="phenotypic.sdk_.timed_execution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timed_execution</span></code></a></p></td>
 <td><p>Decorator to measure and print the execution time of a function.</p></td>
@@ -1383,79 +1400,82 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.recompile_status_dir.html#phenotypic.sdk_.recompile_status_dir" title="phenotypic.sdk_.recompile_status_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recompile_status_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/recompile/status/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_best_pipeline_path.html#phenotypic.sdk_.resolve_best_pipeline_path" title="phenotypic.sdk_.resolve_best_pipeline_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_best_pipeline_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.rembi_manifest_path.html#phenotypic.sdk_.rembi_manifest_path" title="phenotypic.sdk_.rembi_manifest_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_manifest_path</span></code></a></p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/rembi.yaml</span></code> — the REMBI run manifest.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_best_pipeline_path.html#phenotypic.sdk_.resolve_best_pipeline_path" title="phenotypic.sdk_.resolve_best_pipeline_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_best_pipeline_path</span></code></a></p></td>
 <td><p>Return the best existing tuned-winner pipeline path for <code class="docutils literal notranslate"><span class="pre">output_dir</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_event_log_path.html#phenotypic.sdk_.resolve_event_log_path" title="phenotypic.sdk_.resolve_event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_event_log_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_event_log_path.html#phenotypic.sdk_.resolve_event_log_path" title="phenotypic.sdk_.resolve_event_log_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_event_log_path</span></code></a></p></td>
 <td><p>Return the event log sibling of the resolved progress dir.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_execution_mode.html#phenotypic.sdk_.resolve_execution_mode" title="phenotypic.sdk_.resolve_execution_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_execution_mode</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_execution_mode.html#phenotypic.sdk_.resolve_execution_mode" title="phenotypic.sdk_.resolve_execution_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_execution_mode</span></code></a></p></td>
 <td><p>Extract <code class="xref py py-data docutils literal notranslate"><span class="pre">ExecutionMode</span></code> from job metadata, defaulting to <code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_manifest_json_path.html#phenotypic.sdk_.resolve_manifest_json_path" title="phenotypic.sdk_.resolve_manifest_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_manifest_json_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_manifest_json_path.html#phenotypic.sdk_.resolve_manifest_json_path" title="phenotypic.sdk_.resolve_manifest_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_manifest_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/manifest.json</span></code> resolving the progress dir for legacy runs.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html#phenotypic.sdk_.resolve_pipeline_config_path" title="phenotypic.sdk_.resolve_pipeline_config_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_pipeline_config_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_pipeline_config_path.html#phenotypic.sdk_.resolve_pipeline_config_path" title="phenotypic.sdk_.resolve_pipeline_config_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_pipeline_config_path</span></code></a></p></td>
 <td><p>Return the best existing pipeline config path for <code class="docutils literal notranslate"><span class="pre">output_dir</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html#phenotypic.sdk_.resolve_processing_state_path" title="phenotypic.sdk_.resolve_processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_processing_state_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_processing_state_path.html#phenotypic.sdk_.resolve_processing_state_path" title="phenotypic.sdk_.resolve_processing_state_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_processing_state_path</span></code></a></p></td>
 <td><p>Return the processing-state file that exists, preferring <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html#phenotypic.sdk_.resolve_progress_dir" title="phenotypic.sdk_.resolve_progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_progress_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_progress_dir.html#phenotypic.sdk_.resolve_progress_dir" title="phenotypic.sdk_.resolve_progress_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_progress_dir</span></code></a></p></td>
 <td><p>Return the progress dir that exists, preferring <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html#phenotypic.sdk_.resolve_qc_dir" title="phenotypic.sdk_.resolve_qc_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_qc_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_qc_dir.html#phenotypic.sdk_.resolve_qc_dir" title="phenotypic.sdk_.resolve_qc_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_qc_dir</span></code></a></p></td>
 <td><p>Return the qc dir that exists, preferring <code class="docutils literal notranslate"><span class="pre">deliverables/qc/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html#phenotypic.sdk_.resolve_split_assignment_path" title="phenotypic.sdk_.resolve_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_split_assignment_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_split_assignment_path.html#phenotypic.sdk_.resolve_split_assignment_path" title="phenotypic.sdk_.resolve_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_split_assignment_path</span></code></a></p></td>
 <td><p>Return the split assignment that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html#phenotypic.sdk_.resolve_study_db_path" title="phenotypic.sdk_.resolve_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_study_db_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_study_db_path.html#phenotypic.sdk_.resolve_study_db_path" title="phenotypic.sdk_.resolve_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_study_db_path</span></code></a></p></td>
 <td><p>Return the study DB that exists, preferring <code class="docutils literal notranslate"><span class="pre">.pht-tune-cache/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html#phenotypic.sdk_.resolve_tuning_spec_path" title="phenotypic.sdk_.resolve_tuning_spec_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_tuning_spec_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.resolve_tuning_spec_path.html#phenotypic.sdk_.resolve_tuning_spec_path" title="phenotypic.sdk_.resolve_tuning_spec_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_tuning_spec_path</span></code></a></p></td>
 <td><p>Return the best existing tuning spec path for <code class="docutils literal notranslate"><span class="pre">output_dir</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.results_dir.html#phenotypic.sdk_.results_dir" title="phenotypic.sdk_.results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.results_dir.html#phenotypic.sdk_.results_dir" title="phenotypic.sdk_.results_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/results/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.sentinel_resubmitted_path.html#phenotypic.sdk_.sentinel_resubmitted_path" title="phenotypic.sdk_.sentinel_resubmitted_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sentinel_resubmitted_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.sentinel_resubmitted_path.html#phenotypic.sdk_.sentinel_resubmitted_path" title="phenotypic.sdk_.sentinel_resubmitted_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sentinel_resubmitted_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/sentinel_resubmitted</span></code> marker file path.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.shard_parquet_filename.html#phenotypic.sdk_.shard_parquet_filename" title="phenotypic.sdk_.shard_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shard_parquet_filename</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.shard_parquet_filename.html#phenotypic.sdk_.shard_parquet_filename" title="phenotypic.sdk_.shard_parquet_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shard_parquet_filename</span></code></a></p></td>
 <td><p>Filename of a per-shard Parquet inside the recompile worker.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.slurm_scripts_dir.html#phenotypic.sdk_.slurm_scripts_dir" title="phenotypic.sdk_.slurm_scripts_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_scripts_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.slurm_scripts_dir.html#phenotypic.sdk_.slurm_scripts_dir" title="phenotypic.sdk_.slurm_scripts_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_scripts_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/slurm_scripts/</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.task_status_filename.html#phenotypic.sdk_.task_status_filename" title="phenotypic.sdk_.task_status_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_filename</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.task_status_filename.html#phenotypic.sdk_.task_status_filename" title="phenotypic.sdk_.task_status_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_filename</span></code></a></p></td>
 <td><p>Filename of a per-task SLURM-recompile status JSON.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.task_status_path.html#phenotypic.sdk_.task_status_path" title="phenotypic.sdk_.task_status_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.task_status_path.html#phenotypic.sdk_.task_status_path" title="phenotypic.sdk_.task_status_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;progress&gt;/recompile/status/task_&lt;idx&gt;.json</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.trials_parquet_path.html#phenotypic.sdk_.trials_parquet_path" title="phenotypic.sdk_.trials_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trials_parquet_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.trials_parquet_path.html#phenotypic.sdk_.trials_parquet_path" title="phenotypic.sdk_.trials_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trials_parquet_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/trials.parquet</span></code> (the trial journal; output-dir root).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_dir.html#phenotypic.sdk_.tune_cache_dir" title="phenotypic.sdk_.tune_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_dir.html#phenotypic.sdk_.tune_cache_dir" title="phenotypic.sdk_.tune_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/</span></code> — the tune run's machine-state root.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_run_marker_path.html#phenotypic.sdk_.tune_cache_run_marker_path" title="phenotypic.sdk_.tune_cache_run_marker_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_run_marker_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_run_marker_path.html#phenotypic.sdk_.tune_cache_run_marker_path" title="phenotypic.sdk_.tune_cache_run_marker_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_run_marker_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/run.json</span></code> — the tune-run marker.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_split_assignment_path.html#phenotypic.sdk_.tune_cache_split_assignment_path" title="phenotypic.sdk_.tune_cache_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_split_assignment_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_split_assignment_path.html#phenotypic.sdk_.tune_cache_split_assignment_path" title="phenotypic.sdk_.tune_cache_split_assignment_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_split_assignment_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/split.json</span></code> — the held-out split.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_splits_dir.html#phenotypic.sdk_.tune_cache_splits_dir" title="phenotypic.sdk_.tune_cache_splits_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_splits_dir</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_splits_dir.html#phenotypic.sdk_.tune_cache_splits_dir" title="phenotypic.sdk_.tune_cache_splits_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_splits_dir</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/splits/</span></code> — the held-out split folder.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_study_db_path.html#phenotypic.sdk_.tune_cache_study_db_path" title="phenotypic.sdk_.tune_cache_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_study_db_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tune_cache_study_db_path.html#phenotypic.sdk_.tune_cache_study_db_path" title="phenotypic.sdk_.tune_cache_study_db_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tune_cache_study_db_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.pht-tune-cache/study.db</span></code> (the Optuna study DB).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.tuning_spec_path.html#phenotypic.sdk_.tuning_spec_path" title="phenotypic.sdk_.tuning_spec_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuning_spec_path</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.tuning_spec_path.html#phenotypic.sdk_.tuning_spec_path" title="phenotypic.sdk_.tuning_spec_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuning_spec_path</span></code></a></p></td>
 <td><p>Return the canonical typed tuning spec path under <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.verified_parquet_path.html#phenotypic.sdk_.verified_parquet_path" title="phenotypic.sdk_.verified_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">verified_parquet_path</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.verified_parquet_path.html#phenotypic.sdk_.verified_parquet_path" title="phenotypic.sdk_.verified_parquet_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">verified_parquet_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/verified.parquet</span></code> (GUI-written, §9).</p></td>
 </tr>
 </tbody>
@@ -3668,6 +3688,24 @@ is a one-line change.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">ensure_metadata_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#ensure_metadata_prefix"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Prefix a bare metadata label with its schema category, else generic.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Strain</span> <span class="pre">-&gt;</span> <span class="pre">MetadataGenetic_Strain</span></code> (the owning enum’s category); an
+unknown <code class="docutils literal notranslate"><span class="pre">Foo</span> <span class="pre">-&gt;</span> <span class="pre">Metadata_Foo</span></code> (kept, uncategorized). Names that already
+carry a metadata prefix – any <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_</span></code> category prefix or the
+generic <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> – pass through unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">ensure_typed_json_suffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#ensure_typed_json_suffix"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">path</span></code> with the canonical typed JSON suffix appended.</p>
 <p>Bare stems receive the full typed suffix. Legacy <code class="docutils literal notranslate"><span class="pre">.json</span></code> paths receive
@@ -3832,6 +3870,25 @@ from case-preserving filesystems without rewriting their names.</p>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>arr</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">is_metadata_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#is_metadata_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>True if <code class="docutils literal notranslate"><span class="pre">col</span></code> is a metadata-family column.</p>
+<p>Matches any per-topic <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_</span></code> prefix (e.g.
+<code class="docutils literal notranslate"><span class="pre">MetadataGenetic_</span></code>) <em>and</em> the generic <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> fallback used for
+uncategorized user metadata, per the namespace design (spec §10.3): the
+whole <code class="docutils literal notranslate"><span class="pre">Metadata</span></code> family is recognized, measurement/identity columns
+(<code class="docutils literal notranslate"><span class="pre">Shape_</span></code>, <code class="docutils literal notranslate"><span class="pre">Object_</span></code>, …) are not.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -4006,6 +4063,34 @@ string is that the dispatch falls through to <code class="xref py py-class docut
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">metadata_category_for_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html#phenotypic.abc_.FootprintMixin.None" title="phenotypic.abc_.FootprintMixin.None"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#metadata_category_for_label"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Category that owns a bare label (<code class="docutils literal notranslate"><span class="pre">'Strain'</span> <span class="pre">-&gt;</span> <span class="pre">'MetadataGenetic'</span></code>), or None.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">metadata_category_prefixes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#metadata_category_prefixes"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in REMBI order.</p>
+<p>Ordered by each enum’s REMBI module then its category string, then
+deduplicated, so callers building bucket-priority lists get a stable,
+canonical ordering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -4383,6 +4468,20 @@ or unparseable (callers can decide whether absence is fatal).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>progress_dir_</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">rembi_manifest_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#rembi_manifest_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/rembi.yaml</span></code> — the REMBI run manifest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
