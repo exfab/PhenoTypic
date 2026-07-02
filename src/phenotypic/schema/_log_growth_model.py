@@ -5,6 +5,18 @@ from ._tiers import DerivedMeasure
 
 
 class LOG_GROWTH_MODEL(DerivedMeasure):
+    """Fitted parameters and bounds of the logistic growth model.
+
+    Output columns are **metric-qualified**: each header is
+    ``LogGrowthModel_<metric>_<parameter>``, where ``<metric>`` records the
+    measurement the model was fit on (``self.on`` with its category prefix
+    stripped, e.g. ``Shape_Area`` → ``Area``). For example, fitting on
+    ``Shape_Area`` emits ``LogGrowthModel_Area_r`` (intrinsic growth rate) and
+    ``LogGrowthModel_Area_µmax`` (maximum specific growth rate). The labels
+    below are the ``<parameter>`` segment; the ``<metric>`` infix is filled in
+    at fit time.
+    """
+
     @classmethod
     def category(cls) -> str:
         return "LogGrowthModel"

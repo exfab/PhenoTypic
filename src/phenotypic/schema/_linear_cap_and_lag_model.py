@@ -5,6 +5,18 @@ from ._tiers import DerivedMeasure
 
 
 class LINEAR_CAP_AND_LAG_MODEL(DerivedMeasure):
+    """Fitted parameters of the double-softplus growth model (with saturation).
+
+    Output columns are **metric-qualified**: each header is
+    ``LinearCapAndLagModel_<metric>_<parameter>``, where ``<metric>`` records
+    the measurement the model was fit on (``self.on`` with its category prefix
+    stripped, e.g. ``Shape_Area`` → ``Area``). For example, fitting on
+    ``Shape_Area`` emits ``LinearCapAndLagModel_Area_v`` (post-lag growth rate)
+    and ``LinearCapAndLagModel_Area_s0`` (initial size). The labels below are
+    the ``<parameter>`` segment; the ``<metric>`` infix is filled in at fit
+    time.
+    """
+
     @classmethod
     def category(cls) -> str:
         return "LinearCapAndLagModel"

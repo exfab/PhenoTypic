@@ -5,6 +5,17 @@ from ._tiers import DerivedMeasure
 
 
 class LINEAR_LAG_MODEL(DerivedMeasure):
+    """Fitted parameters of the linear-softplus lag model (no saturation).
+
+    Output columns are **metric-qualified**: each header is
+    ``LinearLagModel_<metric>_<parameter>``, where ``<metric>`` records the
+    measurement the model was fit on (``self.on`` with its category prefix
+    stripped, e.g. ``Shape_Area`` → ``Area``). For example, fitting on
+    ``Shape_Area`` emits ``LinearLagModel_Area_v`` (post-lag growth rate) and
+    ``LinearLagModel_Area_s0`` (initial size). The labels below are the
+    ``<parameter>`` segment; the ``<metric>`` infix is filled in at fit time.
+    """
+
     @classmethod
     def category(cls) -> str:
         return "LinearLagModel"

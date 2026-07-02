@@ -106,6 +106,65 @@ list-table **unescaped** (they bypass `_rst_cell_text`) so the role renders — 
 badge text must stay free of literal `|`. When adding a new tier/kind, update
 `_tiers.py`, both badge maps, and the explanation page together.
 
+## Dynamic output headers (recognition schemes)
+
+Output column names are an *encoding* of `(member, runtime-params)`. Each enum owns
+**both** directions — emit and decode — so downstream code
+(`util/_measurement_outputs.py` `split_measurements`/`generate_output_key`, the CLI
+README, Sphinx) is scheme-agnostic and only ever calls the recognition interface on the
+base:
+
+- `header_scheme() -> "static" | "metric_qualified" | "texture"` — dispatch hint
+  (default `"static"`).
+- `member_for_header(column) -> member | None` — decode a column to its member.
+- `owns_header(column) -> bool` — `member_for_header(...) is not None`; **never** override.
+
+Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
+
+- **static** — the header *is* `member.value` (`Shape_Area`); base default, no override.
+- **metric_qualified** — `{cat}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
+  `qualified_header(member, token)` / `parse_qualified_header(info_cls, column)`; the enum
+  sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
+  The token comes from `metric_token(on)` in `util/_measurement_outputs.py`
+  (strips the longest known category prefix from `self.on`).
+- **texture** — `{cat}_{label}-deg###-scale##` / `-avg-scale##`:
+  `TEXTURE.get_headers(scale, matrix_name)` plus a `member_for_header` regex override.
+
+**Invariant:** the format must be invertible — `parse(emit(member, token)) == (token,
+member)`. `metric_qualified` anchors on the category prefix + the known member-label
+suffix, so a guardrail in `tests/unit/schema/test_dynamic_headers.py` asserts no label is
+a `_`-suffix of another. Emission (in the producer) and recognition (on the enum) live in
+two files that must agree; the round-trip test keeps them honest. Docs/`rst_table` render
+the **base** labels; only run-specific surfaces (the CLI README) fill in the real token.
+
+### Adding a new dynamic scheme
+
+1. Pick an invertible format — the member label must be recoverable without the token.
+2. Add an emission helper — co-locate on the enum (like `get_headers`) or a shared func;
+   reuse `qualified_header`/`parse_qualified_header` if the shape is the
+   `{cat}_{token}_{label}` infix (then you only set `header_scheme()`, no parser).
+3. Override `member_for_header` on the enum (and set `header_scheme()`). `owns_header`
+   is inherited.
+4. In the producer, name columns via the helper and declare
+   `_measurement_infoclass = <enum>` — that one attribute wires
+   split/output-key/recognition. (For the CLI README's measurement tables only, also add
+   the measurer to `_get_measurement_infoclasses` in `_cli/_cli_readme_generator.py`.)
+
+A `MeasureFeatures` emits via the enum (never hand-built strings):
+
+    class MeasureTexture(MeasureFeatures):
+        _measurement_infoclass: ClassVar[type] = TEXTURE
+        scale: List[int] = [5]
+        def _operate(self, image):
+            cols = TEXTURE.get_headers(self.scale[0], "Gray")   # runtime params -> headers
+            meas = pd.DataFrame(data, columns=cols)
+            meas.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+            return meas
+
+`ModelFitter` subclasses are the exception: they stay member-keyed internally and the ABC
+(`analyze()`) renames to qualified headers at the boundary, so a fitter never touches
+header strings.
+
 Downstream users import headers directly:
 
     from phenotypic.schema import SHAPE, MeasurementInfo
