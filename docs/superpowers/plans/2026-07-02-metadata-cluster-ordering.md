@@ -45,6 +45,41 @@
 
 ---
 
+## Execution: DAG & Clustering
+
+Derived from the per-task Files/Interfaces blocks (→ = must-finish-before; shared files
+in brackets).
+
+```
+T1 [_metadata_helpers.py] ─┬─→ T2 [+__init__] ─┬─→ T4 [+__init__, test_cluster_order] ─┬─→ T6 [_image_pipeline_core]*
+                           └─→ T3             └─→ T5 [_metadata_accessor, test_by_module]└─→ T7 [_cli_output_manager]
+T8 (docs) — independent                                          T9 (verify+ship) — depends on all
+* T6 additionally requires the #180 rebase (see Global Constraints).
+```
+
+**Clusters** (right-sized by shape, not count):
+
+| Cluster | Tasks | Shape | Rationale |
+|---|---|---|---|
+| **A — Ordering source of truth** | T1, T2, T3, T4, T8 | Keystone + Leaf | All four code tasks rewrite `_metadata_helpers.py` (shared file → cannot parallelize; cohesive intent). One reviewable diff; self-verifies via `test_metadata_helpers.py` + the helper tests in `test_metadata_cluster_order.py`. T8 docs describe what A defines → folded in. |
+| **B — Consumer wiring** | T5, T7 | Seam ×2 | Wire the shared helper into the pandas `insert_metadata` and the polars mirror. Disjoint source files, shared append-only test file + intent → one agent, one diff. High-scrutiny gate (T7 held the plan-review blocker). |
+| **C — #180 wrapper fold** | T6 | Seam | Risky wiring into `measure()` assembly; separate subsystem; carries the #180 rebase prereq. Own gate. |
+| **Ship** | T9 | Gate | Orchestrator-run: ruff/mypy/regression sweep + simplify pass + push/PR. |
+
+**Model/effort:** all clusters + gates → session model (Opus 4.8), high effort (Keystone/
+Seam judgment work). No sub-frontier work.
+
+**Sequencing:** `[rebase onto #180]` → **A** → light gate → **B** → high-scrutiny gate →
+**C** → gate → **Ship**. B and C have zero source-file overlap (parallel-worktree
+eligible) but are run **sequentially** — two tiny seams; sequential keeps gates clean and
+history bisectable.
+
+**Gates:** per-cluster = review diff + run that cluster's tests/lint before the next; after
+B+C = a fresh code-review agent over the combined consumer diff; end = simplify pass +
+regression sweep (Task 9).
+
+---
+
 ## Task 1: Cluster-order constant + coverage gate
 
 **Files:**
