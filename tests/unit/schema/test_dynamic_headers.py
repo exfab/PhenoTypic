@@ -56,6 +56,15 @@ def test_texture_scheme_recognition():
     assert not TEXTURE.owns_header("Texture_AngularSecondMoment")
 
 
+def test_texture_scheme_recognizes_scale_over_two_digits():
+    """``scale`` is emitted with min-width ``:02d``; scales >= 100 (3+ digits)
+    must still round-trip through the recognizer."""
+    for scale in (5, 100, 250):
+        for header in TEXTURE.get_headers(scale=scale, matrix_name="Gray"):
+            assert TEXTURE.owns_header(header), header
+            assert TEXTURE.member_for_header(header) is not None
+
+
 def test_no_label_is_underscore_suffix_of_another_label():
     """Guardrail: protects parse_qualified_header's suffix anchoring."""
     for name in schema.__all__:
