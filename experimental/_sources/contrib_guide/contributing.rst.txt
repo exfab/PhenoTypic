@@ -14,6 +14,31 @@ Code Standards
 
 This section will describe the coding standards and style guidelines for Phenotypic.
 
+Documenting measurements (``MeasureFeatures`` vs ``MeasurementInfo``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Measurement documentation is split across two places, and the two must not
+overlap:
+
+* The **operation** (a :class:`~phenotypic.abc_.MeasureFeatures` subclass)
+  documents **what its parameters mean** and gives a **high-level overview** of
+  the measurements it produces — what the operation does and when to reach for
+  it. Keep this at the "overview" altitude; do not restate each output column
+  here.
+* The **measurement schema** (the :class:`~phenotypic.schema.MeasurementInfo`
+  enum and its members) carries the **detailed, per-column explanation of the
+  measurements themselves** — what each value is, how it is computed, and **how
+  to read the measurement output** (the prefixed column header, units, and
+  range). Each member's ``desc`` is the canonical per-column documentation.
+
+Why the split matters: the deliverables ``README.md`` generator
+(``src/phenotypic/_cli/_cli_readme_generator.py``) maps each configured
+``MeasureFeatures`` op to its ``MeasurementInfo`` enum(s) and emits every
+member's ``desc`` verbatim as the public column reference. The enum ``desc`` is
+therefore what end users read in the run output — write it for them. (Author
+only ``label`` and ``desc`` on a member; never author ``bio_desc`` — see the
+**Gotchas** in the root ``CLAUDE.md`` and the ``adding-an-operation`` skill.)
+
 Adding a tuning objective (Scorer)
 ----------------------------------
 

@@ -741,16 +741,16 @@ Measured 7 colonies across 50 features
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>Object_Label</th>
+      <th>MetadataImage_BitDepth</th>
+      <th>MetadataImage_FileSuffix</th>
+      <th>MetadataImage_ImageName</th>
+      <th>MetadataImage_ImageType</th>
       <th>Size_Area</th>
       <th>Size_IntegratedIntensity</th>
       <th>Shape_Area</th>
       <th>Shape_Perimeter</th>
       <th>Shape_Circularity</th>
       <th>Shape_ConvexArea</th>
-      <th>Shape_MedianRadius</th>
-      <th>Shape_MeanRadius</th>
-      <th>Shape_MaxRadius</th>
       <th>...</th>
       <th>Bbox_MaxRR</th>
       <th>Bbox_MaxCC</th>
@@ -767,16 +767,16 @@ Measured 7 colonies across 50 features
   <tbody>
     <tr>
       <th>0</th>
-      <td>1</td>
+      <td>8</td>
+      <td>.png</td>
+      <td>RhodotorulaYeastCenterCrop</td>
+      <td>GridImage</td>
       <td>22670.0</td>
       <td>13244.210029</td>
       <td>22670.0</td>
       <td>569.085353</td>
       <td>0.879643</td>
       <td>536.949710</td>
-      <td>24.698178</td>
-      <td>27.986768</td>
-      <td>79.881162</td>
       <td>...</td>
       <td>278</td>
       <td>277</td>
@@ -791,16 +791,16 @@ Measured 7 colonies across 50 features
     </tr>
     <tr>
       <th>1</th>
-      <td>2</td>
+      <td>8</td>
+      <td>.png</td>
+      <td>RhodotorulaYeastCenterCrop</td>
+      <td>GridImage</td>
       <td>17055.0</td>
       <td>10056.952051</td>
       <td>17055.0</td>
       <td>493.487373</td>
       <td>0.880054</td>
       <td>467.000044</td>
-      <td>21.213203</td>
-      <td>24.216864</td>
-      <td>70.064256</td>
       <td>...</td>
       <td>258</td>
       <td>1077</td>
@@ -815,16 +815,16 @@ Measured 7 colonies across 50 features
     </tr>
     <tr>
       <th>2</th>
-      <td>3</td>
+      <td>8</td>
+      <td>.png</td>
+      <td>RhodotorulaYeastCenterCrop</td>
+      <td>GridImage</td>
       <td>16047.0</td>
       <td>9216.498028</td>
       <td>16047.0</td>
       <td>471.345238</td>
       <td>0.907665</td>
       <td>448.791306</td>
-      <td>21.023796</td>
-      <td>23.938996</td>
-      <td>69.814039</td>
       <td>...</td>
       <td>252</td>
       <td>1481</td>
@@ -839,16 +839,16 @@ Measured 7 colonies across 50 features
     </tr>
     <tr>
       <th>3</th>
-      <td>4</td>
+      <td>8</td>
+      <td>.png</td>
+      <td>RhodotorulaYeastCenterCrop</td>
+      <td>GridImage</td>
       <td>13329.0</td>
       <td>7522.484134</td>
       <td>13329.0</td>
       <td>431.889394</td>
       <td>0.897971</td>
       <td>410.142608</td>
-      <td>19.104973</td>
-      <td>21.686005</td>
-      <td>62.008064</td>
       <td>...</td>
       <td>250</td>
       <td>664</td>
@@ -863,16 +863,16 @@ Measured 7 colonies across 50 features
     </tr>
     <tr>
       <th>4</th>
-      <td>5</td>
+      <td>8</td>
+      <td>.png</td>
+      <td>RhodotorulaYeastCenterCrop</td>
+      <td>GridImage</td>
       <td>17939.0</td>
       <td>10945.558373</td>
       <td>17939.0</td>
       <td>500.801082</td>
       <td>0.898830</td>
       <td>475.771621</td>
-      <td>22.135944</td>
-      <td>25.191555</td>
-      <td>72.835431</td>
       <td>...</td>
       <td>665</td>
       <td>1487</td>
@@ -910,7 +910,10 @@ Measured 7 colonies across 50 features
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 All columns:
-  Object_Label
+  MetadataImage_BitDepth
+  MetadataImage_FileSuffix
+  MetadataImage_ImageName
+  MetadataImage_ImageType
   Size_Area
   Size_IntegratedIntensity
   Shape_Area
@@ -942,10 +945,7 @@ All columns:
   Intensity_InterquartileRangeIntensity
   Intensity_Density
   Intensity_ConvexDensity
-  MetadataImage_BitDepth
-  MetadataImage_FileSuffix
-  MetadataImage_ImageName
-  MetadataImage_ImageType
+  Object_Label
   Bbox_CenterRR
   Bbox_CenterCC
   Bbox_MinRR

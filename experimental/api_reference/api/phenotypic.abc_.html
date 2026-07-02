@@ -26632,7 +26632,12 @@ CLI) wants to persist a clean copy and apply post separately.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>A DataFrame containing the results of all performed measurements combined</dt><dd><p>on the same index.</p>
+<dt>A DataFrame containing the results of all performed measurements combined</dt><dd><p>on the same index. Columns are ordered as
+<code class="docutils literal notranslate"><span class="pre">[metadata]</span> <span class="pre">-&gt;</span> <span class="pre">[measurements]</span> <span class="pre">-&gt;</span> <span class="pre">[info</span> <span class="pre">block]</span></code>: any
+<code class="docutils literal notranslate"><span class="pre">Metadata*</span></code> columns first (in canonical REMBI order, present only
+when <code class="docutils literal notranslate"><span class="pre">include_metadata</span></code> is True), then the measurement columns, then
+the image-info block (<code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> followed by the <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> /
+<code class="docutils literal notranslate"><span class="pre">Grid_*</span></code> geometry columns) last.</p>
 </dd>
 </dl>
 </p>

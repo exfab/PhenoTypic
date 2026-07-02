@@ -631,6 +631,30 @@
 <section id="code-standards">
 <h2>Code Standards<a class="headerlink" href="#code-standards" title="Link to this heading">#</a></h2>
 <p>This section will describe the coding standards and style guidelines for Phenotypic.</p>
+<section id="documenting-measurements-measurefeatures-vs-measurementinfo">
+<h3>Documenting measurements (<code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code> vs <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code>)<a class="headerlink" href="#documenting-measurements-measurefeatures-vs-measurementinfo" title="Link to this heading">#</a></h3>
+<p>Measurement documentation is split across two places, and the two must not
+overlap:</p>
+<ul class="simple">
+<li><p>The <strong>operation</strong> (a <a class="reference internal" href="../api_reference/api/phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a> subclass)
+documents <strong>what its parameters mean</strong> and gives a <strong>high-level overview</strong> of
+the measurements it produces — what the operation does and when to reach for
+it. Keep this at the “overview” altitude; do not restate each output column
+here.</p></li>
+<li><p>The <strong>measurement schema</strong> (the <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementInfo</span></code>
+enum and its members) carries the <strong>detailed, per-column explanation of the
+measurements themselves</strong> — what each value is, how it is computed, and <strong>how
+to read the measurement output</strong> (the prefixed column header, units, and
+range). Each member’s <code class="docutils literal notranslate"><span class="pre">desc</span></code> is the canonical per-column documentation.</p></li>
+</ul>
+<p>Why the split matters: the deliverables <code class="docutils literal notranslate"><span class="pre">README.md</span></code> generator
+(<code class="docutils literal notranslate"><span class="pre">src/phenotypic/_cli/_cli_readme_generator.py</span></code>) maps each configured
+<code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code> op to its <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code> enum(s) and emits every
+member’s <code class="docutils literal notranslate"><span class="pre">desc</span></code> verbatim as the public column reference. The enum <code class="docutils literal notranslate"><span class="pre">desc</span></code> is
+therefore what end users read in the run output — write it for them. (Author
+only <code class="docutils literal notranslate"><span class="pre">label</span></code> and <code class="docutils literal notranslate"><span class="pre">desc</span></code> on a member; never author <code class="docutils literal notranslate"><span class="pre">bio_desc</span></code> — see the
+<strong>Gotchas</strong> in the root <code class="docutils literal notranslate"><span class="pre">CLAUDE.md</span></code> and the <code class="docutils literal notranslate"><span class="pre">adding-an-operation</span></code> skill.)</p>
+</section>
 </section>
 <section id="adding-a-tuning-objective-scorer">
 <h2>Adding a tuning objective (Scorer)<a class="headerlink" href="#adding-a-tuning-objective-scorer" title="Link to this heading">#</a></h2>
@@ -726,7 +750,10 @@ default) — see the explainer
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#getting-started">Getting Started</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-standards">Code Standards</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-standards">Code Standards</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#documenting-measurements-measurefeatures-vs-measurementinfo">Documenting measurements (<code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code> vs <code class="docutils literal notranslate"><span class="pre">MeasurementInfo</span></code>)</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-a-tuning-objective-scorer">Adding a tuning objective (Scorer)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pull-request-workflow">Pull Request Workflow</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#issue-reporting">Issue Reporting</a></li>
