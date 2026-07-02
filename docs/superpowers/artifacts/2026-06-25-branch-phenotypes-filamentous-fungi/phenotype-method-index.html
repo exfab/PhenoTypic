@@ -1,0 +1,1753 @@
+<!doctype html>
+<!--
+  PHENOTYPE ↔ METHOD INDEX — Branch Phenotypes for Filamentous Fungi
+  Dual-index view: phenotype → output → method (forward) and method → phenotype (reverse).
+  Head copied VERBATIM from _design-system.html + three additive components
+  (.interest, .methods, .xtable) that reuse the same tokens. Card fragments for the
+  four family groups are assembled from isolated author passes.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phenotype ↔ Method Index · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:64ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:74ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- why-of-interest (additive; neutral tan accent, no regime colour) ---- */
+  .interest{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--rule);border-radius:9px;padding:10px 12px}
+  .interest .in-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:5px}
+  .interest p{margin:0;font-size:12.5px;color:var(--text)}
+  .interest p b{color:var(--ink);font-weight:600}
+
+  /* ---- method options (additive) ---- */
+  .methods{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .methods .m-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:7px}
+  .methods ol{margin:0;padding-left:17px}
+  .methods li{font-size:12.5px;color:var(--text);margin:4px 0;padding-left:2px}
+  .methods li .prim{font-family:var(--mono);font-size:.9em;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--ink)}
+  .methods li .opt-fit{font-family:var(--mono);font-size:10.5px;margin-left:4px}
+  .methods li .rec{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--green);margin-left:4px}
+
+  /* ---- cross-reference table (additive; reverse index + validation) ---- */
+  .xtable-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:4px 6px;margin-top:16px}
+  .xtable{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+  .xtable th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--faint);border-bottom:1px solid var(--rule);padding:10px 12px;vertical-align:bottom;white-space:nowrap}
+  .xtable td{border-bottom:1px solid var(--border);padding:10px 12px;vertical-align:top;color:var(--text)}
+  .xtable tr:last-child td{border-bottom:0}
+  .xtable td.mono,.xtable .mono{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .xtable .feeds .prov{margin:2px 4px 2px 0}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:5px 0}
+  .callout strong{color:var(--ink)}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:78ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend,.xtable-wrap{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Phenotype ⇄ Method Index</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="#method-index">Method → phenotype</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <div class="family-badge" style="background:var(--ink)">⇄</div>
+    <div>
+      <div class="hero-kicker">Dual index · families A · B · C · + Turning</div>
+      <h1 class="hero-title">Phenotype ↔ method index</h1>
+      <p class="lede">Read it either way. <b>Forward</b> — each phenotype leads with the output metric it yields
+        (variable + units), then the ranked method options that compute it. <b>Reverse</b>
+        (<a href="#method-index">jump ↓</a>) — each shared algorithm maps to every phenotype it feeds. Every card
+        carries a diagram of what the phenotype is and a note on what structural distinction it resolves.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Regime B · mask / grayscale</span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>Regime A · traced strand</span>
+        <span class="chip">Size&nbsp;&amp;&nbsp;shape · Space-filling · Radial/Sholl · Turning</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime · what must be resolvable</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved strands (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 feasible · parameter/trace-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <p class="section-sub" style="margin:18px 0 0">Every card: <b>what it is</b> (definition + diagram) → <b>why it's
+    of interest</b> (the structural distinction it resolves, kept purely morphological) → <b>output metric</b>
+    (variable, units, how it reads) → <b>method options</b> (ranked, with fit). Biological interpretation is left to
+    a human author.</p>
+
+  <!-- ============================ FAMILY A ============================ -->
+  <section class="band" id="family-a">
+    <h2 class="section-title">A · Size &amp; shape</h2>
+    <p class="section-sub">Whole-silhouette morphometrics computed from the binary mask (no hyphal isolation).
+      Net-new descriptors beyond the catalogued core (area, circularity, solidity, hull, eccentricity, Zernike, holes).</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Boundary fractal dimension</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Box-counting on the <span class="term">silhouette border pixels</span>: the slope of log N(ε) versus log(1/ε) over a geometric series of box sizes, quantifying how <span class="term">crenellated</span> the outline is.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="Boundary traced by a shrinking grid, box counts rising, and a log-log regression line">
+      <!-- wavy silhouette border -->
+      <path class="struct" fill="none" stroke="var(--ink)" stroke-width="2"
+        d="M40 150 q6 -30 22 -18 q10 8 18 -6 q8 -14 20 -4 q10 8 16 -10 q8 -22 22 -8 q10 10 18 -2"/>
+      <!-- coarse grid overlay -->
+      <g stroke="var(--rule)" stroke-width="1">
+        <line x1="40" y1="110" x2="180" y2="110"/><line x1="40" y1="140" x2="180" y2="140"/>
+        <line x1="70" y1="95" x2="70" y2="160"/><line x1="110" y1="95" x2="110" y2="160"/><line x1="150" y1="95" x2="150" y2="160"/>
+      </g>
+      <!-- occupied boxes (highlighted) -->
+      <g fill="var(--orange)" opacity="0.35">
+        <rect x="40" y="110" width="30" height="30"/><rect x="70" y="110" width="40" height="30"/>
+        <rect x="110" y="110" width="40" height="30"/><rect x="150" y="110" width="30" height="30"/>
+      </g>
+      <text class="lbl" x="40" y="180" font-size="10" fill="var(--ink)">shrink ε → count occupied boxes N(ε)</text>
+      <!-- log-log inset -->
+      <line class="axis" x1="230" y1="40" x2="230" y2="170" stroke="var(--ink)" stroke-width="1.5"/>
+      <line class="axis" x1="230" y1="170" x2="340" y2="170" stroke="var(--ink)" stroke-width="1.5"/>
+      <line x1="235" y1="160" x2="335" y2="70" stroke="var(--vermillion)" stroke-width="2"/>
+      <text class="lbl" x="250" y="110" font-size="10" fill="var(--vermillion)">slope = D</text>
+      <text class="lbl-strong" x="205" y="48" font-size="10" fill="var(--ink)">log N</text>
+      <text class="lbl" x="300" y="185" font-size="10" fill="var(--ink)">log 1/ε</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the number of grid boxes touching the mask border is counted at shrinking box sizes and D is the log–log slope.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Separates two masks with identical area and perimeter but different margin waviness: a smooth ellipse and a lobed outline can share a perimeter yet D climbs only for the crenellated border. It complements mass FD by describing the <em>edge</em> rather than the interior.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_FD_Boundary</b> — box-counting dimension of the border</dd>
+      <dt>Units</dt><dd>dimensionless, ~1 (smooth) → ~2 (space-filling margin)</dd>
+      <dt>Reads as</dt><dd>higher ⇒ a more convoluted, rugged outline; ~1 ⇒ a near-smooth boundary</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li>box-count the border returned by <span class="prim">skimage.measure.find_contours</span> over a geometric ε series, regress log–log <span class="rec">recommended</span></li>
+      <li>Minkowski–Bouligand dilation dimension from successive boundary dilations</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>ε</dt><dd>box side length</dd><dt>N(ε)</dt><dd>boxes occupied by the border at scale ε</dd><dt>D</dt><dd>regression slope = fractal dimension</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cryphonectria fractal silhouettes (10.1002/jobm.200800017)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Mass fractal dimension</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Box-counting or <span class="term">mass–radius scaling</span> on the FILLED silhouette, measuring how completely the <span class="term">interior</span> fills the plane rather than how ragged the edge is.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="Concentric radii over a filled blob with enclosed pixel mass, and a log mass versus log radius line">
+      <!-- filled blob -->
+      <path class="struct" fill="var(--blue)" fill-opacity="0.25" stroke="var(--ink)" stroke-width="1.5"
+        d="M120 120 q-45 -55 5 -75 q55 -20 70 25 q30 45 -15 75 q-40 30 -60 -25 Z"/>
+      <!-- centroid + concentric radii -->
+      <circle cx="120" cy="105" r="3" fill="var(--ink)"/>
+      <g fill="none" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 3">
+        <circle cx="120" cy="105" r="22"/><circle cx="120" cy="105" r="42"/><circle cx="120" cy="105" r="62"/>
+      </g>
+      <line x1="120" y1="105" x2="182" y2="105" stroke="var(--vermillion)" stroke-width="1.2"/>
+      <text class="lbl" x="150" y="100" font-size="10" fill="var(--vermillion)">r</text>
+      <text class="lbl" x="40" y="200" font-size="10" fill="var(--ink)">M(r) = pixels within radius r</text>
+      <!-- log-log inset -->
+      <line class="axis" x1="235" y1="40" x2="235" y2="170" stroke="var(--ink)" stroke-width="1.5"/>
+      <line class="axis" x1="235" y1="170" x2="345" y2="170" stroke="var(--ink)" stroke-width="1.5"/>
+      <line x1="240" y1="162" x2="342" y2="60" stroke="var(--green)" stroke-width="2"/>
+      <text class="lbl" x="252" y="105" font-size="10" fill="var(--green)">slope = D</text>
+      <text class="lbl-strong" x="212" y="48" font-size="10" fill="var(--ink)">log M</text>
+      <text class="lbl" x="305" y="185" font-size="10" fill="var(--ink)">log r</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> enclosed filled-pixel mass is counted in growing radii about the centroid and D is the log M vs log r slope.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Resolves interior space-filling that boundary FD misses: two masks with an equally ragged margin but different interior compactness (a solid disc vs a filigreed web) diverge here. Reporting mass and box-count FD together flags scaling bias when they disagree.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_FD_Mass</b> — interior mass-scaling dimension</dd>
+      <dt>Units</dt><dd>dimensionless, ~1.7–2.0</dd>
+      <dt>Reads as</dt><dd>higher ⇒ the interior fills the plane more completely; lower ⇒ a sparse, web-like fill</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li>mass–radius: count pixels within radius r of the centroid and regress log M vs log r <span class="rec">recommended</span></li>
+      <li>box-count on the filled mask — report BOTH as a bias check</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>M</dt><dd>enclosed filled-pixel mass</dd><dt>r</dt><dd>radius from centroid</dd><dt>D</dt><dd>regression slope = fractal dimension</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Aspergillus niger mycelial fractal (10.1186/1475-2859-5-5)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Feret diameters &amp; roundness</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">The maximum and minimum <span class="term">caliper spans</span> of the convex hull, plus Feret roundness 4A/(π·F_max²) — a rotation-invariant aspect ratio and disc-likeness measure.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="Convex hull with two pairs of parallel calipers marking maximum and minimum spans">
+      <!-- hull -->
+      <path class="struct" fill="var(--green)" fill-opacity="0.18" stroke="var(--ink)" stroke-width="1.5"
+        d="M90 60 L200 50 L260 110 L230 175 L120 180 L70 120 Z"/>
+      <!-- max caliper (long axis) -->
+      <g stroke="var(--vermillion)" stroke-width="1.5">
+        <line x1="70" y1="40" x2="270" y2="30"/><line x1="70" y1="200" x2="270" y2="190"/>
+      </g>
+      <line x1="80" y1="115" x2="255" y2="95" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+      <text class="lbl-strong" x="150" y="90" font-size="11" fill="var(--vermillion)">F_max</text>
+      <!-- min caliper (short axis) -->
+      <g stroke="var(--blue)" stroke-width="1.5">
+        <line x1="55" y1="70" x2="105" y2="30"/><line x1="120" y1="200" x2="170" y2="160"/>
+      </g>
+      <line x1="90" y1="135" x2="140" y2="95" stroke="var(--blue)" stroke-width="2" stroke-dasharray="4 3"/>
+      <text class="lbl-strong" x="60" y="160" font-size="11" fill="var(--blue)">F_min</text>
+      <text class="lbl" x="60" y="205" font-size="9" fill="var(--ink)">calipers rotate to find extreme spans</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> parallel calipers are rotated around the hull to record the largest and smallest opposing spans, and roundness is derived from F_max and area.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Hull-based, so it stays stable where a ragged margin would bias moment axes: F_max/F_min gives a clean rotation-invariant aspect ratio, and Feret roundness distinguishes an elongated hull from a compact disc-like one independent of orientation.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_MaxFeret</b>, <b>MinFeret</b>, <b>FeretRoundness</b> — spans + disc-likeness</dd>
+      <dt>Units</dt><dd>MaxFeret/MinFeret px (µm with scale); FeretRoundness dimensionless 0–1</dd>
+      <dt>Reads as</dt><dd>F_max/F_min high ⇒ elongated hull; roundness → 1 ⇒ hull near a disc</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li><span class="prim">skimage.measure.regionprops.feret_diameter_max</span> plus <span class="prim">cv2.minAreaRect</span> width <span class="rec">recommended</span></li>
+      <li>full rotating-calipers sweep over hull vertices for both extremes</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>F_max</dt><dd>maximum caliper span</dd><dt>F_min</dt><dd>minimum caliper span</dd><dt>A</dt><dd>mask area</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">grain morphometry (10.3390/agronomy8120296)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Elliptic Fourier descriptors (EFD)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 feasible</span></div>
+  </div>
+  <p class="definition">A <span class="term">Fourier expansion</span> of the closed contour into per-harmonic 4-coefficient ellipses, normalized to be invariant to rotation, scale and start point — a compact <span class="term">outline signature</span>.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A lobed contour reconstructed by summing successively higher harmonic ellipses">
+      <!-- target contour -->
+      <path class="struct" fill="none" stroke="var(--ink)" stroke-width="2"
+        d="M60 110 q-5 -45 40 -40 q20 -30 45 0 q45 -8 42 40 q25 25 -12 48 q0 40 -45 25 q-40 22 -55 -18 q-30 -12 -15 -55 Z"/>
+      <!-- harmonic approximations, coarse to fine -->
+      <ellipse cx="105" cy="115" rx="52" ry="42" fill="none" stroke="var(--vermillion)" stroke-width="1.2" opacity="0.7"/>
+      <text class="lbl" x="150" y="35" font-size="10" fill="var(--vermillion)">n=1 gross ellipse</text>
+      <path fill="none" stroke="var(--blue)" stroke-width="1.2" opacity="0.8"
+        d="M62 112 q0 -40 42 -37 q28 -18 45 3 q40 3 34 40 q18 28 -14 44 q-4 34 -44 22 q-38 16 -50 -16 q-25 -14 -13 -49 Z"/>
+      <text class="lbl" x="150" y="200" font-size="10" fill="var(--blue)">+ higher n → margin detail</text>
+      <!-- stacked coeff bars -->
+      <g fill="var(--green)"><rect x="285" y="60" width="50" height="8"/><rect x="285" y="74" width="34" height="8"/><rect x="285" y="88" width="22" height="8"/><rect x="285" y="102" width="12" height="8"/></g>
+      <text class="lbl" x="285" y="52" font-size="9" fill="var(--ink)">|coeff| per n</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the contour is decomposed into harmonic ellipses whose four Kuhl–Giardina coefficients per harmonic reconstruct the outline.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Where single scalars collapse shape to one number, EFD retains a spectrum: two masks with equal area, roundness and FD but different arrangements of lobes separate cleanly because low harmonics capture gross form and high harmonics capture fine margin structure.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_EFD_{a,b,c,d}n</b> for n harmonics + a reconstruction-error scalar</dd>
+      <dt>Units</dt><dd>dimensionless (normalized coefficients)</dd>
+      <dt>Reads as</dt><dd>energy concentrated in low n ⇒ smooth gross shape; power at high n ⇒ fine margin detail</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li><span class="prim">pyefd.elliptic_fourier_descriptors</span> (Kuhl–Giardina), n≤10, normalized <span class="rec">recommended</span></li>
+      <li>reconstruct-and-compare IoU against the mask to choose the harmonic count</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>n</dt><dd>harmonic index</dd><dt>a,b,c,d</dt><dd>the four coefficients per harmonic</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Kuhl &amp; Giardina (10.1016/0146-664X(82)90034-X)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">LOCO-EFA lobe descriptors</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 feasible</span></div>
+  </div>
+  <p class="definition">Re-expresses raw EFD coefficients into interpretable <span class="term">lobe modes</span> (Ln), so that each mode maps to a distinct <span class="term">margin protrusion</span> and the modes can be counted.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A multi-lobed outline with protrusions counted and a per-mode Ln amplitude spectrum">
+      <!-- lobed outline -->
+      <path class="struct" fill="var(--orange)" fill-opacity="0.15" stroke="var(--ink)" stroke-width="1.6"
+        d="M110 115 q-8 -50 10 -52 q6 -26 26 -8 q18 -30 34 -6 q26 -12 30 20 q34 4 20 34 q22 30 -14 38 q-2 34 -34 20 q-20 24 -40 2 q-38 4 -28 -32 Z"/>
+      <!-- lobe tick markers -->
+      <g fill="var(--vermillion)">
+        <circle cx="120" cy="63" r="3"/><circle cx="172" cy="55" r="3"/><circle cx="210" cy="88" r="3"/>
+        <circle cx="196" cy="165" r="3"/><circle cx="118" cy="165" r="3"/>
+      </g>
+      <text class="lbl" x="70" y="205" font-size="10" fill="var(--vermillion)">5 protrusions detected</text>
+      <!-- Ln amplitude spectrum -->
+      <line class="axis" x1="270" y1="40" x2="270" y2="150" stroke="var(--ink)" stroke-width="1.5"/>
+      <line class="axis" x1="270" y1="150" x2="350" y2="150" stroke="var(--ink)" stroke-width="1.5"/>
+      <g fill="var(--green)">
+        <rect x="278" y="70" width="9" height="80"/><rect x="294" y="95" width="9" height="55"/>
+        <rect x="310" y="60" width="9" height="90"/><rect x="326" y="120" width="9" height="30"/>
+      </g>
+      <line x1="270" y1="132" x2="350" y2="132" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="3 2"/>
+      <text class="lbl" x="272" y="34" font-size="9" fill="var(--ink)">Ln amplitude</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> EFD coefficients are transformed into per-mode Ln amplitudes; modes above a threshold count as distinct lobes.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Turns the opaque EFD spectrum into a countable protrusion tally, resolving the distinction between two masks with equal EFD energy but a different <em>number</em> of lobes — something neither convexity nor FD names directly.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_LobeCount</b> (integer), <b>CumLobeAmp</b> (spectral energy)</dd>
+      <dt>Units</dt><dd>LobeCount count; CumLobeAmp dimensionless</dd>
+      <dt>Reads as</dt><dd>higher lobe count ⇒ more distinct margin protrusions; larger amplitude ⇒ deeper lobing</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li>LOCO-EFA transform of the EFD coefficients → per-mode Ln amplitudes <span class="rec">recommended</span></li>
+      <li>threshold the Ln spectrum to count significant lobes</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>Ln</dt><dd>amplitude of lobe mode n</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">LOCO-EFA (10.1242/dev.156778)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Extent (rectangularity)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Object area divided by its <span class="term">bounding-box area</span>; an oriented variant divides instead by the <span class="term">minimum-area rotated rectangle</span> for rotation invariance.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A blob inside an axis-aligned box with the empty box region shaded to show area over box area">
+      <!-- bounding box -->
+      <rect x="60" y="45" width="180" height="130" fill="var(--orange)" fill-opacity="0.12" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 3"/>
+      <!-- filled blob -->
+      <path class="struct" fill="var(--blue)" fill-opacity="0.35" stroke="var(--ink)" stroke-width="1.5"
+        d="M90 110 q10 -55 65 -55 q70 0 60 55 q-10 60 -70 55 q-60 -5 -55 -55 Z"/>
+      <text class="lbl-strong" x="95" y="120" font-size="12" fill="var(--ink)">A</text>
+      <text class="lbl" x="66" y="60" font-size="10" fill="var(--orange)">box</text>
+      <!-- fraction annotation -->
+      <line x1="270" y1="95" x2="340" y2="95" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lbl-strong" x="280" y="88" font-size="12" fill="var(--blue)">A</text>
+      <text class="lbl" x="272" y="118" font-size="11" fill="var(--ink)">box area</text>
+      <text class="lbl" x="255" y="150" font-size="10" fill="var(--vermillion)">disk ≈ 0.785</text>
+      <text class="lbl" x="255" y="166" font-size="10" fill="var(--vermillion)">rect → 1</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the mask's pixel area is divided by the area of its enclosing box, giving the fraction of the box actually filled.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Cheaply resolves how rectangular versus sparse a shape is: a filled rectangle and a plus-sign can share the same bounding box yet differ sharply in extent. The oriented variant removes the axis-aligned bias that inflates extent for a diagonally elongated mask.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_Extent</b> — filled fraction of the bounding box</dd>
+      <dt>Units</dt><dd>dimensionless 0–1</dd>
+      <dt>Reads as</dt><dd>low ⇒ the shape leaves much of its box empty; → 1 ⇒ box-filling / rectangular</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li><span class="prim">skimage.measure.regionprops.extent</span> (axis-aligned) <span class="rec">recommended</span></li>
+      <li><span class="prim">cv2.minAreaRect</span> area for a rotation-invariant oriented extent</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>A</dt><dd>mask pixel area</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">seed/grain shape (10.1155/2014/617263)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Convexity &amp; concavity-depth spectrum</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Hull perimeter divided by object perimeter (→1 for convex shapes), plus the <span class="term">depth</span> and <span class="term">count</span> of the <span class="term">hull indentations</span> where the contour dips inside its convex hull.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A concave outline with its convex hull drawn over it and indentation depths marked">
+      <!-- object contour (concave) -->
+      <path class="struct" fill="var(--vermillion)" fill-opacity="0.12" stroke="var(--ink)" stroke-width="1.8"
+        d="M70 80 L120 60 Q135 110 160 70 L210 60 L255 100 Q210 120 250 150 L215 180 Q175 140 150 180 L100 170 Q120 125 75 130 Z"/>
+      <!-- convex hull -->
+      <polygon points="70,80 120,60 210,60 255,100 250,150 215,180 100,170 75,130"
+        fill="none" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 3"/>
+      <text class="lbl" x="200" y="45" font-size="10" fill="var(--blue)">convex hull (P_hull)</text>
+      <!-- defect depth arrows -->
+      <g stroke="var(--vermillion)" stroke-width="1.4">
+        <line x1="135" y1="63" x2="135" y2="92"/><line x1="235" y1="105" x2="222" y2="127"/>
+      </g>
+      <text class="lbl" x="140" y="105" font-size="9" fill="var(--vermillion)">depth</text>
+      <text class="lbl" x="60" y="205" font-size="10" fill="var(--ink)">defects = where contour dips inside hull</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the contour perimeter is compared to its convex hull's, and each inward indentation contributes a depth to the defect spectrum.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>The only descriptor here directly sensitive to concave indentations: it separates a smooth convex blob from one bearing deep notches even when area, extent and FD match. Count plus max-depth distinguishes many shallow scallops from a single deep cleft.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_Convexity</b>, <b>MaxConcavityDepth</b>, <b>ConcavityCount</b></dd>
+      <dt>Units</dt><dd>Convexity 0–1; MaxConcavityDepth px; ConcavityCount integer</dd>
+      <dt>Reads as</dt><dd>deeper / more defects ⇒ a more indented margin; convexity → 1 ⇒ near-convex outline</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li>convexity = hull perimeter / contour perimeter via <span class="prim">cv2.convexHull</span> <span class="rec">recommended</span></li>
+      <li><span class="prim">cv2.convexityDefects</span> for per-defect depth (prefer count + max at low resolution)</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>P_hull</dt><dd>convex-hull perimeter</dd><dt>P_obj</dt><dd>object contour perimeter</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">particle shape (10.1007/s11356-023-26388-5)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Hu moment invariants</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Seven algebraic combinations of <span class="term">normalized central moments</span>, constructed to be invariant to translation, rotation and scale — a compact <span class="term">global shape signature</span>.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A shape shown translated, rotated and scaled all mapping to the same seven Hu invariant bars">
+      <!-- three transformed copies -->
+      <path class="struct" fill="var(--blue)" fill-opacity="0.3" stroke="var(--ink)" stroke-width="1.3"
+        d="M40 60 q25 -25 45 0 q10 30 -18 35 q-30 5 -27 -35 Z"/>
+      <path class="struct" fill="var(--green)" fill-opacity="0.3" stroke="var(--ink)" stroke-width="1.3"
+        transform="rotate(35 130 110)" d="M110 100 q25 -25 45 0 q10 30 -18 35 q-30 5 -27 -35 Z"/>
+      <path class="struct" fill="var(--orange)" fill-opacity="0.3" stroke="var(--ink)" stroke-width="1.3"
+        d="M55 150 q13 -13 24 0 q5 16 -10 19 q-16 3 -14 -19 Z"/>
+      <text class="lbl" x="40" y="195" font-size="10" fill="var(--ink)">translate · rotate · scale</text>
+      <!-- arrow to invariant bars -->
+      <path d="M175 120 L210 120" stroke="var(--ink)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="var(--ink)"/></marker></defs>
+      <!-- seven bars -->
+      <g fill="var(--vermillion)">
+        <rect x="220" y="70" width="8" height="90"/><rect x="234" y="90" width="8" height="70"/>
+        <rect x="248" y="105" width="8" height="55"/><rect x="262" y="120" width="8" height="40"/>
+        <rect x="276" y="135" width="8" height="25"/><rect x="290" y="145" width="8" height="15"/>
+        <rect x="304" y="150" width="8" height="10"/>
+      </g>
+      <text class="lbl" x="220" y="62" font-size="9" fill="var(--ink)">φ1 … φ7 (same for all)</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> normalized central moments are combined into seven invariants that hold across pose and size, taken as log|φ|.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Gives a pose-free fingerprint for matching or clustering masks that boundary metrics describe only piecewise: shapes that look identical after any rotation or rescale collapse to the same φ vector, so it complements orientation-dependent descriptors by canceling pose entirely.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_Hu1..7</b> — log-transformed signed invariants</dd>
+      <dt>Units</dt><dd>dimensionless (log|φ|, signed)</dd>
+      <dt>Reads as</dt><dd>φ1–φ4 stable at low resolution; φ5–φ7 encode fine asymmetry but are noise-sensitive</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li><span class="prim">cv2.HuMoments</span> on <span class="prim">cv2.moments</span> of the mask, use log|φ| <span class="rec">recommended</span></li>
+      <li>direct central-moment computation for a normalization cross-check</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>φ_i</dt><dd>the i-th Hu invariant (i = 1…7)</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hu (10.1109/TIT.1962.1057692)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">Contour bending energy</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 feasible</span></div>
+  </div>
+  <p class="definition">The mean squared <span class="term">boundary curvature</span> around the contour — a size-independent measure of how finely <span class="term">wavy or kinked</span> the margin is.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A wavy contour with curvature sampled along it and a kappa-squared profile beneath">
+      <!-- wavy contour -->
+      <path class="struct" fill="none" stroke="var(--ink)" stroke-width="2"
+        d="M40 90 q15 -35 30 0 q15 35 30 0 q15 -35 30 0 q15 35 30 0 q15 -35 30 0 q15 35 30 0"/>
+      <!-- osculating circles at kinks -->
+      <circle cx="70" cy="82" r="14" fill="none" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 2"/>
+      <circle cx="160" cy="82" r="14" fill="none" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 2"/>
+      <text class="lbl" x="90" y="55" font-size="10" fill="var(--vermillion)">κ = 1/R at each point</text>
+      <!-- kappa^2 profile -->
+      <line class="axis" x1="40" y1="200" x2="250" y2="200" stroke="var(--ink)" stroke-width="1.5"/>
+      <path fill="none" stroke="var(--green)" stroke-width="1.8"
+        d="M40 200 Q55 150 70 200 Q85 150 100 200 Q115 150 130 200 Q145 150 160 200 Q175 150 190 200"/>
+      <text class="lbl" x="200" y="165" font-size="10" fill="var(--green)">κ²</text>
+      <text class="lbl" x="40" y="218" font-size="9" fill="var(--ink)">bending energy = mean of κ²</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> discrete curvature κ is estimated along a smoothed contour and averaged as κ², normalizing out overall size.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Isolates margin waviness from scale: two masks of very different size but the same fraction of wiggle per unit boundary score alike, whereas raw perimeter would not. It complements FD by weighting sharp local kinks quadratically rather than counting box occupancy.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_BendEnergy</b> = (1/N)Σκ² — normalized bending energy</dd>
+      <dt>Units</dt><dd>dimensionless (normalized)</dd>
+      <dt>Reads as</dt><dd>higher ⇒ a more finely wavy or kinked boundary; near 0 ⇒ a smooth, gently curved margin</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li>discrete curvature κ on a smoothed contour (spline or finite difference), take mean of κ² <span class="rec">recommended</span></li>
+      <li>multiscale estimate via curvature scale space</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>κ</dt><dd>boundary curvature at a contour point</dd><dt>N</dt><dd>number of contour points</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">curvature scale space (10.1109/34.149591)</span></div>
+  </div>
+</article>
+
+<article class="card">
+  <div class="card-head">
+    <h3 class="metric-name">PCA elongation &amp; orientation</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+  </div>
+  <p class="definition">Eigen-decomposition of the <span class="term">pixel-coordinate covariance</span> matrix, yielding an <span class="term">axis ratio</span> (elongation) and the <span class="term">principal angle</span> of the shape.</p>
+  <figure class="illo">
+    <svg viewBox="0 0 360 220" role="img" aria-label="An elongated point cloud with major and minor principal axes and the angle to horizontal">
+      <!-- point cloud -->
+      <g fill="var(--blue)" opacity="0.6">
+        <circle cx="90" cy="150" r="3"/><circle cx="110" cy="140" r="3"/><circle cx="125" cy="135" r="3"/>
+        <circle cx="140" cy="128" r="3"/><circle cx="155" cy="118" r="3"/><circle cx="170" cy="112" r="3"/>
+        <circle cx="185" cy="104" r="3"/><circle cx="200" cy="96" r="3"/><circle cx="120" cy="148" r="3"/>
+        <circle cx="150" cy="130" r="3"/><circle cx="175" cy="120" r="3"/><circle cx="205" cy="108" r="3"/>
+        <circle cx="135" cy="118" r="3"/><circle cx="165" cy="126" r="3"/>
+      </g>
+      <!-- major axis (sqrt lambda1) -->
+      <line x1="85" y1="158" x2="215" y2="92" stroke="var(--vermillion)" stroke-width="2.2"/>
+      <text class="lbl-strong" x="190" y="80" font-size="11" fill="var(--vermillion)">√λ₁</text>
+      <!-- minor axis (sqrt lambda2) -->
+      <line x1="135" y1="112" x2="165" y2="140" stroke="var(--green)" stroke-width="2.2"/>
+      <text class="lbl-strong" x="168" y="150" font-size="11" fill="var(--green)">√λ₂</text>
+      <!-- orientation angle -->
+      <line x1="85" y1="158" x2="230" y2="158" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3"/>
+      <path d="M120 158 A35 35 0 0 0 108 141" fill="none" stroke="var(--ink)" stroke-width="1.2"/>
+      <text class="lbl" x="125" y="152" font-size="10" fill="var(--ink)">θ</text>
+      <text class="lbl" x="60" y="205" font-size="9" fill="var(--ink)">eigenvectors of coordinate covariance</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the covariance of the mask's pixel coordinates is diagonalized; eigenvalues set the axis lengths and the leading eigenvector sets θ.</figcaption>
+  </figure>
+  <div class="interest">
+    <span class="in-title">Why it's of interest</span>
+    <p>Resolves directional stretch and pose that isotropic descriptors ignore: two masks with equal area and roundness but different aspect ratios separate on elongation, and orientation captures alignment that Hu moments deliberately cancel. Being area-weighted, it is more stable than hull calipers on ragged margins.</p>
+  </div>
+  <div class="outmetric">
+    <span class="om-title">Output metric</span>
+    <dl>
+      <dt>Value</dt><dd><b>Shape_PCAElong</b> = √(λ₂/λ₁), <b>Orientation</b> = principal angle</dd>
+      <dt>Units</dt><dd>PCAElong dimensionless 0–1; Orientation radians</dd>
+      <dt>Reads as</dt><dd>low elongation ⇒ isotropic; → 1 ⇒ strongly elongated along θ</dd>
+    </dl>
+  </div>
+  <div class="methods">
+    <span class="m-title">Method options</span>
+    <ol>
+      <li><span class="prim">np.cov</span> of mask coordinates → eigenvalues / eigenvectors <span class="rec">recommended</span></li>
+      <li><span class="prim">skimage.measure.regionprops</span> inertia-tensor moments</li>
+    </ol>
+  </div>
+  <div class="varkey">
+    <span class="vk-title">Variables</span>
+    <dl><dt>λ₁ ≥ λ₂</dt><dd>covariance eigenvalues (major, minor)</dd><dt>θ</dt><dd>principal-axis angle</dd></dl>
+  </div>
+  <div class="meta">
+    <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">shape/orientation (10.1371/journal.pone.0259413)</span></div>
+  </div>
+</article>
+    </div>
+  </section>
+
+  <!-- ============================ FAMILY B ============================ -->
+  <section class="band" id="family-b">
+    <h2 class="section-title">B · Space-filling &amp; heterogeneity</h2>
+    <p class="section-sub">Global descriptors of how the mask fills space and how heterogeneous that filling is —
+      fractal, topological, and morphological measures, all mask/grayscale, no strand isolation.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Succolarity (directional)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Flood-fills the <span class="term">binary mask</span> from one edge and box-counts the invaded occupancy weighted by its distance (pressure) from that edge, quantifying how freely a fluid could <span class="term">percolate</span> through the occupied phase in a chosen direction. Reported per axis (↓↑←→).</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Flood-fill invading a mask from the top edge, deeper cells weighted more">
+    <line class="axis" x1="20" y1="30" x2="340" y2="30"/>
+    <text class="lbl" x="24" y="24">edge (pressure source)</text>
+    <g class="struct">
+      <rect x="40" y="40" width="34" height="34"/><rect x="80" y="40" width="34" height="34"/><rect x="160" y="40" width="34" height="34"/><rect x="240" y="40" width="34" height="34"/><rect x="280" y="40" width="34" height="34"/>
+      <rect x="40" y="82" width="34" height="34"/><rect x="120" y="82" width="34" height="34"/><rect x="200" y="82" width="34" height="34"/><rect x="280" y="82" width="34" height="34"/>
+      <rect x="80" y="124" width="34" height="34"/><rect x="160" y="124" width="34" height="34"/><rect x="240" y="124" width="34" height="34"/>
+    </g>
+    <path class="lbl-strong" d="M57 78 L57 118 M137 78 L137 158 M217 78 L217 158" stroke-width="2" fill="none" marker-end=""/>
+    <text class="lbl-strong" x="24" y="200">deeper cells → higher weight → higher σ</text>
+    <line class="axis" x1="20" y1="30" x2="20" y2="205"/>
+    <text class="lbl" x="4" y="120" transform="rotate(-90 8 120)">depth →</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> mask is invaded edge-inward and each occupied cell contributes in proportion to how deep the front reached it.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Supplies the missing THIRD fractal descriptor: it separates two fills with identical fractal dimension (mass) and lacunarity (gaps) but different through-connectivity, and is the only descriptor here encoding DIRECTIONAL penetrability of the occupied phase.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>σ</b> — succolarity per direction (↓↑←→), plus <b>A</b>=max−min</dd><dt>Units</dt><dd>σ ∈ [0,1] dimensionless; A dimensionless</dd><dt>Reads as</dt><dd>higher σ ⇒ more percolable along that axis; A&gt;0 ⇒ direction-dependent occupied structure</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>directional flood-fill + pressure-weighted box count <span class="prim">skimage.segmentation.flood + box-count</span> <span class="rec">recommended</span></li><li>per-axis connectivity via <span class="prim">scipy.ndimage.label</span> seeded from each edge</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>σ</dt><dd>succolarity (per direction)</dd><dt>A</dt><dd>anisotropy = max σ − min σ</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">de Melo &amp; Conci 2013 (10.1007/s11235-011-9657-3)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Granulometry / pattern spectrum</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Applies successive <span class="term">morphological openings</span> with structuring elements of growing radius; the negative derivative of surviving area versus radius is a <span class="term">size distribution</span> (pattern spectrum) of the mask's features.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Openings at increasing radii removing features, producing a size histogram">
+    <g class="struct">
+      <circle cx="55" cy="60" r="10"/><circle cx="85" cy="60" r="18"/><circle cx="130" cy="60" r="28"/>
+    </g>
+    <text class="lbl" x="40" y="98">r₁ &lt; r₂ &lt; r₃ (opening radius)</text>
+    <line class="axis" x1="40" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="40" y1="200" x2="40" y2="120"/>
+    <text class="lbl" x="150" y="215">size r</text>
+    <text class="lbl" x="4" y="165" transform="rotate(-90 8 165)">PS(r)</text>
+    <g class="lbl-strong">
+      <rect x="70" y="170" width="18" height="30"/><rect x="110" y="140" width="18" height="60"/><rect x="150" y="155" width="18" height="45"/><rect x="190" y="180" width="18" height="20"/><rect x="230" y="165" width="18" height="35"/>
+    </g>
+    <text class="lbl" x="112" y="132">peak = characteristic size</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> area lost at each opening radius is binned into a spectrum whose peaks mark the mask's characteristic feature sizes.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Resolves the difference between fills of equal area fraction but different granularity: it exposes whether occupied mass sits in one dominant feature size or a broad mixture, a distinction single scalars like FD cannot encode.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>PS(r)</b> — probability mass per size, plus mean size, spread, PS-entropy</dd><dt>Units</dt><dd>r in px; PS(r) dimensionless (sums to 1); entropy in bits</dd><dt>Reads as</dt><dd>sharp peak ⇒ one characteristic feature size; broad/multi-peak ⇒ mixed size structure</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>opening sweep, PS(r) = −dArea/dr <span class="prim">skimage.morphology.opening</span> <span class="rec">recommended</span></li><li>distance-transform max histogram (void analogue via <span class="prim">porespy</span>)</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r</dt><dd>opening (structuring-element) radius</dd><dt>PS</dt><dd>pattern spectrum</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">granulometry (10.1117/1.3099707)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Persistent-homology Betti curves</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Builds a <span class="term">cubical complex</span> on the mask (or a sublevel filtration of its distance transform) and tracks the number of connected components β₀ and enclosed loops β₁ across the <span class="term">filtration</span>, discounting boundary noise by feature persistence.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Betti-0 and Betti-1 curves versus filtration level with a loop-containing shape">
+    <g class="struct">
+      <path d="M40 40 h60 v60 h-60 z M55 55 h30 v30 h-30 z" fill-rule="evenodd"/>
+    </g>
+    <text class="lbl" x="36" y="118">shape with 1 enclosed loop</text>
+    <line class="axis" x1="150" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="150" y1="200" x2="150" y2="40"/>
+    <text class="lbl" x="230" y="215">filtration t</text>
+    <path class="lbl-strong" d="M150 60 C 200 60, 220 90, 330 95" fill="none" stroke-width="2"/>
+    <text class="lbl-strong" x="300" y="88">β₀</text>
+    <path class="axis" d="M150 190 C 210 100, 250 110, 330 175" fill="none" stroke-width="2"/>
+    <text class="axis" x="300" y="170">β₁</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> as the filtration grows, births/deaths of components (β₀) and loops (β₁) are recorded, with persistence weighting suppressing transient boundary features.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Directly COUNTS enclosed loops/voids that lacunarity captures only statistically, and separates a fill riddled with holes from a solid one of identical mass — persistence filtering keeps only topologically stable structure.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>β₀(t), β₁(t)</b> curves + total persistence, persistence entropy</dd><dt>Units</dt><dd>β counts (dimensionless); persistence in filtration units; entropy dimensionless</dd><dt>Reads as</dt><dd>high sustained β₁ ⇒ many stable enclosed loops; β₀ decay rate ⇒ how components merge</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>cubical / distance-transform filtration <span class="prim">gudhi.CubicalComplex</span> <span class="rec">recommended</span></li><li>reduce diagrams to total persistence + persistence entropy (<span class="prim">ripser</span>)</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>β₀</dt><dd>connected components</dd><dt>β₁</dt><dd>enclosed loops</dd><dt>t</dt><dd>filtration level</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">PH microstructure 2023 (10.1038/s41598-023-28985-3)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Rényi dimensions D1, D2 (Δ heterogeneity)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Computes the generalized (<span class="term">Rényi</span>) box-dimension spectrum, breaking out the <span class="term">information dimension</span> D1 and <span class="term">correlation dimension</span> D2 as first-class outputs alongside the capacity dimension D0.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Rényi dimension spectrum D_q decreasing with q, with D0 D1 D2 marked">
+    <line class="axis" x1="40" y1="190" x2="330" y2="190"/>
+    <line class="axis" x1="40" y1="190" x2="40" y2="30"/>
+    <text class="lbl" x="180" y="212">order q</text>
+    <text class="lbl" x="4" y="130" transform="rotate(-90 8 130)">D_q</text>
+    <path class="lbl-strong" d="M50 55 C 120 60, 180 110, 320 150" fill="none" stroke-width="2"/>
+    <circle class="struct" cx="70" cy="60" r="4"/><text class="lbl" x="60" y="52">D0</text>
+    <circle class="struct" cx="150" cy="90" r="4"/><text class="lbl" x="142" y="82">D1</text>
+    <circle class="struct" cx="240" cy="130" r="4"/><text class="lbl" x="232" y="122">D2</text>
+    <path class="axis" d="M70 60 L240 130" stroke-dasharray="4 3" fill="none"/>
+    <text class="lbl-strong" x="150" y="175">Δ = D0 − D2 (drop = heterogeneity)</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> Rényi entropy of box occupancy is regressed against box size for each order q, and the D0→D2 drop measures multiscale density spread.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Distinguishes a monofractal fill (uniform density scaling, D0≈D1≈D2) from a multifractal one where occupied mass concentrates unevenly across scales — a heterogeneity axis that a single box-dimension collapses away.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>D1, D2</b> Rényi dimensions + <b>Δ</b> = D0 − D2</dd><dt>Units</dt><dd>all dimensionless</dd><dt>Reads as</dt><dd>Δ&gt;0 ⇒ multiscale density heterogeneity; Δ≈0 (D0≈D1≈D2) ⇒ monofractal uniformity</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>box partition, Rényi entropy vs box size; D1 from Shannon-entropy scaling, D2 from correlation integral <span class="prim">numpy box-count regression</span> <span class="rec">recommended</span></li><li>gate on ≥1 decade of box sizes + minimum fit R²</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>D_q</dt><dd>order-q Rényi dimension</dd><dt>Δ</dt><dd>D0 − D2 heterogeneity gap</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">generalized dims (10.48550/arxiv.1310.2719)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Chord-length / gap distribution</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Scans the mask along rows, columns, and diagonals to build <span class="term">run-length</span> histograms of the solid and void phases, yielding a mean chord, its variability, and a void <span class="term">correlation length</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Scan lines crossing solid and void runs producing a chord-length histogram">
+    <g class="struct">
+      <rect x="40" y="50" width="50" height="20"/><rect x="120" y="50" width="30" height="20"/><rect x="180" y="50" width="70" height="20"/><rect x="280" y="50" width="40" height="20"/>
+    </g>
+    <line class="lbl-strong" x1="30" y1="60" x2="330" y2="60" stroke-dasharray="2 3"/>
+    <text class="lbl" x="40" y="44">solid chord</text><text class="lbl" x="150" y="44">gap</text>
+    <line class="axis" x1="40" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="40" y1="200" x2="40" y2="110"/>
+    <text class="lbl" x="150" y="215">chord length ℓ</text>
+    <text class="lbl" x="4" y="165" transform="rotate(-90 8 165)">count</text>
+    <g class="axis">
+      <rect x="70" y="160" width="16" height="40"/><rect x="105" y="135" width="16" height="65"/><rect x="140" y="150" width="16" height="50"/><rect x="175" y="175" width="16" height="25"/>
+    </g>
+    <text class="lbl-strong" x="200" y="150">⟨ℓ⟩, CV, ξ</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> lengths of uninterrupted solid and void runs along each scan direction are histogrammed into chord and gap distributions.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates two fills of equal porosity but different characteristic gap size, and comparing chord statistics across scan axes yields a cheap DIRECTIONAL anisotropy readout complementary to isotropic gap measures.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>⟨ℓ⟩</b> mean chord, <b>CV</b> variability, <b>ξ</b> correlation length</dd><dt>Units</dt><dd>⟨ℓ⟩ and ξ in px; CV dimensionless</dd><dt>Reads as</dt><dd>large ⟨ℓ⟩ ⇒ coarse runs; per-axis ⟨ℓ⟩ difference ⇒ directional structure</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>run-length scan of the mask <span class="prim">porespy.metrics.chord_length_distribution</span> <span class="rec">recommended</span></li><li>void-phase autocorrelation for ξ</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>ℓ</dt><dd>chord length</dd><dt>ξ</dt><dd>gap correlation length</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">chord theory (10.1103/physreve.59.4953)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Configurational (Boltzmann) entropy</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Estimates the thermodynamic <span class="term">configurational entropy</span> of the occupancy pattern — the number of <span class="term">microstates</span> consistent with the arrangement — making it sensitive to clumping versus dispersion at a FIXED area fraction.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Checkerboard versus solid block occupancy, same fill, different entropy">
+    <g class="struct">
+      <rect x="30" y="40" width="16" height="16"/><rect x="62" y="40" width="16" height="16"/><rect x="46" y="56" width="16" height="16"/><rect x="30" y="72" width="16" height="16"/><rect x="62" y="72" width="16" height="16"/><rect x="94" y="40" width="16" height="16"/><rect x="94" y="72" width="16" height="16"/><rect x="46" y="88" width="16" height="16"/>
+    </g>
+    <text class="lbl-strong" x="34" y="126">dispersed → H_config max</text>
+    <g class="struct">
+      <rect x="220" y="40" width="64" height="64"/>
+    </g>
+    <text class="lbl-strong" x="218" y="126">clumped → H_config min</text>
+    <line class="axis" x1="30" y1="150" x2="330" y2="150"/>
+    <text class="lbl" x="40" y="185">same area fraction, different arrangement</text>
+    <path class="axis" d="M150 165 L210 165" stroke-width="2" fill="none"/>
+    <text class="lbl" x="160" y="205">H distinguishes them</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> the mask is coarsened to an occupancy lattice and the log-count of compatible microstates gives entropy — maximal for checkerboard, minimal for a solid block.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>The clean "same composition, different arrangement" discriminator: it isolates spatial ORDER at constant area fraction, resolving clumped versus dispersed fills that mass-, gap-, and dimension-based metrics leave indistinguishable.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>H_config</b> — configurational (Boltzmann) entropy</dd><dt>Units</dt><dd>nats (or normalized 0–1)</dd><dt>Reads as</dt><dd>high H ⇒ dispersed/mixed occupancy; low H ⇒ clumped, ordered block</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>downsample to occupancy lattice, Cushman/Boltzmann microstate entropy <span class="prim">numpy microstate count</span> <span class="rec">recommended</span></li><li>permutation estimate of the microstate distribution</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>H_config</dt><dd>configurational entropy</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Boltzmann entropy 2021 (10.3390/e23111420)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Local fractal-dimension map</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-red">🔴 B-robust</span></div></div>
+  <p class="definition">Slides a window across the mask running <span class="term">box-counting</span> inside each to build a per-pixel <span class="term">FD field</span>; only the field's DISPERSION (mean/std/entropy) is reported, never per-pixel dimension as ground truth.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Sliding window over a mask producing a per-pixel FD field with a dispersion histogram">
+    <g class="struct">
+      <rect x="30" y="40" width="120" height="90" fill="none" stroke-dasharray="1 4"/>
+    </g>
+    <rect class="lbl-strong" x="40" y="50" width="30" height="30" fill="none" stroke-width="2"/>
+    <path class="axis" d="M70 65 L110 65 M90 50 L90 95" stroke-dasharray="3 3"/>
+    <text class="lbl" x="34" y="150">window box-count → FD_local</text>
+    <line class="axis" x1="190" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="190" y1="200" x2="190" y2="60"/>
+    <text class="lbl" x="220" y="215">FD_local</text>
+    <text class="lbl" x="160" y="130" transform="rotate(-90 164 130)">freq</text>
+    <path class="lbl-strong" d="M195 195 C 230 90, 290 90, 325 195" fill="none" stroke-width="2"/>
+    <text class="lbl-strong" x="210" y="80">std = signal</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> each window yields a local box-dimension; the spread of those values across the field is the reported texture-variability signal.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Flags spatially varying texture — a fill whose roughness changes across the field versus one that is statistically homogeneous — a distinction global FD averages away. FRAGILE: small windows span &lt;1 decade, so treat only field variability as signal and cross-check that the field mean matches the global FD.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>FD_local std</b> — dispersion of the local-FD field (with mean, entropy)</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>high dispersion ⇒ spatially varying texture; low ⇒ homogeneous roughness</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>windowed box-count map → std/entropy <span class="prim">numpy sliding box-count</span> <span class="rec">recommended, dispersion only</span></li><li>differential box-counting per window</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>FD_local</dt><dd>per-window box dimension</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">differential FD (10.1109/csse.2008.226)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Wavelet-leader multifractal</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Computes 2D <span class="term">wavelet leaders</span> on the grayscale field and regresses their <span class="term">log-cumulants</span> across octaves to recover the dominant Hölder exponent and the multifractality strength, with bootstrap confidence intervals.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Wavelet-leader coefficients across octaves with a log-cumulant regression line">
+    <g class="struct">
+      <rect x="30" y="40" width="60" height="60"/><rect x="30" y="40" width="30" height="30"/><rect x="30" y="40" width="15" height="15"/>
+    </g>
+    <text class="lbl" x="30" y="118">wavelet leaders (octaves j)</text>
+    <line class="axis" x1="160" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="160" y1="200" x2="160" y2="40"/>
+    <text class="lbl" x="230" y="215">octave j</text>
+    <text class="lbl" x="140" y="130" transform="rotate(-90 144 130)">C(j)</text>
+    <circle class="struct" cx="185" cy="150" r="3"/><circle class="struct" cx="220" cy="125" r="3"/><circle class="struct" cx="255" cy="105" r="3"/><circle class="struct" cx="290" cy="80" r="3"/>
+    <path class="lbl-strong" d="M180 155 L300 78" stroke-width="2" fill="none"/>
+    <text class="lbl-strong" x="215" y="70">slope → c1, c2, c3</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> log-cumulants of the wavelet-leader coefficients are fit linearly across scales, giving regularity (c1) and multifractality (c2).</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates a monofractal grayscale texture (single Hölder exponent, c2≈0) from a multifractal one with a spectrum of local regularities — more stable than histogram box-multifractal because leaders suppress grid-alignment artifacts.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>c1, c2, c3</b> — log-cumulants</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>c1 ≈ dominant regularity; c2≤0 = multifractality strength (c2≈0 ⇒ monofractal); c3 = spectrum asymmetry</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>2D DWT → wavelet leaders → log-cumulant regression across octaves <span class="prim">pywt + leader regression</span> <span class="rec">recommended</span></li><li>bootstrap confidence intervals on the cumulants</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>c1</dt><dd>dominant regularity (Hölder)</dd><dt>c2</dt><dd>multifractality strength</dd><dt>c3</dt><dd>spectrum asymmetry</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">grayscale field</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">wavelet leaders (10.1016/j.sigpro.2008.12.015)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Anisotropic (directional) lacunarity</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Computes <span class="term">gliding-box lacunarity</span> with ORIENTED boxes so gappiness is measured as a function of direction, extending the isotropic lacunarity descriptor into a <span class="term">directional</span> one.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Oriented gliding boxes at several angles over a gappy mask, with per-angle lacunarity">
+    <g class="struct">
+      <rect x="30" y="40" width="12" height="12"/><rect x="60" y="40" width="12" height="12"/><rect x="30" y="70" width="12" height="12"/><rect x="90" y="55" width="12" height="12"/><rect x="60" y="85" width="12" height="12"/><rect x="30" y="100" width="12" height="12"/>
+    </g>
+    <rect class="lbl-strong" x="26" y="36" width="60" height="16" fill="none" stroke-width="2"/>
+    <text class="lbl" x="30" y="130">θ=0° box</text>
+    <rect class="axis" x="120" y="40" width="16" height="60" fill="none" stroke-width="2"/>
+    <text class="lbl" x="112" y="130">θ=90° box</text>
+    <line class="axis" x1="180" y1="200" x2="330" y2="200"/>
+    <line class="axis" x1="180" y1="200" x2="180" y2="50"/>
+    <text class="lbl" x="230" y="215">box size r</text>
+    <text class="lbl" x="160" y="130" transform="rotate(-90 164 130)">Λθ</text>
+    <path class="lbl-strong" d="M185 70 C 230 120, 280 160, 325 175" fill="none" stroke-width="2"/>
+    <text class="lbl-strong" x="230" y="80">Λ0</text>
+    <path class="axis" d="M185 100 C 235 150, 285 175, 325 185" fill="none" stroke-width="2"/>
+    <text class="axis" x="230" y="150">Λ90</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> lacunarity is recomputed with boxes elongated along each orientation, so a gap pattern aligned with one axis yields a different curve there.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Resolves whether gaps are directionally structured versus isotropic — two fills with identical isotropic lacunarity can differ sharply once the gap pattern's orientation is probed, which the catalogued scalar lacunarity cannot see.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Λθ(r)</b> per orientation + anisotropy ratio (max/min)</dd><dt>Units</dt><dd>dimensionless; ratio ≥ 1</dd><dt>Reads as</dt><dd>ratio&gt;1 ⇒ gaps directionally structured; ratio≈1 ⇒ isotropic gappiness</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>oriented/line gliding-box lacunarity per θ ∈ {0,45,90,135}° <span class="prim">numpy oriented gliding-box</span> <span class="rec">recommended</span></li><li>per-axis box comparison of gap variance</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>Λθ</dt><dd>directional lacunarity at angle θ</dd><dt>r</dt><dd>gliding-box size</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">gliding-box lacunarity (10.1016/s1350-4533(01)00106-0)</span></div></div>
+</article>
+    </div>
+  </section>
+
+  <!-- ============================ FAMILY C ============================ -->
+  <section class="band" id="family-c">
+    <h2 class="section-title">C · Radial / Sholl profiles</h2>
+    <p class="section-sub">How mask density varies with radius (and angle) from the inoculum/centroid. The key move
+      for our operating point: <b>area-based ring-mass</b> metrics that survive strand touching, where
+      intersection-count Sholl fails. ⟳ marks the angular/directional additions.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Ring-mass profile M(r)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">An area-based reformulation of the Sholl analysis: instead of counting skeleton crossings, sum the foreground <span class="term">area</span> falling inside each concentric annulus around the object origin.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Concentric annuli over a mask with per-ring area summed into a profile">
+    <circle cx="110" cy="110" r="28" class="struct" fill="none" stroke-width="1.5"/>
+    <circle cx="110" cy="110" r="52" class="struct" fill="none" stroke-width="1.5"/>
+    <circle cx="110" cy="110" r="76" class="struct" fill="none" stroke-width="1.5"/>
+    <circle cx="110" cy="110" r="100" class="struct" fill="none" stroke-width="1.5"/>
+    <path d="M110 110 L150 70 L175 95 L150 130 L185 150 L120 165 Z" class="lbl-strong" fill="var(--blue)" opacity="0.35"/>
+    <line x1="230" y1="185" x2="230" y2="35" class="axis"/><line x1="230" y1="185" x2="345" y2="185" class="axis"/>
+    <polyline points="230,60 250,80 270,120 290,110 310,150 330,175" fill="none" stroke="var(--green)" stroke-width="2"/>
+    <text x="200" y="45" class="lbl">M(r)</text><text x="330" y="200" class="lbl">r</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> partition the plane into radial annuli and total the foreground pixels in each to build a mass-versus-radius profile.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Because it integrates area rather than counting crossings, M(r) is provably invariant to the strand overlap and touching that corrupt intersection counts — two strands that merge still contribute their full area, so the profile does not under-count where structure is dense.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>M(r)</b> — per-annulus foreground mass; the anchor object from which AUC, moments and decay all derive</dd><dt>Units</dt><dd>px²/annulus (µm²/annulus with scale)</dd><dt>Reads as</dt><dd>the radial distribution of occupied area; where along the radius the structure carries its bulk</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>polar unwrap then sum over angle per radius bin <span class="prim">skimage.transform.warp_polar</span> <span class="rec">recommended</span></li><li>bincount of a distance-transform radius map masked by foreground</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r</dt><dd>radius from object origin</dd><dt>M(r)</dt><dd>foreground mass in the annulus at radius r</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl decomposition (10.1016/j.celrep.2019.04.097)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">2D Sholl heatmap S(r,θ) ⟳</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">The joint radius×angle occupancy map produced by a single <span class="term">polar warp</span> of the mask — the parent object from which every angular metric in this family is derived.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Polar warp rendered as a radius by angle grid of occupancy cells">
+    <line x1="60" y1="185" x2="60" y2="30" class="axis"/><line x1="60" y1="185" x2="330" y2="185" class="axis"/>
+    <text x="20" y="110" class="lbl">θ</text><text x="320" y="205" class="lbl">r</text>
+    <rect x="60" y="30" width="45" height="31" fill="var(--blue)" opacity="0.8"/><rect x="105" y="30" width="45" height="31" fill="var(--blue)" opacity="0.5"/><rect x="150" y="30" width="45" height="31" fill="var(--blue)" opacity="0.2"/><rect x="195" y="30" width="45" height="31" fill="var(--blue)" opacity="0.1"/>
+    <rect x="60" y="61" width="45" height="31" fill="var(--blue)" opacity="0.6"/><rect x="105" y="61" width="45" height="31" fill="var(--blue)" opacity="0.7"/><rect x="150" y="61" width="45" height="31" fill="var(--blue)" opacity="0.4"/><rect x="195" y="61" width="45" height="31" fill="var(--blue)" opacity="0.2"/>
+    <rect x="60" y="92" width="45" height="31" fill="var(--blue)" opacity="0.3"/><rect x="105" y="92" width="45" height="31" fill="var(--blue)" opacity="0.9"/><rect x="150" y="92" width="45" height="31" fill="var(--blue)" opacity="0.6"/><rect x="195" y="92" width="45" height="31" fill="var(--blue)" opacity="0.3"/>
+    <rect x="60" y="123" width="45" height="31" fill="var(--blue)" opacity="0.2"/><rect x="105" y="123" width="45" height="31" fill="var(--blue)" opacity="0.4"/><rect x="150" y="123" width="45" height="31" fill="var(--blue)" opacity="0.7"/><rect x="195" y="123" width="45" height="31" fill="var(--blue)" opacity="0.5"/>
+    <rect x="60" y="30" width="180" height="124" fill="none" class="struct" stroke-width="1"/>
+  </svg>
+    <figcaption><b>Mechanism:</b> warp the mask into (radius, angle) coordinates and record each cell's foreground fraction as a 2-D occupancy field.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves whether occupied area is spread uniformly around the origin or concentrated into angular sectors — a distinction that a purely radial profile collapses away. Because each cell measures area fraction, it inherits the same overlap-robustness as the ring-mass profile.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>S(r,θ)</b> — foreground fraction per (radius, angle) cell</dd><dt>Units</dt><dd>fraction ∈ [0,1], dimensionless</dd><dt>Reads as</dt><dd>a map of where the mask sits in polar space; bright sectors mark directional concentration of structure</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>polar warp then normalize each cell by its area <span class="prim">skimage.transform.warp_polar</span> <span class="rec">recommended</span></li><li>intersection-count form of the heatmap (less robust to overlap)</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r</dt><dd>radius from origin</dd><dt>θ</dt><dd>angle around origin</dd><dt>S</dt><dd>cell occupancy fraction</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">SNT Angular Sholl (imagej.net/plugins/snt/sholl); 10.1016/j.celrep.2019.04.097</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Angular occupancy anisotropy (ADC) ⟳</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Collapse S(r,θ) over radius to an angular histogram p(θ), then measure its concentration by the <span class="term">circular resultant-vector length</span> — how one-sided the occupancy is.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Angular histogram around a circle with a resultant vector arrow">
+    <circle cx="110" cy="110" r="80" class="struct" fill="none" stroke-width="1.5"/>
+    <line x1="110" y1="110" x2="185" y2="90" stroke="var(--rule)" stroke-width="6"/>
+    <line x1="110" y1="110" x2="175" y2="55" stroke="var(--rule)" stroke-width="10"/>
+    <line x1="110" y1="110" x2="150" y2="40" stroke="var(--rule)" stroke-width="4"/>
+    <line x1="110" y1="110" x2="45" y2="130" stroke="var(--rule)" stroke-width="3"/>
+    <line x1="110" y1="110" x2="168" y2="72" stroke="var(--vermillion)" stroke-width="3" marker-end="url(#av)"/>
+    <defs><marker id="av" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="var(--vermillion)"/></marker></defs>
+    <text x="200" y="60" class="lbl-strong">ADC → preferred θ</text>
+    <text x="200" y="130" class="lbl">|Σ p(θ)e^{iθ}|</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> sum the angular occupancy as unit vectors; the resultant's length gives concentration and its argument the preferred direction.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It reduces the full angular field to a single scalar that separates isotropic spread from one-sided occupancy. The magnitude is rotation-invariant while the argument rotates with the mask, cleanly separating "how directional" from "which direction".</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>ADC</b> — resultant length ∈ [0,1] plus a preferred direction; 0 = isotropic, →1 = one-sided</dd><dt>Units</dt><dd>dimensionless (direction in degrees)</dd><dt>Reads as</dt><dd>how concentrated the structure is into one angular region versus evenly wrapped around the origin</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>angular histogram then resultant length |Σ p(θ)e^{iθ}| <span class="prim">numpy.angle</span> <span class="rec">recommended</span></li><li>von-Mises fit for a unimodal concentration parameter</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>p(θ)</dt><dd>angular occupancy histogram</dd><dt>ADC</dt><dd>1 − circular variance (resultant length)</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">SNT Angle-Distribution Coherence (imagej.net/plugins/snt/sholl)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Radial lacunarity profile Λ(r)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Gliding-box <span class="term">lacunarity</span> restricted to each annular band — a measure of gappiness as a function of radius, quantifying how clumped the foreground is within a ring.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A gliding box sweeping an annular band with a lacunarity profile plot">
+    <path d="M110 110 m-70 0 a70 70 0 1 0 140 0 a70 70 0 1 0 -140 0" class="struct" fill="none" stroke-width="1.5"/>
+    <path d="M110 110 m-45 0 a45 45 0 1 0 90 0 a45 45 0 1 0 -90 0" class="struct" fill="none" stroke-width="1.5"/>
+    <rect x="150" y="72" width="18" height="18" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+    <rect x="62" y="118" width="18" height="18" fill="none" stroke="var(--vermillion)" stroke-width="2" opacity="0.5"/>
+    <circle cx="128" cy="82" r="3" fill="var(--ink)"/><circle cx="150" cy="70" r="3" fill="var(--ink)"/><circle cx="90" cy="130" r="3" fill="var(--ink)"/>
+    <line x1="230" y1="185" x2="230" y2="35" class="axis"/><line x1="230" y1="185" x2="345" y2="185" class="axis"/>
+    <polyline points="230,150 255,120 280,140 305,90 330,110" fill="none" stroke="var(--orange)" stroke-width="2"/>
+    <text x="205" y="45" class="lbl">Λ(r)</text><text x="332" y="200" class="lbl">r</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> slide a box within each annulus and take the variance-to-mean ratio of its foreground counts, yielding lacunarity per radial band.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Two masks can share an identical M(r) yet differ in within-ring clumping; Λ(r) separates them by resolving evenly filled rings from ones broken into gappy clusters at the same radius. Because it works on area statistics it is unaffected by strand touching.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Λ(r)</b> — per-annulus lacunarity ≥ 1, approaching 1 for a uniformly filled ring</dd><dt>Units</dt><dd>dimensionless ratio</dd><dt>Reads as</dt><dd>how gappy versus evenly filled the structure is at each radius</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>Allain–Cloitre gliding-box counts per annulus, box size swept above strand spacing <span class="prim">skimage.util.view_as_windows</span> <span class="rec">recommended</span></li><li>fixed single-box-size lacunarity per band (faster, scale-dependent)</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>Λ(r)</dt><dd>annular lacunarity</dd><dt>r</dt><dd>radius from origin</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">gliding-box lacunarity (10.1016/s1350-4533(01)00106-0)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Radial fractal-dimension profile D(r)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Local <span class="term">box-counting dimension</span> computed per annular band — how space-filling the mask is at each radius, tracking core-to-margin change in filling.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Box-counting grid over an annular band with a log-log slope inset">
+    <path d="M100 110 m-80 0 a80 80 0 1 0 160 0 a80 80 0 1 0 -160 0" class="struct" fill="none" stroke-width="1.5"/>
+    <path d="M100 110 m-50 0 a50 50 0 1 0 100 0 a50 50 0 1 0 -100 0" class="struct" fill="none" stroke-width="1.5"/>
+    <g stroke="var(--rule)" stroke-width="0.6">
+      <line x1="40" y1="70" x2="160" y2="70"/><line x1="40" y1="90" x2="160" y2="90"/><line x1="40" y1="110" x2="160" y2="110"/><line x1="40" y1="130" x2="160" y2="130"/><line x1="40" y1="150" x2="160" y2="150"/>
+      <line x1="40" y1="70" x2="40" y2="150"/><line x1="60" y1="70" x2="60" y2="150"/><line x1="80" y1="70" x2="80" y2="150"/><line x1="100" y1="70" x2="100" y2="150"/><line x1="120" y1="70" x2="120" y2="150"/><line x1="140" y1="70" x2="140" y2="150"/><line x1="160" y1="70" x2="160" y2="150"/>
+    </g>
+    <line x1="230" y1="180" x2="230" y2="45" class="axis"/><line x1="230" y1="180" x2="345" y2="180" class="axis"/>
+    <line x1="240" y1="165" x2="335" y2="70" stroke="var(--orange)" stroke-width="2"/>
+    <text x="200" y="55" class="lbl">log N</text><text x="300" y="200" class="lbl">log 1/ε</text>
+    <text x="255" y="100" class="lbl-strong">slope = D(r)</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> box-count each annular sub-mask across box sizes and take the slope of log N(ε) versus log(1/ε) as the band's dimension.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves how space-filling the structure is at the core versus the margin — a distinction invisible to mass alone. It is fragile at the sparse margin where too few pixels exist to fit a slope, so the profile is only trustworthy where per-band area exceeds a threshold.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>D(r)</b> — per-band box-counting dimension ∈ [1,2]</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>how densely the structure fills the plane at each radius; 2 = fully filled, →1 = curve-like</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>box-count each annular sub-mask, slope of log N(ε) vs log(1/ε), gated on band area <span class="prim">skimage.measure.regionprops</span> <span class="rec">recommended</span></li><li>differential box-counting variant for grayscale-weighted fill</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>D(r)</dt><dd>band box-counting dimension</dd><dt>ε</dt><dd>box size</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cryphonectria fractal (10.1002/jobm.200800017)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Radial profile moments</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Treat M(r) as a <span class="term">weighted 1-D distribution</span> over radius and take its statistical moments — mean and median radius, skewness, kurtosis.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A skewed radial mass distribution with mean and median markers">
+    <line x1="40" y1="180" x2="40" y2="35" class="axis"/><line x1="40" y1="180" x2="345" y2="180" class="axis"/>
+    <path d="M40 180 Q90 60 130 70 Q180 85 230 140 Q280 170 340 178" fill="var(--blue)" opacity="0.25" stroke="var(--blue)" stroke-width="2"/>
+    <line x1="115" y1="180" x2="115" y2="60" stroke="var(--green)" stroke-width="2" stroke-dasharray="4 3"/>
+    <line x1="140" y1="180" x2="140" y2="80" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="90" y="50" class="lbl">r̄</text><text x="145" y="55" class="lbl">median</text>
+    <text x="300" y="200" class="lbl">r</text><text x="10" y="60" class="lbl">M(r)</text>
+    <text x="250" y="90" class="lbl-strong">skew &gt; 0</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> normalize M(r) to a density over radius and compute weighted mean, median and central moments.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>The moments compress the whole radial profile into a few shape descriptors: the skew sign alone separates a core-heavy distribution (positive) from an annular or margin-heavy one (negative). Being area-weighted, they carry the overlap-robustness of M(r) into scalar form.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>r̄</b>, <b>MedianRadius</b> — location; <b>Skew</b>, <b>Kurt</b> — shape of the radial distribution</dd><dt>Units</dt><dd>r̄, median in px (µm with scale); skew, kurt dimensionless</dd><dt>Reads as</dt><dd>where the mass sits along the radius and whether it is core-heavy, symmetric, or margin-heavy</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>weighted moments of M(r) via mean plus central moments <span class="prim">numpy.average</span> <span class="rec">recommended</span></li><li>scipy weighted-statistics moment helpers on the M(r) density</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r̄</dt><dd>mean radius</dd><dt>M(r)</dt><dd>annulus mass (weight)</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl decomposition (10.1016/j.celrep.2019.04.097)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Cumulative mass C(r) + quantile radii</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">The <span class="term">cumulative distribution</span> of M(r) — the running fraction of total mass enclosed within radius r — together with the radii that enclose 25%, 50% and 75% of the mass.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A monotone cumulative mass curve with quartile radius markers">
+    <line x1="40" y1="180" x2="40" y2="35" class="axis"/><line x1="40" y1="180" x2="345" y2="180" class="axis"/>
+    <path d="M40 180 C120 175 150 120 190 95 C240 60 300 48 340 45" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+    <line x1="40" y1="146" x2="150" y2="146" class="struct" stroke-dasharray="3 3"/><line x1="150" y1="146" x2="150" y2="180" class="struct" stroke-dasharray="3 3"/>
+    <line x1="40" y1="112" x2="190" y2="112" class="struct" stroke-dasharray="3 3"/><line x1="190" y1="112" x2="190" y2="180" class="struct" stroke-dasharray="3 3"/>
+    <line x1="40" y1="78" x2="245" y2="78" class="struct" stroke-dasharray="3 3"/><line x1="245" y1="78" x2="245" y2="180" class="struct" stroke-dasharray="3 3"/>
+    <text x="150" y="196" class="lbl">r25</text><text x="185" y="208" class="lbl">r50</text><text x="240" y="196" class="lbl">r75</text>
+    <text x="8" y="60" class="lbl">C(r)</text><text x="320" y="200" class="lbl">r</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> cumulatively sum M(r), normalize to its total, and interpolate the radii where the curve crosses 0.25, 0.50 and 0.75.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>The CDF is monotone, so it denoises the ring-to-ring fluctuation of M(r) and yields r50 as a robust characteristic radius. The quantile spread (r75 − r25) resolves a tightly concentrated distribution from a radially spread one without depending on any single noisy annulus.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>C(r)</b> — cumulative mass fraction; <b>r25</b>, <b>r50</b>, <b>r75</b> — quantile-enclosing radii</dd><dt>Units</dt><dd>C(r) fraction ∈ [0,1]; radii in px (µm with scale)</dd><dt>Reads as</dt><dd>how radially concentrated the mass is; r50 is the median-mass characteristic radius</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>cumulative sum normalized by total, interpolate quantile crossings <span class="prim">numpy.cumsum</span> <span class="rec">recommended</span></li><li>empirical-CDF interpolation via a monotone spline for sub-bin radii</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>C(r)</dt><dd>cumulative mass fraction</dd><dt>r50</dt><dd>median-mass radius</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl decomposition (10.1016/j.celrep.2019.04.097)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Strand-thickness proxy t(r)</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">Ring mass divided by ring arc-count — a <span class="term">mean strand-width</span> estimate at each radius obtained without ever computing a skeleton.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="An annulus crossed by strands of varying width with a thickness profile">
+    <path d="M110 110 m-78 0 a78 78 0 1 0 156 0 a78 78 0 1 0 -156 0" class="struct" fill="none" stroke-width="1"/>
+    <path d="M110 110 m-52 0 a52 52 0 1 0 104 0 a52 52 0 1 0 -104 0" class="struct" fill="none" stroke-width="1"/>
+    <line x1="110" y1="58" x2="110" y2="32" stroke="var(--blue)" stroke-width="7"/>
+    <line x1="162" y1="110" x2="188" y2="110" stroke="var(--blue)" stroke-width="4"/>
+    <line x1="58" y1="110" x2="32" y2="110" stroke="var(--blue)" stroke-width="10"/>
+    <line x1="230" y1="185" x2="230" y2="35" class="axis"/><line x1="230" y1="185" x2="345" y2="185" class="axis"/>
+    <polyline points="230,130 255,100 280,120 305,80 330,105" fill="none" stroke="var(--orange)" stroke-width="2"/>
+    <text x="205" y="45" class="lbl">t(r)</text><text x="332" y="200" class="lbl">r</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> divide each ring's foreground mass by the number of connected arcs crossing it to estimate a mean strand width per radius.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It recovers a thickness estimate purely from the mask. The numerator (mass) is robust, but the denominator (arc count) miscounts where strands touch or merge, collapsing several strands into one component and biasing thickness high — so the metric carries a flag wherever ring density is high enough for touching to be likely.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>t(r)</b> = M(r)/N(r) — mean strand width per radius</dd><dt>Units</dt><dd>px (µm with scale)</dd><dt>Reads as</dt><dd>how thick the strands crossing each shell are; upward bias signals strands merging in that ring</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>M(r) from the mask, N(r) = connected-component arc count per annulus <span class="prim">scipy.ndimage.label</span> <span class="rec">recommended</span></li><li>Euler-number-corrected arc count per ring to partly offset merge under-counting</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>t(r)</dt><dd>strand-thickness proxy</dd><dt>M(r)</dt><dd>ring mass</dd><dt>N(r)</dt><dd>ring arc count</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl decomposition (10.1016/j.celrep.2019.04.097)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Margin density gradient</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">The <span class="term">slope of M(r)</span> over the outer support — how sharply foreground density falls off at the colony edge.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A radial mass profile with a fitted slope over its outer tail">
+    <line x1="40" y1="180" x2="40" y2="35" class="axis"/><line x1="40" y1="180" x2="345" y2="180" class="axis"/>
+    <path d="M40 90 L120 85 L180 95 L240 130 L300 168 L340 178" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+    <line x1="220" y1="120" x2="330" y2="180" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="5 3"/>
+    <rect x="215" y="115" width="125" height="70" fill="var(--vermillion)" opacity="0.08"/>
+    <text x="250" y="110" class="lbl-strong">dM/dr</text>
+    <text x="8" y="60" class="lbl">M(r)</text><text x="320" y="200" class="lbl">r</text>
+    <text x="255" y="205" class="lbl">outer support</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> fit a line to M(r) across the outer fraction of the support and report its slope.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves a sharp annular edge from a diffuse one: a steep negative slope marks structure that terminates abruptly, a gentle slope marks a gradually fading margin. Being a slope of area, it is unaffected by strand overlap within the outer rings.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>dM/dr</b> — marginal density slope (negative = falloff)</dd><dt>Units</dt><dd>px⁻¹ (mass per unit radius, scale-normalized)</dd><dt>Reads as</dt><dd>edge sharpness; steep ⇒ crisp annular boundary, gentle ⇒ diffuse fading margin</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>linear fit of M(r) over the outer 10–20% of support <span class="prim">numpy.polyfit</span> <span class="rec">recommended</span></li><li>finite-difference slope averaged over the outer bins</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>dM/dr</dt><dd>marginal density slope</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Eden growth-front (10.1103/physreve.98.022405)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Growth-front width W</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 B-robust</span></div></div>
+  <p class="definition">For each angular column find the outermost foreground radius r_max(θ); W is the <span class="term">spread of that outer radius</span> over angle — the roughness of the leading edge.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A rough outer boundary compared to a smooth reference circle">
+    <circle cx="120" cy="110" r="72" class="struct" fill="none" stroke-width="1" stroke-dasharray="4 3"/>
+    <path d="M120 38 L138 46 L128 66 L150 60 L160 88 L188 100 L166 118 L192 130 L158 150 L172 176 L138 158 L120 182 L100 160 L74 172 L86 142 L52 138 L74 118 L50 96 L82 92 L74 60 L102 70 Z" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+    <line x1="260" y1="185" x2="260" y2="35" class="axis"/><line x1="260" y1="185" x2="345" y2="185" class="axis"/>
+    <polyline points="260,90 275,70 290,100 305,65 320,95 335,75" fill="none" stroke="var(--orange)" stroke-width="2"/>
+    <text x="240" y="45" class="lbl">r_max(θ)</text><text x="300" y="205" class="lbl">θ</text>
+    <text x="230" y="130" class="lbl-strong">W = std</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> take the outer foreground radius per angular column from the polar warp and report its standard deviation over angle.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves a smooth circular boundary from a rough, jagged one: W approaches zero for a clean circle and grows as the leading edge roughens toward an Eden-like front. It depends only on the outermost radius per column, so interior strand overlap does not affect it.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>W</b> — standard deviation of r_max(θ) across angle</dd><dt>Units</dt><dd>px (µm with scale)</dd><dt>Reads as</dt><dd>front roughness; W≈0 for a smooth circle, larger for a jagged perimeter</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>per-angle outer radius from the polar warp, W = std(r_max(θ)) <span class="prim">skimage.transform.warp_polar</span> <span class="rec">recommended</span></li><li>interface-width from the RMS deviation of the boundary contour</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r_max(θ)</dt><dd>outer foreground radius at angle θ</dd><dt>W</dt><dd>front width (std)</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">interface roughening (10.1103/physreve.98.022405)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Sector-wise falloff dispersion ⟳</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div></div>
+  <p class="definition">Split the polar warp into K angular sectors, compute a <span class="term">characteristic radius</span> (r50) within each, and take the variance across sectors — directional heterogeneity of the falloff itself, not merely of occupancy.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A disc split into angular sectors each with a differing characteristic radius">
+    <line x1="110" y1="110" x2="188" y2="110" class="struct"/><line x1="110" y1="110" x2="149" y2="42" class="struct"/><line x1="110" y1="110" x2="71" y2="42" class="struct"/><line x1="110" y1="110" x2="32" y2="110" class="struct"/><line x1="110" y1="110" x2="71" y2="178" class="struct"/><line x1="110" y1="110" x2="149" y2="178" class="struct"/>
+    <path d="M110 110 L168 110 A58 58 0 0 0 139 60 Z" fill="var(--blue)" opacity="0.4"/>
+    <path d="M110 110 L139 60 A58 58 0 0 0 81 60 Z" fill="var(--blue)" opacity="0.15"/>
+    <path d="M110 110 L81 60 A58 58 0 0 0 52 110 Z" fill="var(--blue)" opacity="0.5"/>
+    <path d="M110 110 L52 110 A40 40 0 0 0 81 145 Z" fill="var(--blue)" opacity="0.2"/>
+    <line x1="250" y1="185" x2="250" y2="45" class="axis"/><line x1="250" y1="185" x2="345" y2="185" class="axis"/>
+    <rect x="258" y="90" width="14" height="95" fill="var(--orange)" opacity="0.6"/><rect x="280" y="60" width="14" height="125" fill="var(--orange)" opacity="0.6"/><rect x="302" y="120" width="14" height="65" fill="var(--orange)" opacity="0.6"/><rect x="324" y="75" width="14" height="110" fill="var(--orange)" opacity="0.6"/>
+    <text x="245" y="40" class="lbl">r50 per sector</text>
+  </svg>
+    <figcaption><b>Mechanism:</b> partition angle into K sectors, take each sector's median-mass radius, and report the variance across sectors.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves isotropic falloff from one-sided growth by asking whether the characteristic radius is the same in every direction. Unlike an occupancy anisotropy, it varies the radial extent of the falloff per sector, distinguishing masks that fill evenly but reach farther in one direction. Built on per-sector r50, it inherits the overlap-robustness of the mass profile.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>SectorDispersion</b> — variance across sectors of per-sector r50</dd><dt>Units</dt><dd>px² (µm² with scale)</dd><dt>Reads as</dt><dd>directional heterogeneity of extent; ~0 isotropic, large for one-sided growth</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>K-sector split of the polar warp, per-sector r50, variance <span class="prim">numpy.var</span> <span class="rec">recommended</span></li><li>circular-statistics dispersion of the per-sector r50 vector</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>r50</dt><dd>median-mass radius (per sector)</dd><dt>K</dt><dd>sector count</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">SNT Angular Sholl; 10.1016/j.celrep.2019.04.097</span></div></div>
+</article>
+    </div>
+  </section>
+
+  <!-- ============================ FAMILY D ============================ -->
+  <section class="band" id="family-d">
+    <h2 class="section-title">Turning &amp; curvature <span style="font-family:var(--mono);font-size:13px;color:var(--faint);font-weight:400">· new</span></h2>
+    <p class="section-sub">How much, and where, a strand changes direction as it grows — the angular-turning group.
+      Regime A measures curvature along traced strands; Regime B reads a tracing-free orientation field. Distinct
+      from the bifurcation angle at a node (parent↔daughter), which is catalogued separately.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Sum-of-angles metric (SOAM)</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 feasible</span></div></div>
+  <p class="definition">Total absolute tangent turning accumulated along the strand, normalized by arc length — the recommended primary turning metric. <span class="term">tangent turning</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A wiggly strand with tangent arrows at successive points and the angle between them accumulating">
+      <path class="struct" d="M20 150 Q55 90 80 140 T140 130 Q170 70 200 130 T260 120 Q295 60 330 110" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <line class="axis" x1="80" y1="140" x2="118" y2="112" stroke="var(--ink)" stroke-width="2"/>
+      <line class="axis" x1="118" y1="112" x2="150" y2="128" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M118 112 l6 -9 m-6 9 l10 2" stroke="var(--vermillion)" stroke-width="2" fill="none"/>
+      <text class="lbl-strong" x="128" y="98" font-size="13" fill="var(--vermillion)">Δθ</text>
+      <text class="lbl" x="150" y="185" font-size="12" fill="var(--ink)">accumulate |Δθ| ÷ L</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> sum the absolute turn between consecutive tangents and divide by total arc length.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Uniquely registers fine, low-amplitude wiggle that inflection-based metrics wash out; complements the arc-chord distance metric, which sees only gross arcing.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Turning_SOAM</b> — arc-length-normalized total turning</dd><dt>Units</dt><dd>rad/µm</dd><dt>Reads as</dt><dd>0 = straight; large = highly wiggly path</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>uniform-resample the spline, sum |angle between consecutive tangents| ÷ arc length <span class="prim">numpy.diff</span> <span class="rec">recommended</span></li><li>compute only on node-bounded single-strand segments to avoid crossing spikes</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>Δθ</dt><dd>per-step tangent turn</dd><dt>L</dt><dd>arc length</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt 2003 (10.1109/TMI.2003.816964)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Local curvature κ(s) (+ turn location)</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 feasible</span></div></div>
+  <p class="definition">Curvature is the rate of tangent turning per unit arc length, κ=dθ/ds (=1/R for a circular arc); report mean, max, and where the max occurs. <span class="term">osculating radius</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A curving strand with an osculating circle at its sharpest bend and a marked argmax point">
+      <path class="struct" d="M20 170 Q120 170 190 110 Q250 58 340 70" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <circle cx="200" cy="150" r="52" fill="none" stroke="var(--rule)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line class="axis" x1="200" y1="150" x2="190" y2="110" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lbl" x="205" y="150" font-size="12" fill="var(--ink)">R</text>
+      <circle cx="190" cy="110" r="4" fill="var(--vermillion)"/>
+      <text class="lbl-strong" x="150" y="98" font-size="13" fill="var(--vermillion)">max|κ|</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> fit the osculating circle at each point; κ is one over its radius, and its peak marks the turn location.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>The argmax of |κ| is precisely where the strand turns hardest — a positional readout that scalar summaries like SOAM cannot give; smoothing scale is the dominant knob.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Curvature_Mean, Curvature_Max</b> — plus argmax position</dd><dt>Units</dt><dd>rad/µm (position in µm)</dd><dt>Reads as</dt><dd>where and how sharply the strand bends</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>parametric spline derivatives, κ=(x'y''−y'x'')/(x'²+y'²)^1.5 <span class="prim">scipy.interpolate.splprep</span> <span class="rec">recommended</span></li><li>tangent-angle route: θ=atan2(dy,dx), np.unwrap, np.gradient</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>κ</dt><dd>curvature</dd><dt>s</dt><dd>arc length</dd><dt>R</dt><dd>osculating radius</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">AutoSmarTrace (10.1016/j.bpj.2021.05.011)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Bending energy</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 feasible</span></div></div>
+  <p class="definition">Integral of squared curvature along the strand — it weights sharp kinks far more heavily than gentle bends. <span class="term">squared curvature</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Two strands compared: one with a single sharp kink, one with many gentle bends, plus a squared-curvature bar">
+      <path class="struct" d="M20 70 L150 70 L160 40 L290 40" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <text class="lbl" x="30" y="30" font-size="11" fill="var(--ink)">one sharp kink → high</text>
+      <path class="struct" d="M20 170 Q60 150 100 170 T180 170 T260 170 T340 170" fill="none" stroke="var(--green)" stroke-width="3"/>
+      <text class="lbl" x="30" y="205" font-size="11" fill="var(--ink)">many gentle turns → low</text>
+      <rect x="300" y="70" width="16" height="70" fill="var(--vermillion)"/>
+      <text class="lbl-strong" x="285" y="60" font-size="12" fill="var(--vermillion)">∫κ²ds</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> integrate κ² along arc length so localized kinks dominate the total.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates "one sharp kink" (high) from "many gentle turns" (low) — a distinction SOAM's absolute-turning sum collapses; note it is NOT length-normalized.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Turning_BendEnergy</b> = ∫κ²ds</dd><dt>Units</dt><dd>rad²/µm</dd><dt>Reads as</dt><dd>high = sharp concentrated kinks; low = smooth gentle path</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>trapezoidal integration of κ² over the resampled path <span class="prim">numpy.trapz</span> <span class="rec">recommended</span></li><li>also report ∫|κ|ds as total absolute turning</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>κ</dt><dd>curvature</dd><dt>s</dt><dd>arc length</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">AutoSmarTrace (10.1016/j.bpj.2021.05.011)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Distance metric (arc-chord)</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-green">🟢 feasible</span></div></div>
+  <p class="definition">Path length divided by straight-line endpoint distance — the cheapest, most robust gross-arcing measure. <span class="term">arc-chord ratio</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="An arcing strand with its arc-length path and a straight chord between endpoints">
+      <path class="struct" d="M40 180 Q180 20 320 180" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <line class="axis" x1="40" y1="180" x2="320" y2="180" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="6 4"/>
+      <circle cx="40" cy="180" r="4" fill="var(--ink)"/>
+      <circle cx="320" cy="180" r="4" fill="var(--ink)"/>
+      <text class="lbl-strong" x="160" y="70" font-size="13" fill="var(--blue)">L (arc)</text>
+      <text class="lbl-strong" x="160" y="200" font-size="13" fill="var(--vermillion)">C (chord)</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> divide traced arc length by the Euclidean distance between the two endpoints.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>A robust fallback when a strand is only partially traced; catches gross arcing that SOAM's normalization can wash out, but is insensitive to high-frequency coiling — so pair it with SOAM.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Turning_DM</b> = L ÷ C</dd><dt>Units</dt><dd>dimensionless (≥1)</dd><dt>Reads as</dt><dd>straight = 1; semicircle = π/2; larger = more overall arcing</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>arc length ÷ Euclidean chord <span class="prim">numpy.linalg.norm</span> <span class="rec">recommended</span></li><li>use as a robust gross-arcing complement to per-step turning metrics</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>L</dt><dd>path length</dd><dt>C</dt><dd>endpoint chord</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt 2003 (10.1109/TMI.2003.816964)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Inflection density</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 feasible</span></div></div>
+  <p class="definition">Count of signed-curvature sign changes per unit length — it localizes where the strand reverses its turning direction. <span class="term">signed curvature</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="An S-shaped strand with inflection points marked where signed curvature changes sign">
+      <path class="struct" d="M20 110 Q80 40 140 110 Q200 180 260 110 Q300 65 340 110" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <circle cx="140" cy="110" r="5" fill="var(--vermillion)"/>
+      <circle cx="260" cy="110" r="5" fill="var(--vermillion)"/>
+      <text class="lbl-strong" x="118" y="140" font-size="12" fill="var(--vermillion)">κ=0</text>
+      <text class="lbl-strong" x="238" y="140" font-size="12" fill="var(--vermillion)">κ=0</text>
+      <text class="lbl" x="60" y="80" font-size="11" fill="var(--ink)">+κ</text>
+      <text class="lbl" x="185" y="170" font-size="11" fill="var(--ink)">−κ</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> mark each point where signed κ crosses zero and count these reversals per unit length.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Higher density means more direction reversals — a distinct axis from magnitude-of-turning metrics like SOAM; needs κ smoothing or noise fabricates spurious inflections.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Curvature_InflDensity</b> (+ Turning_ICM = n_infl·DM)</dd><dt>Units</dt><dd>1/µm</dd><dt>Reads as</dt><dd>higher = more turning-direction reversals along the strand</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>count sign changes of signed κ(s) on a smoothed path <span class="prim">numpy.sign</span> <span class="rec">recommended</span></li><li>pair with curvature scale space to reject noise-driven inflections</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>n_infl</dt><dd>inflection count</dd><dt>DM</dt><dd>distance metric</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt 2003 (10.1109/TMI.2003.816964)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Persistence length Lp</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 feasible</span></div></div>
+  <p class="definition">Fit the tangent-angle autocorrelation ⟨cosΔθ(s)⟩=exp(−s/2Lp) — the compact "how straight on average" scalar. <span class="term">tangent-angle autocorrelation</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A decaying autocorrelation curve versus separation with an exponential fit and the persistence length marked">
+      <line class="axis" x1="40" y1="180" x2="340" y2="180" stroke="var(--rule)" stroke-width="1.5"/>
+      <line class="axis" x1="40" y1="180" x2="40" y2="30" stroke="var(--rule)" stroke-width="1.5"/>
+      <path class="struct" d="M40 45 Q120 90 200 140 Q270 170 340 176" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <line x1="150" y1="180" x2="150" y2="115" stroke="var(--vermillion)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text class="lbl-strong" x="130" y="200" font-size="12" fill="var(--vermillion)">2Lp</text>
+      <text class="lbl" x="45" y="40" font-size="11" fill="var(--ink)">⟨cosΔθ⟩</text>
+      <text class="axis" x="315" y="200" font-size="11" fill="var(--ink)">s</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> bin tangent-angle correlations by separation and fit a single exponential decay constant.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Collapses turning behaviour into one rotation- and translation-invariant scalar, a compact complement to the positional κ(s) profile; needs many samples for a stable fit.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Turning_Lp</b> — fitted persistence length</dd><dt>Units</dt><dd>µm</dd><dt>Reads as</dt><dd>large Lp = nearly straight; small = frequently turning</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>tangent-angle autocorrelation fit over Δs bins <span class="prim">scipy.optimize.curve_fit</span> <span class="rec">recommended</span></li><li>bootstrap over segments for a fit-uncertainty band</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>Lp</dt><dd>persistence length</dd><dt>Δθ</dt><dd>tangent-angle change</dd><dt>s</dt><dd>separation</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">AutoSmarTrace (10.1016/j.bpj.2021.05.011)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Curvature scale-space turn peaks</h3>
+    <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-green">🟢 feasible</span></div></div>
+  <p class="definition">Convolve the path with Gaussians of increasing σ and track absolute-curvature maxima across scales — robust localization of the real turns. <span class="term">scale space</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Curvature-maxima tracks across smoothing scales, with real peaks surviving to coarse scale and noise dying out">
+      <line class="axis" x1="40" y1="190" x2="340" y2="190" stroke="var(--rule)" stroke-width="1.5"/>
+      <line class="axis" x1="40" y1="190" x2="40" y2="30" stroke="var(--rule)" stroke-width="1.5"/>
+      <text class="axis" x="10" y="110" font-size="11" fill="var(--ink)">σ</text>
+      <path class="struct" d="M110 190 Q112 110 115 40" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <path class="struct" d="M250 190 Q248 110 245 40" fill="none" stroke="var(--blue)" stroke-width="3"/>
+      <path d="M175 190 Q178 165 182 150" fill="none" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="3 3"/>
+      <text class="lbl" x="150" y="140" font-size="10" fill="var(--vermillion)">noise dies</text>
+      <text class="lbl-strong" x="95" y="28" font-size="11" fill="var(--blue)">real turns survive</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> follow each |κ| maximum from fine to coarse smoothing; only turns that persist are kept.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Turns that survive coarse scale are real; noise and crossing spikes die out — the best defense against the failure mode where a crossing looks like a single sharp turn and corrupts κ-based metrics.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Curvature_CSS_Peaks</b> — surviving turn positions (+ scale)</dd><dt>Units</dt><dd>position µm (scale σ in µm)</dd><dt>Reads as</dt><dd>persistent = genuine turn; transient = noise or crossing artefact</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>multiscale Gaussian curvature, track κ-maxima coarse→fine <span class="prim">scipy.ndimage.gaussian_filter1d</span> <span class="rec">recommended</span></li><li>threshold by scale-survival length to prune crossing spikes</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>σ</dt><dd>smoothing scale</dd><dt>κ</dt><dd>curvature</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">ordered traced path (branch_pathfinding)</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt 2003 metric (10.1109/TMI.2003.816964); Mokhtarian CSS (10.1109/34.735812 — unverified)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Orientation-field gradient |∇φ|</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 feasible</span></div></div>
+  <p class="definition">With NO tracing: compute the structure-tensor orientation φ per window, then take the spatial gradient of φ — an "orientation-change density" over area. <span class="term">structure tensor</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="A grid of short orientation bars whose direction rotates across the field, with a gradient arrow where they turn fastest">
+      <g stroke="var(--green)" stroke-width="3">
+        <line x1="40" y1="50" x2="70" y2="50"/><line x1="100" y1="52" x2="128" y2="44"/><line x1="160" y1="58" x2="184" y2="42"/><line x1="220" y1="66" x2="240" y2="42"/><line x1="280" y1="72" x2="296" y2="46"/>
+        <line x1="40" y1="110" x2="70" y2="110"/><line x1="100" y1="112" x2="128" y2="104"/><line x1="160" y1="118" x2="182" y2="100"/><line x1="220" y1="126" x2="238" y2="102"/><line x1="280" y1="132" x2="294" y2="104"/>
+        <line x1="40" y1="170" x2="70" y2="170"/><line x1="100" y1="172" x2="128" y2="164"/><line x1="160" y1="178" x2="182" y2="160"/><line x1="220" y1="184" x2="238" y2="162"/><line x1="280" y1="190" x2="294" y2="164"/>
+      </g>
+      <line class="axis" x1="150" y1="118" x2="235" y2="70" stroke="var(--vermillion)" stroke-width="2"/>
+      <path d="M235 70 l-11 1 m11 -1 l-4 10" stroke="var(--vermillion)" stroke-width="2" fill="none"/>
+      <text class="lbl-strong" x="195" y="60" font-size="13" fill="var(--vermillion)">∇φ</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> derive a local orientation per window from the structure tensor, then measure how fast that orientation changes across space.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>The tracing-free surrogate for how much the direction field turns per unit area — fills the geometric niche where SOAM/κ are unavailable because no strand was traced; report weighted by coherence.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Field_OrientGrad</b> — coherence-weighted |∇φ|</dd><dt>Units</dt><dd>rad/µm</dd><dt>Reads as</dt><dd>high = direction field turns rapidly across area; low = uniform direction</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>structure-tensor φ=½atan2(2Jxy,Jxx−Jyy), gradient on the DOUBLED angle then halve for π-periodicity <span class="prim">skimage.feature.structure_tensor</span> <span class="rec">recommended</span></li><li>mask by coherence before averaging |∇φ|</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>φ</dt><dd>local orientation</dd><dt>∇φ</dt><dd>orientation gradient</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">structure-tensor fields (10.1002/cm.21166)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Orientation-field coherence</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 feasible</span></div></div>
+  <p class="definition">Structure-tensor eigenvalue contrast C=(λ₁−λ₂)/(λ₁+λ₂) — how locally aligned the strands are; it doubles as a confidence weight. <span class="term">eigenvalue contrast</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Left window of parallel aligned bars with high coherence, right window of crossing bars with low coherence">
+      <g stroke="var(--green)" stroke-width="3">
+        <line x1="40" y1="60" x2="130" y2="60"/><line x1="40" y1="100" x2="130" y2="100"/><line x1="40" y1="140" x2="130" y2="140"/><line x1="40" y1="180" x2="130" y2="180"/>
+      </g>
+      <text class="lbl-strong" x="55" y="40" font-size="12" fill="var(--green)">C→1</text>
+      <g stroke="var(--vermillion)" stroke-width="3">
+        <line x1="230" y1="60" x2="320" y2="150"/><line x1="320" y1="60" x2="230" y2="150"/><line x1="250" y1="180" x2="320" y2="120"/><line x1="230" y1="120" x2="300" y2="180"/>
+      </g>
+      <text class="lbl-strong" x="245" y="40" font-size="12" fill="var(--vermillion)">C→0</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> the contrast of the two structure-tensor eigenvalues measures how sharply one direction dominates the window.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>Coherence drops to zero exactly at crossings, turns, and isotropic texture — so it is the natural confidence mask for |∇φ|, guarding the orientation-gradient metric against the crossing artefact.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Field_Coherence</b> — eigenvalue contrast C</dd><dt>Units</dt><dd>dimensionless ∈[0,1]</dd><dt>Reads as</dt><dd>1 = locally parallel strands; →0 at crossings/turns/isotropic texture</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>eigenvalues → C=(λ₁−λ₂)/(λ₁+λ₂) <span class="prim">skimage.feature.structure_tensor_eigenvalues</span> <span class="rec">recommended</span></li><li>reuse as the confidence weight feeding the orientation-gradient metric</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>λ₁≥λ₂</dt><dd>structure-tensor eigenvalues</dd><dt>C</dt><dd>coherence</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">fiber coherence (10.1007/s10237-016-0776-3)</span></div></div>
+</article>
+
+<article class="card">
+  <div class="card-head"><h3 class="metric-name">Orientation entropy</h3>
+    <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 feasible</span></div></div>
+  <p class="definition">Shannon entropy of the windowed orientation histogram — a scalar readout of local direction isotropy. <span class="term">orientation histogram</span>.</p>
+  <figure class="illo"><svg viewBox="0 0 360 220" role="img" aria-label="Two orientation histograms: a single dominant peak with low entropy versus a flat distribution with maximal entropy">
+      <line class="axis" x1="30" y1="180" x2="160" y2="180" stroke="var(--rule)" stroke-width="1.5"/>
+      <rect x="40" y="60" width="18" height="120" fill="var(--green)"/>
+      <rect x="62" y="150" width="18" height="30" fill="var(--green)"/>
+      <rect x="84" y="160" width="18" height="20" fill="var(--green)"/>
+      <text class="lbl-strong" x="45" y="45" font-size="12" fill="var(--green)">H→0</text>
+      <line class="axis" x1="200" y1="180" x2="340" y2="180" stroke="var(--rule)" stroke-width="1.5"/>
+      <rect x="210" y="110" width="18" height="70" fill="var(--vermillion)"/>
+      <rect x="232" y="108" width="18" height="72" fill="var(--vermillion)"/>
+      <rect x="254" y="112" width="18" height="68" fill="var(--vermillion)"/>
+      <rect x="276" y="110" width="18" height="70" fill="var(--vermillion)"/>
+      <rect x="298" y="109" width="18" height="71" fill="var(--vermillion)"/>
+      <text class="lbl-strong" x="230" y="95" font-size="12" fill="var(--vermillion)">H→max</text>
+    </svg>
+    <figcaption><b>Mechanism:</b> bin the windowed orientations into a histogram and take its Shannon entropy.</figcaption></figure>
+  <div class="interest"><span class="in-title">Why it's of interest</span><p>A tracing-free readout of directional disorder that is bin-count driven rather than eigenvalue driven, complementing coherence with a distribution-shape view of the same orientation field.</p></div>
+  <div class="outmetric"><span class="om-title">Output metric</span>
+    <dl><dt>Value</dt><dd><b>Field_OrientEntropy</b> — entropy of the orientation histogram</dd><dt>Units</dt><dd>bits (or nats)</dd><dt>Reads as</dt><dd>0 = single dominant direction; max = isotropic directions</dd></dl></div>
+  <div class="methods"><span class="m-title">Method options</span>
+    <ol><li>histogram windowed structure-tensor orientations, Shannon entropy <span class="prim">scipy.stats.entropy</span> <span class="rec">recommended</span></li><li>coherence-weight histogram counts to suppress incoherent windows</li></ol></div>
+  <div class="varkey"><span class="vk-title">Variables</span><dl><dt>H</dt><dd>orientation entropy</dd><dt>φ</dt><dd>local orientation</dd></dl></div>
+  <div class="meta"><div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+    <div class="mrow"><span class="mk">Source</span><span class="mv cite">structure-tensor fields (10.1002/cm.21166)</span></div></div>
+</article>
+    </div>
+  </section>
+
+  <!-- ============================ REVERSE INDEX ============================ -->
+  <section class="band" id="method-index">
+    <h2 class="section-title">Method → phenotype</h2>
+    <p class="section-sub">The other direction. The ~40 metrics above collapse onto a handful of shared
+      intermediates — compute each <b>once</b>, and every phenotype on its row is a cheap reduction on top. This is
+      the efficient way to implement the whole set, and it shows which phenotypes are byproducts of the same pass.</p>
+    <hr class="rule">
+    <div class="xtable-wrap">
+      <table class="xtable">
+        <thead><tr>
+          <th style="width:22%">Compute once</th><th style="width:30%">Primitive</th><th>Phenotypes it yields</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">Polar-warp heatmap S(r,θ)</td>
+            <td><span class="mono">skimage.transform.warp_polar</span> → per-(radius,angle) occupancy</td>
+            <td class="feeds"><span class="prov">Ring-mass M(r)</span><span class="prov">2D Sholl S(r,θ)</span><span class="prov">Angular anisotropy ADC</span><span class="prov">Cumulative C(r) + quantile radii</span><span class="prov">Profile moments</span><span class="prov">Growth-front width</span><span class="prov">Sector falloff dispersion</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Structure-tensor field</td>
+            <td><span class="mono">skimage.feature.structure_tensor</span> → per-window orientation φ, eigenvalues</td>
+            <td class="feeds"><span class="prov">Field coherence</span><span class="prov">Orientation gradient |∇φ|</span><span class="prov">Orientation entropy</span><span class="prov">Anisotropic lacunarity</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Multiscale box occupancy</td>
+            <td><span class="mono">N(ε)</span> box counts over a geometric ε series (mask &amp; grayscale)</td>
+            <td class="feeds"><span class="prov">Boundary FD</span><span class="prov">Mass FD</span><span class="prov">Rényi D0/D1/D2</span><span class="prov">Radial FD D(r)</span><span class="prov">Local-FD map</span><span class="prov">Lacunarity Λ(r)</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Convex hull</td>
+            <td><span class="mono">cv2.convexHull</span> / <span class="mono">regionprops</span> hull + calipers</td>
+            <td class="feeds"><span class="prov">Solidity</span><span class="prov">Convexity</span><span class="prov">Concavity-depth spectrum</span><span class="prov">Feret diameters + roundness</span><span class="prov">Extent</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Ordered branch_pathfinding path</td>
+            <td>uniform-resampled spline → tangent θ(s), curvature κ(s)</td>
+            <td class="feeds"><span class="prov">SOAM</span><span class="prov">Curvature κ (+ location)</span><span class="prov">Bending energy</span><span class="prov">Distance metric</span><span class="prov">Inflection density</span><span class="prov">Persistence length</span><span class="prov">CSS turn peaks</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Morphological opening sweep</td>
+            <td><span class="mono">scipy.ndimage</span> openings over growing radii; distance transform</td>
+            <td class="feeds"><span class="prov">Granulometry / pattern spectrum</span><span class="prov">Chord / gap distribution + ξ</span><span class="prov">Strand-thickness proxy t(r)</span></td>
+          </tr>
+          <tr>
+            <td class="mono">Cubical complex filtration</td>
+            <td><span class="mono">gudhi</span> / <span class="mono">ripser</span> on mask or signed distance transform</td>
+            <td class="feeds"><span class="prov">Betti curves β0/β1</span><span class="prov">Persistence entropy</span><span class="prov">Euler-χ density</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout blue">
+      <h3>The build-once rule</h3>
+      <p>Architect the measurers around these seven intermediates, not around 40 independent operations. Most of the
+        catalog is a set of <strong>reductions</strong> over the polar heatmap, the orientation field, and the box-count
+        cube — computing those three well is 80% of the work, and it guarantees the derived metrics stay mutually
+        consistent (e.g. global FD must equal the area-weighted mean of the local-FD map).</p>
+    </div>
+  </section>
+
+  <!-- ============================ VALIDATION ============================ -->
+  <section class="band" id="validation">
+    <h2 class="section-title">Validation — one phantom harness</h2>
+    <p class="section-sub">Every metric has an analytic ground truth on a synthetic phantom, so a single generator
+      validates dozens at once. Render each phantom at the <em>actual</em> operating resolution and mask quality.</p>
+    <hr class="rule">
+    <div class="xtable-wrap">
+      <table class="xtable">
+        <thead><tr><th style="width:30%">Phantom</th><th style="width:34%">Analytic ground truth</th><th>Validates</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Filled disk / thin annulus</td><td>D→2 (disk); M(r)∝r (disk) vs boxcar (annulus); known inner/outer radii</td><td>area &amp; shape metrics, ring-mass profile shape, cumulative-mass quantiles, margin gradient</td></tr>
+          <tr><td class="mono">Koch / Sierpinski / Vicsek</td><td>closed-form fractal D (e.g. Koch ≈1.262); monofractal ⇒ D0≈D1≈D2</td><td>boundary/mass FD, box-count scaling, Rényi-dimension estimator bias</td></tr>
+          <tr><td class="mono">DLA aggregate</td><td>D<sub>f</sub> ≈ 1.71 in 2D; anisotropic percolation structure</td><td>mass FD, succolarity, radial FD D(r), lacunarity</td></tr>
+          <tr><td class="mono">Boolean disk model</td><td>exponential void chord distribution; pattern spectrum peaks at disk radius</td><td>chord/gap distribution, granulometry, lacunarity</td></tr>
+          <tr><td class="mono">Circular arc R / sinusoid</td><td>κ = 1/R exactly; SOAM = L/R; known inflection count (2/period)</td><td>curvature, SOAM, bending energy, inflection density, CSS peaks</td></tr>
+          <tr><td class="mono">Rotated / rescaled copies</td><td>metrics invariant (rotation/translation) or scale-covariant (κ ∝ 1/scale)</td><td>the decisive correctness test for every scalar</td></tr>
+          <tr><td class="mono">Injected wedge anisotropy</td><td>ADC, sector dispersion, |∇φ| increase monotonically with injected anisotropy; recovered preferred direction matches the wedge</td><td>all angular / directional metrics</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout green">
+      <h3>Three gates on top of the phantoms</h3>
+      <ul>
+        <li><strong>Scale-range gate</strong> — for any box-counting estimator, report the fit R² and the fitted decade span; refuse to emit a fractal dimension when clean scaling spans &lt; 1 decade.</li>
+        <li><strong>Cross-estimator agreement</strong> — mass-radius FD vs box-count FD must agree; monofractal inputs must give D0≈D1≈D2 and wavelet c2≈0. Disagreement flags estimator bias.</li>
+        <li><strong>Cross-method agreement</strong> — where a mask is thin enough to skeletonize, overlay classic skeleton Sholl N(r) on the area-based M(r); agreement in the thin regime and controlled divergence as density rises calibrates exactly where intersection metrics break.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================ CONSIDERATIONS ============================ -->
+  <section class="band" id="considerations">
+    <h2 class="section-title">What else to consider</h2>
+    <hr class="rule">
+    <div class="callout">
+      <h3>Design notes carried out of the research</h3>
+      <ul>
+        <li><strong>Regime-B substitution principle.</strong> Wherever overlap is possible, prefer <em>area/mass</em>
+          over <em>intersection/skeleton</em> counts — ring-mass over Sholl-intersection, field-coherence over
+          per-strand curvature. This is the through-line that lets most of the catalog ship now, before retracing
+          accuracy is solved.</li>
+        <li><strong>Emit a confidence gate with every value</strong>, not just the number — fractal-fit R² over ≥1
+          decade, coherence as a turning-confidence weight, a node-exclusion flag for SOAM. A silent fractal dimension
+          fit over &lt;1 decade is the classic footgun.</li>
+        <li><strong>Use grayscale (<span class="mono">detect_mat</span>), not only the binary mask</strong>, for the
+          multifractal, structure-tensor, and wavelet-leader metrics — the intensity texture is already retained and
+          carries information the threshold discards.</li>
+        <li><strong>Three different "angular" things</strong> live here and must not be conflated: along-strand
+          <em>turning / curvature</em> (Turning group), colony-scale <em>angular anisotropy</em> (ADC, Family C), and
+          the <em>bifurcation angle</em> at a node (catalogued separately). Same graph in two cases, different inputs.</li>
+        <li><strong>Two estimators beat one.</strong> Report SOAM <em>and</em> the distance metric together (one catches
+          fine wiggle, the other gross arcing); report mass FD by both box-count and mass-radius. Redundancy is the
+          cheapest bias check you have.</li>
+        <li><strong>Citations flagged unverified in-page</strong> (Plotnick gliding-box DOI, SNT Angular-Sholl primary
+          paper, Mokhtarian curvature-scale-space, the access-blocked Cell Reports full text) should be confirmed
+          before external use — see the footer caveat.</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="family-a-size-shape.html">Family A</a>
+    <a href="family-b-space-filling.html">Family B</a>
+    <a href="family-c-radial-sholl.html">Family C</a>
+    <a href="methods-algorithms.html">Methods &amp; algorithms</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+  </div>
+  <p class="note">A phenotype↔method view over the “Branch Phenotypes for Filamentous Fungi” catalog. Candidate
+    phenotypes, output metrics, and algorithm options were compiled from a literature research pass (scite / PubMed /
+    preprint sources); metric definitions are structural/geometric and biological interpretation is for human authoring.
+    A few citations are marked <em>unverified</em> in the source pass — confirm before external use.</p>
+</div></footer>
+
+</body>
+</html>
