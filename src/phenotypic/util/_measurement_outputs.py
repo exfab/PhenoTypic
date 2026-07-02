@@ -6,7 +6,7 @@ import inspect
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, TypeAlias, TypeGuard
+from typing import Iterable, Iterator, TypeAlias, TypeGuard
 
 import pandas as pd
 import polars as pl
@@ -230,16 +230,21 @@ def _is_info_class(value: object) -> TypeGuard[type[MeasurementInfo]]:
 _SANITIZE_TOKEN_RE = re.compile(r"\s+")
 
 
+def _iter_public_info_classes() -> Iterator[type[MeasurementInfo]]:
+    """Yield every concrete ``MeasurementInfo`` subclass exported by schema."""
+    import phenotypic.schema as schema
+
+    for name in getattr(schema, "__all__", ()):
+        obj = getattr(schema, name, None)
+        if _is_info_class(obj):
+            yield obj
+
+
 @lru_cache(maxsize=1)
 def _known_categories() -> tuple[str, ...]:
     """All public schema categories, sorted longest-first for prefix matching."""
-    import phenotypic.schema as schema
-
     cats: set[str] = set()
-    for name in getattr(schema, "__all__", ()):
-        obj = getattr(schema, name, None)
-        if not _is_info_class(obj):
-            continue
+    for obj in _iter_public_info_classes():
         try:
             cats.add(obj.category())
         except NotImplementedError:  # member-less classification bases
@@ -268,14 +273,7 @@ def metric_token(on: str) -> str:
 @lru_cache(maxsize=1)
 def _public_info_classes() -> tuple[type[MeasurementInfo], ...]:
     """Public, member-ful ``MeasurementInfo`` subclasses exported by schema."""
-    import phenotypic.schema as schema
-
-    classes: list[type[MeasurementInfo]] = []
-    for name in getattr(schema, "__all__", ()):
-        obj = getattr(schema, name, None)
-        if _is_info_class(obj) and list(obj):
-            classes.append(obj)
-    return tuple(classes)
+    return tuple(obj for obj in _iter_public_info_classes() if list(obj))
 
 
 def _describe_column(column: str) -> str | None:
