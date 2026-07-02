@@ -65,3 +65,27 @@ def test_info_block_prefix_is_collision_free():
         for member in obj:
             assert not member.value.startswith("Grid_"), member.value
             assert not member.value.startswith("Bbox_"), member.value
+
+
+def test_insert_metadata_front_block_cluster_order():
+    """insert_metadata places user tags in cluster order (Sample/Identity before Strain)."""
+    from phenotypic.data import load_synth_yeast_plate
+    from phenotypic.sdk_ import is_metadata_header
+    import pandas as pd
+
+    img = load_synth_yeast_plate()
+    # Set tags out of cluster order on purpose.
+    img.metadata["Strain"] = "BY4741"        # MetadataGenetic_ (Strain cluster)
+    img.metadata["SampleID"] = "S1"          # MetadataSample_ (Identity cluster, leads)
+    img.metadata["Media"] = "YPD"            # MetadataCondition_ (Condition cluster)
+
+    df = img.metadata.insert_metadata(pd.DataFrame({"Object_Label": [1]}))
+    meta_cols = [c for c in df.columns if is_metadata_header(c)]
+
+    # Identity (Sample) precedes Strain precedes Condition.
+    assert meta_cols.index("MetadataSample_SampleID") < meta_cols.index(
+        "MetadataGenetic_Strain"
+    )
+    assert meta_cols.index("MetadataGenetic_Strain") < meta_cols.index(
+        "MetadataCondition_Media"
+    )
