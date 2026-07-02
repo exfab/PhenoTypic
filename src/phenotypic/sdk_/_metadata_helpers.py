@@ -14,7 +14,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 import phenotypic.schema as _schema
-from phenotypic.schema import MeasurementInfo, REMBI_MODULE
+from phenotypic.schema import MeasurementInfo
 
 
 @lru_cache(maxsize=1)
@@ -98,20 +98,15 @@ def canonical_metadata_order() -> dict[str, int]:
 
 @lru_cache(maxsize=1)
 def metadata_category_prefixes() -> tuple[str, ...]:
-    """All metadata category prefixes (e.g. ``'MetadataGenetic_'``) in REMBI order.
+    """All metadata category prefixes (e.g. ``'MetadataGenetic_'``) in cluster order.
 
-    Ordered by each enum's REMBI module then its category string, then
-    deduplicated, so callers building bucket-priority lists get a stable,
-    canonical ordering.
+    Ordered by the bio-semantic cluster order (``_METADATA_CLUSTER_ORDER``), then
+    deduplicated, so callers building bucket-priority lists get a stable, canonical
+    ordering. REMBI is a separate axis (see ``by_module`` / ``header_to_module``).
     """
-    order = {m: i for i, m in enumerate(REMBI_MODULE)}
-    enums = sorted(
-        _metadata_enums(),
-        key=lambda e: (order.get(next(iter(e)).resolved_rembi_module, 99), e.category()),
-    )
     seen: set[str] = set()
     prefixes: list[str] = []
-    for e in enums:
+    for e in _cluster_ordered_enums():
         p = f"{e.category()}_"
         if p not in seen:
             seen.add(p)
