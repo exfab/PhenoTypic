@@ -38,6 +38,7 @@ Task-oriented recipes that solve a specific problem. Each guide is standalone
    :caption: CLI & Infrastructure
 
    pages/cli_batch_processing
+   pages/rembi_metadata
    pages/slurm_pipelines
    pages/polars_cpu_build
    pages/tuning

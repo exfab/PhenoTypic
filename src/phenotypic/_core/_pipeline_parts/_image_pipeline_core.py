@@ -1004,11 +1004,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         Returns:
             pd.DataFrame: A DataFrame containing the results of all performed measurements combined
                 on the same index. Columns are ordered as
-                ``[metadata] -> [measurements] -> [info block]``: any
-                ``Metadata*`` columns first (in canonical REMBI order, present only
-                when ``include_metadata`` is True), then the measurement columns, then
-                the image-info block (``Object_Label`` followed by the ``Bbox_*`` /
-                ``Grid_*`` geometry columns) last.
+                ``[metadata] -> [measurements] -> [MetadataImage_] -> [info block]``:
+                user/experimental ``Metadata*`` columns first (in canonical REMBI
+                order, present only when ``include_metadata`` is True), then the
+                measurement columns, then the framework ``MetadataImage_*``
+                bookkeeping block (per-image provenance: ``UUID``, ``ImageName``,
+                ``BitDepth``, …), then the per-object image-info block
+                (``Object_Label`` followed by the ``Bbox_*`` / ``Grid_*`` geometry
+                columns) last.
 
         Raises:
             Exception: An exception is raised if a measurement operation fails while being
@@ -1154,13 +1157,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _order_measurement_columns(
             df: pd.DataFrame, info_cols: List[str]
     ) -> pd.DataFrame:
-        """Order columns as ``[metadata] -> [measurements] -> [info block]``.
+        """Order columns as ``[metadata] -> [measurements] -> [MetadataImage_] -> [info block]``.
 
-        Metadata columns (identified by :func:`is_metadata_header`, e.g.
-        ``MetadataImage_*``) move to the front in their existing (canonical REMBI)
-        order; the image-info block (``Object_Label`` plus the ``Bbox_*`` /
-        ``Grid_*`` geometry, given by *info_cols*) moves to the end; every other
-        column — the measurements — keeps its relative order in between.
+        User/experimental metadata columns (identified by
+        :func:`is_metadata_header`, e.g. ``MetadataGenetic_*``,
+        ``MetadataCondition_*``) move to the front in their existing (canonical
+        REMBI) order. The framework ``MetadataImage_*`` bookkeeping block
+        (``UUID``, ``ImageName``, ``BitDepth``, …) is *per-image* provenance —
+        constant across every row of one image — so it is pulled out of the front
+        block and placed **after** the measurements, immediately before the
+        per-object image-info block (``Object_Label`` plus the ``Bbox_*`` /
+        ``Grid_*`` geometry, given by *info_cols*). Every remaining column — the
+        measurements — keeps its relative order in the middle.
 
         Args:
             df: The merged measurement DataFrame.
@@ -1170,17 +1178,24 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             pd.DataFrame: *df* with columns reordered (a view/copy via column
             selection); row data and index are unchanged.
         """
+        from phenotypic.schema import METADATA
         from phenotypic.sdk_ import is_metadata_header
 
+        image_prefix = f"{METADATA.category()}_"  # "MetadataImage_"
         info_set = set(info_cols)
-        metadata_cols = [c for c in df.columns if is_metadata_header(c)]
-        metadata_set = set(metadata_cols)
+
+        all_metadata = [c for c in df.columns if is_metadata_header(c)]
+        front_metadata = [c for c in all_metadata
+                          if not c.startswith(image_prefix)]
+        image_metadata = [c for c in all_metadata
+                          if c.startswith(image_prefix)]
+        metadata_set = set(all_metadata)
         info_present = [c for c in info_cols if c in df.columns]
         measurement_cols = [
                 c for c in df.columns
                 if c not in metadata_set and c not in info_set
         ]
-        return df[metadata_cols + measurement_cols + info_present]
+        return df[front_metadata + measurement_cols + image_metadata + info_present]
 
     def _build_measurement_run_order(self) -> Dict[str, MeasureFeatures]:
         """Return the measurements to execute for this ``measure()`` call.

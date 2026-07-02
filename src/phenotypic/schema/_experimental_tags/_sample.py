@@ -44,6 +44,9 @@ class SAMPLE_METADATA(IdentityInfo):
             "SourcePlate",
             "Identifier of the source plate the sample was pinned from.",
     )
-    SOURCE_WELL = Entry("SourceWell", "Well position on the source plate (e.g. A1).")
+    SOURCE_WELL = Entry("SourceWell",
+                        "Well position on the source plate (e.g. A1). This can "
+                        "potentially be distinct from `Grid` values when using "
+                        "irregular or sparse grid parameters.")
     BARCODE = Entry("Barcode", "Molecular or sample barcode.")
     CONTROL = Entry("Control", "Control designation (e.g. positive, negative, blank).")
