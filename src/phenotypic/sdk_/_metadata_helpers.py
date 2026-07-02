@@ -39,6 +39,41 @@ def _metadata_enums() -> tuple[type, ...]:
     return tuple(out)
 
 
+#: Bio-semantic cluster order for the metadata front-block (category granularity).
+#: The human-facing column axis. REMBI (header_to_module / by_module / manifest)
+#: remains a SEPARATE provenance axis and is not affected by this ordering.
+_METADATA_CLUSTER_ORDER: tuple[str, ...] = (
+    # (1) Identity — who / where is this colony
+    "MetadataSample",
+    "MetadataPlate",
+    # (2) Strain — genetic identity
+    "MetadataGenetic",
+    # (3) Condition — chemical then temporal/physical environment
+    "MetadataCondition",
+    "MetadataCulture",
+    # (4) Design & provenance
+    "MetadataExperiment",
+    "MetadataStudy",
+    "MetadataAcquisition",
+    # Framework per-image bookkeeping — last (relocated to the trailing region
+    # of the measurement frame by order_measurement_columns()).
+    "MetadataImage",
+)
+
+
+@lru_cache(maxsize=1)
+def _cluster_ordered_enums() -> tuple[type, ...]:
+    """The metadata enums sorted by ``_METADATA_CLUSTER_ORDER`` (then stable).
+
+    An enum whose category is absent from the cluster order sorts last; the
+    coverage-gate test forbids that state, so it is a defensive fallback only.
+    """
+    rank = {cat: i for i, cat in enumerate(_METADATA_CLUSTER_ORDER)}
+    return tuple(
+        sorted(_metadata_enums(), key=lambda e: rank.get(e.category(), len(rank)))
+    )
+
+
 @lru_cache(maxsize=1)
 def metadata_category_prefixes() -> tuple[str, ...]:
     """All metadata category prefixes (e.g. ``'MetadataGenetic_'``) in REMBI order.

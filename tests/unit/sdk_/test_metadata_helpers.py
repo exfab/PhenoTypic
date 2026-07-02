@@ -107,3 +107,28 @@ def test_category_for_known_label_matches_owning_enum():
 
 def test_category_for_unknown_label_is_none():
     assert metadata_category_for_label("NotARealTag") is None
+
+
+def test_cluster_order_covers_every_metadata_enum():
+    """Every metadata-namespace enum must be placed in the cluster order.
+
+    A new enum added without a cluster slot fails here (coverage gate).
+    """
+    from phenotypic.sdk_._metadata_helpers import (
+        _METADATA_CLUSTER_ORDER,
+        _metadata_enums,
+    )
+
+    assert set(_METADATA_CLUSTER_ORDER) == {e.category() for e in _metadata_enums()}
+    # No duplicate placements.
+    assert len(_METADATA_CLUSTER_ORDER) == len(set(_METADATA_CLUSTER_ORDER))
+
+
+def test_cluster_ordered_enums_follow_constant():
+    from phenotypic.sdk_._metadata_helpers import (
+        _METADATA_CLUSTER_ORDER,
+        _cluster_ordered_enums,
+    )
+
+    cats = [e.category() for e in _cluster_ordered_enums()]
+    assert cats == list(_METADATA_CLUSTER_ORDER)
