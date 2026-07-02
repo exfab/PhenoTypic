@@ -659,6 +659,13 @@ def finalize_post_master_outputs(
                 "Failed to join metadata CSV: %s: %s", type(e).__name__, e
             )
     post_df = _apply_post_to_master(working_df, pipeline)
+    # Reorder the mirror/splits/analysis frame to the canonical cluster contract
+    # ([front metadata] -> [measurements] -> [MetadataImage_] -> [info block]),
+    # the same helper the pandas per-image path uses. The clean master on disk is
+    # untouched — only this in-memory working frame is reordered.
+    from phenotypic.sdk_ import order_measurement_columns
+
+    post_df = post_df.select(order_measurement_columns(post_df.columns))
     _seed_measurements(output_dir, post_df)
 
     # Best-effort copy of the --metadata source CSV → deliverables/metadata.csv,

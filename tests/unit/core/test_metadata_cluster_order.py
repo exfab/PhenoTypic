@@ -89,3 +89,47 @@ def test_insert_metadata_front_block_cluster_order():
     assert meta_cols.index("MetadataGenetic_Strain") < meta_cols.index(
         "MetadataCondition_Media"
     )
+
+
+def test_finalize_mirror_applies_cluster_order(tmp_path):
+    """The polars mirror frame from finalize is canonical-ordered, even after a
+    --metadata join that lands external columns front-in-CSV-order."""
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import finalize_post_master_outputs
+
+    # Clean master (metadata-free) with a join anchor column present in both frames.
+    master = pl.DataFrame(
+        {
+            "MetadataImage_ImageName": ["plateA"],
+            "Object_Label": [1],
+            "Grid_RowNum": [1],
+            "Shape_Area": [123.0],
+        }
+    )
+    # External metadata CSV with columns in NON-canonical order.
+    meta_csv = tmp_path / "meta.csv"
+    meta_csv.write_text(
+        "MetadataImage_ImageName,MetadataCondition_Media,MetadataGenetic_Strain,MetadataSample_SampleID\n"
+        "plateA,YPD,BY4741,S1\n"
+    )
+
+    out_dir = tmp_path / "run"
+    out_dir.mkdir()
+
+    post_df = finalize_post_master_outputs(
+        out_dir, master, pipeline=None, metadata_csv=meta_csv, no_qc=True
+    )
+
+    assert post_df.columns == [
+        # front metadata: Identity(Sample) -> Strain -> Condition
+        "MetadataSample_SampleID",
+        "MetadataGenetic_Strain",
+        "MetadataCondition_Media",
+        # measurements
+        "Shape_Area",
+        # framework image block
+        "MetadataImage_ImageName",
+        # per-object info block
+        "Object_Label",
+        "Grid_RowNum",
+    ]
