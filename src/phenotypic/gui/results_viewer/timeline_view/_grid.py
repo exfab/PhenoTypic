@@ -24,6 +24,7 @@ from phenotypic.gui.results_viewer.colony_view._grid import (
     _OBJECT_LABEL_COL,
 )
 from phenotypic.schema import MeasurementInfo
+from phenotypic.sdk_ import is_metadata_header
 
 __all__ = [
     "selectable_time_columns",
@@ -47,7 +48,8 @@ def _measurement_prefixes() -> frozenset[str]:
     (spec §15.2), so a numeric measurement column (e.g. ``Size_Area``) would
     otherwise slip through the numeric-dtype eligibility path. We therefore
     union the colony baseline with every measurement category prefix derived
-    from the public ``phenotypic.schema`` enums — excluding ``Metadata``/
+    from the public ``phenotypic.schema`` enums — excluding the whole
+    ``Metadata*`` family (per-topic categories like ``MetadataCulture``) and
     ``Object`` (valid axis/identity namespaces, gated separately).
 
     The subclass tree is walked *transitively*: ``MeasurementInfo`` has
@@ -69,7 +71,7 @@ def _measurement_prefixes() -> frozenset[str]:
             category = cls.category()
         except Exception:  # abstract intermediate base — no category of its own
             continue
-        if category in ("Metadata", "Object"):
+        if category.startswith("Metadata") or category == "Object":
             continue
         prefixes.add(f"{category}_")
     return frozenset(prefixes)
@@ -79,10 +81,10 @@ def _measurement_prefixes() -> frozenset[str]:
 #: uncapped time-axis predicate excludes (colony baseline ∪ schema categories).
 _TIME_AXIS_MEASUREMENT_PREFIXES: frozenset[str] = _measurement_prefixes()
 
-#: Case-insensitive name match for a "Metadata_Time-like" column. Seeded from
-#: Heatmap's hardcoded ``"Metadata_Time"`` (``_heatmap_tab/_callbacks.py:367``)
-#: but generalized so e.g. ``Metadata_Timepoint`` / ``Metadata_ImageNumber``
-#: also surface. Numeric/temporal dtype is an independent eligibility path.
+#: Case-insensitive name match for a "time-like" column. Seeded from Heatmap's
+#: time column (``str(CULTURE_METADATA.TIME)`` == ``MetadataCulture_Time``) but
+#: generalized so e.g. ``MetadataCulture_Timepoint`` / a ``Metadata_ImageNumber``
+#: column also surface. Numeric/temporal dtype is an independent eligibility path.
 _TIME_NAME_RE = re.compile(
     r"(?:^|_)(time|timepoint|imagenumber|frame)(?:_|$|\d)", re.IGNORECASE
 )
@@ -108,8 +110,8 @@ def selectable_time_columns(
     A column is eligible iff it is NOT measurement-prefixed and NOT
     ``Object_Label``, AND either its name matches a ``Metadata_Time``-like
     pattern OR its dtype is numeric/temporal. There is **no cardinality cap**
-    (spec §15.2). ``Metadata_*`` time-like names sort first, then everything
-    else, alphabetically within each bucket.
+    (spec §15.2). Metadata-family time-like columns (``is_metadata_header``)
+    sort first, then everything else, alphabetically within each bucket.
 
     Args:
         df: The frame to inspect (typically the filtered master mirror).
@@ -133,7 +135,7 @@ def selectable_time_columns(
             eligible.append(col)
 
     def _bucket(name: str) -> int:
-        return 0 if (name.startswith("Metadata_") and _is_time_like_name(name)) else 1
+        return 0 if (is_metadata_header(name) and _is_time_like_name(name)) else 1
 
     eligible.sort(key=lambda name: (_bucket(name), name))
     return eligible

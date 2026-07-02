@@ -1,0 +1,1709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geophysics, growth physics &amp; astronomy → fungal branches · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--orange)">Φ</div>
+    <div>
+      <div class="hero-kicker">Cross-domain analog · transfer to fungi</div>
+      <h1 class="hero-title">Geophysics, growth physics &amp; astronomy → fungal branches</h1>
+      <p class="lede">These fields treat branching as a <em>physical process</em>, not a list of segments. They
+        lead with <b>whole-pattern descriptors</b> (fractal dimension, lacunarity, Strahler/Tokunaga ordering,
+        Minkowski functionals) and with <b>noise-robust extraction</b> (matched filters, persistence, Hessian
+        ridges) — the closest match to faint, dense, overlapping hyphae on textured agar. One unifying principle
+        runs through both halves: <b>integration beats thresholding</b> — accumulate faint signal over scales,
+        lines, or topology <em>before</em> committing to a detection, so SNR grows as √(pixels integrated)
+        instead of being lost per-pixel.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span>Two fields, one principle</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Mask · grayscale · raw frame</span>
+        <span class="chip">21 methods · 7 illustrations</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 1 — GEOMORPHOLOGY & GROWTH PHYSICS ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">1 · Geomorphology &amp; growth physics</h2>
+    <p class="section-sub">River-network ordering theory and non-equilibrium growth physics provide whole-pattern,
+      process-level descriptors readable straight off a coarse mask — and they are <b>already the operative theory
+      of microbial colony fractal growth</b> (Matsushita &amp; Fujikawa 1990 measured D≈1.73 for a diffusion-limited
+      bacterial colony, the same Laplacian-growth family as DLA). Topological-ordering metrics need a clean tree
+      (🔴 A-fragile); the fractal/Minkowski/lacunarity descriptors survive dense overlap because they never separate
+      a single branch (🟢 B-robust).</p>
+    <hr class="rule">
+
+    <!-- MARQUEE A — Horton–Strahler / Shreve ordering (full-width feature) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="Horton-Strahler and Shreve ordering on a branching network with bifurcation ratio">
+        <!-- network: terminals at top, trunk at bottom -->
+        <g class="struct" stroke="var(--ink)">
+          <!-- order-1 terminal twigs (blue) -->
+          <g stroke="var(--blue)">
+            <path d="M40,28 L74,70"/><path d="M92,24 L74,70"/>
+            <path d="M132,26 L160,72"/><path d="M186,24 L160,72"/>
+            <path d="M250,30 L268,74"/><path d="M300,28 L268,74"/>
+          </g>
+          <!-- order-2 segments (green) -->
+          <g stroke="var(--green)">
+            <path d="M74,70 L120,120"/><path d="M160,72 L120,120"/>
+            <path d="M268,74 L246,118"/>
+          </g>
+          <!-- order-3 trunk (vermillion) -->
+          <g stroke="var(--vermillion)">
+            <path d="M120,120 L186,168"/><path d="M246,118 L186,168"/>
+            <path d="M186,168 L186,206"/>
+          </g>
+        </g>
+        <!-- nodes -->
+        <g fill="var(--surface)" stroke="var(--ink)" stroke-width="1.4">
+          <circle cx="74" cy="70" r="4"/><circle cx="160" cy="72" r="4"/><circle cx="268" cy="74" r="4"/>
+          <circle cx="120" cy="120" r="4"/><circle cx="246" cy="118" r="4"/><circle cx="186" cy="168" r="4"/>
+        </g>
+        <!-- order labels -->
+        <text class="lbl" x="36" y="20" fill="var(--blue)">ω=1 (terminal)</text>
+        <text class="lbl" x="92" y="104" fill="var(--green)">ω=2</text>
+        <text class="lbl" x="196" y="150" fill="var(--vermillion)">ω=3 (trunk)</text>
+        <!-- Shreve magnitude annotations -->
+        <text class="lbl-strong" x="190" y="182">Shreve n=6</text>
+        <!-- bifurcation ratio readout -->
+        <g transform="translate(0,0)">
+          <text class="lbl-strong" x="20" y="206">R_b = N_ω / N_(ω+1)  →  6 : 3 : 1  ≈ const (Horton's law)</text>
+        </g>
+      </svg>
+      <figcaption><b>Marquee — Strahler order &amp; Shreve magnitude.</b> Terminal twigs are order ω=1; where two
+        equal orders meet, the order increments (1+1→2, 2+2→3). <b>Shreve magnitude</b> counts upstream source
+        links per segment (the trunk here carries n=6). The near-constant <b>bifurcation ratio</b> R_b across
+        successive orders is Horton's law — a single self-similarity fingerprint of the whole branching style.
+        On hyphae these need a clean rooted tree, so they are A-fragile until retracing matures.</figcaption>
+    </figure>
+
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1.1 Horton–Strahler / Shreve ordering ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Horton–Strahler &amp; Shreve ordering</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Hierarchical <span class="term">stream order</span>: terminals are order 1; two
+          order-k segments meeting make order k+1 (Strahler). <span class="term">Shreve magnitude</span> instead
+          counts upstream source links per segment. Both turn a branching tree into an order spectrum.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Order incrementing rule and Shreve link counting">
+            <g class="struct">
+              <path stroke="var(--blue)" d="M40,30 L96,84"/><path stroke="var(--blue)" d="M120,28 L96,84"/>
+              <path stroke="var(--blue)" d="M200,32 L150,86"/>
+              <path stroke="var(--green)" d="M96,84 L150,86"/>
+              <path stroke="var(--green)" d="M150,86 L150,140"/>
+              <path stroke="var(--blue)" d="M250,40 L300,96"/><path stroke="var(--blue)" d="M330,38 L300,96"/>
+              <path stroke="var(--green)" d="M300,96 L260,148"/>
+              <path stroke="var(--vermillion)" d="M150,140 L210,196"/><path stroke="var(--vermillion)" d="M260,148 L210,196"/>
+            </g>
+            <text class="lbl" x="44" y="24" fill="var(--blue)">1 + 1 →</text>
+            <text class="lbl-strong" x="110" y="108" fill="var(--green)">2</text>
+            <text class="lbl-strong" x="216" y="178" fill="var(--vermillion)">2 + 2 → 3</text>
+            <text class="lbl" x="40" y="212">Strahler: order of equal pair increments; unequal keeps max</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> walk the rooted tree from tips to trunk applying the increment rule;
+            tally segment count per order. A compact tip-splitting network and a sparse herringbone give distinct
+            order spectra — but the rule breaks if anastomosis adds loops.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (rooted tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957; Shreve 1966</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>ω<sub>max</sub></b>, <b>n</b> — Strahler order of the trunk &amp; Shreve source-link magnitude</dd>
+            <dt>Units</dt><dd>integer (ω<sub>max</sub> ~1–5; n ≥ tip count)</dd>
+            <dt>Reads as</dt><dd>high → deep, many-tiered hierarchy with many nested tips; low → shallow tree, few merge levels</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>Strahler stream order of a segment (terminals = 1)</dd>
+            <dt>k+1</dt><dd>order after two equal order-k segments meet</dd>
+            <dt>Shreve magnitude</dt><dd>count of upstream source links feeding a segment</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.2 Bifurcation ratio (Horton's law) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Bifurcation ratio R_b</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Ratio of segment counts between successive Strahler orders, <span class="term">N_ω / N_(ω+1)</span>.
+          Horton's law says this stays roughly constant across orders; the value (typically 3–5) is a compact
+          fingerprint of how aggressively the tree branches.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Segment count per order falling geometrically; constant ratio">
+            <line class="axis" x1="44" y1="180" x2="330" y2="180"/>
+            <line class="axis" x1="44" y1="180" x2="44" y2="24"/>
+            <!-- bars: counts falling geometrically -->
+            <rect x="70"  y="48"  width="40" height="132" fill="rgba(0,114,178,.5)"/>
+            <rect x="150" y="104" width="40" height="76"  fill="rgba(11,155,118,.5)"/>
+            <rect x="230" y="142" width="40" height="38"  fill="rgba(213,94,0,.5)"/>
+            <text class="lbl" x="78"  y="196">ω=1</text>
+            <text class="lbl" x="158" y="196">ω=2</text>
+            <text class="lbl" x="238" y="196">ω=3</text>
+            <text class="lbl-strong" x="84"  y="42">N=18</text>
+            <text class="lbl-strong" x="160" y="98">N=6</text>
+            <text class="lbl-strong" x="236" y="136">N=2</text>
+            <text class="lbl-strong" x="120" y="18" fill="var(--vermillion)">R_b ≈ 3  (constant)</text>
+            <text class="lbl" x="6" y="100" transform="rotate(-90 6,100)">segment count</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> count segments at each order; the counts fall geometrically, and the
+            common ratio is R_b. A single scalar captures the branching aggressiveness of the entire network.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (rooted tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub></b> — mean segment-count ratio between successive Strahler orders</dd>
+            <dt>Units</dt><dd>dimensionless (typically 3–5)</dd>
+            <dt>Reads as</dt><dd>high → each tier fans out into many finer branches (bushy); low → near-binary splitting, sparse tiering</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R_b</dt><dd>bifurcation ratio (typically 3–5, dimensionless)</dd>
+            <dt>ω</dt><dd>Strahler stream order</dd>
+            <dt>N_ω</dt><dd>number of segments at order ω</dd>
+            <dt>N_(ω+1)</dt><dd>number of segments at the next-higher order</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.3 Stream-length ratio ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Stream-length ratio R_L</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The mean-length analog of R_b: <span class="term">mean L_(ω+1) / mean L_ω</span> across
+          orders. Together with R_b it sets the network's space-filling fractal dimension (Horton's second law),
+          linking ordering to fractality.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Mean segment length growing geometrically with order on a log axis">
+            <line class="axis" x1="44" y1="180" x2="330" y2="180"/>
+            <line class="axis" x1="44" y1="180" x2="44" y2="24"/>
+            <polyline points="80,150 180,98 280,46" fill="none" stroke="var(--green)" stroke-width="2.6"/>
+            <circle cx="80" cy="150" r="4" fill="var(--green)"/>
+            <circle cx="180" cy="98" r="4" fill="var(--green)"/>
+            <circle cx="280" cy="46" r="4" fill="var(--green)"/>
+            <text class="lbl" x="70"  y="196">ω=1</text>
+            <text class="lbl" x="170" y="196">ω=2</text>
+            <text class="lbl" x="270" y="196">ω=3</text>
+            <text class="lbl-strong" x="150" y="68" fill="var(--green)">slope = log R_L</text>
+            <text class="lbl" x="6" y="118" transform="rotate(-90 6,118)">log mean length</text>
+            <text class="lbl" x="120" y="18">D = log R_b / log R_L</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> average segment length per order; the geometric growth rate is R_L. The
+            ratio log R_b ÷ log R_L recovers a network fractal dimension without box-counting.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (rooted tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945; La Barbera &amp; Rosso 1989</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>L</sub></b> — geometric growth factor of mean segment length per Strahler order</dd>
+            <dt>Units</dt><dd>dimensionless (typically ~2)</dd>
+            <dt>Reads as</dt><dd>high → higher-order segments much longer than tips (coarse trunks, stubby twigs); low → length nearly uniform across tiers</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R_L</dt><dd>stream-length ratio (geometric growth of mean length per order)</dd>
+            <dt>ω</dt><dd>Strahler stream order</dd>
+            <dt>L_ω</dt><dd>mean segment length at order ω</dd>
+            <dt>L_(ω+1)</dt><dd>mean segment length at the next-higher order</dd>
+            <dt>R_b</dt><dd>bifurcation ratio</dd>
+            <dt>D</dt><dd>network fractal dimension, log R_b ÷ log R_L</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.4 Tokunaga (a,c) self-similarity ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tokunaga (a, c) self-similarity</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Counts <em>side tributaries</em> of each order entering a stream of higher order:
+          <span class="term">T_k = a·c^(k−1)</span>. The pair (a, c) is a two-number, scale-free fingerprint of
+          branching style — more discriminating than R_b alone and tolerant of a global fit.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Side tributaries of decreasing order joining a main stem; Tokunaga matrix">
+            <g class="struct">
+              <path stroke="var(--vermillion)" d="M60,40 L60,196"/>
+              <path stroke="var(--green)" d="M60,80 L28,54"/>
+              <path stroke="var(--green)" d="M60,150 L96,124"/>
+              <path stroke="var(--blue)" d="M60,60 L40,44"/>
+              <path stroke="var(--blue)" d="M60,110 L84,96"/>
+              <path stroke="var(--blue)" d="M60,176 L36,162"/>
+            </g>
+            <text class="lbl" x="64" y="36" fill="var(--vermillion)">order-3 stem</text>
+            <text class="lbl" x="100" y="128" fill="var(--green)">order-2 side</text>
+            <text class="lbl" x="88" y="92" fill="var(--blue)">order-1 side</text>
+            <!-- Tokunaga matrix inset -->
+            <g transform="translate(190,40)">
+              <text class="lbl" x="0" y="-6">T_k = a·c^(k−1)</text>
+              <rect x="0" y="0" width="46" height="30" fill="rgba(0,114,178,.18)" stroke="var(--rule)"/>
+              <rect x="46" y="0" width="46" height="30" fill="rgba(11,155,118,.18)" stroke="var(--rule)"/>
+              <rect x="0" y="30" width="46" height="30" fill="rgba(0,114,178,.10)" stroke="var(--rule)"/>
+              <rect x="46" y="30" width="46" height="30" fill="rgba(11,155,118,.10)" stroke="var(--rule)"/>
+              <text class="lbl-strong" x="14" y="20">T₁</text>
+              <text class="lbl-strong" x="60" y="20">T₂</text>
+              <text class="lbl" x="106" y="20" fill="var(--vermillion)">a = T₁</text>
+              <text class="lbl" x="106" y="50" fill="var(--vermillion)">c = Tₖ/Tₖ₋₁</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> tabulate how many order-k tributaries feed each order-(k+j) stream; the
+            geometric law T_k=a·c^(k−1) fits (a, c) globally, so it is more robust to a few mis-traced segments
+            than per-node order counts.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (rooted tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Peckham 1995</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>(a, c)</b> — side-tributary base count &amp; geometric ratio across order differences</dd>
+            <dt>Units</dt><dd>dimensionless (self-similar tree c≈2; a≈1–2)</dd>
+            <dt>Reads as</dt><dd>high a/c → dense lateral in-branching at every scale (feathery); low → few side tributaries, near-bifurcating skeleton</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>T_k</dt><dd>mean number of order-difference-k side tributaries per stream</dd>
+            <dt>k</dt><dd>order difference between a stream and its side tributaries</dd>
+            <dt>a</dt><dd>Tokunaga first coefficient, T₁</dd>
+            <dt>c</dt><dd>Tokunaga geometric ratio, Tₖ/Tₖ₋₁</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.5 Hack's law ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hack's law</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Empirical scaling of mainstream length against drainage area,
+          <span class="term">L ∝ A^h</span> with h≈0.57. The exponent encodes basin elongation: it ties a length
+          scale to an area scale, so a deviation from h=½ measures how elongated (vs compact) the growth is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Log length versus log area, slope h, basin elongation sketch">
+            <!-- basin sketch -->
+            <g transform="translate(10,18)">
+              <path fill="rgba(11,155,118,.12)" stroke="var(--green)" stroke-width="1.6"
+                d="M20,20 C70,10 110,40 120,90 C124,140 80,170 40,160 C8,150 6,90 20,20 Z"/>
+              <path class="struct" stroke="var(--vermillion)" d="M40,160 C50,120 70,110 78,70 C82,46 84,34 80,22"/>
+              <text class="lbl" x="84" y="100" fill="var(--vermillion)">L (mainstream)</text>
+              <text class="lbl" x="24" y="176" fill="var(--green)">A (area)</text>
+            </g>
+            <!-- log-log plot -->
+            <g transform="translate(200,20)">
+              <line class="axis" x1="0" y1="150" x2="130" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="18"/>
+              <polyline points="8,138 50,108 92,80 124,56" fill="none" stroke="var(--blue)" stroke-width="2.6"/>
+              <circle cx="8" cy="138" r="3" fill="var(--blue)"/><circle cx="50" cy="108" r="3" fill="var(--blue)"/>
+              <circle cx="92" cy="80" r="3" fill="var(--blue)"/><circle cx="124" cy="56" r="3" fill="var(--blue)"/>
+              <text class="lbl-strong" x="56" y="74" fill="var(--blue)">slope h ≈ 0.57</text>
+              <text class="lbl" x="0" y="166">log A →</text>
+              <text class="lbl" x="-12" y="40" transform="rotate(-90 -12,40)">log L</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> regress log mainstream length on log area; the slope h flags elongation.
+            For a colony the analog is reach-radius vs occupied area — computable from a mask once the longest
+            path is approximated.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask (+ longest path)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Hack 1957 (USGS PP 294-B)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>h</b> — scaling exponent of longest-path length against occupied area, L ∝ A<sup>h</sup></dd>
+            <dt>Units</dt><dd>dimensionless (≈0.57; h=½ is self-similar)</dd>
+            <dt>Reads as</dt><dd>high (&gt;½) → elongated, reach-dominated growth; low (→½) → compact, near-isotropic space-filling</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>L</dt><dd>mainstream (longest-path) length</dd>
+            <dt>A</dt><dd>drainage area</dd>
+            <dt>h</dt><dd>Hack exponent (≈0.57; deviation from ½ measures elongation)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.6 Drainage density ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Drainage density</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Total channel length per unit basin area, <span class="term">D_d = ΣL / A</span>.
+          A global density of branching with no need to identify individual junctions — high D_d means a finely
+          dissected, densely foraging network; low D_d a sparse one.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two equal-area patches with sparse vs dense channels">
+            <!-- low density -->
+            <g transform="translate(14,24)">
+              <rect x="0" y="0" width="140" height="150" fill="rgba(11,155,118,.06)" stroke="var(--rule)"/>
+              <path class="struct" stroke="var(--blue)" d="M70,150 L70,80 M70,110 L40,80 M70,100 L100,70"/>
+              <text class="lbl" x="14" y="170">low D_d</text>
+            </g>
+            <!-- high density -->
+            <g transform="translate(196,24)">
+              <rect x="0" y="0" width="140" height="150" fill="rgba(11,155,118,.06)" stroke="var(--rule)"/>
+              <path class="struct" stroke="var(--vermillion)" d="M70,150 L70,70
+                M70,130 L46,108 M70,116 L96,96 M70,100 L48,82 M70,92 L94,74
+                M46,108 L30,94 M96,96 L114,82 M48,82 L34,68 M94,74 L110,62 M70,78 L70,60"/>
+              <text class="lbl" x="14" y="170">high D_d</text>
+            </g>
+            <text class="lbl-strong" x="78" y="208">same area A · D_d = ΣL ÷ A</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> sum skeleton length and divide by enclosing area. Even an imperfect
+            skeleton gives a stable global density because the normalisation washes out local tracing errors —
+            why it is more forgiving than tip/junction counting.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + area</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Melton 1958</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>d</sub></b> — total skeleton length per unit enclosing area, ΣL ⁄ A</dd>
+            <dt>Units</dt><dd>length·area⁻¹ (px⁻¹, or mm⁻¹)</dd>
+            <dt>Reads as</dt><dd>high → finely dissected, densely branched fill; low → sparse, open network with wide gaps</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D_d</dt><dd>drainage density (channel length per unit area)</dd>
+            <dt>ΣL</dt><dd>total channel (skeleton) length in the basin</dd>
+            <dt>A</dt><dd>enclosing basin area</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.7 Junction angle ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Junction (confluence) angle</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The angle at which two tributaries join the receiving stream. In drainage networks
+          confluence angles relate systematically to slope and discharge ratio; on hyphae the
+          <span class="term">branch angle</span> distribution is a direct geometric trait — but it collapses near
+          crossings, so it is fragile under overlap.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two tributaries meeting a main channel with the confluence angle marked">
+            <g class="struct" stroke="var(--ink)">
+              <path d="M180,200 L180,120"/>
+              <path stroke="var(--blue)" d="M180,120 L110,46"/>
+              <path stroke="var(--green)" d="M180,120 L252,48"/>
+            </g>
+            <circle cx="180" cy="120" r="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.4"/>
+            <!-- angle arc -->
+            <path d="M150,86 A 46 46 0 0 1 214,88" fill="none" stroke="var(--vermillion)" stroke-width="1.6"/>
+            <text class="lbl-strong" x="160" y="78" fill="var(--vermillion)">θ</text>
+            <text class="lbl" x="86" y="40" fill="var(--blue)">tributary A</text>
+            <text class="lbl" x="220" y="42" fill="var(--green)">tributary B</text>
+            <text class="lbl" x="150" y="214">receiving channel</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> at each junction measure the angle between parent and daughters from the
+            local tangents. The distribution discriminates dichotomous from herringbone branching, but requires the
+            junction to be correctly resolved — the first thing to fail when hyphae cross.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">graph (geom)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Horton 1945; Lamour 2022</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — angle between parent and daughter segments at a junction (distribution mean/spread)</dd>
+            <dt>Units</dt><dd>degrees (0–180°)</dd>
+            <dt>Reads as</dt><dd>wide θ → splayed, dichotomous forking; narrow θ → acute, forward-swept herringbone lateral branching</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>confluence/branch angle between parent and daughter segments (degrees)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.8 DLA / DBM / viscous fingering ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DLA / DBM / viscous-fingering growth</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Place the measured fractal dimension on the <span class="term">Laplacian-growth</span>
+          family. Diffusion-limited aggregation gives ramified fronts at <span class="term">D≈1.71</span>;
+          dielectric breakdown (DBM) and viscous fingering (Saffman–Taylor) interpolate via an effective exponent
+          η; supply-rich growth fills in toward D→2. <b>The morphotype axis itself.</b></p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Ramified DLA cluster at D 1.71 versus compact cluster at D approaching 2, on one axis">
+            <!-- ramified cluster -->
+            <g transform="translate(20,16)">
+              <path class="struct" stroke="var(--blue)" stroke-width="1.6"
+                d="M50,90 L50,50 M50,70 L26,46 M50,66 L74,40 M74,40 L92,22 M74,40 L96,52
+                   M50,50 L34,28 M50,50 L66,24 M50,90 L30,110 M50,90 L72,112
+                   M30,110 L14,98 M30,110 L22,132 M72,112 L92,100 M72,112 L80,134"/>
+              <text class="lbl" x="14" y="158" fill="var(--blue)">DLA · ramified</text>
+              <text class="lbl-strong" x="26" y="174" fill="var(--blue)">D ≈ 1.71</text>
+            </g>
+            <!-- axis arrow -->
+            <line x1="128" y1="96" x2="232" y2="96" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axA)"/>
+            <text class="lbl" x="138" y="88">increasing supply / η</text>
+            <!-- compact cluster -->
+            <g transform="translate(250,16)">
+              <circle cx="50" cy="84" r="44" fill="rgba(213,94,0,.16)" stroke="var(--vermillion)" stroke-width="1.6"/>
+              <path stroke="var(--vermillion)" fill="none" stroke-width="1" opacity=".5"
+                d="M50,40 L50,128 M14,84 L86,84 M26,60 L74,108 M74,60 L26,108"/>
+              <text class="lbl" x="6" y="158" fill="var(--vermillion)">compact</text>
+              <text class="lbl-strong" x="40" y="174" fill="var(--vermillion)">D → 2</text>
+            </g>
+            <defs>
+              <marker id="axA" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> measure D from the mask, then read off where on the DLA→compact axis the
+            colony sits. The ramified end (D≈1.71) is diffusion-limited foraging; D→2 is supply-rich, compact
+            growth. This is exactly the regime classification microbial colonies already obey (Matsushita 1990,
+            D≈1.73).</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask (FD)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981; Niemeyer 1984; Saffman &amp; Taylor 1958; Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (with effective <b>η</b>) — box-counting fractal dimension placed on the Laplacian-growth axis</dd>
+            <dt>Units</dt><dd>dimensionless (D≈1.71 ramified → 2 compact)</dd>
+            <dt>Reads as</dt><dd>low D (→1.71) → open, ramified, diffusion-limited front; high D (→2) → dense, area-filling compact silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>fractal dimension of the growth front (≈1.71 for DLA, →2 for compact)</dd>
+            <dt>η</dt><dd>dielectric-breakdown effective exponent controlling ramification (η≈1 gives DLA)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.9 Minkowski functionals ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Minkowski functionals</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Three additive morphological numbers of a binary set: <span class="term">area</span>,
+          <span class="term">perimeter</span>, and the <span class="term">Euler characteristic χ</span>
+          (components − holes). Traced against threshold they form a complete, noise-tolerant whole-pattern
+          descriptor; χ indexes loop/anastomosis formation.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A noisy mask and its three Minkowski numbers area perimeter Euler over threshold">
+            <!-- noisy mask -->
+            <g transform="translate(12,18)">
+              <rect x="0" y="0" width="150" height="150" fill="none" stroke="var(--rule)"/>
+              <path fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="1.4"
+                d="M30,40 C60,20 110,30 124,70 C134,104 100,134 64,128 C28,122 12,70 30,40 Z"/>
+              <circle cx="74" cy="82" r="12" fill="var(--bg)" stroke="var(--green)" stroke-width="1.2"/>
+              <text class="lbl" x="60" y="86">hole</text>
+              <text class="lbl" x="40" y="166">noisy mask</text>
+            </g>
+            <!-- three curves vs threshold -->
+            <g transform="translate(196,20)">
+              <line class="axis" x1="0" y1="150" x2="140" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <polyline points="4,30 40,46 80,80 120,130" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <polyline points="4,120 50,70 90,72 132,120" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <polyline points="4,96 36,118 70,70 104,100 136,84" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+              <text class="lbl" x="86" y="38" fill="var(--green)">area</text>
+              <text class="lbl" x="86" y="64" fill="var(--blue)">perimeter</text>
+              <text class="lbl" x="78" y="148" fill="var(--vermillion)">χ (Euler)</text>
+              <text class="lbl" x="0" y="166">threshold →</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> compute the three additive functionals at each threshold. Because they
+            integrate over the whole set, they are stable on noisy masks; χ falling below 1 signals enclosed
+            holes / loops — the silhouette-level read on anastomosis.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mecke 2000</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A, P, χ</b> — area, perimeter, and Euler characteristic (components − holes) vs threshold</dd>
+            <dt>Units</dt><dd>A in px², P in px, χ integer</dd>
+            <dt>Reads as</dt><dd>high P at fixed A → rugged, filamentous boundary; χ &lt; 1 → enclosed loops/holes (anastomosis); χ &gt; 1 → many disconnected pieces</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area</dt><dd>filled area of the binary set (0-D Minkowski functional)</dd>
+            <dt>perimeter</dt><dd>boundary length of the set (1-D Minkowski functional)</dd>
+            <dt>χ</dt><dd>Euler characteristic = connected components − holes (2-D functional)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.10 Lacunarity & multifractal spectrum ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Lacunarity &amp; multifractal spectrum</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition"><span class="term">Lacunarity Λ(r)</span> is the gliding-box variance/mean² of mask
+          occupancy versus scale — gappiness that separates patterns with the <em>same</em> fractal dimension.
+          The <span class="term">multifractal spectrum f(α)</span> and its width Δα capture how the space-filling
+          exponent varies across the colony.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two equal-FD textures with different gappiness and a multifractal spectrum curve">
+            <!-- two textures, same FD, different lacunarity -->
+            <g transform="translate(12,18)">
+              <text class="lbl" x="0" y="-4">same D, different Λ</text>
+              <g fill="rgba(32,30,24,.6)">
+                <rect x="0" y="6" width="8" height="8"/><rect x="16" y="6" width="8" height="8"/><rect x="32" y="6" width="8" height="8"/>
+                <rect x="8" y="22" width="8" height="8"/><rect x="24" y="22" width="8" height="8"/><rect x="40" y="22" width="8" height="8"/>
+                <rect x="0" y="38" width="8" height="8"/><rect x="16" y="38" width="8" height="8"/><rect x="32" y="38" width="8" height="8"/>
+              </g>
+              <text class="lbl" x="2" y="66">low Λ (even)</text>
+              <g fill="rgba(32,30,24,.6)" transform="translate(0,86)">
+                <rect x="0" y="0" width="8" height="8"/><rect x="8" y="0" width="8" height="8"/>
+                <rect x="0" y="8" width="8" height="8"/><rect x="8" y="8" width="8" height="8"/>
+                <rect x="40" y="30" width="8" height="8"/><rect x="48" y="30" width="8" height="8"/>
+                <rect x="40" y="38" width="8" height="8"/><rect x="48" y="38" width="8" height="8"/>
+              </g>
+              <text class="lbl" x="2" y="150">high Λ (clumped)</text>
+            </g>
+            <!-- multifractal spectrum f(alpha) -->
+            <g transform="translate(196,22)">
+              <line class="axis" x1="0" y1="150" x2="140" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <path d="M14,148 Q70,12 130,148" fill="none" stroke="var(--purple)" stroke-width="2.4"/>
+              <line x1="14" y1="150" x2="14" y2="156" stroke="var(--purple)"/>
+              <line x1="130" y1="150" x2="130" y2="156" stroke="var(--purple)"/>
+              <text class="lbl-strong" x="40" y="168" fill="var(--purple)">Δα width</text>
+              <text class="lbl" x="0" y="186">α →</text>
+              <text class="lbl" x="-12" y="50" transform="rotate(-90 -12,50)">f(α)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> slide a box across scales for Λ; for f(α), compute generalized dimensions
+            D_q and Legendre-transform. Two colonies with identical fractal dimension but different clumping are
+            cleanly separated — the discriminator FD alone misses.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Plotnick 1996; Allain &amp; Cloitre 1991; Halsey 1986</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ</b>, <b>Δα</b> — gliding-box lacunarity &amp; multifractal spectrum width</dd>
+            <dt>Units</dt><dd>dimensionless (both scale-free)</dd>
+            <dt>Reads as</dt><dd>high Λ → clumped, gappy texture; high Δα → strongly heterogeneous space-filling across the pattern; low both → even, monofractal fill</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ(r)</dt><dd>lacunarity at box size r: gliding-box variance/mean² of mask occupancy</dd>
+            <dt>r</dt><dd>gliding-box scale (side length)</dd>
+            <dt>α</dt><dd>local (Hölder) singularity strength / space-filling exponent</dd>
+            <dt>f(α)</dt><dd>multifractal spectrum: fractal dimension of the set with exponent α</dd>
+            <dt>Δα</dt><dd>width of the f(α) spectrum (heterogeneity of scaling)</dd>
+            <dt>D_q</dt><dd>generalized (Rényi) dimensions, Legendre-transformed to f(α)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 1.11 Perimeter–area fractal dimension ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Perimeter–area fractal dimension</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Across many resolution scales (or many sub-colonies), regress
+          <span class="term">log P</span> on <span class="term">log A</span>; the slope gives a margin-ruggedness
+          fractal dimension. A smooth disc gives the Euclidean P∝√A; a fjord-like filamentous margin steepens it.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Smooth versus ragged outline and the log perimeter versus log area slope">
+            <!-- smooth vs ragged shapes -->
+            <g transform="translate(16,22)">
+              <circle cx="40" cy="50" r="34" fill="rgba(11,155,118,.10)" stroke="var(--green)" stroke-width="1.6"/>
+              <text class="lbl" x="14" y="100">smooth</text>
+              <path transform="translate(0,90)" fill="rgba(213,94,0,.10)" stroke="var(--vermillion)" stroke-width="1.4"
+                d="M40,16 L52,30 L70,26 L60,44 L78,52 L58,58 L66,78 L48,66 L36,82 L34,62 L14,66 L28,50 L12,40 L32,40 L26,22 Z"/>
+              <text class="lbl" x="16" y="168" fill="var(--vermillion)">ragged margin</text>
+            </g>
+            <!-- log-log plot -->
+            <g transform="translate(196,22)">
+              <line class="axis" x1="0" y1="150" x2="140" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <polyline points="8,134 50,118 92,104 132,92" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+              <polyline points="8,128 50,94 92,62 132,28" fill="none" stroke="var(--vermillion)" stroke-width="2.2"/>
+              <text class="lbl" x="92" y="100" fill="var(--green)">D≈1 smooth</text>
+              <text class="lbl" x="50" y="50" fill="var(--vermillion)">steeper = rugged</text>
+              <text class="lbl" x="0" y="166">log A →</text>
+              <text class="lbl" x="-12" y="48" transform="rotate(-90 -12,48)">log P</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> measure perimeter and area at multiple scales and fit the log–log slope.
+            Because it operates on the whole contour rather than counting indentations, it tolerates pixel noise
+            on the margin — a robust foraging-front complexity index.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask (contour)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mandelbrot 1983</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>f</sub></b> — margin-ruggedness fractal dimension from the log P vs log A slope</dd>
+            <dt>Units</dt><dd>dimensionless (D<sub>f</sub>≈1 smooth → ~2 maximally convoluted)</dd>
+            <dt>Reads as</dt><dd>high → deeply indented, fjord-like filamentous margin; low (→1) → smooth, near-circular outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>contour perimeter of the shape</dd>
+            <dt>A</dt><dd>enclosed area of the shape</dd>
+            <dt>D</dt><dd>perimeter–area (margin-ruggedness) fractal dimension from the log P vs log A slope (D≈1 smooth)</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- MARQUEE B — DLA ramified vs compact morphotype axis (full-width feature, expanded) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="Morphotype axis from ramified diffusion-limited growth at D 1.71 to compact growth at D approaching 2">
+        <!-- horizontal axis -->
+        <line x1="30" y1="120" x2="330" y2="120" stroke="var(--rule)" stroke-width="1.4"/>
+        <line x1="30" y1="120" x2="330" y2="120" stroke="var(--orange)" stroke-width="1" stroke-dasharray="2 4"/>
+        <text class="lbl-strong" x="30" y="210">η ≈ 1/D ≈ 1.71 (diffusion-limited)</text>
+        <text class="lbl-strong" x="246" y="210" fill="var(--vermillion)">D → 2</text>
+        <!-- ramified end -->
+        <g transform="translate(40,30)">
+          <path class="struct" stroke="var(--blue)" stroke-width="1.4"
+            d="M40,70 L40,34 M40,52 L18,30 M40,48 L62,28 M62,28 L78,12 M62,28 L82,40
+               M40,34 L24,14 M40,34 L56,12 M40,70 L20,90 M40,70 L60,92
+               M20,90 L6,80 M20,90 L12,108 M60,92 L78,80 M60,92 L68,110"/>
+          <text class="lbl" x="6" y="128" fill="var(--blue)">ramified · foraging front</text>
+        </g>
+        <!-- middle: dense branching morphology -->
+        <g transform="translate(150,40)">
+          <path class="struct" stroke="var(--green)" stroke-width="1.2"
+            d="M30,60 L30,36 M30,48 L16,34 M30,48 L44,34 M16,34 L8,22 M16,34 L20,18
+               M44,34 L52,22 M44,34 L42,16 M30,60 L18,76 M30,60 L42,76
+               M18,76 L8,68 M18,76 L14,90 M42,76 L52,68 M42,76 L46,90"/>
+          <text class="lbl" x="-6" y="108" fill="var(--green)">dense branching (DBM)</text>
+        </g>
+        <!-- compact end -->
+        <g transform="translate(252,40)">
+          <circle cx="44" cy="50" r="40" fill="rgba(213,94,0,.16)" stroke="var(--vermillion)" stroke-width="1.6"/>
+          <text class="lbl" x="6" y="118" fill="var(--vermillion)">compact · supply-rich</text>
+        </g>
+        <!-- arrowheads on axis -->
+        <path d="M30,120 L40,116 L40,124 Z" fill="var(--blue)"/>
+        <path d="M330,120 L320,116 L320,124 Z" fill="var(--vermillion)"/>
+      </svg>
+      <figcaption><b>Marquee — the morphotype axis.</b> One measured fractal dimension places a colony on the
+        Laplacian-growth continuum: <b>ramified DLA (D≈1.71)</b> = diffusion-limited foraging at the left, through
+        a dense-branching morphology in the middle, to <b>compact growth (D→2)</b> on the right. The effective
+        exponent η≈1/D moves a colony along the axis as nutrient supply rises — the single most physically grounded
+        descriptor in this section, and the one microbial colonies were already shown to obey.</figcaption>
+    </figure>
+
+    <!-- MARQUEE C — Minkowski / lacunarity as whole-pattern descriptors of a noisy mask -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="A noisy speckled mask reduced to a handful of whole-pattern numbers">
+        <!-- noisy mask on the left -->
+        <g transform="translate(14,18)">
+          <rect x="0" y="0" width="150" height="184" fill="none" stroke="var(--rule)"/>
+          <!-- main ramified body -->
+          <path fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="1.2"
+            d="M40,150 C30,110 50,96 48,70 C46,46 60,30 78,30 C96,30 108,52 100,76
+               C120,86 124,116 104,128 C112,150 84,166 64,158 C52,164 44,160 40,150 Z"/>
+          <circle cx="74" cy="92" r="9" fill="var(--bg)" stroke="var(--green)" stroke-width="1"/>
+          <!-- speckle noise -->
+          <g fill="rgba(32,30,24,.35)">
+            <circle cx="18" cy="24" r="2"/><circle cx="132" cy="40" r="2"/><circle cx="24" cy="120" r="2"/>
+            <circle cx="140" cy="150" r="2"/><circle cx="120" cy="170" r="2"/><circle cx="30" cy="60" r="2"/>
+            <circle cx="138" cy="96" r="2"/><circle cx="16" cy="160" r="2"/>
+          </g>
+          <text class="lbl" x="14" y="200">noisy speckled mask</text>
+        </g>
+        <!-- reduction arrow -->
+        <line x1="172" y1="100" x2="206" y2="100" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axC)"/>
+        <text class="lbl" x="170" y="92">reduce</text>
+        <!-- the numbers -->
+        <g transform="translate(214,30)">
+          <rect x="0" y="0" width="132" height="150" rx="8" fill="var(--surface)" stroke="var(--border)"/>
+          <text class="lbl-strong" x="14" y="26">D (mass)   = 1.74</text>
+          <text class="lbl-strong" x="14" y="50">Λ (lacun.) = 0.42</text>
+          <text class="lbl-strong" x="14" y="74">χ (Euler)  = 0</text>
+          <text class="lbl-strong" x="14" y="98">Δα (m-frac)= 0.8</text>
+          <text class="lbl-strong" x="14" y="122">P/A frac   = 1.3</text>
+          <text class="lbl" x="14" y="144">whole-pattern, no tracing</text>
+        </g>
+        <defs>
+          <marker id="axC" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>Marquee — whole-pattern descriptors of a noisy mask.</b> Minkowski functionals, lacunarity,
+        the multifractal width, and the perimeter–area dimension collapse a speckled, hole-pierced mask into a
+        handful of scale-integrated numbers <b>without ever isolating a single hypha</b>. Because each integrates
+        over the whole set, isolated speckles barely move them — this is why the geophysics fractal/Minkowski
+        toolkit is the 🟢 B-robust backbone for confluent mycelium.</figcaption>
+    </figure>
+
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 2 — ASTRONOMY: THIN STRUCTURES IN NOISE ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">2 · Astronomy — thin structures in noise</h2>
+    <p class="section-sub">Astronomy is the one analog field whose entire methodology is built <em>around</em> the
+      low-SNR noise problem the biology fields assume away — extracting sub-pixel-faint filaments and streaks from
+      noisy frames. The recurring trick is <b>integration beats thresholding</b>: accumulate faint signal along a
+      line, across scales, or over topology before committing, so a per-pixel-invisible structure becomes a clear
+      peak. This is the front-end (denoise → enhance → confidence-ranked trace) that a faint, dense, overlapping
+      hyphal field on textured agar most needs.</p>
+    <hr class="rule">
+
+    <!-- MARQUEE D — integration beats thresholding (full-width feature) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="A faint line invisible per pixel in noise becomes a clear peak after line integration">
+        <!-- noisy strip with hidden line -->
+        <g transform="translate(14,14)">
+          <rect x="0" y="0" width="180" height="70" fill="rgba(32,30,24,.04)" stroke="var(--rule)"/>
+          <!-- random speckle -->
+          <g fill="rgba(32,30,24,.30)">
+            <circle cx="12" cy="14" r="1.6"/><circle cx="40" cy="50" r="1.6"/><circle cx="70" cy="20" r="1.6"/>
+            <circle cx="96" cy="58" r="1.6"/><circle cx="120" cy="30" r="1.6"/><circle cx="150" cy="48" r="1.6"/>
+            <circle cx="24" cy="40" r="1.6"/><circle cx="56" cy="12" r="1.6"/><circle cx="86" cy="44" r="1.6"/>
+            <circle cx="110" cy="60" r="1.6"/><circle cx="138" cy="18" r="1.6"/><circle cx="168" cy="36" r="1.6"/>
+            <circle cx="30" cy="62" r="1.6"/><circle cx="100" cy="14" r="1.6"/><circle cx="160" cy="60" r="1.6"/>
+          </g>
+          <!-- the faint embedded line (slightly above noise) -->
+          <line x1="6" y1="44" x2="174" y2="30" stroke="rgba(0,114,178,.45)" stroke-width="2.2"/>
+          <text class="lbl" x="4" y="-2">noisy strip — line invisible per pixel</text>
+        </g>
+        <!-- integration arrow -->
+        <line x1="100" y1="100" x2="100" y2="126" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axD)"/>
+        <text class="lbl" x="106" y="118">integrate along every line (Radon / matched filter)</text>
+        <!-- accumulator with a clear peak -->
+        <g transform="translate(14,134)">
+          <line class="axis" x1="0" y1="66" x2="320" y2="66"/>
+          <line class="axis" x1="0" y1="66" x2="0" y2="2"/>
+          <!-- noisy baseline -->
+          <polyline fill="none" stroke="var(--text-dim)" stroke-width="1"
+            points="0,58 20,60 40,56 60,61 80,55 100,59 120,57 140,18 160,55 180,60 200,56 220,59 240,57 260,60 280,55 300,59 320,58"/>
+          <!-- highlight the peak -->
+          <circle cx="140" cy="18" r="3.5" fill="var(--blue)"/>
+          <text class="lbl-strong" x="118" y="12" fill="var(--blue)">clear peak</text>
+          <text class="lbl" x="0" y="80">accumulator (angle, offset) →</text>
+        </g>
+        <defs>
+          <marker id="axD" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption><b>Marquee — integration beats thresholding.</b> A faint line buried in speckle is invisible to
+        any per-pixel brightness cut. Integrating along every candidate line (Radon transform) or cross-correlating
+        with a line-shaped template (matched filter) sums the sub-noise pixels <b>coherently</b>: SNR grows as
+        √(pixels integrated), so the line emerges as a sharp peak in the accumulator. The single governing
+        principle of this whole section.</figcaption>
+    </figure>
+
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 2.1 Matched filter / Radon line integration ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Matched filter / Radon line integration</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Cross-correlate with a <span class="term">template</span> matched to the signal shape
+          (provably optimal SNR in Gaussian noise), or integrate along every possible line with the
+          <span class="term">Radon transform</span> so a faint streak becomes a peak. Both sum the whole feature's
+          flux instead of trusting low-SNR edge pixels.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A thin-line template convolved with a noisy image gives a peak">
+            <g transform="translate(14,18)">
+              <text class="lbl" x="0" y="-4">thin-line kernel</text>
+              <rect x="0" y="0" width="80" height="80" fill="var(--surface)" stroke="var(--rule)"/>
+              <rect x="34" y="6" width="12" height="68" fill="rgba(0,114,178,.45)"/>
+            </g>
+            <line x1="104" y1="58" x2="138" y2="58" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axMf)"/>
+            <text class="lbl" x="104" y="50">⊛ image</text>
+            <g transform="translate(150,18)">
+              <line class="axis" x1="0" y1="150" x2="180" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="6"/>
+              <polyline fill="none" stroke="var(--blue)" stroke-width="2"
+                points="0,140 30,138 60,142 90,30 120,141 150,139 180,140"/>
+              <circle cx="90" cy="30" r="3.4" fill="var(--blue)"/>
+              <text class="lbl-strong" x="70" y="24" fill="var(--blue)">SNR peak</text>
+              <text class="lbl" x="0" y="166">position →</text>
+            </g>
+            <defs>
+              <marker id="axMf" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> a thin-line kernel matched to hyphal width is the cheapest principled
+            faint-hypha enhancer; Radon adds no prior on angle or position, so straight/gently-curved hyphae and
+            growth leaders surface even below the per-pixel floor.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale (+template)</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">faint straight-hypha detection &amp; enhancement by line integration</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vio &amp; Andreani 2016; Nir et al. 2018</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>SNR</dt><dd>signal-to-noise ratio of the detection; grows as √(pixels integrated)</dd>
+            <dt>Radon transform</dt><dd>integral of image intensity along every candidate line (angle, offset)</dd>
+            <dt>template</dt><dd>line-shaped kernel matched to the signal, cross-correlated with the image</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.2 Rolling Hough Transform ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Rolling Hough Transform (RHT)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Run a <span class="term">local Hough transform</span> over a disk around every pixel,
+          returning the probability that the pixel belongs to a coherent linear structure plus its orientation. It
+          asks "is there local linear coherence?" not "is this pixel bright?", so faint coherent hyphae survive
+          while incoherent agar texture averages out.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A local Hough disk over noisy pixels extracts a coherent orientation">
+            <!-- noisy field with a faint diagonal coherence -->
+            <g transform="translate(14,16)">
+              <g fill="rgba(32,30,24,.30)">
+                <circle cx="20" cy="20" r="2"/><circle cx="60" cy="40" r="2"/><circle cx="40" cy="80" r="2"/>
+                <circle cx="90" cy="24" r="2"/><circle cx="110" cy="70" r="2"/><circle cx="30" cy="110" r="2"/>
+                <circle cx="120" cy="110" r="2"/><circle cx="70" cy="120" r="2"/>
+              </g>
+              <!-- coherent faint pixels along a diagonal -->
+              <g fill="rgba(0,114,178,.7)">
+                <circle cx="44" cy="44" r="2.4"/><circle cx="60" cy="58" r="2.4"/><circle cx="76" cy="72" r="2.4"/>
+                <circle cx="92" cy="86" r="2.4"/><circle cx="108" cy="100" r="2.4"/>
+              </g>
+              <!-- the local hough disk -->
+              <circle cx="76" cy="72" r="34" fill="none" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="4 3"/>
+              <text class="lbl" x="0" y="150">local Hough disk</text>
+            </g>
+            <!-- orientation readout (rose) -->
+            <g transform="translate(232,70)">
+              <circle cx="50" cy="40" r="40" fill="none" stroke="var(--rule)"/>
+              <line x1="50" y1="40" x2="78" y2="68" stroke="var(--blue)" stroke-width="3"/>
+              <line x1="50" y1="40" x2="22" y2="12" stroke="var(--blue)" stroke-width="3"/>
+              <text class="lbl-strong" x="20" y="100" fill="var(--blue)">orientation θ + P(linear)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> per pixel, the disk-local Hough accumulates only direction-coherent
+            neighbours; random speckle cancels. Output is an orientation/anisotropy field at low SNR — feeds the
+            Family-D anisotropy metrics and the retracing cost surface's orientation term.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">noise-robust hyphal orientation / anisotropy field; tip orientation</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Clark, Peek &amp; Putman 2014</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>local linear orientation returned at each pixel (degrees)</dd>
+            <dt>P(linear)</dt><dd>probability the pixel belongs to a coherent linear structure</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.3 DisPerSE Morse-persistence skeleton ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DisPerSE — Morse-persistence skeleton</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Find filaments as <span class="term">ridge lines</span> (ascending 1-manifolds)
+          between density critical points, then prune by <span class="term">persistence</span> — the density
+          contrast from a feature's birth to its death. Persistence gives each branch a statistical significance
+          rather than a brightness cut, so noise features are removed with confidence.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A ridge line between a maximum and saddle, low-persistence noise pruned">
+            <!-- critical points and ridge -->
+            <g class="struct">
+              <path stroke="var(--blue)" d="M50,60 C100,70 150,150 220,160"/>
+            </g>
+            <circle cx="50" cy="60" r="5" fill="var(--vermillion)"/>
+            <text class="lbl" x="20" y="50" fill="var(--vermillion)">max</text>
+            <circle cx="220" cy="160" r="5" fill="var(--blue)"/>
+            <text class="lbl" x="226" y="164" fill="var(--blue)">saddle</text>
+            <text class="lbl-strong" x="110" y="118">persistent ridge</text>
+            <!-- low-persistence noise stub (pruned) -->
+            <path stroke="var(--faint)" stroke-width="1.6" fill="none" stroke-dasharray="3 3" d="M280,60 C290,80 286,96 300,108"/>
+            <circle cx="280" cy="60" r="3" fill="none" stroke="var(--faint)"/>
+            <circle cx="300" cy="108" r="3" fill="none" stroke="var(--faint)"/>
+            <text class="lbl" x="250" y="48" fill="var(--faint)">low-persistence</text>
+            <line x1="266" y1="86" x2="312" y2="86" stroke="var(--vermillion)" stroke-width="1.4"/>
+            <line x1="286" y1="66" x2="294" y2="106" stroke="var(--vermillion)" stroke-width="1.4"/>
+            <text class="lbl" x="250" y="128" fill="var(--vermillion)">pruned as noise</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> topological persistence is provably noise-robust and parameter/scale-free.
+            A noise-robust skeletonizer that won't hallucinate branches from texture; persistence doubles as a
+            per-branch confidence — the same primitive as neuroscience's TMD barcode.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grid / point set</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">noise-robust skeleton; persistence = per-branch confidence ranking</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sousbie 2011</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>persistence</dt><dd>density contrast from a feature's birth to its death; pruning threshold = significance</dd>
+            <dt>max</dt><dd>density maximum (critical point) anchoring a ridge</dd>
+            <dt>saddle</dt><dd>saddle critical point at the other end of the ridge</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.4 Multiscale Hessian / Frangi vesselness ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Multiscale Hessian / Frangi tube enhancement</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Smooth at many scales and read the <span class="term">Hessian eigenvalues</span>:
+          one small (along the tube) and one large negative (across it) flags a locally tubular structure. The
+          eigenvalue-ratio "vesselness" enhances tubes of any width and suppresses blobs and isotropic noise.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hessian eigenvectors along and across a faint tube, with a vesselness response">
+            <!-- faint tube -->
+            <path d="M30,150 C100,120 160,110 250,90" stroke="rgba(0,114,178,.35)" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path class="struct" stroke="var(--blue)" d="M30,150 C100,120 160,110 250,90"/>
+            <!-- eigenvectors at a point -->
+            <g transform="translate(150,114)">
+              <line x1="-22" y1="6" x2="22" y2="-6" stroke="var(--green)" stroke-width="2.4" marker-end="url(#axH)"/>
+              <text class="lbl" x="24" y="-6" fill="var(--green)">λ₁≈0 (along)</text>
+              <line x1="-6" y1="-22" x2="6" y2="22" stroke="var(--vermillion)" stroke-width="2.4" marker-end="url(#axH)"/>
+              <text class="lbl" x="-58" y="36" fill="var(--vermillion)">λ₂≪0 (across)</text>
+            </g>
+            <!-- multiscale response bars -->
+            <g transform="translate(252,150)">
+              <rect x="0" y="-10" width="14" height="10" fill="rgba(11,155,118,.4)"/>
+              <rect x="18" y="-30" width="14" height="30" fill="rgba(11,155,118,.7)"/>
+              <rect x="36" y="-18" width="14" height="18" fill="rgba(11,155,118,.4)"/>
+              <text class="lbl" x="0" y="16">scale →</text>
+              <text class="lbl-strong" x="0" y="-40">vesselness</text>
+            </g>
+            <defs>
+              <marker id="axH" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
+                <path d="M0,0 L5,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> the eigenvalue ratio responds maximally at the scale matching the tube
+            width, so a scale ladder enhances thick and thin hyphae alike before thresholding. The single most
+            portable pre-filter — already recommended by the vascular analog and proposed for the cost surface.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">variable-width faint-hypha enhancement before segmentation</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Cautun et al. 2013</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>Hessian eigenvalue along the tube (≈0)</dd>
+            <dt>λ₂</dt><dd>Hessian eigenvalue across the tube (large negative, ≪0)</dd>
+            <dt>vesselness</dt><dd>eigenvalue-ratio response; peaks at the scale matching tube width</dd>
+            <dt>scale</dt><dd>Gaussian smoothing scale swept to match hyphal width</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.5 Steger unbiased curvilinear detector ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Steger unbiased curvilinear detector</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Use the <span class="term">2nd directional derivative</span> (Hessian of Gaussian)
+          to locate the line's centre to <span class="term">subpixel</span> precision <em>and</em> recover its
+          width from the profile — with an explicit line model that removes the asymmetry bias of naive ridge
+          detection. The best low-resolution tracer.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A faint tube with a subpixel centreline and recovered width">
+            <!-- faint broad tube -->
+            <path d="M24,120 C90,96 170,104 320,88" stroke="rgba(0,114,178,.30)" stroke-width="22" fill="none" stroke-linecap="round"/>
+            <!-- subpixel centreline -->
+            <path d="M24,120 C90,96 170,104 320,88" stroke="var(--vermillion)" stroke-width="1.6" fill="none"/>
+            <text class="lbl-strong" x="120" y="84" fill="var(--vermillion)">subpixel centreline</text>
+            <!-- width markers -->
+            <g transform="translate(220,99)">
+              <line x1="0" y1="-11" x2="0" y2="11" stroke="var(--green)" stroke-width="2"/>
+              <line x1="-4" y1="-11" x2="4" y2="-11" stroke="var(--green)" stroke-width="2"/>
+              <line x1="-4" y1="11" x2="4" y2="11" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl" x="8" y="4" fill="var(--green)">width w</text>
+            </g>
+            <!-- 2nd-derivative profile inset -->
+            <g transform="translate(40,150)">
+              <line class="axis" x1="0" y1="40" x2="120" y2="40"/>
+              <path d="M0,38 C30,38 40,8 60,8 C80,8 90,38 120,38" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <text class="lbl" x="0" y="58">profile across tube → centre at max</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the explicit line model fits the transverse profile, giving subpixel
+            centreline and diameter even when the hypha is only a few pixels across. Density-tolerant and already
+            standard in biomedical vessel/neurite tracing — top pick for tracing faint hyphae.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">subpixel hyphal centreline + width at poor resolution</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Steger 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>w</dt><dd>recovered line/hypha width from the transverse intensity profile</dd>
+            <dt>2nd directional derivative</dt><dd>Hessian of Gaussian; its extremum locates the subpixel centreline</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.6 Starlet / curvelet denoising ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Starlet / curvelet denoising</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The isotropic undecimated (à trous) <span class="term">starlet</span> wavelet models
+          noise per scale and thresholds via a multiresolution support; <span class="term">curvelets</span> add
+          anisotropic atoms matched to thin curved edges. A pre-denoise that strips agar texture while preserving
+          faint thin structure.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An image split into wavelet scales, noise thresholded per scale, then reconstructed">
+            <!-- scale stack -->
+            <g transform="translate(14,16)">
+              <rect x="0" y="0" width="70" height="44" fill="rgba(32,30,24,.10)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="26">fine (noise)</text>
+              <rect x="0" y="54" width="70" height="44" fill="rgba(0,114,178,.16)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="80">mid (hyphae)</text>
+              <rect x="0" y="108" width="70" height="44" fill="rgba(217,138,0,.16)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="134">coarse (bg)</text>
+            </g>
+            <!-- per-scale threshold -->
+            <g transform="translate(110,16)">
+              <text class="lbl" x="0" y="26">threshold ×</text>
+              <text class="lbl-strong" x="0" y="80" fill="var(--blue)">keep ✓</text>
+              <text class="lbl" x="0" y="134">subtract</text>
+            </g>
+            <line x1="180" y1="80" x2="214" y2="80" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axW)"/>
+            <text class="lbl" x="176" y="72">reconstruct</text>
+            <!-- clean output -->
+            <g transform="translate(224,30)">
+              <rect x="0" y="0" width="120" height="120" fill="var(--surface)" stroke="var(--border)"/>
+              <path class="struct" stroke="var(--blue)" d="M14,100 C50,70 70,60 106,30 M40,90 L60,72 M70,60 L92,66"/>
+              <text class="lbl" x="10" y="116">clean thin hyphae</text>
+            </g>
+            <defs>
+              <marker id="axW" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> decompose, threshold noise per scale (curvelet atoms align with curved
+            hyphae), and reconstruct. The SNR-lifting front-end that pairs with the matched/Radon filter to lift
+            faint hyphae above the per-pixel floor.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">pre-denoise agar texture while keeping thin curved hyphae</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Starck et al. 2007; Starck, Candès &amp; Donoho 2002</span></div>
+        </div>
+      </article>
+
+      <!-- ===== 2.7 SExtractor multi-threshold deblending ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">SExtractor multi-threshold deblending</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Estimate a background mesh, σ-threshold to connected components, then run a
+          <span class="term">flux multi-thresholding</span> tree that splits blended objects at their saddle
+          points. The classic recipe for separating <em>touching/overlapping</em> sources.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two blended blobs split at a saddle by rising threshold contours">
+            <!-- blended pair with contour levels -->
+            <g transform="translate(40,20)">
+              <path fill="rgba(11,155,118,.10)" stroke="var(--green)" stroke-width="1.4"
+                d="M20,90 C20,40 80,40 90,80 C100,40 160,40 160,90 C160,140 100,140 90,100 C80,140 20,140 20,90 Z"/>
+              <ellipse cx="55" cy="90" rx="22" ry="30" fill="none" stroke="var(--blue)" stroke-width="1.2"/>
+              <ellipse cx="125" cy="90" rx="22" ry="30" fill="none" stroke="var(--blue)" stroke-width="1.2"/>
+              <ellipse cx="55" cy="90" rx="10" ry="16" fill="none" stroke="var(--vermillion)" stroke-width="1.2"/>
+              <ellipse cx="125" cy="90" rx="10" ry="16" fill="none" stroke="var(--vermillion)" stroke-width="1.2"/>
+              <!-- saddle -->
+              <line x1="90" y1="60" x2="90" y2="120" stroke="var(--text-dim)" stroke-width="1.4" stroke-dasharray="3 3"/>
+              <text class="lbl-strong" x="74" y="54">saddle split</text>
+            </g>
+            <text class="lbl" x="40" y="186">rising flux thresholds re-separate the two peaks</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> as the threshold rises, a single blended blob breaks into separate peaks
+            at the saddle; the tree decides where to split. Separates touching hyphae by relative-brightness
+            topology — but fragments near the noise floor, so pair with wavelet denoise or persistence deblending.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">raw grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">deblend overlapping/touching hyphae via multi-threshold tree</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bertin &amp; Arnouts 1996</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>σ</dt><dd>background noise standard deviation; detection threshold is a multiple of σ above the mesh</dd>
+            <dt>saddle</dt><dd>flux level between two peaks where a blended blob is split</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.8 FilFinder spine + width ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">FilFinder spine + width</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Adaptive-threshold the frame to a mask, reduce to a 1-pixel <span class="term">medial
+          axis</span>, graph-prune to spines, then fit <span class="term">perpendicular intensity profiles</span>
+          (Gaussian/Plummer) to recover FWHM width along each spine. The ISM-filament pipeline pattern.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A filament reduced to a medial-axis spine with a perpendicular width profile">
+            <!-- filament body -->
+            <path d="M24,150 C90,120 170,128 320,96" stroke="rgba(11,155,118,.28)" stroke-width="18" fill="none" stroke-linecap="round"/>
+            <!-- spine -->
+            <path d="M24,150 C90,120 170,128 320,96" stroke="var(--ink)" stroke-width="1.6" fill="none"/>
+            <text class="lbl-strong" x="40" y="118">medial-axis spine</text>
+            <!-- perpendicular profile -->
+            <g transform="translate(180,124)">
+              <line x1="0" y1="-26" x2="0" y2="26" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="3 3"/>
+              <path d="M-40,40 C-16,40 -8,6 0,6 C8,6 16,40 40,40" fill="none" stroke="var(--blue)" stroke-width="2" transform="translate(0,-2)"/>
+              <text class="lbl" x="6" y="56" fill="var(--blue)">profile → FWHM</text>
+            </g>
+            <text class="lbl" x="40" y="186">length · curvature · branch-count from the spine graph</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> mask → skeleton → graph metrics (length, curvature, branch count) plus a
+            Gaussian/Plummer fit to the transverse cut for width. The direct analog of hyphal centreline +
+            diameter, though width needs ≥3–4 px of transverse resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale → mask → spine</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">hyphal centreline, length/branch-count, and diameter</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Koch &amp; Rosolowsky 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>w</b>, <b>ℓ</b>, <b>κ</b> — FWHM spine width, spine length, and curvature per filament</dd>
+            <dt>Units</dt><dd>w, ℓ in px (µm after calibration); κ in px⁻¹</dd>
+            <dt>Reads as</dt><dd>large ℓ, low κ → long straight spines; high κ → tortuous, meandering spines; large w → thick or bundled filaments</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>FWHM</dt><dd>full width at half maximum of the perpendicular intensity profile = spine width</dd>
+            <dt>medial axis</dt><dd>1-pixel-wide skeleton (spine) of the mask</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2.9 U-Net thin-feature segmentation ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">U-Net (Dice/Combo loss) thin-feature segmentation</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">An encoder–decoder network does pixel segmentation; a <span class="term">Combo
+          (BCE + Dice) loss</span> handles the extreme class imbalance of thin sparse positives against a vast
+          background. A Hough pass can clean the predicted line. The learned route once labels exist.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="U-Net encoder-decoder with skip connections producing a thin-feature mask">
+            <!-- encoder -->
+            <g fill="rgba(0,114,178,.16)" stroke="var(--blue)" stroke-width="1.2">
+              <rect x="20" y="40" width="20" height="120"/>
+              <rect x="48" y="60" width="18" height="80"/>
+              <rect x="74" y="80" width="16" height="40"/>
+            </g>
+            <!-- bottleneck -->
+            <rect x="98" y="92" width="20" height="16" fill="rgba(184,99,143,.2)" stroke="var(--purple)"/>
+            <!-- decoder -->
+            <g fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="1.2">
+              <rect x="126" y="80" width="16" height="40"/>
+              <rect x="150" y="60" width="18" height="80"/>
+              <rect x="176" y="40" width="20" height="120"/>
+            </g>
+            <!-- skip connections -->
+            <g stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="3 3">
+              <line x1="40" y1="50" x2="176" y2="50"/>
+              <line x1="66" y1="68" x2="150" y2="68"/>
+            </g>
+            <text class="lbl" x="22" y="178">encode ↓</text>
+            <text class="lbl" x="150" y="178">decode ↑</text>
+            <!-- output mask -->
+            <g transform="translate(212,52)">
+              <rect x="0" y="0" width="120" height="96" fill="var(--surface)" stroke="var(--border)"/>
+              <path class="struct" stroke="var(--vermillion)" d="M10,80 C40,50 60,46 90,22 M40,68 L56,52 M64,48 L84,54"/>
+              <text class="lbl" x="6" y="92">thin-feature mask</text>
+              <text class="lbl-strong" x="6" y="-6" fill="var(--purple)">Combo (BCE+Dice) loss</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> skip connections preserve thin-structure detail through the bottleneck;
+            the Dice/Combo loss keeps sparse positives from being washed out. The imbalance-aware loss design
+            transfers directly to pixel-wise hyphal segmentation; learned-mask → Hough cleanup is a strong template.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">image + pixel masks</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">imbalance-aware pixel-wise hyphal segmentation</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Jeong et al. 2024</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>BCE</dt><dd>binary cross-entropy, the per-pixel classification loss term</dd>
+            <dt>Dice</dt><dd>Dice-overlap loss term, robust to thin/sparse-positive class imbalance</dd>
+            <dt>Combo loss</dt><dd>weighted sum of BCE + Dice used to train the network</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- MARQUEE E — Rolling Hough Transform (full-width feature, expanded) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="The rolling Hough disk sweeps across a noisy field extracting a coherent orientation map">
+        <!-- noisy field -->
+        <g transform="translate(14,16)">
+          <rect x="0" y="0" width="200" height="170" fill="rgba(32,30,24,.03)" stroke="var(--rule)"/>
+          <!-- incoherent speckle -->
+          <g fill="rgba(32,30,24,.28)">
+            <circle cx="24" cy="22" r="1.8"/><circle cx="70" cy="40" r="1.8"/><circle cx="120" cy="20" r="1.8"/>
+            <circle cx="170" cy="50" r="1.8"/><circle cx="40" cy="120" r="1.8"/><circle cx="150" cy="130" r="1.8"/>
+            <circle cx="96" cy="150" r="1.8"/><circle cx="180" cy="100" r="1.8"/><circle cx="20" cy="80" r="1.8"/>
+          </g>
+          <!-- coherent faint diagonal hyphae -->
+          <g stroke="rgba(0,114,178,.5)" stroke-width="2">
+            <line x1="20" y1="40" x2="120" y2="120"/>
+            <line x1="60" y1="20" x2="160" y2="100"/>
+            <line x1="100" y1="50" x2="180" y2="116"/>
+          </g>
+          <!-- rolling disk at a few positions -->
+          <circle cx="70" cy="70" r="24" fill="none" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <circle cx="130" cy="92" r="24" fill="none" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".55"/>
+          <text class="lbl" x="6" y="186">noisy field + rolling local-Hough disk</text>
+        </g>
+        <!-- coherent orientation output -->
+        <g transform="translate(232,30)">
+          <rect x="0" y="0" width="120" height="150" fill="var(--surface)" stroke="var(--border)"/>
+          <g stroke="var(--blue)" stroke-width="2.4">
+            <line x1="20" y1="30" x2="44" y2="54"/><line x1="56" y1="26" x2="80" y2="50"/><line x1="92" y1="34" x2="116" y2="58"/>
+            <line x1="20" y1="80" x2="44" y2="104"/><line x1="56" y1="76" x2="80" y2="100"/><line x1="92" y1="84" x2="116" y2="108"/>
+          </g>
+          <text class="lbl-strong" x="10" y="142" fill="var(--blue)">coherent orientation map</text>
+        </g>
+      </svg>
+      <figcaption><b>Marquee — Rolling Hough Transform.</b> The local Hough disk rolls across the noisy field;
+        at each pixel it accumulates only neighbours that share a direction, so the three faint coherent hyphae
+        register a strong oriented response while the incoherent speckle cancels. The output is a clean
+        <b>orientation/anisotropy field at low SNR</b> — "is there local linear coherence?" beats "is this pixel
+        bright?".</figcaption>
+    </figure>
+
+    <!-- MARQUEE F — DisPerSE persistence pruning (full-width feature) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="A persistent ridge between critical points kept while low-persistence features are pruned, with a persistence diagram">
+        <!-- density landscape with ridge -->
+        <g transform="translate(14,14)">
+          <rect x="0" y="0" width="200" height="170" fill="rgba(32,30,24,.03)" stroke="var(--rule)"/>
+          <!-- the persistent ridge between max and saddle -->
+          <path d="M24,40 C80,55 120,120 180,140" stroke="var(--blue)" stroke-width="2.6" fill="none"/>
+          <circle cx="24" cy="40" r="5" fill="var(--vermillion)"/><text class="lbl" x="28" y="34" fill="var(--vermillion)">max</text>
+          <circle cx="180" cy="140" r="5" fill="var(--blue)"/><text class="lbl" x="150" y="156" fill="var(--blue)">saddle</text>
+          <text class="lbl-strong" x="70" y="86">persistent ridge → kept</text>
+          <!-- low-persistence stubs (pruned, faint) -->
+          <g stroke="var(--faint)" stroke-width="1.4" fill="none" stroke-dasharray="3 3">
+            <path d="M60,150 C66,140 64,134 74,128"/>
+            <path d="M140,30 C146,40 142,46 152,52"/>
+          </g>
+          <g fill="none" stroke="var(--faint)"><circle cx="60" cy="150" r="3"/><circle cx="140" cy="30" r="3"/></g>
+          <text class="lbl" x="6" y="186" fill="var(--faint)">low-persistence noise features → pruned</text>
+        </g>
+        <!-- persistence diagram -->
+        <g transform="translate(232,24)">
+          <line class="axis" x1="0" y1="150" x2="120" y2="150"/>
+          <line class="axis" x1="0" y1="150" x2="0" y2="10"/>
+          <line x1="0" y1="150" x2="120" y2="30" stroke="var(--rule)" stroke-dasharray="3 3"/>
+          <!-- persistent point far from diagonal -->
+          <circle cx="40" cy="40" r="4" fill="var(--blue)"/>
+          <text class="lbl" x="44" y="40" fill="var(--blue)">signal</text>
+          <!-- noise points near diagonal -->
+          <g fill="var(--faint)">
+            <circle cx="80" cy="92" r="2.6"/><circle cx="96" cy="116" r="2.6"/><circle cx="60" cy="78" r="2.6"/>
+          </g>
+          <text class="lbl" x="56" y="138" fill="var(--faint)">noise (near diagonal)</text>
+          <text class="lbl" x="0" y="166">birth →</text>
+          <text class="lbl" x="-12" y="46" transform="rotate(-90 -12,46)">death</text>
+        </g>
+      </svg>
+      <figcaption><b>Marquee — DisPerSE persistence.</b> Filaments are ridge lines between critical points (a
+        density maximum and a saddle). Ranking features by birth→death <b>persistence</b> places true structure
+        far from the diagonal of the persistence diagram and noise near it; a single persistence cut prunes the
+        low-persistence stubs with statistical confidence rather than a brightness threshold — so texture never
+        becomes a hallucinated branch.</figcaption>
+    </figure>
+
+    <!-- MARQUEE G — Steger subpixel curvilinear detector (full-width feature) -->
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 360 220" role="img" aria-label="The Steger detector places a subpixel centreline and recovers width on a faint few-pixel tube">
+        <!-- pixel grid -->
+        <g stroke="var(--rule)" stroke-width="0.8" opacity=".7">
+          <path d="M20,20 H340 M20,44 H340 M20,68 H340 M20,92 H340 M20,116 H340 M20,140 H340
+                   M20,20 V140 M52,20 V140 M84,20 V140 M116,20 V140 M148,20 V140 M180,20 V140
+                   M212,20 V140 M244,20 V140 M276,20 V140 M308,20 V140 M340,20 V140"/>
+        </g>
+        <!-- faint few-pixel tube straddling pixels -->
+        <path d="M24,116 C90,96 180,86 336,70" stroke="rgba(0,114,178,.28)" stroke-width="20" fill="none" stroke-linecap="round"/>
+        <!-- subpixel centreline (not snapped to grid) -->
+        <path d="M24,116 C90,96 180,86 336,70" stroke="var(--vermillion)" stroke-width="1.8" fill="none"/>
+        <text class="lbl-strong" x="120" y="60" fill="var(--vermillion)">subpixel centreline (between pixels)</text>
+        <!-- width bracket -->
+        <g transform="translate(220,90)">
+          <line x1="0" y1="-10" x2="0" y2="10" stroke="var(--green)" stroke-width="2"/>
+          <line x1="-5" y1="-10" x2="5" y2="-10" stroke="var(--green)" stroke-width="2"/>
+          <line x1="-5" y1="10" x2="5" y2="10" stroke="var(--green)" stroke-width="2"/>
+          <text class="lbl" x="8" y="4" fill="var(--green)">recovered width w</text>
+        </g>
+        <!-- 2nd-derivative response -->
+        <g transform="translate(40,156)">
+          <line class="axis" x1="0" y1="40" x2="280" y2="40"/>
+          <path d="M0,38 C60,38 90,8 140,8 C190,8 220,38 280,38" fill="none" stroke="var(--blue)" stroke-width="2"/>
+          <line x1="140" y1="8" x2="140" y2="40" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text class="lbl" x="0" y="56">2nd directional derivative (Hessian of Gaussian) → centre at the extremum</text>
+        </g>
+      </svg>
+      <figcaption><b>Marquee — Steger subpixel curvilinear detector.</b> Even when a faint hypha is only a few
+        pixels wide and straddles the grid, the second-derivative line model fixes the centreline <b>between</b>
+        pixels and reads the diameter off the transverse profile — an explicit, unbiased line model that degrades
+        gracefully at low resolution. The top pick for tracing faint hyphae, already standard in vessel/neurite
+        work.</figcaption>
+    </figure>
+
+    <!-- RANKED best transfers -->
+    <div class="callout green" style="margin-top:22px">
+      <h3>Best transfers to dense, overlapping, faint hyphae — ranked</h3>
+      <p>From the astronomy companion's assessment against PhenoTypic's real operating point (poorly resolved,
+        dense, overlapping):</p>
+      <ul>
+        <li><b>1 · Steger unbiased curvilinear detector</b> — subpixel centreline + width at poor resolution,
+          density-tolerant. <i>Top pick for tracing.</i></li>
+        <li><b>2 · Rolling Hough Transform</b> — noise-robust orientation/anisotropy field at low SNR.
+          <i>Top pick for orientation.</i></li>
+        <li><b>3 · Multiscale Hessian ridge (NEXUS+ / Frangi-style)</b> — variable-width tube enhancement before
+          segmentation.</li>
+        <li><b>4 · DisPerSE persistence + DRUID topological deblending</b> — a confidence-ranked skeleton and a
+          deblender that won't invent branches from texture.</li>
+        <li><b>5 · Starlet/curvelet denoise + matched/Radon line filtering</b> — the SNR-lifting front-end pair.</li>
+        <li><b>6 · U-Net with Dice/Combo loss</b> — the learned route once labels exist.</li>
+      </ul>
+      <p><b>Lower fit (assumption mismatch):</b> <i>Bisous</i> (marked point process), <i>SCMS</i> density ridges,
+        and <i>MST</i> extraction all assume <b>sparse, well-separated tracers</b> — the opposite of dense
+        overlapping hyphae — so they apply only to a sparse high-confidence detection cloud, not the raw field.</p>
+    </div>
+
+  </section>
+
+  <!-- ============ CROSS-FIELD CONVERGENCE CALLOUT (blue) ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>Where the fields converge — the concrete upgrades for branch_pathfinding</h3>
+      <p>Reading geophysics, growth physics, and astronomy side by side surfaces three convergences that point
+        straight at the retracing module's accuracy ceiling:</p>
+      <ul>
+        <li><b>Persistence is the noise-robust primitive — independently invented twice.</b> Astronomy's
+          DisPerSE/DRUID prune candidate branches by topological <i>persistence</i> (birth→death significance),
+          and neuroscience's TMD persistence barcodes summarise branching with the <i>same</i> primitive. Two
+          unrelated fields landed on persistence as the way to rank structure over noise — so ranking candidate
+          hyphal branches by persistence (in <span class="term">_path_quality</span>) rather than a raw cost
+          threshold is a doubly-vouched upgrade.</li>
+        <li><b>Hessian vesselness is recommended by three fields at once.</b> The vascular analog (Frangi/Sato),
+          astronomy (NEXUS+ / Frangi-style multiscale Hessian), <i>and</i> mycology's own pipelines all reach for
+          eigenvalue-ratio tube enhancement. A Frangi/Sato vesselness channel in
+          <span class="term">assemble_composite_cost</span> is the single most portable, most cross-validated
+          pre-filter available.</li>
+        <li><b>Astronomy's noise front-end supplies what the biology fields assume away.</b> The biology/physics
+          analogs mostly assume clean imaging; astronomy's whole pipeline is
+          <i>denoise → enhance → confidence-ranked trace</i>. Prepending a starlet/curvelet denoise and a
+          matched/Radon line filter — then tracing with a Steger detector and an RHT orientation channel — gives
+          the cost surface a principled low-SNR front-end before any thresholding happens.</li>
+      </ul>
+      <p>These are the concrete engineering corollaries for <span class="term">sdk_/branch_pathfinding/</span>:
+        a vesselness cost term, a persistence-based path-quality filter, and an astronomy-style denoise →
+        line-filter → subpixel-trace front-end.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

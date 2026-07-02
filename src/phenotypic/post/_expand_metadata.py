@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import _ensure_prefix
+from ._utils import ensure_metadata_prefix
 
 
 class ExpandMetadata(PostMeasurement):
@@ -19,10 +19,13 @@ class ExpandMetadata(PostMeasurement):
     raised.
 
     Args:
-        column: Name of the metadata column to split. ``Metadata_`` prefix
-            is added automatically if missing.
-        labels: Names for the resulting columns, one per split part.
-            ``Metadata_`` prefix is added automatically if missing.
+        column: Name of the metadata column to split. The schema category
+            prefix is added automatically if missing (e.g. ``ImageName`` ->
+            ``MetadataImage_ImageName``; unknown labels get a generic
+            ``Metadata_`` prefix).
+        labels: Names for the resulting columns, one per split part. The
+            schema category prefix is added automatically if missing (e.g.
+            ``Strain`` -> ``MetadataGenetic_Strain``).
         delimiter: String or regex pattern to split on. Defaults to ``"_"``.
         regex: If True, treat delimiter as a regex pattern. Defaults to
             False.
@@ -43,7 +46,7 @@ class ExpandMetadata(PostMeasurement):
         >>> import pandas as pd
         >>> from phenotypic.post import ExpandMetadata
         >>> df = pd.DataFrame({
-        ...     "Metadata_ImageName": ["WT_30C_24h", "mut_37C_48h"],
+        ...     "MetadataImage_ImageName": ["WT_30C_24h", "mut_37C_48h"],
         ...     "Object_Label": [1, 2],
         ... })
         >>> expand = ExpandMetadata(
@@ -52,7 +55,7 @@ class ExpandMetadata(PostMeasurement):
         ...     delimiter="_",
         ... )
         >>> result = expand.apply(df)
-        >>> list(result["Metadata_Strain"])
+        >>> list(result["MetadataGenetic_Strain"])
         ['WT', 'mut']
     """
 
@@ -64,20 +67,20 @@ class ExpandMetadata(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Prepend the ``Metadata_`` prefix to a non-empty column name."""
-        return _ensure_prefix(column) if column else ""
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
+        return ensure_metadata_prefix(column) if column else ""
 
     @field_validator("labels", mode="before")
     @classmethod
     def _prefix_labels(cls, labels: List[str] | None) -> List[str]:
-        """Add the ``Metadata_`` prefix to each label.
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to each label.
 
         Accepts ``None``/``[]`` (the "unset" state) unchanged so the empty
         default validates cleanly (``model_validate`` / assignment
         round-trips). A genuinely-empty ``labels`` is caught at
         ``apply()`` time by ``_operate``'s split-count check.
         """
-        return [_ensure_prefix(lbl) for lbl in labels] if labels else []
+        return [ensure_metadata_prefix(lbl) for lbl in labels] if labels else []
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Split the metadata column and insert new columns.

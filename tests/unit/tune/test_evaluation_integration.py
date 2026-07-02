@@ -17,7 +17,7 @@ def _layout_csv(tmp_path, n: int, image_name: str = "Synthetic96PlateWithObjects
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
         {
-            "Metadata_ImageName": [image_name] * n,
+            "MetadataImage_ImageName": [image_name] * n,
             "Object_Label": list(range(n)),
         }
     ).to_csv(csv, index=False)
@@ -37,7 +37,7 @@ def test_perfect_count_scores_one(tmp_path):
     scorer = QCScorer(
         check=ExpectedVsDetectedCount(
             metadata=_layout_csv(tmp_path, expected_count),
-            groupby=["Metadata_ImageName"],
+            groupby=["MetadataImage_ImageName"],
         )
     )
     result = Evaluator().evaluate(base, scorer, {}, [load_synth_yeast_plate()])
@@ -53,7 +53,7 @@ def test_count_mismatch_scores_below_one(tmp_path):
     metric = abs(detected_count - expected_count) / expected_count
     check = ExpectedVsDetectedCount(
         metadata=_layout_csv(tmp_path, expected_count),
-        groupby=["Metadata_ImageName"],
+        groupby=["MetadataImage_ImageName"],
     )
     expected_cost = 1.0 - math.exp(-math.log(2.0) * metric / check.fail_threshold)
     scorer = QCScorer(

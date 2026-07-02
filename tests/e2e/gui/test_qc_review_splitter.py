@@ -30,6 +30,7 @@ from phenotypic.sdk_._qc_recipe._runner import run_qc
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 # Single-threaded dev server + Dash callback chain stochastically exceeds
 # the wait budgets on GHA shared runners; correct locally. See test_qc_tab.py.
@@ -54,7 +55,7 @@ def _build_master() -> pl.DataFrame:
                 rows.append(
                     {
                         "Metadata_Dataset": "ds1",
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,

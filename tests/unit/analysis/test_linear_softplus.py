@@ -16,7 +16,13 @@ from phenotypic.analysis import LinearCapAndLagModel, LinearLagModel
 from phenotypic.schema import (
     LINEAR_LAG_MODEL,
     MODEL_METRICS,
+    qualified_header,
 )
+
+
+def _q(member):
+    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    return qualified_header(member, "Area")
 
 
 # ---------------------------------------------------------------------- #
@@ -57,10 +63,10 @@ def _build_group(
         for ti, yi in zip(t, y):
             rows.append(
                 {
-                    "Metadata_Time": float(ti),
+                    "MetadataCulture_Time": float(ti),
                     "Shape_Area": float(yi),
-                    "Metadata_Dataset": "Test",
-                    "Metadata_Strain": strain,
+                    "MetadataExperiment_Dataset": "Test",
+                    "MetadataGenetic_Strain": strain,
                     "Metadata_Replicate": rep,
                 }
             )
@@ -110,11 +116,11 @@ class TestBasics:
     def test_initialization(self):
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         assert m.on == "Shape_Area"
-        assert m.groupby == ["Metadata_Dataset", "Metadata_Strain"]
-        assert m.time_label == "Metadata_Time"
+        assert m.groupby == ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
+        assert m.time_label == "MetadataCulture_Time"
         assert m.stderr_label is None
         assert m.s0_prior is None
         assert m.s0_prior_cv is None
@@ -126,7 +132,7 @@ class TestBasics:
 
     def test_no_smax_or_beta_attrs(self):
         """LinearLagModel has no saturation params (those live on LinearCapAndLagModel)."""
-        m = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+        m = LinearLagModel(on="Shape_Area", groupby=["MetadataGenetic_Strain"])
         assert not hasattr(m, "smax")
         assert not hasattr(m, "beta")
 
@@ -146,7 +152,7 @@ class TestBasics:
     def test_schema(self, noisy_fixture):
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         results = m.analyze(noisy_fixture)
         assert isinstance(results, pd.DataFrame)
@@ -166,7 +172,7 @@ class TestBasics:
             MODEL_METRICS.STATUS,
         ]
         for col in expected:
-            assert col in results.columns, f"missing column: {col}"
+            assert _q(col) in results.columns, f"missing column: {col}"
 
         # Schema *must not* carry smax/beta/mode — those moved to LinearCapAndLagModel.
         for forbidden in ("smax", "beta", "mode"):
@@ -179,10 +185,10 @@ class TestBasics:
     def test_r2_finite_and_bounded(self, noisy_fixture):
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         results = m.analyze(noisy_fixture)
-        r2 = results[MODEL_METRICS.R2]
+        r2 = results[_q(MODEL_METRICS.R2)]
         assert r2.notna().all()
         assert np.isfinite(r2).all()
         assert (r2 <= 1.0 + 1e-6).all()
@@ -196,22 +202,22 @@ class TestParameterRecovery:
     def test_recovers_ground_truth(self, clean_fixture):
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
-        results = m.analyze(clean_fixture).set_index("Metadata_Strain")
+        results = m.analyze(clean_fixture).set_index("MetadataGenetic_Strain")
 
         # Strain1: v=5, s0=1, lam=2
         row1 = results.loc["Strain1"]
-        assert abs(row1[LINEAR_LAG_MODEL.v] - 5.0) < 0.3
-        assert abs(row1[LINEAR_LAG_MODEL.s0] - 1.0) < 0.5
-        assert abs(row1[LINEAR_LAG_MODEL.lam] - 2.0) < 0.5
+        assert abs(row1[_q(LINEAR_LAG_MODEL.v)] - 5.0) < 0.3
+        assert abs(row1[_q(LINEAR_LAG_MODEL.s0)] - 1.0) < 0.5
+        assert abs(row1[_q(LINEAR_LAG_MODEL.lam)] - 2.0) < 0.5
 
         # Strain2: v=3, s0=2, lam=3
         row2 = results.loc["Strain2"]
-        assert abs(row2[LINEAR_LAG_MODEL.v] - 3.0) < 0.3
-        assert abs(row2[LINEAR_LAG_MODEL.s0] - 2.0) < 0.5
-        assert abs(row2[LINEAR_LAG_MODEL.lam] - 3.0) < 0.5
+        assert abs(row2[_q(LINEAR_LAG_MODEL.v)] - 3.0) < 0.3
+        assert abs(row2[_q(LINEAR_LAG_MODEL.s0)] - 2.0) < 0.5
+        assert abs(row2[_q(LINEAR_LAG_MODEL.lam)] - 3.0) < 0.5
 
 
 # ---------------------------------------------------------------------- #
@@ -227,7 +233,7 @@ class TestWeighting:
             noise_sigma=0.0, strain="Strain1", rng=rng,
         )
         early_times = np.unique(t)[:4]
-        mask = clean["Metadata_Time"].isin(early_times)
+        mask = clean["MetadataCulture_Time"].isin(early_times)
         clean.loc[mask, "Shape_Area"] += rng.normal(0, 5.0, size=mask.sum())
 
         clean["Area_SE"] = np.where(mask, 5.0, 0.1)
@@ -235,13 +241,13 @@ class TestWeighting:
 
         m_weighted = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             stderr_label="Area_SE",
             prune_saturated=False,
         )
         m_unweighted = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             stderr_label="Area_SE_uniform",
             prune_saturated=False,
         )
@@ -249,8 +255,8 @@ class TestWeighting:
         res_w = m_weighted.analyze(clean)
         res_u = m_unweighted.analyze(clean)
 
-        s0_w = float(res_w[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_u = float(res_u[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_w = float(res_w[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_u = float(res_u[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
         assert abs(s0_w - s0_u) > 1e-3
 
     def test_stderr_label_column_passed_through(self):
@@ -263,13 +269,13 @@ class TestWeighting:
         df["Area_SE"] = 1.0
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             stderr_label="Area_SE",
             prune_saturated=False,
         )
         res = m.analyze(df)
-        assert np.isfinite(res[LINEAR_LAG_MODEL.v].iloc[0])
-        assert np.isfinite(res[LINEAR_LAG_MODEL.s0].iloc[0])
+        assert np.isfinite(res[_q(LINEAR_LAG_MODEL.v)].iloc[0])
+        assert np.isfinite(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
 
     def test_singleton_replicate_groups_fall_back_to_unweighted(self):
         """Singleton groups should not blow up — auto-SEM is NaN, fit
@@ -282,13 +288,13 @@ class TestWeighting:
         )
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
         res = m.analyze(df)
-        v_fit = float(res[LINEAR_LAG_MODEL.v].iloc[0])
-        s0_fit = float(res[LINEAR_LAG_MODEL.s0].iloc[0])
-        lam_fit = float(res[LINEAR_LAG_MODEL.lam].iloc[0])
+        v_fit = float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0])
+        s0_fit = float(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        lam_fit = float(res[_q(LINEAR_LAG_MODEL.lam)].iloc[0])
         assert np.isfinite(v_fit)
         assert np.isfinite(s0_fit)
         assert np.isfinite(lam_fit)
@@ -310,7 +316,7 @@ class TestWeighting:
         """
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["MetadataGenetic_Strain"],
         )
         # σ spanning four orders of magnitude — without a floor the
         # 1/σ² weight ratio between smallest and largest is 1e8.
@@ -319,8 +325,8 @@ class TestWeighting:
             "Shape_Area": np.arange(len(sigma_in), dtype=float),
             "Shape_Area_stderr": sigma_in,
             "Shape_Area_std_pool": np.full(len(sigma_in), np.nan),
-            "Metadata_Strain": ["A"] * len(sigma_in),
-            "Metadata_Time": np.arange(len(sigma_in), dtype=float),
+            "MetadataGenetic_Strain": ["A"] * len(sigma_in),
+            "MetadataCulture_Time": np.arange(len(sigma_in), dtype=float),
         })
         sigma_out = m._resolve_y_stderr(group)
         assert sigma_out is not None
@@ -347,14 +353,14 @@ class TestWeighting:
         class _NoFloor(LinearLagModel):
             _STDERR_FLOOR_QUANTILE = None  # type: ignore[assignment]
 
-        m = _NoFloor(on="Shape_Area", groupby=["Metadata_Strain"])
+        m = _NoFloor(on="Shape_Area", groupby=["MetadataGenetic_Strain"])
         sigma_in = np.array([1e-4, 1e-3, 1e-2, 0.1, 1.0, 1.0, 1.0, 1.0])
         group = pd.DataFrame({
             "Shape_Area": np.arange(len(sigma_in), dtype=float),
             "Shape_Area_stderr": sigma_in,
             "Shape_Area_std_pool": np.full(len(sigma_in), np.nan),
-            "Metadata_Strain": ["A"] * len(sigma_in),
-            "Metadata_Time": np.arange(len(sigma_in), dtype=float),
+            "MetadataGenetic_Strain": ["A"] * len(sigma_in),
+            "MetadataCulture_Time": np.arange(len(sigma_in), dtype=float),
         })
         sigma_out = m._resolve_y_stderr(group)
         assert sigma_out is not None
@@ -371,10 +377,10 @@ class TestWeighting:
             t, v=5.0, s0=1.0, lam=2.0, alpha=10.0, smax=None,
             noise_sigma=0.3, strain="StrainA", rng=rng, n_replicates=3,
         )
-        times = np.sort(df_a["Metadata_Time"].unique())
+        times = np.sort(df_a["MetadataCulture_Time"].unique())
         singleton_times = times[::2]
         keep_mask = ~(
-            df_a["Metadata_Time"].isin(singleton_times)
+            df_a["MetadataCulture_Time"].isin(singleton_times)
             & (df_a["Metadata_Replicate"] > 0)
         )
         df_a = df_a[keep_mask].reset_index(drop=True)
@@ -388,7 +394,7 @@ class TestWeighting:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
         m.analyze(df)
@@ -397,8 +403,8 @@ class TestWeighting:
         pool_col = "Shape_Area_std_pool"
         assert pool_col in cached.columns
 
-        pool_a = cached.loc[cached["Metadata_Strain"] == "StrainA", pool_col]
-        pool_b = cached.loc[cached["Metadata_Strain"] == "StrainB", pool_col]
+        pool_a = cached.loc[cached["MetadataGenetic_Strain"] == "StrainA", pool_col]
+        pool_b = cached.loc[cached["MetadataGenetic_Strain"] == "StrainB", pool_col]
         assert pool_a.notna().all()
         assert (pool_a > 0).all()
         assert pool_a.nunique() == 1
@@ -421,10 +427,10 @@ class TestSaturationPruning:
         )
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=True,
         )
-        group = df.groupby(["Metadata_Dataset", "Metadata_Strain"]).get_group(
+        group = df.groupby(["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]).get_group(
             ("Test", "Strain1")
         )
         pruned = m._prepare_group(group)
@@ -441,22 +447,22 @@ class TestSaturationPruning:
             t, v=5.0, s0=1.0, lam=6.0, alpha=10.0, smax=50.0,
             noise_sigma=0.0, strain="Strain1", rng=rng, n_replicates=1,
         )
-        lag_mask = df["Metadata_Time"] <= 5.0
+        lag_mask = df["MetadataCulture_Time"] <= 5.0
         df.loc[lag_mask, "Shape_Area"] += rng.normal(
             0, 0.3, size=int(lag_mask.sum())
         )
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=True,
         )
         pruned = m._prepare_group(
-            df.groupby(["Metadata_Dataset", "Metadata_Strain"]).get_group(
+            df.groupby(["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]).get_group(
                 ("Test", "Strain1")
             )
         )
-        lag_rows_kept = (pruned["Metadata_Time"] <= 5.0).sum()
+        lag_rows_kept = (pruned["MetadataCulture_Time"] <= 5.0).sum()
         lag_rows_original = int(lag_mask.sum())
         assert lag_rows_kept == lag_rows_original
 
@@ -470,10 +476,10 @@ class TestSaturationPruning:
         )
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=True,
         )
-        group = df.groupby(["Metadata_Dataset", "Metadata_Strain"]).get_group(
+        group = df.groupby(["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]).get_group(
             ("Test", "Strain1")
         )
         pruned = m._prepare_group(group)
@@ -488,10 +494,10 @@ class TestSaturationPruning:
         )
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
-        group = df.groupby(["Metadata_Dataset", "Metadata_Strain"]).get_group(
+        group = df.groupby(["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]).get_group(
             ("Test", "Strain1")
         )
         pruned = m._prepare_group(group)
@@ -513,18 +519,18 @@ class TestInoculumPrior:
 
         m_no_prior = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
         m_prior = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
             prune_saturated=False,
         )
 
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_yes = float(m_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_yes = float(m_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
 
         group_mean = float(df["Inoc_Size"].mean())
         assert abs(s0_yes - group_mean) < abs(s0_no - group_mean)
@@ -533,7 +539,7 @@ class TestInoculumPrior:
         """``_loss_func`` residual is N without prior kwargs, N+1 with them."""
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
         y = np.asarray([1.0, 2.0, 3.0], dtype=float)
@@ -562,7 +568,7 @@ class TestInoculumPrior:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
             s0_prior_cv=0.2,
             prune_saturated=False,
@@ -571,7 +577,7 @@ class TestInoculumPrior:
         probe = df.copy()
         m._prior.prepare(probe, m.groupby, m.time_label)
         group = probe.groupby(
-            ["Metadata_Dataset", "Metadata_Strain"]
+            ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
         ).get_group(("Test", "Strain1"))
         stats = m._inoc_stats(group)
         assert stats is not None
@@ -591,7 +597,7 @@ class TestInoculumPrior:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
             s0_prior_sigma=2.5,
             prune_saturated=False,
@@ -599,7 +605,7 @@ class TestInoculumPrior:
         probe = df.copy()
         m._prior.prepare(probe, m.groupby, m.time_label)
         group = probe.groupby(
-            ["Metadata_Dataset", "Metadata_Strain"]
+            ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
         ).get_group(("Test", "Strain1"))
         stats = m._inoc_stats(group)
         assert stats is not None
@@ -612,7 +618,7 @@ class TestInoculumPrior:
         the helper applies CV=0.05 as a moderately informative default."""
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=10.0,
         )
         assert m._prior.cv == 0.05
@@ -625,7 +631,7 @@ class TestInoculumPrior:
         with pytest.raises(ValueError, match="mutually exclusive"):
             LinearLagModel(
                 on="Shape_Area",
-                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                 s0_prior=1.0,
                 s0_prior_cv=0.05,
                 s0_prior_sigma=0.5,
@@ -642,24 +648,24 @@ class TestInoculumPrior:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=0.5,
             s0_prior_cv=0.1,
             prune_saturated=False,
         )
         group = df.groupby(
-            ["Metadata_Dataset", "Metadata_Strain"]
+            ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
         ).get_group(("Test", "Strain1"))
         stats = m._inoc_stats(group)
         assert stats == pytest.approx((0.5, 0.05))
 
         m_no_prior = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             prune_saturated=False,
         )
-        s0_no = float(m_no_prior.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
-        s0_yes = float(m.analyze(df)[LINEAR_LAG_MODEL.s0].iloc[0])
+        s0_no = float(m_no_prior.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
+        s0_yes = float(m.analyze(df)[_q(LINEAR_LAG_MODEL.s0)].iloc[0])
         assert abs(s0_yes - 0.5) < abs(s0_no - 0.5)
 
     def test_s0_prior_groupby_pools_across_fit_groups(self):
@@ -676,28 +682,28 @@ class TestInoculumPrior:
         df = pd.concat([g1, g2], ignore_index=True)
         rng_inoc = np.random.default_rng(43)
         df["Inoc_Size"] = np.where(
-            df["Metadata_Strain"] == "StrainA",
+            df["MetadataGenetic_Strain"] == "StrainA",
             rng_inoc.normal(0.3, 0.01, size=len(df)),
             rng_inoc.normal(0.9, 0.01, size=len(df)),
         )
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
-            s0_prior_groupby=["Metadata_Dataset"],
+            s0_prior_groupby=["MetadataExperiment_Dataset"],
             prune_saturated=False,
         )
         probe = df.copy()
         m._prior.prepare(probe, m.groupby, m.time_label)
 
-        t_min = probe["Metadata_Time"].min()
+        t_min = probe["MetadataCulture_Time"].min()
         expected_mu = float(
-            probe.loc[probe["Metadata_Time"] == t_min, "Inoc_Size"].median()
+            probe.loc[probe["MetadataCulture_Time"] == t_min, "Inoc_Size"].median()
         )
         for strain in ("StrainA", "StrainB"):
             group = probe.groupby(
-                ["Metadata_Dataset", "Metadata_Strain"]
+                ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
             ).get_group(("Test", strain))
             stats = m._inoc_stats(group)
             assert stats is not None
@@ -715,9 +721,9 @@ class TestInoculumPrior:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
-            s0_prior_groupby=["Metadata_Dataset"],
+            s0_prior_groupby=["MetadataExperiment_Dataset"],
             prune_saturated=False,
         )
         with pytest.raises(ValueError, match="must be a subset"):
@@ -727,9 +733,9 @@ class TestInoculumPrior:
         with pytest.raises(ValueError, match="requires a column-backed"):
             LinearLagModel(
                 on="Shape_Area",
-                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                 s0_prior=0.5,
-                s0_prior_groupby=["Metadata_Dataset"],
+                s0_prior_groupby=["MetadataExperiment_Dataset"],
             )
 
     def test_missing_s0_prior_column_raises(self):
@@ -741,7 +747,7 @@ class TestInoculumPrior:
         )
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior="Inoc_Size",
             prune_saturated=False,
         )
@@ -754,7 +760,7 @@ class TestInoculumPrior:
         with pytest.raises(ValueError, match=kwarg):
             LinearLagModel(
                 on="Shape_Area",
-                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                 s0_prior="Inoc_Size",
                 **{kwarg: bad},
             )
@@ -766,7 +772,7 @@ class TestInoculumPrior:
             ):
                 LinearLagModel(
                     on="Shape_Area",
-                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                     s0_prior=bad_mean,
                 )
 
@@ -774,7 +780,7 @@ class TestInoculumPrior:
         with pytest.raises(ValueError, match="must not be an empty list"):
             LinearLagModel(
                 on="Shape_Area",
-                groupby=["Metadata_Dataset", "Metadata_Strain"],
+                groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                 s0_prior="Inoc_Size",
                 s0_prior_groupby=[],
             )
@@ -790,7 +796,7 @@ class TestInoculumPrior:
 
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=True,
             prune_saturated=False,
         )
@@ -800,15 +806,15 @@ class TestInoculumPrior:
         probe = df.copy()
         m._prior.prepare(probe, m.groupby, m.time_label)
         group = probe.groupby(
-            ["Metadata_Dataset", "Metadata_Strain"]
+            ["MetadataExperiment_Dataset", "MetadataGenetic_Strain"]
         ).get_group(("Test", "Strain1"))
         stats = m._inoc_stats(group)
         assert stats is not None
         mu, sigma = stats
 
-        t_min = float(df["Metadata_Time"].min())
+        t_min = float(df["MetadataCulture_Time"].min())
         expected_mu = float(
-            df.loc[df["Metadata_Time"] == t_min, "Shape_Area"].median()
+            df.loc[df["MetadataCulture_Time"] == t_min, "Shape_Area"].median()
         )
         assert mu == pytest.approx(expected_mu, rel=1e-6)
         assert sigma == pytest.approx(0.05 * expected_mu)
@@ -817,7 +823,7 @@ class TestInoculumPrior:
         """Guard against the ``isinstance(True, int)`` gotcha."""
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=True,
         )
         assert m._prior.label == "Shape_Area"
@@ -826,12 +832,12 @@ class TestInoculumPrior:
     def test_s0_prior_false_disables_prior(self):
         m_false = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=False,
         )
         m_none = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
             s0_prior=None,
         )
         assert m_false._prior.is_configured is False
@@ -842,7 +848,7 @@ class TestInoculumPrior:
             with pytest.raises(TypeError, match="s0_prior must be"):
                 LinearLagModel(
                     on="Shape_Area",
-                    groupby=["Metadata_Dataset", "Metadata_Strain"],
+                    groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
                     s0_prior=bad,  # type: ignore[arg-type]
                 )
 
@@ -858,21 +864,21 @@ class TestDegenerateInput:
             for ti in t:
                 rows.append(
                     {
-                        "Metadata_Time": float(ti),
+                        "MetadataCulture_Time": float(ti),
                         "Shape_Area": 0.0,
-                        "Metadata_Dataset": "Test",
-                        "Metadata_Strain": "Dead",
+                        "MetadataExperiment_Dataset": "Test",
+                        "MetadataGenetic_Strain": "Dead",
                         "Metadata_Replicate": rep,
                     }
                 )
         df = pd.DataFrame(rows)
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert 0.0 <= float(res[LINEAR_LAG_MODEL.v].iloc[0]) <= 50.0
+        assert 0.0 <= float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0]) <= 50.0
 
     def test_nan_input_triggers_nan_row(self):
         t = np.linspace(0, 6, 15)
@@ -880,23 +886,23 @@ class TestDegenerateInput:
         for ti in t:
             rows.append(
                 {
-                    "Metadata_Time": float(ti),
+                    "MetadataCulture_Time": float(ti),
                     "Shape_Area": float("nan"),
-                    "Metadata_Dataset": "Test",
-                    "Metadata_Strain": "Broken",
+                    "MetadataExperiment_Dataset": "Test",
+                    "MetadataGenetic_Strain": "Broken",
                 }
             )
         df = pd.DataFrame(rows)
         m = LinearLagModel(
             on="Shape_Area",
-            groupby=["Metadata_Dataset", "Metadata_Strain"],
+            groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
         )
         res = m.analyze(df)
         assert len(res) == 1
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.v].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.s0].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.lam].iloc[0]))
-        assert np.isnan(float(res[LINEAR_LAG_MODEL.alpha].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.v)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.s0)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.lam)].iloc[0]))
+        assert np.isnan(float(res[_q(LINEAR_LAG_MODEL.alpha)].iloc[0]))
 
 
 # ---------------------------------------------------------------------- #
@@ -915,16 +921,16 @@ def test_log_growth_still_works():
         for _ in range(3):
             rows.append(
                 {
-                    "Metadata_Time": float(ti),
+                    "MetadataCulture_Time": float(ti),
                     "Shape_Area": float(y),
-                    "Metadata_Dataset": "Test",
-                    "Metadata_Strain": "Strain1",
+                    "MetadataExperiment_Dataset": "Test",
+                    "MetadataGenetic_Strain": "Strain1",
                 }
             )
     df = pd.DataFrame(rows)
     m = LogGrowthModel(
         on="Shape_Area",
-        groupby=["Metadata_Dataset", "Metadata_Strain"],
+        groupby=["MetadataExperiment_Dataset", "MetadataGenetic_Strain"],
     )
     res = m.analyze(df)
     assert not res.empty

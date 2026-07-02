@@ -36,6 +36,7 @@ from pydantic import ValidationError
 
 from phenotypic.analysis.qc import ReplicateAgreement
 from phenotypic.analysis.abc_._quality_check import QualityCheck
+from phenotypic.schema import METADATA
 
 # Renamed, prefixed summary columns per the contract (collision-proof).
 _SUMMARY_COLS = [
@@ -173,7 +174,7 @@ class TestDirectionalBoundaries:
         return pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "Metadata_Time": [0, 0],
+                "MetadataCulture_Time": [0, 0],
                 "Size_Area": [mean - d, mean + d],
             }
         )
@@ -258,7 +259,7 @@ class TestNaNMetricIsPass:
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "Metadata_Time": [0, 1],
+                "MetadataCulture_Time": [0, 1],
                 "Size_Area": [10.0, 20.0],
             }
         )
@@ -299,7 +300,7 @@ class TestSummaryNameCollision:
             {
                 # groupby column deliberately named "status" to collide.
                 "status": ["a", "a", "b", "b"],
-                "Metadata_Time": [0, 0, 0, 0],
+                "MetadataCulture_Time": [0, 0, 0, 0],
                 "Size_Area": [10.0, 20.0, 100.0, 100.5],
             }
         )
@@ -316,7 +317,7 @@ class TestSummaryNameCollision:
         df = pd.DataFrame(
             {
                 "Plate": ["P1"] * 4,
-                "Metadata_Time": [0, 0, 1, 1],
+                "MetadataCulture_Time": [0, 0, 1, 1],
                 # t=0 rel-SE small; t=1 rel-SE large.
                 "Size_Area": [100.0, 101.0, 100.0, 140.0],
             }
@@ -357,8 +358,8 @@ class TestGroupMembers:
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1", "P2"],
-                "Metadata_Time": [0, 0, 0],
-                "Metadata_ImageFile": ["a.png", "a.png", "b.png"],
+                "MetadataCulture_Time": [0, 0, 0],
+                str(METADATA.IMAGE_NAME): ["a.png", "a.png", "b.png"],
                 "Object_Label": [1, 2, 1],
                 "Size_Area": [10.0, 11.0, 50.0],
             }
@@ -372,7 +373,7 @@ class TestGroupMembers:
         assert ("P2",) in members
         p1 = members[("P1",)]
         assert len(p1) == 2
-        # Each member is (Metadata_ImageFile, Object_Label, member_value).
+        # Each member is (Metadata_ImageName, Object_Label, member_value).
         files = {m[0] for m in p1}
         labels = {m[1] for m in p1}
         values = {m[2] for m in p1}
@@ -381,11 +382,11 @@ class TestGroupMembers:
         assert values == {10.0, 11.0}
 
     def test_returns_empty_when_key_columns_absent(self) -> None:
-        # No Metadata_ImageFile / Object_Label -> empty mapping, no raise.
+        # No Metadata_ImageName / Object_Label -> empty mapping, no raise.
         df = pd.DataFrame(
             {
                 "Plate": ["P1", "P1"],
-                "Metadata_Time": [0, 0],
+                "MetadataCulture_Time": [0, 0],
                 "Size_Area": [10.0, 11.0],
             }
         )

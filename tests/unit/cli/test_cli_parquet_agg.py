@@ -34,4 +34,4 @@ def test_dataset_mapping_tolerates_source_path_separator_mismatch(monkeypatch):
     )
 
     assert frame is not None
-    assert frame["Metadata_Dataset"].to_list() == ["plate_A"]
+    assert frame["MetadataExperiment_Dataset"].to_list() == ["plate_A"]

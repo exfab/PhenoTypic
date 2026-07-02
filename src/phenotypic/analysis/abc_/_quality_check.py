@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic import Field, model_validator
 
-from phenotypic.schema import OBJECT, QUALITY_CHECK
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA, OBJECT, QUALITY_CHECK
 
 from ._qc_table_spec import QcTableSpec
 from ._set_analyzer import SetAnalyzer
@@ -98,7 +98,7 @@ class QualityCheck(SetAnalyzer, ABC):
     #: Per-object curation-key columns. Empty tuple when the check has no
     #: per-object key. Subclasses may narrow this.
     member_key_cols: ClassVar[tuple[str, ...]] = (
-        "Metadata_ImageFile",
+        str(METADATA.IMAGE_NAME),
         str(OBJECT.LABEL),
     )
 
@@ -293,10 +293,10 @@ class QualityCheck(SetAnalyzer, ABC):
         return summary
 
     def flagged_keys(self) -> list[tuple[str, int]]:
-        """Return (``Metadata_ImageFile``, ``Object_Label``) pairs to curate.
+        """Return (``Metadata_ImageName``, ``Object_Label``) pairs to curate.
 
         Used by the GUI "Mark all flagged for removal" button. Requires
-        the analyzed frame to carry both ``Metadata_ImageFile`` and
+        the analyzed frame to carry both ``Metadata_ImageName`` and
         ``Object_Label`` columns (the curation key used by
         ``STORE_REMOVED_KEYS``). Returns an empty list when those
         columns are absent or when no rows were flagged.
@@ -310,15 +310,16 @@ class QualityCheck(SetAnalyzer, ABC):
         label_col = str(OBJECT.LABEL)
         if flag_col not in df.columns:
             return []
-        if "Metadata_ImageFile" not in df.columns or label_col not in df.columns:
+        image_name_col = str(METADATA.IMAGE_NAME)
+        if image_name_col not in df.columns or label_col not in df.columns:
             return []
         flagged = df.loc[df[flag_col].fillna(False).astype(bool),
-                         ["Metadata_ImageFile", label_col]].dropna()
+                         [image_name_col, label_col]].dropna()
         if flagged.empty:
             return []
         flagged = flagged.drop_duplicates()
         return [
-            (str(row.Metadata_ImageFile), int(row.Object_Label))
+            (str(getattr(row, image_name_col)), int(row.Object_Label))
             for row in flagged.itertuples(index=False)
         ]
 
@@ -327,13 +328,13 @@ class QualityCheck(SetAnalyzer, ABC):
 
         Walks the most recent analyzed frame and, for every group key
         produced by ``data.groupby(self.groupby, dropna=False)``, collects
-        the rows that belong to it as ``(Metadata_ImageFile, Object_Label,
+        the rows that belong to it as ``(Metadata_ImageName, Object_Label,
         member_value)`` tuples, where ``member_value`` is the row's
         ``self.on`` value (the column the check operates on). The mapping
         preserves group iteration order.
 
         Mirrors :meth:`flagged_keys`'s guard: if the analyzed frame lacks
-        either ``Metadata_ImageFile`` or the object-label column, an empty
+        either ``Metadata_ImageName`` or the object-label column, an empty
         mapping is returned rather than raising.
 
         Returns:
@@ -344,13 +345,14 @@ class QualityCheck(SetAnalyzer, ABC):
         """
         df = self._latest_measurements
         label_col = str(OBJECT.LABEL)
-        if "Metadata_ImageFile" not in df.columns or label_col not in df.columns:
+        image_name_col = str(METADATA.IMAGE_NAME)
+        if image_name_col not in df.columns or label_col not in df.columns:
             return {}
 
         members: dict[tuple, list[tuple[str, int, Any]]] = {}
         for key, group in df.groupby(self.groupby, dropna=False):
             key_tuple = key if isinstance(key, tuple) else (key,)
-            image_files = group["Metadata_ImageFile"].tolist()
+            image_files = group[image_name_col].tolist()
             labels = group[label_col].tolist()
             values = group[self.on].tolist()
             members[key_tuple] = [
@@ -399,7 +401,7 @@ class QualityCheck(SetAnalyzer, ABC):
         qc_cols = [c for c in df.columns if c.startswith(f"QC_{self.name}_")]
         context = [
             c
-            for c in ("Metadata_Dataset", getattr(self, "time_label", None))
+            for c in (str(EXPERIMENT_METADATA.DATASET), getattr(self, "time_label", None))
             if c and c in df.columns
         ]
         keep: list[str] = []

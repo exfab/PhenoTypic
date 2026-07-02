@@ -80,18 +80,18 @@ def _normalize_operation_collection(
             items = [x for x in value if isinstance(x, expected_type)]
             if len(items) != len(value):
                 raise TypeError(
-                    f"every {kind} list entry must be an instance of "
-                    f"{expected_type}; got "
-                    f"{[type(x).__name__ for x in value]}"
+                        f"every {kind} list entry must be an instance of "
+                        f"{expected_type}; got "
+                        f"{[type(x).__name__ for x in value]}"
                 )
         else:
             items = list(value)
         names = ImagePipelineCore._make_unique(
-            [x.__class__.__name__ for x in items]
+                [x.__class__.__name__ for x in items]
         )
         return {names[i]: items[i] for i in range(len(items))}
     raise TypeError(
-        f"{kind} must be a list or a dictionary, got {type(value)}"
+            f"{kind} must be a list or a dictionary, got {type(value)}"
     )
 
 
@@ -198,8 +198,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     # ``model_validate`` while ``validate_by_name=True`` keeps ``ops``
     # working too.
     ops: Dict[str, Union[ImageOperation, "ImagePipelineCore"]] = Field(
-        default_factory=dict,
-        validation_alias=AliasChoices("ops", "pipe_cfgs"),
+            default_factory=dict,
+            validation_alias=AliasChoices("ops", "pipe_cfgs"),
     )
     meas: Dict[str, MeasureFeatures] = {}
     post: Dict[str, PostMeasurement] = {}
@@ -260,7 +260,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _normalize_meas(cls, value: Any) -> Any:
         """Coerce a ``list``/``dict``/``None`` of measurements into a dict."""
         return _normalize_operation_collection(
-            value, "measurements", MeasureFeatures
+                value, "measurements", MeasureFeatures
         )
 
     @field_validator("post", mode="before")
@@ -268,7 +268,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _normalize_post(cls, value: Any) -> Any:
         """Coerce a ``list``/``dict``/``None`` of post transforms into a dict."""
         return _normalize_operation_collection(
-            value, "post", PostMeasurement
+                value, "post", PostMeasurement
         )
 
     @field_validator("filters", mode="before")
@@ -276,7 +276,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _normalize_filters(cls, value: Any) -> Any:
         """Coerce a ``list``/``dict``/``None`` of filters into a dict."""
         return _normalize_operation_collection(
-            value, "filters", SetAnalyzer
+                value, "filters", SetAnalyzer
         )
 
     @field_validator("qc", mode="before")
@@ -303,7 +303,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if isinstance(value, list):
             return value
         raise TypeError(
-            f"qc must be a list of QcRecipeEntry or None, got {type(value)}"
+                f"qc must be a list of QcRecipeEntry or None, got {type(value)}"
         )
 
     # ------------------------------------------------------------------ #
@@ -344,7 +344,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return self.ops
 
     @_ops.setter
-    def _ops(self, value: Dict[str, Union[ImageOperation, "ImagePipelineCore"]]) -> None:
+    def _ops(self,
+             value: Dict[str, Union[ImageOperation, "ImagePipelineCore"]]) -> None:
         self.ops = value
 
     @property
@@ -437,7 +438,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
     def _ncols(self, value: Optional[int]) -> None:
         self.ncols = value
 
-    def set_ops(self, ops: List[ImageOperation | ImagePipeline] | Dict[str, ImageOperation | ImagePipeline]):
+    def set_ops(self, ops: List[ImageOperation | ImagePipeline] | Dict[
+        str, ImageOperation | ImagePipeline]):
         """
         Sets the operations to be performed. The operations can be passed as either a list of
         ImageOperation or ImagePipeline instances or a dictionary mapping operation names to
@@ -479,7 +481,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             TypeError: If the `measurements` argument is neither a list nor a dictionary.
         """
         self.meas = _normalize_operation_collection(
-            measurements, "measurements", MeasureFeatures
+                measurements, "measurements", MeasureFeatures
         )
 
     def set_post(
@@ -495,7 +497,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             TypeError: If post is neither a list nor a dictionary.
         """
         self.post = _normalize_operation_collection(
-            post, "post", PostMeasurement
+                post, "post", PostMeasurement
         )
 
     def get_ops(self) -> Dict[str, Union[ImageOperation, "ImagePipelineCore"]]:
@@ -545,7 +547,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             TypeError: If ``filters`` is neither a list nor a dictionary.
         """
         self.filters = _normalize_operation_collection(
-            filters, "filters", SetAnalyzer
+                filters, "filters", SetAnalyzer
         )
 
     def get_filters(self) -> Dict[str, "SetAnalyzer"]:
@@ -578,8 +580,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         if not isinstance(model, ModelFitter):
             raise TypeError(
-                f"model must be a ModelFitter instance or None, got "
-                f"{type(model).__name__}"
+                    f"model must be a ModelFitter instance or None, got "
+                    f"{type(model).__name__}"
             )
         self.model = model
 
@@ -651,8 +653,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         if self._model is None:
             raise ValueError(
-                "pipeline has no analysis model configured; assign a "
-                "ModelFitter via set_model() or pass model= at construction"
+                    "pipeline has no analysis model configured; assign a "
+                    "ModelFitter via set_model() or pass model= at construction"
             )
 
         current = df
@@ -734,19 +736,20 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         try:
             import psutil
+
             return psutil.Process().memory_info().rss / (1024 * 1024)
         except Exception:
             return float("nan")
 
     def _run_operations(
-        self,
-        img: Image,
-        on_op_complete: Optional[
-            Callable[
-                [int, str, Image, Union[ImageOperation, "ImagePipelineCore"]],
-                None,
-            ]
-        ] = None,
+            self,
+            img: Image,
+            on_op_complete: Optional[
+                Callable[
+                    [int, str, Image, Union[ImageOperation, "ImagePipelineCore"]],
+                    None,
+                ]
+            ] = None,
     ) -> None:
         """Execute all queued operations on *img* in order.
 
@@ -769,7 +772,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
                 total_ops = len(self._ops)
                 pbar = tqdm(
-                    total=total_ops, desc="Applying operations", file=sys.stdout
+                        total=total_ops, desc="Applying operations", file=sys.stdout
                 )
             else:
                 print("Applying operations...")
@@ -813,7 +816,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
                 # Restore nested pipeline benchmark flag
                 if nested_was_benchmarking is not None and isinstance(
-                    operation, ImagePipelineCore
+                        operation, ImagePipelineCore
                 ):
                     operation._benchmark = nested_was_benchmarking
 
@@ -829,14 +832,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         delta_str = f"{delta:+.1f} MB"
                         if has_tqdm:
                             pbar.set_postfix(
-                                time=f"{self._operation_times[key]:.4f}s",
-                                mem=delta_str,
+                                    time=f"{self._operation_times[key]:.4f}s",
+                                    mem=delta_str,
                             )
                             pbar.update(1)
                         else:
                             print(
-                                f"    Completed in {self._operation_times[key]:.4f} seconds"
-                                f" ({delta_str})"
+                                    f"    Completed in {self._operation_times[key]:.4f} seconds"
+                                    f" ({delta_str})"
                             )
 
                 if on_op_complete is not None:
@@ -847,8 +850,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     pbar.close()
                 op_class = type(operation).__name__
                 raise type(exc)(
-                    f"[{op_class}] (step {i + 1}/{len(self._ops)}, "
-                    f"key='{key}'): {exc}"
+                        f"[{op_class}] (step {i + 1}/{len(self._ops)}, "
+                        f"key='{key}'): {exc}"
                 ) from exc
 
         # Close the progress bar if it exists
@@ -882,13 +885,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return img
 
     def apply_with_intermediates(
-        self,
-        image: Image,
-        inplace: bool = False,
-        reset: Optional[bool] = None,
-        output_dir: Optional[Union[str, Path]] = None,
-        *,
-        full_layers: bool = False,
+            self,
+            image: Image,
+            inplace: bool = False,
+            reset: Optional[bool] = None,
+            output_dir: Optional[Union[str, Path]] = None,
+            *,
+            full_layers: bool = False,
     ) -> IntermediateResult:
         """Apply the pipeline and capture a snapshot of the image after each operation.
 
@@ -937,14 +940,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             else:
                 _all_layers = ("rgb", "gray", "detect_mat", "objmap")
                 img.copy().save_intermediate_layers(
-                    output_dir / "base_00.h5", layers=_all_layers,
+                        output_dir / "base_00.h5", layers=_all_layers,
                 )
 
         def _capture(
-            i: int,
-            key: str,
-            current: Image,
-            operation: Union[ImageOperation, "ImagePipelineCore"],
+                i: int,
+                key: str,
+                current: Image,
+                operation: Union[ImageOperation, "ImagePipelineCore"],
         ) -> None:
             if output_dir is not None:
                 layers = _layers_modified_by(operation)
@@ -959,13 +962,13 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 elif len(layers) == 4:
                     # Corrector: emit a new base with all layers
                     current.copy().save_intermediate_layers(
-                        output_dir / f"base_{i:02d}.h5", layers=layers,
+                            output_dir / f"base_{i:02d}.h5", layers=layers,
                     )
                     intermediates[key] = None
                 else:
                     # Delta: save only modified layers
                     current.copy().save_intermediate_layers(
-                        output_dir / f"{i:02d}_{key}.h5", layers=layers,
+                            output_dir / f"{i:02d}_{key}.h5", layers=layers,
                     )
                     intermediates[key] = None
             else:
@@ -1018,30 +1021,7 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose:
             print("Measuring image properties...")
 
-        # Get image info and measure time/memory if benchmarking is enabled
-        if self._benchmark:
-            rss_before = self._get_process_rss_mb()
-            start_time = time.time()
-            measurements = [image.info(include_metadata=include_metadata)]
-            self._measurement_times["image_info"] = time.time() - start_time
-            rss_after = self._get_process_rss_mb()
-            self._measurement_memory["image_info"] = rss_after - rss_before
-            self._measurement_rss["image_info"] = rss_after
-
-            # Print execution time if verbose and benchmark are enabled
-            if self._verbose:
-                delta = self._measurement_memory["image_info"]
-                print(
-                        f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
-                        f" ({delta:+.1f} MB)"
-                )
-        else:
-            measurements = [
-                image.grid.info(include_metadata=include_metadata)
-                if hasattr(image, "grid")
-                else image.objects.info(include_metadata=include_metadata)
-            ]
-
+        measurements = []
         # Create progress bar if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
             has_tqdm = importlib.util.find_spec("tqdm") is not None
@@ -1063,7 +1043,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         # perform measurements
         for i, (key, measurement) in enumerate(meas_to_run.items()):
-            logger.debug("Running measurement [%d/%d]: %s", i + 1, len(meas_to_run), key)
+            logger.debug("Running measurement [%d/%d]: %s", i + 1, len(meas_to_run),
+                         key)
             try:
                 # Update progress bar description with current measurement
                 if self._benchmark and self._verbose:
@@ -1106,9 +1087,33 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                     pbar.close()
                 meas_class = type(measurement).__name__
                 raise type(exc)(
-                    f"[{meas_class}] (step {i + 1}/{len(self._meas)}, "
-                    f"key='{key}'): {exc}"
+                        f"[{meas_class}] (step {i + 1}/{len(self._meas)}, "
+                        f"key='{key}'): {exc}"
                 ) from exc
+
+            # Get image info and measure time/memory if benchmarking is enabled
+        if self._benchmark:
+            rss_before = self._get_process_rss_mb()
+            start_time = time.time()
+
+            measurements.append(self._get_image_info(image=image,
+                                                     include_metadata=include_metadata))
+
+            self._measurement_times["image_info"] = time.time() - start_time
+            rss_after = self._get_process_rss_mb()
+            self._measurement_memory["image_info"] = rss_after - rss_before
+            self._measurement_rss["image_info"] = rss_after
+
+            # Print execution time if verbose and benchmark are enabled
+            if self._verbose:
+                delta = self._measurement_memory["image_info"]
+                print(
+                        f"  Image info: {self._measurement_times['image_info']:.4f} seconds"
+                        f" ({delta:+.1f} MB)"
+                )
+        else:
+            measurements.append(self._get_image_info(image=image,
+                                                     include_metadata=include_metadata))
 
         # Close the progress bar if it exists
         if self._benchmark and self._verbose and has_tqdm:
@@ -1123,6 +1128,12 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 df = post_op.apply(df)
 
         return df
+
+    @staticmethod
+    def _get_image_info(image: Image, include_metadata: bool) -> pd.DataFrame:
+        return (image.grid.info(include_metadata=include_metadata)
+                if hasattr(image, "grid")
+                else image.objects.info(include_metadata=include_metadata))
 
     def _build_measurement_run_order(self) -> Dict[str, MeasureFeatures]:
         """Return the measurements to execute for this ``measure()`` call.
@@ -1194,9 +1205,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         """
         img = self.apply(image=image, inplace=inplace, reset=reset)
         return self.measure(
-            image=img,
-            include_metadata=include_metadata,
-            apply_post=apply_post,
+                image=img,
+                include_metadata=include_metadata,
+                apply_post=apply_post,
         )
 
     def benchmark_results(self) -> pd.DataFrame:
@@ -1237,8 +1248,8 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             # Expand nested pipeline sub-operations
             operation = self._ops.get(op_name)
             if (
-                isinstance(operation, ImagePipelineCore)
-                and operation._operation_times
+                    isinstance(operation, ImagePipelineCore)
+                    and operation._operation_times
             ):
                 for sub_name, sub_time in operation._operation_times.items():
                     data.append({
@@ -1246,10 +1257,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                         "Process Name"      : f"  {op_name} > {sub_name}",
                         "Execution Time (s)": sub_time,
                         "Memory Delta (MB)" : operation._operation_memory.get(
-                            sub_name, float("nan")
+                                sub_name, float("nan")
                         ),
                         "RSS After (MB)"    : operation._operation_rss.get(
-                            sub_name, float("nan")
+                                sub_name, float("nan")
                         ),
                     })
 
@@ -1260,10 +1271,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 "Process Name"      : meas_name,
                 "Execution Time (s)": meas_time,
                 "Memory Delta (MB)" : self._measurement_memory.get(
-                    meas_name, float("nan")
+                        meas_name, float("nan")
                 ),
                 "RSS After (MB)"    : self._measurement_rss.get(
-                    meas_name, float("nan")
+                        meas_name, float("nan")
                 ),
             })
 

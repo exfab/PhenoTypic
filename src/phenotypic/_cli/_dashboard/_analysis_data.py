@@ -14,6 +14,7 @@ import polars as pl
 
 from .._cli_output_manager import join_metadata
 from .._cli_parquet_agg import aggregate_parquet_files
+from phenotypic.schema import METADATA
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
@@ -93,7 +94,7 @@ def _load_and_merge(
 
     Walks ``results/*/measurements/`` for ``.parquet`` files.  Uses
     :func:`aggregate_parquet_files` for efficient in-memory concatenation,
-    adds ``Metadata_Dataset`` and ``Metadata_ImageFile`` columns, and
+    adds ``Metadata_Dataset`` and ``Metadata_ImageName`` columns, and
     performs an inner-join with *metadata_csv* when provided.
 
     Args:
@@ -144,10 +145,10 @@ def _load_and_merge(
     if master_df is None:
         return None
 
-    # Derive Metadata_ImageFile from the source-path filename column, then drop it.
-    if "Metadata_ImageFile" not in master_df.columns and "filename" in master_df.columns:
+    # Derive Metadata_ImageName from the source-path filename column, then drop it.
+    if str(METADATA.IMAGE_NAME) not in master_df.columns and "filename" in master_df.columns:
         master_df = master_df.with_columns(
-            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias("Metadata_ImageFile")
+            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias(str(METADATA.IMAGE_NAME))
         )
     if "filename" in master_df.columns:
         master_df = master_df.drop("filename")

@@ -1,6 +1,7 @@
 import logging
 
 from phenotypic import Image, GridImage, ImagePipeline
+from phenotypic.schema import METADATA
 from phenotypic._core._pipeline_parts import IntermediateResult
 from phenotypic.correction import GridAligner
 from phenotypic.detect import OtsuDetector
@@ -68,7 +69,7 @@ def test_pipeline_on_image(plate_grid_images):
     assert set(output.columns) == set(compound_output.columns), "Different columns"
 
     # Exclude columns that are expected to differ (e.g., UUIDs that change between runs)
-    cols_to_skip = {"Metadata_ImageName"}  # UUIDs change between pipeline runs
+    cols_to_skip = {str(METADATA.IMAGE_NAME)}  # UUIDs change between pipeline runs
 
     # For each column, check if values are close (handling NaNs)
     for col in output.columns:

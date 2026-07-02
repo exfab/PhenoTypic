@@ -87,6 +87,7 @@ from ._io_constants import (
     QC_REVIEW_STATE_JSON,
     README_MD,
     RECOMPILE_TASK_MANIFEST_JSON,
+    REMBI_MANIFEST_YAML,
     SENTINEL_RESUBMITTED_MARKER,
     SPLIT_ASSIGNMENT_JSON,
     STDOUT_LOG,
@@ -173,6 +174,7 @@ from ._io_constants import (
     read_run_manifest,
     recompile_dir,
     recompile_status_dir,
+    rembi_manifest_path,
     resolve_best_pipeline_path,
     resolve_event_log_path,
     resolve_execution_mode,
@@ -204,6 +206,12 @@ from ._io_constants import (
 )
 from .funcs_ import is_binary_mask, timed_execution
 from .hdf_ import HDF
+from ._metadata_helpers import (
+    ensure_metadata_prefix,
+    is_metadata_header,
+    metadata_category_for_label,
+    metadata_category_prefixes,
+)
 from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
 from .typing_ import ProcessOnlyLayer
 
@@ -222,7 +230,11 @@ __all__ = [
     "colourspace",
     "constants_",
     "exceptions_",
+    "ensure_metadata_prefix",
     "is_binary_mask",
+    "is_metadata_header",
+    "metadata_category_for_label",
+    "metadata_category_prefixes",
     "napari_",
     "register",
     "slurm",
@@ -278,6 +290,7 @@ __all__ = [
     "QC_REVIEW_STATE_JSON",
     "README_MD",
     "RECOMPILE_TASK_MANIFEST_JSON",
+    "REMBI_MANIFEST_YAML",
     "SENTINEL_RESUBMITTED_MARKER",
     "SPLIT_ASSIGNMENT_JSON",
     "STDOUT_LOG",
@@ -388,6 +401,7 @@ __all__ = [
     "read_run_manifest",
     "recompile_dir",
     "recompile_status_dir",
+    "rembi_manifest_path",
     "resolve_best_pipeline_path",
     "resolve_event_log_path",
     "resolve_execution_mode",

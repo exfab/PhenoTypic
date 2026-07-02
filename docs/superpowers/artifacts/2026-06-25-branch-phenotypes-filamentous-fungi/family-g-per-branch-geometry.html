@@ -1,0 +1,924 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family G · Per-branch geometry (Regime A)
+  Content artifact. <head> copied VERBATIM from _design-system.html; component markup
+  and class names reused exactly. Only the cards / illustrations / copy are authored here.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family G — Per-branch geometry · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-a)">G</div>
+    <div>
+      <div class="hero-kicker">Family · Regime A · per-branch geometry</div>
+      <h1 class="hero-title">Per-branch geometry</h1>
+      <p class="lede">The metric vocabulary of a single traced filament — how long each
+        segment is, which way it bends, the angle it leaves its parent at, and how thick
+        it is along the way. Every value here is read off a correct local skeleton, so the
+        family is measurable only where individual hyphae are actually resolved.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--regime-a)"></span>Skeleton / graph</span>
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>🔴 mostly fragile</span>
+        <span class="chip">13 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) → regime/input/provenance/citation.
+      Five marquee illustrations carry the geometric ideas the whole family depends on: branch angle, tortuosity,
+      internode distance, hyphal width &amp; taper, and partition asymmetry.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1. Branch / segment length distribution ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branch / segment length distribution</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The arc length of every inter-node segment, summarised as a mean, a maximum and a
+          histogram. A <span class="term">segment</span> is one skeleton edge running tip-to-junction or
+          junction-to-junction; the spread of those lengths distinguishes sparse, long-stride hyphae from
+          finely subdivided ones.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Segments of a skeleton and their length histogram">
+            <g transform="translate(6,6)">
+              <path class="struct" stroke="var(--blue)" d="M18,120 L78,108 M78,108 L132,86 M132,86 L182,70 M132,86 L150,128 M78,108 L70,150"/>
+              <circle cx="18" cy="120" r="3.5" fill="var(--blue)"/>
+              <circle cx="78" cy="108" r="3.5" fill="var(--ink)"/>
+              <circle cx="132" cy="86" r="3.5" fill="var(--ink)"/>
+              <circle cx="182" cy="70" r="3.5" fill="var(--blue)"/>
+              <circle cx="150" cy="128" r="3.5" fill="var(--blue)"/>
+              <circle cx="70" cy="150" r="3.5" fill="var(--blue)"/>
+              <text class="lbl" x="24" y="138">tip</text>
+              <text class="lbl" x="86" y="100">node</text>
+            </g>
+            <g transform="translate(214,28)">
+              <line class="axis" x1="0" y1="150" x2="120" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <rect x="12" y="96" width="20" height="54" fill="rgba(0,114,178,.5)"/>
+              <rect x="40" y="58" width="20" height="92" fill="rgba(0,114,178,.5)"/>
+              <rect x="68" y="84" width="20" height="66" fill="rgba(0,114,178,.5)"/>
+              <rect x="96" y="124" width="20" height="26" fill="rgba(0,114,178,.5)"/>
+              <text class="lbl" x="20" y="166">segment length →</text>
+              <text class="lbl" x="-30" y="40" transform="rotate(-90 -30,40)">count</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> walk each skeleton edge, sum its pixel-to-pixel arc length, then bin.
+            Robust once the skeleton is correct, but a single missed junction merges two segments into one.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Arganda-Carreras et&nbsp;al. 2010</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L<sub>seg</sub></b> — arc length of each inter-node skeleton segment (mean, max, histogram)</dd>
+            <dt>Units</dt><dd>px (or µm)</dd>
+            <dt>Reads as</dt><dd>↑ L<sub>seg</sub> = longer, sparser strides between nodes; ↓ = finely subdivided, many short segments</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2. Internode / inter-branch distance — MARQUEE (c) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Internode / inter-branch distance</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The arc length of hypha between two consecutive branch points. Short internodes mean
+          frequent, densely packed branching; long internodes mean a sparse, exploratory growth habit. Measured
+          along the centre line, not as a straight-line gap.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Distance along a hypha between successive branch points">
+            <g transform="translate(6,8)">
+              <!-- main hypha runs left to right with two branch points -->
+              <path class="struct" stroke="var(--blue)" d="M14,118 C70,108 96,120 128,112 C168,102 196,118 238,108 C278,98 308,112 336,104"/>
+              <!-- lateral branches at the two nodes -->
+              <path class="struct" stroke="var(--ink)" d="M128,112 C140,150 150,168 160,188"/>
+              <path class="struct" stroke="var(--ink)" d="M238,108 C246,72 256,52 268,30"/>
+              <!-- branch points -->
+              <circle cx="128" cy="112" r="4.5" fill="var(--orange)"/>
+              <circle cx="238" cy="108" r="4.5" fill="var(--orange)"/>
+              <text class="lbl-strong" x="108" y="98">node A</text>
+              <text class="lbl-strong" x="220" y="94">node B</text>
+              <!-- the measured internode (highlighted overlay along the curve) -->
+              <path d="M128,112 C168,102 196,118 238,108" fill="none" stroke="var(--vermillion)" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+              <text class="lbl-strong" x="150" y="148" fill="var(--vermillion)">internode arc</text>
+              <text class="lbl" x="16" y="138">hypha →</text>
+            </g>
+          </svg>
+          <figcaption><b>Marquee:</b> the red overlay is the centre-line distance from <b>node A</b> to
+            <b>node B</b> — the inter-branch spacing. It is arc length along the hypha, so a wavy run between
+            nodes counts as longer than the chord between them.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry &amp; Williams 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d<sub>internode</sub></b> — centre-line arc length between two consecutive branch points</dd>
+            <dt>Units</dt><dd>px (or µm)</dd>
+            <dt>Reads as</dt><dd>↑ d<sub>internode</sub> = sparse, widely-spaced branching; ↓ = frequent, densely packed branch points</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 3. Branch / bifurcation angle (local & remote) — MARQUEE (a) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Branch / bifurcation angle (local &amp; remote)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The angle between parent and daughter at a branch point. The <span class="term">local</span>
+          angle uses the first few pixels leaving the node; the <span class="term">remote</span> angle uses the
+          direction toward the next node downstream, so it reports the daughter's settled heading rather than its
+          launch.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Local branch angle from initial daughter points versus remote angle to the next node">
+            <g transform="translate(6,6)">
+              <!-- parent stub -->
+              <path class="struct" stroke="var(--ink)" d="M30,170 L150,118"/>
+              <circle cx="150" cy="118" r="4.5" fill="var(--orange)"/>
+              <text class="lbl-strong" x="60" y="160">parent</text>
+              <!-- daughter: curved, so local heading differs from remote heading -->
+              <path class="struct" stroke="var(--blue)" d="M150,118 C176,108 198,98 214,80 C232,60 252,52 282,46"/>
+              <!-- next node marker -->
+              <circle cx="282" cy="46" r="3.5" fill="var(--blue)"/>
+              <text class="lbl" x="262" y="40">next node</text>
+              <!-- local tangent (short, from initial points) -->
+              <line x1="150" y1="118" x2="200" y2="98" stroke="var(--green)" stroke-width="2.5" stroke-dasharray="4 3"/>
+              <text class="lbl-strong" x="158" y="92" fill="var(--green)">local θ</text>
+              <!-- remote chord (node to next node) -->
+              <line x1="150" y1="118" x2="282" y2="46" stroke="var(--vermillion)" stroke-width="2.5" stroke-dasharray="6 4"/>
+              <text class="lbl-strong" x="232" y="74" fill="var(--vermillion)">remote θ</text>
+              <!-- angle arcs at the node -->
+              <path d="M120,131 A34 34 0 0 1 184,107" fill="none" stroke="var(--green)" stroke-width="1.4"/>
+              <path d="M120,131 A52 52 0 0 1 200,90" fill="none" stroke="var(--vermillion)" stroke-width="1.4"/>
+            </g>
+          </svg>
+          <figcaption><b>Marquee:</b> at the orange node, <b>local θ</b> (green) is measured from the daughter's
+            <i>initial</i> points; <b>remote θ</b> (red) is measured to the <i>next node</i>. On a curving hypha the
+            two disagree — local captures emergence geometry, remote captures the realised path.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + geometry</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008; Lamour et&nbsp;al. 2022</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — parent-to-daughter branch angle, reported both local and remote</dd>
+            <dt>Units</dt><dd>degrees (0–180°)</dd>
+            <dt>Reads as</dt><dd>↑ θ = daughter departs at a wider, more sideways angle; ↓ θ = daughter hugs the parent axis (narrow fork)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ (local)</dt><dd>angle between parent and daughter from the daughter's first few pixels leaving the node (degrees)</dd>
+            <dt>θ (remote)</dt><dd>angle between parent and daughter measured toward the next node downstream (degrees)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 4. Bifurcation tilt & torque ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Bifurcation tilt &amp; torque</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition"><span class="term">Tilt</span> is the angle between the parent and the plane the two
+          daughters span; <span class="term">torque</span> is the twist between one bifurcation and the next along a
+          path. Both are genuinely three-dimensional descriptors and have no stable meaning in a flat projection.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Daughter plane tilted relative to the parent and twisted between successive nodes">
+            <g transform="translate(6,8)">
+              <!-- parent -->
+              <path class="struct" stroke="var(--ink)" d="M40,180 L150,120"/>
+              <circle cx="150" cy="120" r="4.5" fill="var(--orange)"/>
+              <!-- daughter plane (a tilted parallelogram) -->
+              <polygon points="150,120 248,92 300,118 202,146"
+                       fill="rgba(0,114,178,.10)" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 4"/>
+              <text class="lbl" x="252" y="86">daughter plane</text>
+              <!-- two daughters in that plane -->
+              <path class="struct" stroke="var(--blue)" d="M150,120 L264,98"/>
+              <path class="struct" stroke="var(--blue)" d="M150,120 L226,150"/>
+              <!-- tilt arc between parent and plane -->
+              <path d="M120,138 A36 36 0 0 1 182,110" fill="none" stroke="var(--vermillion)" stroke-width="1.6"/>
+              <text class="lbl-strong" x="96" y="118" fill="var(--vermillion)">tilt</text>
+              <!-- torque twist glyph -->
+              <path d="M276,150 q22,-14 0,-30" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <path d="M276,120 l5,4 l-6,3" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl-strong" x="286" y="146" fill="var(--green)">torque</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> fit the plane of the two daughters, measure its tilt from the parent, and
+            track its rotation node-to-node. The flatten-to-2D step destroys both — hence very-low robustness.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">3-D skeleton graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>tilt, torque</b> — parent-to-daughter-plane angle, and its twist between successive nodes</dd>
+            <dt>Units</dt><dd>degrees (both)</dd>
+            <dt>Reads as</dt><dd>↑ tilt = daughter plane leans further off the parent axis; ↑ torque = plane spins more sharply node-to-node (0° = coplanar, untwisted)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 5. Partition asymmetry — MARQUEE (e) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Partition asymmetry</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">At each bifurcation, how lopsided are the two daughter subtrees? Computed as
+          <span class="term">|n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2)</span>
+          over the tip counts each branch ultimately carries — 0 for a perfectly even split, near 1 when one daughter
+          owns almost the whole subtree.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A lopsided bifurcation with one large and one tiny daughter subtree">
+            <g transform="translate(6,6)">
+              <!-- root segment up to the focal node -->
+              <path class="struct" stroke="var(--ink)" d="M170,24 L170,64"/>
+              <circle cx="170" cy="64" r="5" fill="var(--orange)"/>
+              <text class="lbl-strong" x="180" y="56">node</text>
+              <!-- LEFT daughter: big bushy subtree -->
+              <path class="struct" stroke="var(--blue)" d="M170,64 L96,104
+                M96,104 L60,140 M96,104 L120,150
+                M60,140 L40,176 M60,140 L78,178 M120,150 L108,186 M120,150 L138,184"/>
+              <circle cx="40" cy="176" r="3" fill="var(--blue)"/><circle cx="78" cy="178" r="3" fill="var(--blue)"/>
+              <circle cx="108" cy="186" r="3" fill="var(--blue)"/><circle cx="138" cy="184" r="3" fill="var(--blue)"/>
+              <text class="lbl-strong" x="44" y="120" fill="var(--blue)">nL = 4</text>
+              <!-- RIGHT daughter: a single twig -->
+              <path class="struct" stroke="var(--vermillion)" d="M170,64 L236,118 L262,160"/>
+              <circle cx="262" cy="160" r="3" fill="var(--vermillion)"/>
+              <text class="lbl-strong" x="244" y="112" fill="var(--vermillion)">nR = 1</text>
+              <text class="lbl" x="200" y="196">asymmetry → high</text>
+            </g>
+          </svg>
+          <figcaption><b>Marquee:</b> the left daughter carries four tips, the right carries one — a strongly
+            unbalanced partition. Summing this imbalance over every node measures how herringbone-like (one dominant
+            axis) versus evenly dichotomous the tree is.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">rooted tree graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">van&nbsp;Pelt et&nbsp;al. 1992; Scorcioni et&nbsp;al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A<sub>p</sub></b> — |n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2), tip-count imbalance at a bifurcation</dd>
+            <dt>Units</dt><dd>dimensionless (0–1)</dd>
+            <dt>Reads as</dt><dd>↑ A<sub>p</sub> = lopsided, herringbone fork (one daughter owns the subtree); A<sub>p</sub>=0 = perfectly even dichotomous split</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>n<sub>L</sub></dt><dd>number of tips carried by the left daughter subtree (count)</dd>
+            <dt>n<sub>R</sub></dt><dd>number of tips carried by the right daughter subtree (count)</dd>
+            <dt>|n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2)</dt><dd>partition asymmetry: 0 for an even split, near 1 when one daughter owns almost the whole subtree</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 6. Caulescence / tree asymmetry ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Caulescence / tree asymmetry</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">How strongly a single dominant <span class="term">main path</span> runs through the
+          tree. High caulescence means one near-straight backbone with small laterals hanging off it (a stem-and-side-branch
+          habit); low caulescence means repeated even forks with no privileged axis.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A dominant main path with small side branches versus the rest of the tree">
+            <g transform="translate(6,8)">
+              <!-- dominant main path, thick -->
+              <path d="M28,176 C90,150 130,128 178,104 C226,80 268,62 322,42"
+                    fill="none" stroke="var(--blue)" stroke-width="4" stroke-linecap="round"/>
+              <text class="lbl-strong" x="200" y="58" fill="var(--blue)">main path</text>
+              <!-- short side branches off the backbone -->
+              <path class="struct" stroke="var(--ink)" d="M110,138 L96,170"/>
+              <path class="struct" stroke="var(--ink)" d="M150,116 L168,146"/>
+              <path class="struct" stroke="var(--ink)" d="M210,86 L196,116"/>
+              <path class="struct" stroke="var(--ink)" d="M262,64 L284,90"/>
+              <text class="lbl" x="86" y="186">short laterals</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> trace the heaviest root-to-tip path, then score how much of the tree's
+            length and tips it monopolises. A clear backbone with stub laterals scores high.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">rooted tree graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Torben-Nielsen 2014</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C</b> — caulescence: how much of the tree's length &amp; tips a single dominant main path monopolises</dd>
+            <dt>Units</dt><dd>dimensionless (0–1)</dd>
+            <dt>Reads as</dt><dd>↑ C = one straight backbone with stub laterals (stem-and-side-branch); ↓ C = repeated even forks, no privileged axis</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 7. Tortuosity / contraction — MARQUEE (b) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tortuosity / contraction</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">How much a branch wanders: the <span class="term">path length</span> traced along the
+          hypha divided by the straight-line <span class="term">Euclidean distance</span> between its endpoints.
+          Always ≥&nbsp;1 — exactly 1 for a ruler-straight segment, rising as the hypha meanders.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Tortuosity as wavy path length divided by straight endpoint distance">
+            <g transform="translate(6,10)">
+              <!-- endpoints -->
+              <circle cx="30" cy="150" r="4.5" fill="var(--blue)"/>
+              <circle cx="320" cy="92" r="4.5" fill="var(--blue)"/>
+              <text class="lbl" x="14" y="172">start</text>
+              <text class="lbl" x="300" y="84">end</text>
+              <!-- straight chord (Euclidean) -->
+              <line x1="30" y1="150" x2="320" y2="92" stroke="var(--green)" stroke-width="2" stroke-dasharray="6 5"/>
+              <text class="lbl-strong" x="150" y="138" fill="var(--green)">Euclidean (straight)</text>
+              <!-- wavy hypha path -->
+              <path class="struct" stroke="var(--vermillion)" stroke-width="2.4"
+                d="M30,150 C60,96 92,196 124,140 C150,96 176,178 206,124 C232,80 258,158 290,108 C302,98 312,96 320,92"/>
+              <text class="lbl-strong" x="86" y="100" fill="var(--vermillion)">path length (along hypha)</text>
+            </g>
+          </svg>
+          <figcaption><b>Marquee:</b> tortuosity = <b>red wavy path</b> ÷ <b>green chord</b>. The waviness shown here
+            gives a ratio well above 1; per-branch it is robust once the filament is correctly traced.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Nunez-Iglesias et&nbsp;al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>τ</b> — tortuosity: path length ÷ straight-line Euclidean distance between endpoints</dd>
+            <dt>Units</dt><dd>dimensionless (≥&nbsp;1)</dd>
+            <dt>Reads as</dt><dd>↑ τ = wavier, more meandering hypha; τ=1 = ruler-straight segment</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>τ</dt><dd>tortuosity: path length ÷ Euclidean distance (dimensionless, ≥&nbsp;1)</dd>
+            <dt>path length</dt><dd>arc length traced along the hypha between its endpoints (pixels)</dd>
+            <dt>Euclidean</dt><dd>straight-line distance between the two endpoints (pixels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 8. Tortuosity variants (DM/ICM/SOAM/∫κ²) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Tortuosity variants (DM / ICM / SOAM / ∫κ²)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Four formal ways to score the same waviness: <span class="term">DM</span>
+          distance-metric (path÷chord), <span class="term">ICM</span> inflection-count, <span class="term">SOAM</span>
+          sum-of-angles along the path, and <span class="term">∫κ²</span> the integrated squared curvature. Each
+          weights small kinks versus broad bends differently.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="One wavy curve annotated for the four tortuosity variants">
+            <g transform="translate(6,10)">
+              <path class="struct" stroke="var(--blue)" stroke-width="2.4"
+                d="M24,150 C56,108 84,184 116,138 C146,96 176,176 206,126 C236,80 266,156 336,104"/>
+              <!-- inflection markers (ICM) -->
+              <circle cx="100" cy="158" r="3" fill="var(--vermillion)"/>
+              <circle cx="190" cy="146" r="3" fill="var(--vermillion)"/>
+              <text class="lbl-strong" x="84" y="184" fill="var(--vermillion)">ICM · inflections</text>
+              <!-- turning-angle wedge (SOAM) -->
+              <path d="M150,116 l28,-6 m-28,6 l20,18" stroke="var(--green)" stroke-width="1.8" fill="none"/>
+              <text class="lbl-strong" x="180" y="110" fill="var(--green)">SOAM · Σ angles</text>
+              <!-- curvature peak (∫κ²) -->
+              <text class="lbl-strong" x="234" y="84" fill="var(--orange)">∫κ² · curvature</text>
+              <text class="lbl" x="24" y="184">DM · path ÷ chord</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> all four read the same traced centre line. SOAM and ∫κ² respond to many
+            sharp local kinks; DM responds to overall displacement — reporting several disambiguates kink-type from
+            wander-type waviness.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et&nbsp;al. 2003; Hart et&nbsp;al. 1999</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM, ICM, SOAM, ∫κ²</b> — four waviness scores over the same traced centre line</dd>
+            <dt>Units</dt><dd>DM dimensionless (≥&nbsp;1); ICM a count; SOAM radians; ∫κ² in 1/px</dd>
+            <dt>Reads as</dt><dd>↑ any = wavier path; DM tracks broad end-to-end displacement, ICM/SOAM/∫κ² spike on many sharp local kinks</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>distance-metric tortuosity: path length ÷ chord (dimensionless)</dd>
+            <dt>ICM</dt><dd>inflection-count metric: number of curve inflections along the path (count)</dd>
+            <dt>SOAM</dt><dd>sum-of-angles metric: Σ of turning angles along the path (radians)</dd>
+            <dt>∫κ²</dt><dd>integrated squared curvature along the path</dd>
+            <dt>κ</dt><dd>local curvature of the centre line (1/pixels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 9. Hyphal width / diameter — MARQUEE (d) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hyphal width / diameter</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The thickness of a hypha, read as the <span class="term">distance-transform</span>
+          radius at each skeleton point — the distance from the centre line to the nearest mask edge, doubled. At a
+          few pixels across, every quantisation error is a large fraction of the value.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Width via distance transform along a hypha that tapers toward the tip">
+            <g transform="translate(6,8)">
+              <!-- tapering hypha body -->
+              <path d="M20,92 C110,78 200,90 300,118 C312,121 318,124 322,128
+                       C318,134 312,138 300,142 C200,128 110,118 20,128 Z"
+                    fill="rgba(0,114,178,.10)" stroke="var(--blue)" stroke-width="1.6"/>
+              <!-- centre line -->
+              <path d="M20,110 C110,98 200,104 322,128" fill="none" stroke="var(--ink)" stroke-width="1.4" stroke-dasharray="4 3"/>
+              <!-- inscribed radius discs (distance transform) -->
+              <line x1="60" y1="92" x2="60" y2="124" stroke="var(--vermillion)" stroke-width="2"/>
+              <line x1="150" y1="95" x2="150" y2="120" stroke="var(--vermillion)" stroke-width="2"/>
+              <line x1="250" y1="106" x2="250" y2="128" stroke="var(--vermillion)" stroke-width="2"/>
+              <circle cx="60" cy="108" r="16" fill="none" stroke="var(--green)" stroke-width="1.2"/>
+              <circle cx="150" cy="107" r="12" fill="none" stroke="var(--green)" stroke-width="1.2"/>
+              <circle cx="250" cy="117" r="8" fill="none" stroke="var(--green)" stroke-width="1.2"/>
+              <text class="lbl-strong" x="40" y="80" fill="var(--vermillion)">width = 2·DT</text>
+              <text class="lbl" x="276" y="150">tip ⟶ thinner</text>
+            </g>
+          </svg>
+          <figcaption><b>Marquee:</b> the green discs are the largest circles that fit inside the mask at each point —
+            their radius is the distance transform, and width is twice that. The discs shrink toward the tip,
+            visualising taper.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale + DT</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Nunez-Iglesias et&nbsp;al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>w = 2·DT</b> — hyphal thickness: the distance-transform radius at each skeleton point, doubled</dd>
+            <dt>Units</dt><dd>px (or µm), typically a few px across</dd>
+            <dt>Reads as</dt><dd>↑ w = thicker, fuller strand; ↓ w = thinner filament (fragile — a few px wide)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DT</dt><dd>distance transform: distance from a skeleton point to the nearest mask edge (pixels)</dd>
+            <dt>width = 2·DT</dt><dd>hyphal thickness — the inscribed radius doubled (pixels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 10. Diameter classes ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Diameter classes (fine vs cords / rhizomorphs)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Bin total length (or area) by width thresholds, separating fine exploratory hyphae from
+          thick transport <span class="term">cords / rhizomorphs</span>. A coarse, robust use of the width field that
+          tolerates more noise than any single per-pixel diameter.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hyphae sorted into width bins from fine to cord">
+            <g transform="translate(6,8)">
+              <!-- three example strands of increasing width -->
+              <path d="M24,40 C120,36 240,44 336,40" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <text class="lbl" x="24" y="30">fine</text>
+              <path d="M24,96 C120,90 240,100 336,96" fill="none" stroke="var(--blue)" stroke-width="6"/>
+              <text class="lbl" x="24" y="80">medium</text>
+              <path d="M24,156 C120,148 240,162 336,156" fill="none" stroke="var(--blue)" stroke-width="12"/>
+              <text class="lbl" x="24" y="134">cord / rhizomorph</text>
+              <!-- bin axis -->
+              <line class="axis" x1="24" y1="190" x2="336" y2="190"/>
+              <text class="lbl-strong" x="120" y="206">width threshold bins →</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> threshold the distance-transform width into classes and sum length per class.
+            The class fractions survive low resolution better than calling out any one strand's exact diameter.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask + distance transform</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli et&nbsp;al. 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L<sub>class</sub></b> — total length (or area) binned by width threshold: fine hyphae vs thick cords / rhizomorphs</dd>
+            <dt>Units</dt><dd>px (or µm) of length per class; bins keyed by width in px (or µm)</dd>
+            <dt>Reads as</dt><dd>mass shifting to wide bins = coarse cord-dominated network; mass in narrow bins = fine, thread-like network</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 11. Taper rate ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Taper rate</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">The gradient of diameter along a hypha, from base toward tip. A near-zero taper means a
+          uniform tube; a steep taper means the hypha narrows as it extends. Computed as the slope of
+          <span class="term">width vs arc length</span>.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Diameter decreasing along arc length, with the fitted taper slope">
+            <g transform="translate(6,8)">
+              <!-- thinning tube -->
+              <path d="M24,70 C110,70 220,86 332,104 C332,108 332,112 332,116
+                       C220,118 110,110 24,110 Z"
+                    fill="rgba(0,114,178,.10)" stroke="var(--blue)" stroke-width="1.4"/>
+              <text class="lbl" x="24" y="58">base (wide)</text>
+              <text class="lbl" x="276" y="138">tip (narrow)</text>
+            </g>
+            <g transform="translate(214,118)">
+              <line class="axis" x1="0" y1="74" x2="120" y2="74"/>
+              <line class="axis" x1="0" y1="74" x2="0" y2="2"/>
+              <polyline points="6,16 40,32 74,48 110,64" fill="none" stroke="var(--vermillion)" stroke-width="2.4"/>
+              <text class="lbl" x="2" y="90">arc length →</text>
+              <text class="lbl-strong" x="46" y="22" fill="var(--vermillion)">slope = taper</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> regress the width series against distance from the base; the slope is the
+            taper rate. It inherits the few-pixel-width fragility of the diameter it differentiates.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale + DT</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Barry &amp; Williams 2015</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>taper</b> — slope of width regressed against arc length, base toward tip</dd>
+            <dt>Units</dt><dd>dimensionless (µm width per µm length), sign carries direction</dd>
+            <dt>Reads as</dt><dd>steeper negative taper = hypha narrows faster toward the tip; taper≈0 = uniform-diameter tube</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>taper</dt><dd>taper rate: slope of width regressed against arc length (pixels width per pixel length)</dd>
+            <dt>width</dt><dd>hyphal diameter sampled along the centre line (pixels)</dd>
+            <dt>arc length</dt><dd>distance measured along the hypha from the base (pixels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 12. Rall / Murray ratio & junction exponent ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Rall / Murray ratio &amp; junction exponent</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">How daughter diameters relate to the parent at a junction:
+          <span class="term">(d₁ʳ + d₂ʳ) / d₀ʳ</span>, plus the exponent <span class="term">x</span> solving
+          <span class="term">d₀ˣ = d₁ˣ + d₂ˣ</span> (an optimal-transport value near 3). Diameters enter cubed, so
+          tiny width errors blow up — the most diameter-noise-sensitive metric in the family.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Parent diameter splitting into two daughter diameters at a junction">
+            <g transform="translate(6,10)">
+              <!-- parent (thick) -->
+              <path d="M24,150 C70,142 100,136 132,128" fill="none" stroke="var(--blue)" stroke-width="14" stroke-linecap="round"/>
+              <text class="lbl-strong" x="40" y="178" fill="var(--blue)">d₀</text>
+              <circle cx="132" cy="128" r="5" fill="var(--orange)"/>
+              <!-- daughter 1 (medium) -->
+              <path d="M132,128 C176,108 214,88 268,66" fill="none" stroke="var(--green)" stroke-width="10" stroke-linecap="round"/>
+              <text class="lbl-strong" x="244" y="58" fill="var(--green)">d₁</text>
+              <!-- daughter 2 (thin) -->
+              <path d="M132,128 C172,148 212,164 262,184" fill="none" stroke="var(--vermillion)" stroke-width="6" stroke-linecap="round"/>
+              <text class="lbl-strong" x="244" y="200" fill="var(--vermillion)">d₂</text>
+              <text class="lbl" x="150" y="120">d₀ˣ = d₁ˣ + d₂ˣ</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> measure parent and daughter diameters at the junction and solve for the
+            exponent that balances them. Because widths are raised to ~3, sub-pixel diameter error dominates the
+            result.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + diameters</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Patton et&nbsp;al. 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>x</b> — junction exponent solving d₀ˣ = d₁ˣ + d₂ˣ, with the Rall ratio (d₁ʳ+d₂ʳ)/d₀ʳ</dd>
+            <dt>Units</dt><dd>dimensionless (x typically ≈2–3)</dd>
+            <dt>Reads as</dt><dd>↑ x = parent much thicker than the daughters it splits into; x≈3 = area-preserving cubic split (very diameter-noise-sensitive)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d₀</dt><dd>parent diameter at the junction (pixels)</dd>
+            <dt>d₁, d₂</dt><dd>the two daughter diameters at the junction (pixels)</dd>
+            <dt>r</dt><dd>Rall power the diameters are raised to in (d₁ʳ+d₂ʳ)/d₀ʳ</dd>
+            <dt>x</dt><dd>junction exponent solving d₀ˣ = d₁ˣ + d₂ˣ (optimal near 3)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 13. Surface area / biovolume ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Surface area / biovolume</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Treat each segment as a tapering tube (a <span class="term">frustum</span>) of known
+          length and end radii, then sum the lateral surface and the enclosed volume across the network — a geometric
+          estimate of total wall area and cytoplasmic biovolume.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A skeleton segment reconstructed as a tapered frustum tube">
+            <g transform="translate(6,12)">
+              <!-- skeleton segment -->
+              <line x1="40" y1="60" x2="300" y2="92" stroke="var(--ink)" stroke-width="1.4" stroke-dasharray="4 3"/>
+              <circle cx="40" cy="60" r="3" fill="var(--blue)"/>
+              <circle cx="300" cy="92" r="3" fill="var(--blue)"/>
+              <!-- frustum body around the segment -->
+              <path d="M40,32 C30,46 30,74 40,88 L300,116 C306,108 306,76 300,68 Z"
+                    fill="rgba(0,114,178,.10)" stroke="var(--blue)" stroke-width="1.6"/>
+              <!-- end radii -->
+              <line x1="40" y1="32" x2="40" y2="88" stroke="var(--vermillion)" stroke-width="2"/>
+              <text class="lbl-strong" x="14" y="116" fill="var(--vermillion)">r₀</text>
+              <line x1="300" y1="68" x2="300" y2="116" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl-strong" x="306" y="138" fill="var(--green)">r₁</text>
+              <text class="lbl" x="120" y="160">Σ frustum surface &amp; volume</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> each edge becomes a frustum from its end radii and length; summing gives a
+            network surface area and biovolume. Inherits the width-estimation fragility on top of the skeleton's.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + radii</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et&nbsp;al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>S, V</b> — network lateral surface area and enclosed biovolume, summed over per-segment frusta</dd>
+            <dt>Units</dt><dd>S in px² (µm²); V in px³ (µm³)</dd>
+            <dt>Reads as</dt><dd>↑ S, V = longer and/or thicker network overall; the S:V ratio rises as strands thin toward fine hyphae</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r₀</dt><dd>radius at one end of the segment's frustum (pixels)</dd>
+            <dt>r₁</dt><dd>radius at the other end of the segment's frustum (pixels)</dd>
+            <dt>Σ</dt><dd>sum of frustum lateral surface and enclosed volume over all segments in the network</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT (resolution sensitivity) ============ -->
+  <section class="band">
+    <div class="callout">
+      <h3>Why this is the most resolution-sensitive family</h3>
+      <p>Every metric here is read off a <b>correct local skeleton</b>. Angles, widths and taper all collapse exactly
+        where the image is hardest: near crossings and overlaps the skeleton sprouts false junctions, and at the
+        few-pixel widths typical of low-resolution agar plates a single quantisation step is a large fraction of the
+        measured value. Diameter-derived quantities are worst — Rall/Murray raises width to ~3, so sub-pixel error
+        dominates the answer.</p>
+      <p>Treat per-branch geometry as feasible <b>only on sparse, well-resolved regions</b> of a plate — or downstream
+        of the retracing module (<span class="prov">sdk_/branch_pathfinding</span>), once it traces filaments through
+        crossings and a DIADEM-style validation gate certifies the local skeleton. Outside those conditions, fall back
+        to the mask-level Regime-B descriptors, which never separate branches and so never inherit this fragility.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

@@ -1,0 +1,880 @@
+<!doctype html>
+<!--
+  CROSS-DOMAIN TRANSFER ARTIFACT — Plant Root System Architecture (RSA) → fungal branches
+  Part of the 14-artifact "Branch Phenotypes for Filamentous Fungi" set.
+  <head> copied VERBATIM from _design-system.html; component markup + classes reused exactly.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plant roots (RSA) → fungal branches · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--green)">R</div>
+    <div>
+      <div class="hero-kicker">Cross-domain analog · transfer to fungi</div>
+      <h1 class="hero-title">Plant root system architecture → fungal branches</h1>
+      <p class="lede">Root System Architecture (RSA) solves the exact problem we have: a
+        <b>2D projection of an overlapping branched net</b>. A photographed root system is a tangle of
+        laterals crossing one another, just like dense hyphae on agar. RSA's answer — fit each root as a
+        least-cost <b>A&#42;</b> path from apex to seed — <b>is the same algorithm PhenoTypic's retracing module
+        uses</b> (multi-source Dijkstra in <span style="font-family:var(--mono);font-size:.9em">branch_pathfinding</span>).
+        That makes RSA the closest analog in the whole catalog.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>2D projection · occlusion is THE problem</span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>A&#42; path recovery = our retracing</span>
+        <span class="chip">7 signature methods</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE — the five concept illustrations ============ -->
+  <section class="band">
+    <h2 class="section-title">The transfer, in five pictures</h2>
+    <p class="section-sub">Why RSA is the right field to borrow from: it already lives at the 2D-projection
+      operating point, and its core tools map one-for-one onto our retracing problem.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- (a) root system + laterals + insertion angle + convex hull -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">A root system, the way RSA sees it</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-a">Regime A</span></div>
+        </div>
+        <p class="definition">A taproot with emerging laterals, the <span class="term">emergence angle</span>
+          at one insertion point, and the <span class="term">convex hull</span> bounding the whole foraged
+          territory — the three things RSA measures before it ever resolves a single root.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Root system with laterals, an emergence angle, and a convex hull">
+            <!-- convex hull -->
+            <polygon points="178,18 250,70 268,150 196,200 96,196 60,120 92,52"
+                     fill="rgba(217,138,0,.07)" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- seed -->
+            <circle cx="178" cy="26" r="4" fill="var(--ink)"/>
+            <text class="lbl" x="186" y="24">seed</text>
+            <!-- taproot main axis -->
+            <path class="struct" stroke="var(--green)" stroke-width="2.6" d="M178,30 C176,70 174,120 178,188"/>
+            <!-- laterals left/right -->
+            <path class="struct" stroke="var(--green)" d="M176,64 C150,72 124,80 104,98"/>
+            <path class="struct" stroke="var(--green)" d="M177,96 C204,104 230,112 248,132"/>
+            <path class="struct" stroke="var(--green)" d="M175,122 C150,134 128,150 112,170"/>
+            <path class="struct" stroke="var(--green)" d="M178,150 C202,158 226,168 242,186"/>
+            <!-- emergence angle wedge at the first left lateral -->
+            <path d="M176,64 L176,96" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="3 3" fill="none"/>
+            <path d="M176,64 C162,68 150,73 140,82" stroke="var(--blue)" stroke-width="1.4" fill="none"/>
+            <path d="M170,92 A 20 20 0 0 0 156,75" fill="none" stroke="var(--blue)" stroke-width="2"/>
+            <text class="lbl-strong" x="118" y="62" fill="var(--blue)">emergence ∠</text>
+            <text class="lbl" x="252" y="64">convex hull</text>
+            <text class="lbl-strong" x="186" y="172" fill="var(--green)">taproot</text>
+          </svg>
+          <figcaption><b>Three layers at once:</b> the <b>hull</b> (occlusion-proof, mask-only), the
+            <b>insertion angle</b> (geometry, needs the lateral traced), and total length (graph). RSA reports
+            the hull first because it survives the tangle.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Colony hull/solidity + branch-emergence angle map straight onto mycelium territory and lateral-branch angle.</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012 (GiA Roots); Pound 2013 (RootNav)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b> — emergence (insertion) angle of a lateral off its parent</dd>
+            <dt>Units</dt><dd>degrees (0–90° off the parent axis)</dd>
+            <dt>Reads as</dt><dd>near 0° = lateral hugs the parent axis (narrow, forward-swept); near 90° = lateral splays out perpendicular, spreading the network wider</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>emergence ∠</dt><dd>insertion angle of a lateral off its parent root (degrees)</dd>
+            <dt>convex hull</dt><dd>smallest convex polygon enclosing the whole root system (foraged territory)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (b) topological index — herringbone vs dichotomous -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Topology: herringbone vs dichotomous</h3>
+          <div class="badges"><span class="badge b-a">Regime A · tree</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Fitter's <span class="term">topological index</span> contrasts two extremes.
+          <b>Herringbone</b> (TI≈1): laterals branch only off the main axis. <b>Dichotomous</b> (TI≈0.5):
+          branching is distributed, every branch splits again. Same tip count, opposite architecture.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Herringbone main-axis-dominant tree versus dichotomous evenly-branched tree">
+            <!-- herringbone (left) -->
+            <g>
+              <text class="lbl-strong" x="20" y="22">herringbone · TI≈1</text>
+              <circle cx="78" cy="34" r="3.5" fill="var(--ink)"/>
+              <path class="struct" stroke="var(--blue)" stroke-width="2.6" d="M78,38 L78,196"/>
+              <path class="struct" stroke="var(--blue)" d="M78,64 L40,86 M78,98 L116,118 M78,130 L40,150 M78,162 L116,180"/>
+              <text class="lbl" x="20" y="208">all laterals = exterior</text>
+            </g>
+            <line x1="184" y1="20" x2="184" y2="206" class="axis"/>
+            <!-- dichotomous (right) -->
+            <g transform="translate(8,0)">
+              <text class="lbl-strong" x="210" y="22">dichotomous · TI≈0.5</text>
+              <circle cx="276" cy="34" r="3.5" fill="var(--ink)"/>
+              <path class="struct" stroke="var(--green)" d="M276,38 L276,72"/>
+              <path class="struct" stroke="var(--green)" d="M276,72 L240,104 M276,72 L312,104"/>
+              <path class="struct" stroke="var(--green)" d="M240,104 L218,140 M240,104 L260,140 M312,104 L292,140 M312,104 L334,140"/>
+              <path class="struct" stroke="var(--green)" d="M218,140 L206,176 M218,140 L232,176 M260,140 L250,176 M260,140 L274,176"/>
+              <text class="lbl" x="206" y="208">interior + exterior links</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> TI is the slope of log(<b>altitude</b> = longest tip→base path) vs
+            log(<b>magnitude</b> = tip count) across a sample. A high slope means one dominant path
+            (herringbone); a low slope means even, repeatedly-splitting branching (dichotomous).</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Distinguishes apical-dominant hyphal trees from richly dichotomous tip-splitting morphotypes — but needs a clean parent/child graph, so it sits behind retracing.</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter 1987; Delory 2016 (archiDART)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>TI</b> — topological index from log(altitude) vs log(magnitude)</dd>
+            <dt>Units</dt><dd>dimensionless (≈1 herringbone, ≈0.5 dichotomous); altitude and magnitude are integers</dd>
+            <dt>Reads as</dt><dd>TI near 1 = one dominant axis carrying all laterals (main-axis-dominant); TI near 0.5 = branching spread evenly, every branch splitting again</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>TI</dt><dd>topological index — slope of log(altitude) vs log(magnitude); ≈1 herringbone, ≈0.5 dichotomous</dd>
+            <dt>altitude</dt><dd>number of links in the longest tip→base path</dd>
+            <dt>magnitude</dt><dd>number of tips in the tree</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (c) A* least-cost path through a crossing -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">A&#42; path recovery through a crossing</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">RootNav makes each pixel cheap-to-traverse where it looks root-like, then runs
+          <span class="term">A&#42;</span> from apex to seed. The path glides <b>through</b> a crossing because the
+          straight continuation is cheaper than turning — a crossing is traversed, not mis-read as a branch.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A-star least-cost path tracing one root straight through an X crossing">
+            <!-- the other (faint) root that crosses -->
+            <path d="M70,46 C140,96 200,120 300,178" stroke="var(--faint)" stroke-width="7" fill="none" stroke-linecap="round" opacity=".35"/>
+            <!-- cost-field tube around our root -->
+            <path d="M60,176 C140,150 210,120 304,52" stroke="var(--green)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".16"/>
+            <!-- our traced root: straight through the X -->
+            <path d="M60,176 C140,150 210,120 304,52" stroke="var(--blue)" stroke-width="2.6" fill="none" stroke-dasharray="2 6" stroke-linecap="round"/>
+            <!-- endpoints -->
+            <circle cx="60" cy="176" r="4.5" fill="var(--vermillion)"/><text class="lbl-strong" x="20" y="196" fill="var(--vermillion)">apex (start)</text>
+            <circle cx="304" cy="52" r="4.5" fill="var(--ink)"/><text class="lbl" x="262" y="44">seed (goal)</text>
+            <!-- the crossing -->
+            <circle cx="183" cy="123" r="11" fill="none" stroke="var(--orange)" stroke-width="2"/>
+            <text class="lbl-strong" x="150" y="150" fill="var(--orange)">X-crossing</text>
+            <!-- expanding-frontier ticks -->
+            <g stroke="var(--blue)" stroke-width="1" opacity=".5">
+              <path d="M96,166 l6,-2 M132,154 l6,-3 M222,104 l5,-4 M262,82 l5,-4"/>
+            </g>
+            <text class="lbl" x="74" y="34">cost = "how un-root-like is this pixel?"</text>
+          </svg>
+          <figcaption><b>Same idea as <span style="font-family:var(--mono)">branch_pathfinding</span>:</b>
+            EM/likelihood (or our composite cost surface) makes root pixels cheap; Dijkstra/A&#42; finds the minimal
+            path apex→seed. At the X, continuing straight costs less than the sharp turn onto the other root, so
+            the strands stay separate.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">PhenoTypic already runs multi-source Dijkstra least-cost paths; the borrowed refinement is direction-continuity edge pairing at junctions.</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Pound 2013 (RootNav, EM + A&#42;)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A&#42;</dt><dd>heuristic least-cost pathfinding, run apex→seed</dd>
+            <dt>cost</dt><dd>per-pixel traversal cost — "how un-root-like is this pixel?" (cheap where root-like)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (d) RootPainter interactive correction loop -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">RootPainter corrective loop</h3>
+          <div class="badges"><span class="badge b-b">deep-seg</span><span class="badge b-fit-amber">🟡 human-in-loop</span></div>
+        </div>
+        <p class="definition">Train a CNN on occlusion-heavy images without a big pre-labelled set: the model
+          predicts, a human <span class="term">paints only the fixes</span> on its mistakes, and the model
+          retrains on those corrections — converging on a usable segmenter fast.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="RootPainter loop: model output, human paints a correction, model retrains">
+            <!-- three nodes in a cycle -->
+            <!-- model predict -->
+            <rect x="24" y="40" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--blue)" stroke-width="2"/>
+            <text class="lbl-strong" x="40" y="64" fill="var(--blue)">CNN predicts</text>
+            <text class="lbl" x="40" y="80">mask + errors</text>
+            <!-- human correct -->
+            <rect x="240" y="40" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl-strong" x="256" y="64" fill="var(--vermillion)">human paints</text>
+            <text class="lbl" x="256" y="80">only the fixes</text>
+            <!-- retrain -->
+            <rect x="132" y="150" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="148" y="174" fill="var(--green)">retrain on</text>
+            <text class="lbl" x="148" y="190">corrections</text>
+            <!-- arrows -->
+            <path d="M120,60 L236,60" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#ah)"/>
+            <path d="M286,92 C290,128 264,148 230,160" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#ah)"/>
+            <path d="M130,160 C96,148 70,128 74,92" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#ah)"/>
+            <defs>
+              <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+            <text class="lbl" x="118" y="118">accuracy climbs each pass →</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the operator never labels whole images — only the model's current
+            weaknesses. This reaches a working segmenter on the hardest dense/occluded fields with a fraction of
+            the annotation budget.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">A GUI corrective-annotation affordance for the ambiguous-junction minority — fungal edge precision (~28% in MyceliumSeg) is the documented bottleneck this targets.</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Smith 2022 (RootPainter); Wang 2025 (MyceliumSeg)</span></div>
+        </div>
+      </article>
+
+      <!-- (e) the 2D-projection occlusion problem -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">The occlusion problem itself</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 ambiguous</span></div>
+        </div>
+        <p class="definition">In a flat photo, <b>two roots crossing</b> and <b>one real branch</b> produce the
+          <i>identical</i> degree-4 / degree-3 pixel pattern. Naive skeleton degree-counting cannot tell them
+          apart — this is the core failure mode RSA (and our retracing) must engineer around.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A crossing of two roots looks identical to a real branch in a 2D projection">
+            <!-- LEFT: two roots crossing -->
+            <text class="lbl-strong" x="22" y="22">crossing (2 roots)</text>
+            <path class="struct" stroke="var(--blue)" d="M30,46 L132,150"/>
+            <path class="struct" stroke="var(--green)" d="M132,46 L30,150"/>
+            <circle cx="81" cy="98" r="9" fill="none" stroke="var(--orange)" stroke-width="2"/>
+            <text class="lbl" x="44" y="176">degree-4 node</text>
+            <!-- divider -->
+            <line x1="184" y1="34" x2="184" y2="178" class="axis"/>
+            <!-- RIGHT: a real branch -->
+            <text class="lbl-strong" x="210" y="22">true branch (1 root)</text>
+            <path class="struct" stroke="var(--ink)" d="M276,40 L276,150"/>
+            <path class="struct" stroke="var(--ink)" d="M276,96 L336,60"/>
+            <circle cx="276" cy="96" r="9" fill="none" stroke="var(--orange)" stroke-width="2"/>
+            <text class="lbl" x="226" y="176">degree-3 node</text>
+            <!-- verdict bar -->
+            <text class="lbl-strong" x="40" y="206" fill="var(--vermillion)">pixels alone can't decide — you need path continuity / time / 3D</text>
+          </svg>
+          <figcaption><b>Why mask metrics win:</b> hull, fractal dimension and lacunarity never separate
+            strands, so the crossing never breaks them. Topology metrics that count nodes fail first — exactly
+            the catalog's robustness ranking.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">The hyphal crossing-vs-anastomosis problem verbatim. Resolve degree-4 nodes by smallest-turning-angle continuity; X-ray-CT / RSAtrace3D physically removes the ambiguity when throughput allows.</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Pound 2013; Teramoto 2020 (RSAtrace3D)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton node with four incident edges — two roots crossing</dd>
+            <dt>degree-3 node</dt><dd>skeleton node with three incident edges — one real branch</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ SIGNATURE METRICS & METHODS ============ -->
+  <section class="band">
+    <h2 class="section-title">Signature RSA metrics &amp; the occlusion toolkit</h2>
+    <p class="section-sub">One card per signature metric or method. Definition → how it works (illustration) →
+      what it transfers to fungi + source. RSA splits cleanly into whole-system silhouette metrics
+      (occlusion-proof) and graph/topology metrics (retracing-gated), plus a dedicated occlusion toolkit.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1. Total root length + convex hull / solidity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Total root length &amp; convex hull / solidity</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Two paired descriptors. <span class="term">Total root length</span> sums all
+          traced segments (graph-level). The <span class="term">convex hull</span> and its
+          <span class="term">solidity</span> (network area ÷ hull area) describe the foraged territory and how
+          densely it is filled — both readable from the mask alone.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A root network inside its convex hull, with solidity as the filled fraction">
+            <polygon points="100,28 246,52 296,150 186,196 70,160 56,80"
+                     fill="rgba(217,138,0,.07)" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- network filling part of the hull -->
+            <path class="struct" stroke="var(--green)" stroke-width="2.4" d="M150,40 C146,90 148,140 156,190"/>
+            <path class="struct" stroke="var(--green)" d="M149,66 C120,76 96,90 80,112 M150,98 C180,108 210,118 232,136 M150,128 C124,142 104,158 90,178 M152,156 C182,164 206,174 222,188"/>
+            <text class="lbl" x="252" y="44">hull</text>
+            <text class="lbl-strong" x="160" y="92" fill="var(--green)">network</text>
+            <text class="lbl-strong" x="56" y="212">solidity = network area ÷ hull area</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the smallest convex polygon enclosing the mask gives the territory;
+            solidity falls as the system gets more diffuse/branched. Length needs tracing; hull and solidity do
+            not — so the pair brackets the resolution boundary.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Solidity &amp; hull are already 🟢 ship-now colony descriptors; total hyphal length is the headline 🟡 retracing-gated number.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012; Seethepalli 2021 (RhizoVision)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>L</b> total length · <b>A<sub>hull</sub></b> convex-hull area · <b>solidity</b></dd>
+            <dt>Units</dt><dd>L → px (µm/cm calibrated); A<sub>hull</sub> → px² (mm²); solidity → dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>↑ L / ↑ hull = larger, more-spread system; solidity ≈ 1 = compact/dense fill, ↓ = diffuse/exploratory with large voids</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>total root length</dt><dd>sum of all traced segment lengths (graph-level)</dd>
+            <dt>convex hull</dt><dd>smallest convex polygon enclosing the mask (foraged territory)</dd>
+            <dt>solidity</dt><dd>network area ÷ hull area — how densely the hull is filled</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2. Lateral branching density + emergence angle -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Lateral density &amp; emergence angle</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition"><span class="term">Lateral density</span> = laterals per unit length of parent
+          root; <span class="term">emergence angle</span> = the insertion angle of each lateral off its parent.
+          Together they describe how aggressively and at what geometry a root forages sideways.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Laterals emerging along a parent root at measured insertion angles">
+            <!-- parent root -->
+            <path class="struct" stroke="var(--green)" stroke-width="2.6" d="M70,26 L70,200"/>
+            <text class="lbl" x="44" y="20">parent</text>
+            <!-- laterals with angle marks -->
+            <path class="struct" stroke="var(--green)" d="M70,58 L150,82"/>
+            <path class="struct" stroke="var(--green)" d="M70,98 L156,118"/>
+            <path class="struct" stroke="var(--green)" d="M70,138 L150,158"/>
+            <path class="struct" stroke="var(--green)" d="M70,176 L140,196"/>
+            <!-- angle wedge at top lateral -->
+            <path d="M70,58 L70,90" stroke="var(--blue)" stroke-width="1.3" stroke-dasharray="3 3"/>
+            <path d="M70,84 A 26 26 0 0 0 92,70" fill="none" stroke="var(--blue)" stroke-width="2"/>
+            <text class="lbl-strong" x="96" y="84" fill="var(--blue)">θ emergence</text>
+            <!-- density bracket -->
+            <path d="M196,58 L210,58 M196,176 L210,176 M203,58 L203,176" stroke="var(--orange)" stroke-width="1.6" fill="none"/>
+            <text class="lbl-strong" x="216" y="120" fill="var(--orange)">n laterals</text>
+            <text class="lbl" x="216" y="136">per length</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> walk the parent skeleton; each branch point contributes to density, and
+            the parent/daughter tangent angle gives θ. Both collapse near crossings, so they need a clean local
+            graph — A-fragile at our resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Branching frequency φ and mean branch angle are the direct hyphal analogs (catalog Family F/G) — both flagged 🔴 because angles collapse at overlap.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lobet 2011 (SmartRoot); Delory 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>lateral density</b> &amp; <b>θ</b> — laterals per unit parent length and each lateral's emergence angle</dd>
+            <dt>Units</dt><dd>density in laterals·cm⁻¹; θ in degrees (0–90°)</dd>
+            <dt>Reads as</dt><dd>high density = tightly spaced side branches (finely subdivided net); wide θ = laterals splay perpendicular, spreading coverage sideways</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ emergence</dt><dd>insertion angle of a lateral off its parent root</dd>
+            <dt>lateral density</dt><dd>number of laterals per unit length of parent root (n laterals per length)</dd>
+            <dt>φ</dt><dd>hyphal branching frequency (the → Fungi analog)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 3. Topological indices (Fitter family) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Topological indices (magnitude, altitude, PE, TI, Strahler/Shreve)</h3>
+          <div class="badges"><span class="badge b-a">Regime A · tree</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">A whole vocabulary on the rooted tree: <span class="term">magnitude</span> = #tips,
+          <span class="term">altitude</span> = links in the longest tip→base path,
+          <span class="term">total exterior path length (PE)</span> = Σ over all tips of path-to-base,
+          <span class="term">TI</span> = log-altitude vs log-magnitude slope, plus
+          <span class="term">Strahler/Shreve</span> ordering of segments.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A rooted tree annotated with Strahler orders, magnitude and the longest path defining altitude">
+            <!-- base -->
+            <circle cx="180" cy="26" r="4" fill="var(--ink)"/><text class="lbl" x="188" y="24">base</text>
+            <!-- tree edges with Strahler labels -->
+            <path class="struct" stroke="var(--blue)" stroke-width="3.4" d="M180,30 L180,78"/>
+            <path class="struct" stroke="var(--blue)" stroke-width="2.6" d="M180,78 L120,116"/>
+            <path class="struct" stroke="var(--blue)" stroke-width="2.6" d="M180,78 L240,116"/>
+            <path class="struct" stroke="var(--blue)" stroke-width="2" d="M120,116 L86,166 M120,116 L150,166 M240,116 L210,166 M240,116 L274,166"/>
+            <!-- altitude = longest path highlighted -->
+            <path d="M180,30 L180,78 L120,116 L86,166" fill="none" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+            <!-- tips -->
+            <g fill="var(--green)"><circle cx="86" cy="166" r="3.5"/><circle cx="150" cy="166" r="3.5"/><circle cx="210" cy="166" r="3.5"/><circle cx="274" cy="166" r="3.5"/></g>
+            <text class="lbl" x="196" y="56">order 3</text>
+            <text class="lbl" x="124" y="100">order 2</text>
+            <text class="lbl-strong" x="44" y="186" fill="var(--green)">magnitude = 4 tips</text>
+            <text class="lbl-strong" x="40" y="206" fill="var(--vermillion)">altitude = longest tip→base path</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> root the network, count tips (magnitude), trace the longest tip→base
+            chain (altitude), sum all such chains (PE). Strahler increments order where two equal orders meet.
+            TI's slope is the herringbone↔dichotomous fingerprint.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Strahler order, bifurcation ratio, magnitude/altitude/PE all map onto the hyphal tree (Family F) — powerful but loop-breaking under anastomosis, so 🔴 / retracing-gated.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Fitter 1987; Delory 2016 (archiDART); Strahler 1957; Shreve 1966</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>magnitude</b>, <b>altitude</b>, <b>TI</b> — tip count, longest tip→base depth, and their log-log slope</dd>
+            <dt>Units</dt><dd>magnitude &amp; altitude integers; TI dimensionless (≈1 herringbone, ≈0.5 dichotomous)</dd>
+            <dt>Reads as</dt><dd>high magnitude = many terminal tips; high altitude relative to magnitude (TI→1) = one deep dominant path; low (TI→0.5) = evenly, repeatedly splitting tree</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>magnitude</dt><dd>number of tips in the rooted tree</dd>
+            <dt>altitude</dt><dd>number of links in the longest tip→base path</dd>
+            <dt>P<sub>E</sub></dt><dd>total exterior path length — Σ over all tips of the path length to base</dd>
+            <dt>TI</dt><dd>topological index — log-altitude vs log-magnitude slope</dd>
+            <dt>Strahler / Shreve</dt><dd>segment-ordering schemes (Strahler: equal orders merge to order+1; Shreve: orders sum)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4. Interbranch distance + tortuosity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Interbranch distance &amp; tortuosity</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition"><span class="term">Interbranch distance</span> = arc length between consecutive
+          branch points along a root. <span class="term">Tortuosity</span> = path length ÷ straight-line
+          distance (≥1) per segment — how much a root wanders versus going straight.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Interbranch spacing along a root and tortuosity as geodesic over Euclidean length">
+            <!-- a wavy root with two branch points -->
+            <path class="struct" stroke="var(--green)" stroke-width="2.4" d="M40,60 C90,72 70,110 120,118 C170,126 150,164 200,170 C250,176 300,170 330,166"/>
+            <!-- branch points -->
+            <circle cx="120" cy="118" r="4" fill="var(--orange)"/><circle cx="200" cy="170" r="4" fill="var(--orange)"/>
+            <!-- straight chord between them (Euclidean) -->
+            <line x1="120" y1="118" x2="200" y2="170" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="118" y="112" fill="var(--orange)">branch pt</text>
+            <text class="lbl-strong" x="198" y="192" fill="var(--orange)">branch pt</text>
+            <text class="lbl" x="120" y="156" fill="var(--blue)">Euclidean</text>
+            <text class="lbl-strong" x="40" y="50" fill="var(--green)">geodesic (along root)</text>
+            <text class="lbl-strong" x="40" y="212">tortuosity = geodesic ÷ Euclidean  ·  interbranch = arc between dots</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> once a segment is traced, both are cheap and per-branch robust — the
+            geodesic and chord are read straight off the path. The fragility is upstream (getting a correct trace
+            through crossings), not in the metric.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Mean internode distance &amp; mean tortuosity are 🟡 in the catalog — robust per-branch once retracing produces a correct segment.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Vascular</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Lobet 2011 (SmartRoot); Nunez-Iglesias 2018 (skan)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>τ</b> — tortuosity, geodesic ÷ Euclidean length of a segment</dd>
+            <dt>Units</dt><dd>dimensionless ≥ 1 (1 = perfectly straight); interbranch distance in px/µm</dd>
+            <dt>Reads as</dt><dd>τ near 1 = straight, direct segment; τ well above 1 = a wandering, meandering path between branch points</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>geodesic</dt><dd>path length measured along the root</dd>
+            <dt>Euclidean</dt><dd>straight-line (chord) distance between the two endpoints</dd>
+            <dt>tortuosity</dt><dd>geodesic ÷ Euclidean (≥ 1)</dd>
+            <dt>interbranch distance</dt><dd>arc length between consecutive branch points along a root</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 5. Fractal dimension + lacunarity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Fractal dimension &amp; lacunarity</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">When roots overlap and can't be separated, RSA falls back to mask descriptors.
+          <span class="term">Box-counting D</span> = slope of log N(ε) vs log(1/ε) (space-filling);
+          <span class="term">lacunarity Λ</span> = gliding-box variance/mean² of occupancy (gappiness) —
+          separates two systems that share the same D.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Box-counting grid over a root mask and the log-log slope giving fractal dimension">
+            <g transform="translate(6,12)">
+              <path class="struct" stroke="var(--green)" d="M84,150 L84,84 M84,108 L54,76 M84,98 L116,68 M116,68 L138,42 M116,68 L142,84 M84,84 L62,52 M84,84 L106,48"/>
+              <g stroke="var(--rule)" stroke-width="1">
+                <path d="M40,36 H150 M40,76 H150 M40,116 H150 M40,156 H150 M40,36 V156 M80,36 V156 M120,36 V156"/>
+              </g>
+              <text class="lbl" x="58" y="176">grid box ε</text>
+            </g>
+            <g transform="translate(212,18)">
+              <line class="axis" x1="0" y1="150" x2="120" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="20"/>
+              <polyline points="6,142 38,110 70,72 104,36" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <g fill="var(--blue)"><circle cx="6" cy="142" r="3"/><circle cx="38" cy="110" r="3"/><circle cx="70" cy="72" r="3"/><circle cx="104" cy="36" r="3"/></g>
+              <text class="lbl" x="-2" y="166">log(1/ε) →</text>
+              <text class="lbl-strong" x="54" y="62" fill="var(--blue)">slope = D</text>
+              <text class="lbl" x="-30" y="40" transform="rotate(-90 -30,40)">log N(ε)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> tile the silhouette at shrinking ε; a steeper slope = more space-filling.
+            Lacunarity adds the second axis (how clumped the gaps are). Both integrate over scale, so they shrug
+            off noise and overlap.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Identical to the catalog's highest-value 🟢 additions (COMPLEXITY): mass/surface FD + lacunarity are the safe backbone for confluent mycelium.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span><span class="prov">Physics</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bouda 2016 (box-counting roots); Plotnick 1996 (lacunarity)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> &amp; <b>Λ</b> — box-counting fractal dimension and lacunarity of the silhouette</dd>
+            <dt>Units</dt><dd>D dimensionless (1–2 for a plane-filling net); Λ dimensionless ≥ 0</dd>
+            <dt>Reads as</dt><dd>higher D = more space-filling, finely ramified coverage; higher Λ = gappier, more clumped occupancy at a given D</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>ε</dt><dd>box size in the box-counting grid</dd>
+            <dt>N(ε)</dt><dd>number of occupied boxes at box size ε</dd>
+            <dt>D</dt><dd>box-counting fractal dimension — slope of log N(ε) vs log(1/ε)</dd>
+            <dt>Λ</dt><dd>lacunarity — gliding-box variance ÷ mean² of occupancy (gappiness)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 6. Occlusion toolkit: deep segmentation (RootNav2 / SegRoot) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Occlusion toolkit · deep segmentation (RootNav 2 / SegRoot)</h3>
+          <div class="badges"><span class="badge b-b">deep-seg</span><span class="badge b-fit-amber">🟡 learned</span></div>
+        </div>
+        <p class="definition">When hand-tuned thresholding fails on dense tangles, RSA went deep. RootNav 2.0
+          replaces the manual feature step with a <span class="term">multi-task CNN</span> that emits roots +
+          tips + seeds; SegRoot is an encoder–decoder that segments roots from soil background end-to-end.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Encoder-decoder network turning a noisy root image into a clean segmentation plus tip and seed channels">
+            <!-- input -->
+            <rect x="14" y="78" width="56" height="56" rx="6" fill="var(--inset)" stroke="var(--border)"/>
+            <path d="M22,128 C40,110 32,96 50,88 M40,130 C52,112 60,118 64,100" stroke="var(--faint)" stroke-width="1.6" fill="none"/>
+            <text class="lbl" x="14" y="150">noisy image</text>
+            <!-- encoder (narrowing) -->
+            <polygon points="92,72 132,86 132,126 92,140" fill="rgba(0,114,178,.10)" stroke="var(--blue)" stroke-width="1.6"/>
+            <text class="lbl" x="92" y="62">encoder</text>
+            <!-- bottleneck -->
+            <rect x="146" y="96" width="22" height="20" rx="3" fill="var(--blue)" opacity=".25" stroke="var(--blue)"/>
+            <!-- decoder (widening) -->
+            <polygon points="182,86 222,72 222,140 182,126" fill="rgba(11,155,118,.10)" stroke="var(--green)" stroke-width="1.6"/>
+            <text class="lbl" x="184" y="62">decoder</text>
+            <!-- multi-task outputs -->
+            <rect x="246" y="40" width="50" height="34" rx="5" fill="var(--surface)" stroke="var(--green)" stroke-width="1.6"/>
+            <text class="lbl" x="252" y="61" fill="var(--green)">root mask</text>
+            <rect x="246" y="94" width="50" height="30" rx="5" fill="var(--surface)" stroke="var(--orange)" stroke-width="1.6"/>
+            <text class="lbl" x="252" y="113" fill="var(--orange)">tips</text>
+            <rect x="246" y="142" width="50" height="30" rx="5" fill="var(--surface)" stroke="var(--vermillion)" stroke-width="1.6"/>
+            <text class="lbl" x="252" y="161" fill="var(--vermillion)">seed</text>
+            <g stroke="var(--text-dim)" stroke-width="1.4" fill="none">
+              <path d="M222,90 L244,56"/><path d="M222,108 L244,108"/><path d="M222,126 L244,156"/>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the CNN learns "rootness" from data instead of a hand-set threshold, so
+            it tolerates clutter and faint strands. Multi-task heads hand the downstream A&#42; tracer clean
+            tip/seed priors.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">A U-Net/multi-task front-end for dense mycelium; emitted tip/seed channels seed the retracing module's source set.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Vascular</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Yasrab 2019 (RootNav 2.0); Wang 2019 (SegRoot)</span></div>
+        </div>
+      </article>
+
+      <!-- 7. Occlusion toolkit: 2D-vs-3D (X-ray CT / RSAtrace3D) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Occlusion toolkit · 2D-vs-3D (X-ray CT / RSAtrace3D)</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 trades throughput</span></div>
+        </div>
+        <p class="definition">The cleanest fix for projection occlusion is to remove the projection. X-ray CT
+          images the root system <span class="term">volumetrically</span>; <span class="term">RSAtrace3D</span>
+          traces it slice-by-slice in 3D, where two roots that overlap in a photo are physically separated in
+          depth.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A 2D projection where two roots overlap, versus a 3D volume where they are separated in depth">
+            <!-- 2D panel -->
+            <rect x="20" y="40" width="120" height="140" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+            <text class="lbl-strong" x="44" y="32">2D projection</text>
+            <path class="struct" stroke="var(--blue)" d="M44,58 L116,162"/>
+            <path class="struct" stroke="var(--green)" d="M116,58 L44,162"/>
+            <circle cx="80" cy="110" r="9" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl" x="52" y="200" fill="var(--vermillion)">overlap = ambiguous</text>
+            <!-- arrow -->
+            <path d="M150,110 L186,110" stroke="var(--text-dim)" stroke-width="1.8" fill="none" marker-end="url(#a2)"/>
+            <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/></marker></defs>
+            <!-- 3D panel (isometric box) -->
+            <text class="lbl-strong" x="232" y="32">3D volume</text>
+            <polygon points="206,60 300,52 330,80 236,88" fill="var(--inset)" stroke="var(--border)"/>
+            <polygon points="206,60 236,88 236,180 206,152" fill="var(--surface-2)" stroke="var(--border)"/>
+            <polygon points="236,88 330,80 330,172 236,180" fill="var(--surface)" stroke="var(--border)"/>
+            <!-- two roots separated in depth -->
+            <path class="struct" stroke="var(--blue)" d="M250,100 C266,128 274,150 288,168"/>
+            <path class="struct" stroke="var(--green)" d="M300,96 C292,124 284,148 270,170"/>
+            <text class="lbl" x="238" y="206" fill="var(--green)">separated in depth</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> depth disambiguates. The crossing that is unresolvable in projection
+            becomes two non-touching curves in the volume — at the cost of CT throughput and reconstruction
+            effort.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">The confocal / light-sheet route for mycelium — physically removes overlap when throughput permits; the catalog's #7 toolkit answer.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Teramoto 2020 (RSAtrace3D)</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT — RSA's verdict ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>RSA's verdict, ported to hyphae</h3>
+      <p>RSA has spent two decades at exactly our operating point — a flat photo of an overlapping branched
+        net — and converged on a clear engineering doctrine. Four lessons transfer directly:</p>
+      <ul>
+        <li><b>Invest modelling effort in segmentation, not post-hoc cleanup.</b> Deep nets (RootNav 2 /
+          SegRoot) plus <b>interactive correction</b> (RootPainter) are where the accuracy comes from — getting
+          "rootness" right up front beats any amount of downstream graph repair.</li>
+        <li><b>Recover topology by path-following, not naive skeleton degree-counting.</b> Trace each filament as
+          a least-cost A&#42; path so a crossing is <i>traversed</i>; degree-counting a projected skeleton invents
+          branches at every overlap.</li>
+        <li><b>Lean on whole-system silhouette metrics that dodge occlusion.</b> Convex hull, solidity, fractal
+          dimension and lacunarity never separate strands, so the tangle never breaks them — they are the safe
+          backbone when tracing is uncertain.</li>
+        <li><b>Accept human-in-the-loop as the accuracy ceiling.</b> Every RSA tool that reaches production
+          trust keeps an operator on the ambiguous-junction minority; trustworthy topology is co-authored, not
+          fully automated.</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

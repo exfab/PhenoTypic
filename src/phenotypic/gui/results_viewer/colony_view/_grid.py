@@ -52,6 +52,7 @@ from phenotypic.gui.results_viewer._ids import (
     colony_cell_popover_data_id,
 )
 from phenotypic.schema import ErrorCategory
+from phenotypic.sdk_ import is_metadata_header
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
@@ -94,8 +95,7 @@ def _url_prefix() -> str:
     return MOUNT_HOME
 
 
-#: Sort buckets — Metadata_ first, then Grid_, then everything else.
-_METADATA_PREFIX = "Metadata_"
+#: Sort buckets — metadata-family first (via is_metadata_header), then Grid_, then everything else.
 _GRID_PREFIX = "Grid_"
 
 #: Minimum crop side length, even on degenerate (tiny / empty) frames.
@@ -134,9 +134,9 @@ def selectable_axis_columns(
     - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 
-    The returned list is sorted in three buckets: ``Metadata_*`` first
-    (alphabetic within), then ``Grid_*`` (alphabetic), then everything
-    else (alphabetic).
+    The returned list is sorted in three buckets: metadata-family columns
+    (``is_metadata_header``) first (alphabetic within), then ``Grid_*``
+    (alphabetic), then everything else (alphabetic).
 
     Args:
         df: The frame to inspect (typically the master frame after the
@@ -177,7 +177,7 @@ def selectable_axis_columns(
         suitable.append(col)
 
     def _bucket(name: str) -> int:
-        if name.startswith(_METADATA_PREFIX):
+        if is_metadata_header(name):
             return 0
         if name.startswith(_GRID_PREFIX):
             return 1
@@ -259,13 +259,13 @@ def _representative_per_cell(
 
     Args:
         df: Filtered master frame. Must contain ``x_axis_col``, ``y_axis_col``,
-            ``Metadata_ImageFile``, ``Metadata_Dataset``, and ``Object_Label``.
+            ``Metadata_ImageName``, ``Metadata_Dataset``, and ``Object_Label``.
         x_axis_col: Column projected onto the grid's X-axis.
         y_axis_col: Column projected onto the grid's Y-axis.
 
     Returns:
         A frame with columns ``x_axis_col``, ``y_axis_col``,
-        ``Metadata_ImageFile``, ``Metadata_Dataset``, ``Object_Label``, and
+        ``Metadata_ImageName``, ``Metadata_Dataset``, ``Object_Label``, and
         ``count`` (number of colonies in the cell).
     """
     # Collect the full per-cell list of `(image_file, dataset, label)` tuples
@@ -338,7 +338,7 @@ def _colony_crop_url(
 
     Args:
         dataset: ``Metadata_Dataset`` of the represented colony.
-        image_file: ``Metadata_ImageFile`` of the represented colony.
+        image_file: ``Metadata_ImageName`` of the represented colony.
         label: ``Object_Label`` of the represented colony.
         crop_size: Server crop side length, in pixels (the ``?size=``
             param the crop route requires).
@@ -385,7 +385,7 @@ def _build_cell(
     room the badge peeks into.
 
     Args:
-        image_file: ``Metadata_ImageFile`` of the representative colony.
+        image_file: ``Metadata_ImageName`` of the representative colony.
         label: ``Object_Label`` of the representative colony.
         dataset: ``Metadata_Dataset`` of the representative colony.
         count: Number of colonies aggregated into this cell.

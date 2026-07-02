@@ -80,6 +80,14 @@ class LinearCapAndLagModel(_LinearSoftplusBase):
             which the tail slope counts as a saturation shoulder for
             mode dispatch. Defaults to ``0.05``.
 
+    Output column naming:
+        ``analyze`` emits metric-qualified columns
+        ``LinearCapAndLagModel_<metric>_<parameter>`` (e.g. fitting
+        ``on="Shape_Area"`` yields ``LinearCapAndLagModel_Area_v``), plus
+        qualified fit-quality columns ``ModelMetrics_<metric>_<label>``. The
+        ``<metric>`` segment is ``self.on`` with a recognized
+        measurement-category prefix stripped.
+
     .. note::
         **``f_scale`` is unit-sensitive only on the unweighted fit
         path.** The inherited ``f_scale`` (see :class:`ModelFitter`) is

@@ -9,6 +9,7 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     manifest_json_path,
     phenotypic_cache_dir,
+    rembi_manifest_path,
     results_dir,
 )
 
@@ -34,4 +35,5 @@ def test_process_only_end_to_end(tmp_path, synth_one_level_input, simple_pipelin
     assert manifest_json_path(out).is_file()  # run-console visibility
     assert phenotypic_cache_dir(out).is_dir()
     assert not deliverables_dir(out).exists()  # no analysis suite
+    assert not rembi_manifest_path(out).exists()  # no REMBI manifest in process mode
     assert not results_dir(out).exists()

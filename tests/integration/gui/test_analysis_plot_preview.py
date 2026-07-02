@@ -33,6 +33,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
+from phenotypic.schema import METADATA
 
 
 def _walk(component: Any) -> Iterator[Any]:
@@ -58,10 +59,10 @@ def _logistic_growth_frame() -> pl.DataFrame:
             for rep in range(3):
                 n = 100 + 800 / (1 + (1000 - 100) / 100 * math.exp(-0.15 * t))
                 rows.append({
-                    "Metadata_Dataset": "ds1",
-                    "Metadata_ImageFile": f"{strain}_t{t}",
-                    "Metadata_Strain": strain,
-                    "Metadata_Time": float(t),
+                    "MetadataExperiment_Dataset": "ds1",
+                    str(METADATA.IMAGE_NAME): f"{strain}_t{t}",
+                    "MetadataGenetic_Strain": strain,
+                    "MetadataCulture_Time": float(t),
                     "Object_Label": rep,
                     "Shape_Area": float(n + (rep - 1) * 5),
                 })
@@ -80,14 +81,14 @@ def output_root(tmp_path: Path) -> OutputRoot:
     pipeline.set_filters({
         "tukey": TukeyOutlierRemover(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
+            groupby=["MetadataGenetic_Strain"],
         )
     })
     pipeline.set_model(
         LogGrowthModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
+            groupby=["MetadataGenetic_Strain"],
+            time_label="MetadataCulture_Time",
         )
     )
     write_pipeline_json(tmp_path, pipeline)
@@ -168,11 +169,11 @@ class TestPreviewFlow:
         self, output_root: OutputRoot
     ) -> None:
         pipeline = ImagePipeline(name="t")
-        edge = EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
+        edge = EdgeCorrector(on="Shape_Area", groupby=["MetadataGenetic_Strain"])
         model = LogGrowthModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
+            groupby=["MetadataGenetic_Strain"],
+            time_label="MetadataCulture_Time",
         )
         pipeline.set_filters({"edge": edge})
         pipeline.set_model(model)
@@ -189,8 +190,8 @@ class TestPreviewFlow:
     ) -> None:
         model = LogGrowthModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
+            groupby=["MetadataGenetic_Strain"],
+            time_label="MetadataCulture_Time",
         )
         pipeline = ImagePipeline(name="t")
         pipeline.set_model(model)
@@ -214,8 +215,8 @@ class TestPreviewFlow:
         # plotting prefs are actually threaded into the viz call.
         model = LogGrowthModel(
             on="Shape_Area",
-            groupby=["Metadata_Strain"],
-            time_label="Metadata_Time",
+            groupby=["MetadataGenetic_Strain"],
+            time_label="MetadataCulture_Time",
         )
         frame = pd.read_parquet(measurements_parquet_path(Path(output_root.root)))
         model.analyze(frame)

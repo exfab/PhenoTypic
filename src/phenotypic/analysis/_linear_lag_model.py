@@ -73,6 +73,13 @@ class LinearLagModel(_LinearSoftplusBase):
         prune_saturated (bool): Whether to drop post-saturation timepoints
             before fitting. Defaults to ``True``.
 
+    Output column naming:
+        ``analyze`` emits metric-qualified columns
+        ``LinearLagModel_<metric>_<parameter>`` (e.g. fitting ``on="Shape_Area"``
+        yields ``LinearLagModel_Area_v``), plus qualified fit-quality columns
+        ``ModelMetrics_<metric>_<label>``. The ``<metric>`` segment is
+        ``self.on`` with a recognized measurement-category prefix stripped.
+
     .. note::
         **``f_scale`` is unit-sensitive only on the unweighted fit
         path.** The inherited ``f_scale`` (see :class:`ModelFitter`) is

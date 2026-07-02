@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family B — Space-filling &amp; heterogeneity · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-b)">B</div>
+    <div>
+      <div class="hero-kicker">Family · Regime B · whole-silhouette</div>
+      <h1 class="hero-title">Space-filling &amp; heterogeneity</h1>
+      <p class="lede">Scale-integrating descriptors that read branchiness straight off the
+        whole-mycelium silhouette — fractal dimension, lacunarity, Minkowski functionals, and
+        growth-physics regime fits — without ever separating one hypha from the next. The
+        highest-value new additions, and the safe backbone for confluent colonies.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Mask / grayscale</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>🟢 ship-now</span>
+        <span class="chip">12 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ILLUSTRATIONS ============ -->
+  <section class="band">
+    <h2 class="section-title">The core ideas, drawn</h2>
+    <p class="section-sub">Five mechanisms that recur across every metric below: how a slope becomes a
+      dimension, why mass and surface diverge, what lacunarity adds, how the Euler number counts holes,
+      and the morphotype axis these fits place a colony on.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- (a) box-counting → log-log slope = D -->
+      <article class="card">
+        <div class="card-head"><h3 class="metric-name">(a) Box-counting → a slope that <em>is</em> the dimension</h3></div>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Same branched mask counted under a coarse then a fine grid; the log-log slope of occupied-box count is the fractal dimension D">
+            <!-- coarse grid panel -->
+            <g transform="translate(6,16)">
+              <text class="lbl" x="0" y="-4">coarse ε — 8 boxes hit</text>
+              <g stroke="var(--rule)" stroke-width="1">
+                <path d="M0,0 H96 M0,32 H96 M0,64 H96 M0,96 H96 M0,0 V96 M32,0 V96 M64,0 V96 M96,0 V96"/>
+              </g>
+              <!-- occupied boxes shaded -->
+              <g fill="rgba(11,155,118,.16)" stroke="none">
+                <rect x="32" y="0" width="32" height="32"/><rect x="32" y="32" width="32" height="32"/>
+                <rect x="0" y="32" width="32" height="32"/><rect x="64" y="32" width="32" height="32"/>
+                <rect x="32" y="64" width="32" height="32"/><rect x="0" y="64" width="32" height="32"/>
+              </g>
+              <path class="struct" stroke="var(--green)" d="M48,90 L48,40 M48,52 L18,38 M48,46 L78,30 M48,40 L30,12 M48,40 L70,14"/>
+            </g>
+            <!-- fine grid panel -->
+            <g transform="translate(118,16)">
+              <text class="lbl" x="0" y="-4">fine ε — 21 boxes hit</text>
+              <g stroke="var(--rule)" stroke-width=".7">
+                <path d="M0,0 H96 M0,16 H96 M0,32 H96 M0,48 H96 M0,64 H96 M0,80 H96 M0,96 H96
+                         M0,0 V96 M16,0 V96 M32,0 V96 M48,0 V96 M64,0 V96 M80,0 V96 M96,0 V96"/>
+              </g>
+              <path class="struct" stroke="var(--green)" d="M48,90 L48,40 M48,52 L18,38 M48,46 L78,30 M48,40 L30,12 M48,40 L70,14"/>
+            </g>
+            <!-- log-log inset -->
+            <g transform="translate(238,18)">
+              <line class="axis" x1="0" y1="150" x2="116" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <polyline points="8,138 40,104 74,66 108,30" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <circle cx="8" cy="138" r="3" fill="var(--blue)"/><circle cx="40" cy="104" r="3" fill="var(--blue)"/>
+              <circle cx="74" cy="66" r="3" fill="var(--blue)"/><circle cx="108" cy="30" r="3" fill="var(--blue)"/>
+              <text class="lbl" x="20" y="166">log(1/ε) →</text>
+              <text class="lbl" x="-34" y="58" transform="rotate(-90 -34,58)">log N(ε)</text>
+              <text class="lbl-strong" x="56" y="58" fill="var(--blue)">slope = D</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> shrink the box size ε and re-count occupied boxes N(ε). A
+            line through <b>log N(ε)</b> vs <b>log(1/ε)</b> has slope <b>D</b> — the space-filling
+            index. Because it fits a slope across many scales, a few mis-thresholded pixels barely move it.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — box-counting fractal (space-filling) dimension</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0 in the plane)</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling / branched; ≈1 = sparse, near-linear</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>ε</dt><dd>box (grid) size used to tile the mask</dd>
+            <dt>N(ε)</dt><dd>count of boxes occupied by the structure at size ε</dd>
+            <dt>D</dt><dd>fractal (space-filling) dimension — slope of log N(ε) vs log(1/ε)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (b) mass-FD (filled) vs surface-FD (outline) -->
+      <article class="card">
+        <div class="card-head"><h3 class="metric-name">(b) Mass dimension vs surface dimension</h3></div>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The same colony measured as a filled mass (mass fractal dimension) and as an outline only (surface fractal dimension)">
+            <!-- filled mass -->
+            <g transform="translate(10,22)">
+              <path fill="rgba(11,155,118,.20)" stroke="var(--green)" stroke-width="2" stroke-linejoin="round"
+                d="M80,20 C58,26 56,46 64,58 C44,52 32,70 44,84 C30,96 38,120 58,116 C62,140 96,142 102,120
+                   C124,134 146,116 134,98 C156,92 154,64 134,62 C144,44 128,24 108,34 C104,16 90,16 80,20 Z"/>
+              <text class="lbl-strong" x="34" y="178" fill="var(--green)">mass D — every pixel</text>
+              <text class="lbl" x="44" y="194">filled silhouette</text>
+            </g>
+            <!-- outline only -->
+            <g transform="translate(190,22)">
+              <path fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round" stroke-dasharray="3 3"
+                d="M80,20 C58,26 56,46 64,58 C44,52 32,70 44,84 C30,96 38,120 58,116 C62,140 96,142 102,120
+                   C124,134 146,116 134,98 C156,92 154,64 134,62 C144,44 128,24 108,34 C104,16 90,16 80,20 Z"/>
+              <text class="lbl-strong" x="30" y="178" fill="var(--orange)">surface D — border only</text>
+              <text class="lbl" x="48" y="194">margin contour</text>
+            </g>
+            <line class="axis" x1="180" y1="20" x2="180" y2="150" stroke-dasharray="2 4"/>
+          </svg>
+          <figcaption><b>Mechanism:</b> box-count the <b style="color:var(--green)">filled</b> mask
+            for the mass dimension; box-count the <b style="color:var(--orange)">outline alone</b> for
+            the surface dimension. When the two agree the growth is a true mass fractal (dispersed);
+            when they diverge a dense filled core hides behind a rugged front (pelleted).</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mass D, surface D</b> — filled-mask vs outline-only fractal dimensions</dd>
+            <dt>Units</dt><dd>dimensionless (each ≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>mass D ≈ surface D = branchy throughout (dispersed); surface D &gt; mass D = smooth filled core behind a rugged front (pelleted)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>mass D</dt><dd>fractal dimension of the filled silhouette (every pixel)</dd>
+            <dt>surface D</dt><dd>fractal dimension of the outline (border only)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (c) lacunarity: same D, different gappiness, with gliding box -->
+      <article class="card">
+        <div class="card-head"><h3 class="metric-name">(c) Lacunarity — same dimension, different gaps</h3></div>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two patterns with the same fractal dimension but different gappiness, scanned by a gliding box">
+            <!-- pattern 1: evenly spread -->
+            <g transform="translate(14,20)">
+              <text class="lbl" x="0" y="-4">low Λ — evenly spread</text>
+              <g fill="var(--green)">
+                <rect x="6" y="6" width="9" height="9"/><rect x="30" y="6" width="9" height="9"/><rect x="54" y="6" width="9" height="9"/><rect x="78" y="6" width="9" height="9"/><rect x="102" y="6" width="9" height="9"/>
+                <rect x="18" y="30" width="9" height="9"/><rect x="42" y="30" width="9" height="9"/><rect x="66" y="30" width="9" height="9"/><rect x="90" y="30" width="9" height="9"/>
+                <rect x="6" y="54" width="9" height="9"/><rect x="30" y="54" width="9" height="9"/><rect x="54" y="54" width="9" height="9"/><rect x="78" y="54" width="9" height="9"/><rect x="102" y="54" width="9" height="9"/>
+                <rect x="18" y="78" width="9" height="9"/><rect x="42" y="78" width="9" height="9"/><rect x="66" y="78" width="9" height="9"/><rect x="90" y="78" width="9" height="9"/>
+                <rect x="6" y="102" width="9" height="9"/><rect x="54" y="102" width="9" height="9"/><rect x="102" y="102" width="9" height="9"/>
+              </g>
+              <!-- gliding box -->
+              <rect x="24" y="24" width="33" height="33" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <text class="lbl" x="58" y="48" fill="var(--blue)">box r</text>
+            </g>
+            <!-- pattern 2: clumped -->
+            <g transform="translate(196,20)">
+              <text class="lbl" x="0" y="-4">high Λ — clumped + voids</text>
+              <g fill="var(--green)">
+                <rect x="6" y="6" width="9" height="9"/><rect x="18" y="6" width="9" height="9"/><rect x="30" y="6" width="9" height="9"/><rect x="6" y="18" width="9" height="9"/><rect x="18" y="18" width="9" height="9"/><rect x="30" y="18" width="9" height="9"/><rect x="6" y="30" width="9" height="9"/><rect x="18" y="30" width="9" height="9"/>
+                <rect x="84" y="6" width="9" height="9"/><rect x="96" y="6" width="9" height="9"/><rect x="84" y="18" width="9" height="9"/><rect x="96" y="18" width="9" height="9"/><rect x="108" y="18" width="9" height="9"/><rect x="96" y="30" width="9" height="9"/>
+                <rect x="6" y="84" width="9" height="9"/><rect x="18" y="96" width="9" height="9"/><rect x="6" y="96" width="9" height="9"/><rect x="18" y="84" width="9" height="9"/><rect x="30" y="96" width="9" height="9"/>
+                <rect x="90" y="90" width="9" height="9"/><rect x="102" y="90" width="9" height="9"/><rect x="90" y="102" width="9" height="9"/><rect x="102" y="102" width="9" height="9"/><rect x="78" y="102" width="9" height="9"/>
+              </g>
+              <rect x="48" y="48" width="33" height="33" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <text class="lbl" x="44" y="46" fill="var(--blue)">box r</text>
+            </g>
+            <text class="lbl-strong" x="14" y="208">same D — lacunarity Λ tells them apart by box-occupancy variance</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> glide a box of side r over the mask and record how the
+            occupied-pixel count varies. Both panels share a fractal dimension, but the clumped one
+            makes the box's catch swing wildly — high <b>Λ = var/mean²</b>. Lacunarity is the texture
+            axis fractal dimension misses.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ</b> — lacunarity (gappiness), var/mean² of box occupancy</dd>
+            <dt>Units</dt><dd>dimensionless (≥1)</dd>
+            <dt>Reads as</dt><dd>↑ Λ = gappier, clumped with large voids; ≈1 = evenly spread, uniform texture</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ</dt><dd>lacunarity — gappiness index, var/mean² of box occupancy</dd>
+            <dt>r</dt><dd>side length of the gliding box</dd>
+            <dt>D</dt><dd>fractal dimension (shared by both panels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (d) Euler / Minkowski χ = objects − holes -->
+      <article class="card">
+        <div class="card-head"><h3 class="metric-name">(d) Euler number χ = objects − enclosed holes</h3></div>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The Euler characteristic counts connected objects minus the holes they enclose">
+            <!-- one blob, no holes: chi = 1 -->
+            <g transform="translate(20,30)">
+              <path fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="2"
+                d="M40,8 C20,12 12,34 24,52 C16,72 36,92 58,84 C80,90 92,64 80,46 C90,26 70,4 48,12 Z"/>
+              <text class="lbl-strong" x="6" y="120" fill="var(--green)">1 object, 0 holes</text>
+              <text class="lbl-strong" x="30" y="138">χ = 1</text>
+            </g>
+            <!-- one blob with two enclosed holes: chi = -1 -->
+            <g transform="translate(180,30)">
+              <path fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="2" fill-rule="evenodd"
+                d="M44,4 C16,6 6,38 22,60 C10,84 38,104 64,92 C92,98 104,62 88,40 C98,16 72,-2 48,8 Z
+                   M30,40 a10,10 0 1,0 0.1,0 Z
+                   M70,62 a9,9 0 1,0 0.1,0 Z"/>
+              <text class="lbl" x="24" y="48" fill="var(--vermillion)">hole</text>
+              <text class="lbl" x="64" y="70" fill="var(--vermillion)">hole</text>
+              <text class="lbl-strong" x="2" y="120" fill="var(--green)">1 object, 2 holes</text>
+              <text class="lbl-strong" x="20" y="138">χ = 1 − 2 = −1</text>
+            </g>
+            <text class="lbl" x="20" y="196">enclosed loops (anastomosis / inter-hyphal voids) drive χ negative</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> χ = (connected components) − (enclosed holes). One additive
+            number read off the silhouette: as a mesh closes loops — hyphal fusions, inter-strand
+            voids — the hole count climbs and χ falls. It indexes loopiness without any graph.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>χ</b> — Euler number, connected objects minus enclosed holes</dd>
+            <dt>Units</dt><dd>integer (objects − holes)</dd>
+            <dt>Reads as</dt><dd>↓ χ (more negative) = more enclosed loops / holes, meshier silhouette; ↑ χ = fewer holes, simpler blobs</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>χ</dt><dd>Euler number = connected objects − enclosed holes</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- (e) DLA → compact morphotype axis -->
+      <article class="card">
+        <div class="card-head"><h3 class="metric-name">(e) The morphotype axis: ramified ⇄ compact</h3></div>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An axis from a ramified diffusion-limited form at D about 1.71 to a compact area-filling form at D approaching 2">
+            <!-- ramified DLA-like cluster -->
+            <g transform="translate(18,18)">
+              <path class="struct" stroke="var(--green)" stroke-width="1.6" d="M48,96 L48,60 M48,72 L26,52 M48,68 L72,48 M48,60 L40,34 M48,60 L62,30 M26,52 L12,40 M72,48 L88,38 M40,34 L30,14 M62,30 L74,12 M48,96 L34,84 M48,96 L64,86"/>
+              <text class="lbl-strong" x="2" y="120" fill="var(--green)">ramified</text>
+              <text class="lbl" x="6" y="136">diffusion-limited foraging</text>
+              <text class="lbl-strong" x="16" y="154">D ≈ 1.71</text>
+            </g>
+            <!-- axis arrow -->
+            <g transform="translate(0,70)">
+              <line x1="130" y1="0" x2="232" y2="0" class="axis" stroke="var(--blue)" stroke-width="2"/>
+              <polygon points="232,-5 244,0 232,5" fill="var(--blue)"/>
+              <polygon points="130,-5 118,0 130,5" fill="var(--blue)"/>
+              <text class="lbl" x="150" y="-10" fill="var(--blue)">effective η ≈ 1/D</text>
+              <text class="lbl" x="148" y="20" fill="var(--blue)">supply-rich →</text>
+            </g>
+            <!-- compact disc -->
+            <g transform="translate(258,18)">
+              <circle cx="44" cy="56" r="42" fill="rgba(11,155,118,.22)" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl-strong" x="20" y="120" fill="var(--green)">compact</text>
+              <text class="lbl" x="6" y="136">area-filling / supply-rich</text>
+              <text class="lbl-strong" x="24" y="154">D → 2</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a single measured dimension places the colony on the
+            Laplacian-growth family. <b>D ≈ 1.71</b> is the diffusion-limited (DLA) attractor — sparse,
+            foraging fronts; <b>D → 2</b> is compact area-filling. The DLA/DBM fit and dense-branching
+            signature read the growth regime straight off the mask.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (with η ≈ 1/D) — morphotype position on the ramified⇄compact axis</dd>
+            <dt>Units</dt><dd>dimensionless (D ≈ 1.71–2.0; η a dimensionless exponent)</dd>
+            <dt>Reads as</dt><dd>D ≈ 1.71 = sparse, ramified, open front; D → 2 = compact, area-filling silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>measured fractal dimension (≈1.71 ramified → 2 compact)</dd>
+            <dt>η</dt><dd>effective Laplacian-growth exponent, η ≈ 1/D</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ METRIC CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) →
+      regime / input / provenance / citation. Every row here is Regime B and 🟢 B-robust.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1. Mass fractal dimension -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Mass fractal dimension D<sub>BM</sub> (box-counting)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Box-count the <span class="term">filled</span> mask: the slope of
+          <span class="term">log N(ε)</span> vs <span class="term">log(1/ε)</span> is D<sub>BM</sub>, a
+          single space-filling index running ≈1.2 (sparse, foraging) → ≈2.0 (area-filling). The headline
+          branchiness proxy.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Box-counting a filled colony mask yields a log-log slope equal to the mass fractal dimension">
+            <g transform="translate(10,16)">
+              <path fill="rgba(11,155,118,.18)" stroke="var(--green)" stroke-width="1.6"
+                d="M70,12 C50,20 50,40 60,52 C40,50 32,72 48,82 C36,104 56,124 74,114 C80,134 110,132 112,112
+                   C132,122 148,102 134,86 C150,76 142,52 122,56 C128,34 108,18 92,30 C90,12 78,8 70,12 Z"/>
+              <g stroke="var(--rule)" stroke-width=".8" opacity=".9">
+                <path d="M24,8 H156 M24,40 H156 M24,72 H156 M24,104 H156 M24,136 H156
+                         M24,8 V136 M56,8 V136 M88,8 V136 M120,8 V136 M156,8 V136"/>
+              </g>
+              <text class="lbl" x="50" y="156">filled mask under grid ε</text>
+            </g>
+            <g transform="translate(236,20)">
+              <line class="axis" x1="0" y1="150" x2="110" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="16"/>
+              <polyline points="8,140 38,106 70,70 104,34" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <circle cx="8" cy="140" r="3" fill="var(--blue)"/><circle cx="38" cy="106" r="3" fill="var(--blue)"/>
+              <circle cx="70" cy="70" r="3" fill="var(--blue)"/><circle cx="104" cy="34" r="3" fill="var(--blue)"/>
+              <text class="lbl" x="14" y="166">log(1/ε) →</text>
+              <text class="lbl-strong" x="44" y="60" fill="var(--blue)">slope = D<tspan dy="3">BM</tspan></text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> tile the whole silhouette at shrinking box sizes and fit a
+            slope. Steeper = denser/more branched. The slope integrates over all scales, so noise and
+            overlap barely shift it.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Obert 1990; Papagianni 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BM</sub></b> — box-counting mass fractal dimension of the filled mask</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.2 sparse → 2.0 area-filling)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>BM</sub> = denser, more space-filling / branched interior; ≈1.2 = sparse, near-linear foraging</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BM</sub></dt><dd>box-counting mass fractal dimension (≈1.2 sparse → 2.0 area-filling)</dd>
+            <dt>ε</dt><dd>box (grid) size used to tile the filled mask</dd>
+            <dt>N(ε)</dt><dd>count of occupied boxes at size ε</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2. Surface fractal dimension -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Surface / border fractal dimension D<sub>BS</sub></h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The same box-counting recipe applied to the <span class="term">outline only</span>.
+          It indexes the ruggedness of the margin — the foraging front — rather than the interior; a
+          crinkly fjord-like edge raises D<sub>BS</sub>.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Box-counting the colony outline only measures margin ruggedness as the surface fractal dimension">
+            <g transform="translate(18,18)">
+              <path fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round"
+                d="M40,90 L48,70 L40,58 L56,52 L50,34 L66,42 L70,24 L82,40 L94,26 L98,46 L116,40
+                   L108,58 L128,62 L112,76 L126,92 L106,90 L110,112 L94,100 L86,118 L76,100 L62,112
+                   L64,92 L46,100 Z"/>
+              <text class="lbl-strong" x="0" y="150" fill="var(--orange)">margin contour only</text>
+              <text class="lbl" x="6" y="166">interior not counted</text>
+            </g>
+            <g transform="translate(232,22)">
+              <line class="axis" x1="0" y1="148" x2="110" y2="148"/>
+              <line class="axis" x1="0" y1="148" x2="0" y2="16"/>
+              <polyline points="8,138 40,108 72,74 104,42" fill="none" stroke="var(--orange)" stroke-width="2.5"/>
+              <circle cx="8" cy="138" r="3" fill="var(--orange)"/><circle cx="40" cy="108" r="3" fill="var(--orange)"/>
+              <circle cx="72" cy="74" r="3" fill="var(--orange)"/><circle cx="104" cy="42" r="3" fill="var(--orange)"/>
+              <text class="lbl" x="14" y="164">log(1/ε) →</text>
+              <text class="lbl-strong" x="40" y="64" fill="var(--orange)">slope = D<tspan dy="3">BS</tspan></text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> count boxes that the boundary crosses. A smooth disc gives
+            D<sub>BS</sub>≈1; a filamentous, fjorded margin pushes it well above 1. Pure-edge measure of
+            front complexity.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask (outline)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BS</sub></b> — box-counting surface / border fractal dimension of the outline</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0 smooth disc → ~2.0 highly convoluted)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>BS</sub> = crinklier, fjord-like margin; ≈1 = smooth, near-circular edge</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BS</sub></dt><dd>box-counting surface/border fractal dimension (margin ruggedness; ≈1 for a smooth disc)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 3. Mass-vs-surface FD divergence -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Mass-vs-surface FD divergence</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Compare the two dimensions. When <span class="term">D<sub>BM</sub> ≈ D<sub>BS</sub></span>
+          the structure is a genuine mass fractal — branchy all the way through (dispersed). When they
+          diverge, a smooth filled core hides behind a rough front: a pelleted morphology.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Equal mass and surface dimensions mean a dispersed mass fractal; divergence means a pelleted filled core">
+            <!-- dispersed: equal -->
+            <g transform="translate(16,18)">
+              <text class="lbl" x="0" y="-2">D_BM ≈ D_BS</text>
+              <path class="struct" stroke="var(--green)" stroke-width="1.4" d="M60,96 L60,56 M60,68 L38,48 M60,64 L84,44 M60,56 L48,30 M60,56 L74,28 M38,48 L24,36 M84,44 L98,34 M48,30 L40,14 M74,28 L84,12"/>
+              <text class="lbl-strong" x="6" y="130" fill="var(--green)">dispersed</text>
+              <text class="lbl" x="2" y="146">true mass fractal</text>
+            </g>
+            <line class="axis" x1="158" y1="14" x2="158" y2="150" stroke-dasharray="2 4"/>
+            <!-- pelleted: divergent -->
+            <g transform="translate(186,18)">
+              <text class="lbl" x="0" y="-2">D_BM ≫ → D_BS &gt; D_BM</text>
+              <circle cx="70" cy="60" r="34" fill="rgba(11,155,118,.22)" stroke="none"/>
+              <path fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round"
+                d="M70,24 L80,38 L96,34 L88,50 L104,58 L88,66 L96,82 L80,78 L74,94 L62,80 L46,86 L52,68 L36,60 L52,52 L46,36 L62,40 Z"/>
+              <text class="lbl-strong" x="0" y="130" fill="var(--orange)">pelleted</text>
+              <text class="lbl" x="0" y="146">filled core, rough front</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a single contrast that splits two growth forms a raw dimension
+            can't: dispersed (both dimensions track) versus pelleted (interior fills smoothly while the
+            border stays rugged, so surface &gt; mass).</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>BS</sub> − D<sub>BM</sub></b> — divergence between surface and mass dimensions</dd>
+            <dt>Units</dt><dd>dimensionless (≈0 when the two agree)</dd>
+            <dt>Reads as</dt><dd>≈0 = branchy throughout (dispersed mass fractal); ↑ (surface exceeds mass) = smooth filled core behind a rugged front (pelleted)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D<sub>BM</sub></dt><dd>mass fractal dimension (filled mask)</dd>
+            <dt>D<sub>BS</sub></dt><dd>surface fractal dimension (outline only)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4. Lacunarity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Lacunarity Λ(r) (gliding-box)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Glide a box of side r across the mask and take
+          <span class="term">var / mean²</span> of its occupancy at each scale. Λ quantifies gappiness —
+          the inter-hyphal void distribution — and crucially separates two textures that share a fractal
+          dimension but differ in clumping.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A gliding box samples occupancy across the mask; lacunarity is the variance-to-mean-squared of those samples versus box size">
+            <g transform="translate(14,18)">
+              <g fill="var(--green)">
+                <rect x="4" y="4" width="10" height="10"/><rect x="28" y="4" width="10" height="10"/><rect x="52" y="16" width="10" height="10"/><rect x="76" y="4" width="10" height="10"/><rect x="100" y="12" width="10" height="10"/>
+                <rect x="16" y="28" width="10" height="10"/><rect x="40" y="36" width="10" height="10"/><rect x="88" y="32" width="10" height="10"/>
+                <rect x="4" y="52" width="10" height="10"/><rect x="28" y="60" width="10" height="10"/><rect x="64" y="52" width="10" height="10"/><rect x="100" y="56" width="10" height="10"/>
+                <rect x="16" y="80" width="10" height="10"/><rect x="52" y="84" width="10" height="10"/><rect x="88" y="76" width="10" height="10"/>
+              </g>
+              <rect x="20" y="20" width="34" height="34" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <rect x="60" y="44" width="34" height="34" fill="none" stroke="var(--blue)" stroke-width="2" stroke-dasharray="3 3"/>
+              <text class="lbl" x="120" y="30" fill="var(--blue)">glide box r</text>
+              <text class="lbl" x="120" y="64" fill="var(--blue)">→ count fill</text>
+            </g>
+            <g transform="translate(238,22)">
+              <line class="axis" x1="0" y1="146" x2="108" y2="146"/>
+              <line class="axis" x1="0" y1="146" x2="0" y2="16"/>
+              <path d="M8,34 C30,70 60,116 104,134" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+              <text class="lbl" x="20" y="162">box size r →</text>
+              <text class="lbl-strong" x="40" y="40" fill="var(--green)">Λ(r)</text>
+              <text class="lbl" x="-2" y="14">high</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> if occupancy swings a lot box-to-box the pattern is clumpy
+            with big voids (high Λ); if it's steady the pattern is evenly spread (low Λ). The Λ(r)
+            curve is the heterogeneity axis fractal dimension omits.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Plotnick 1996; Allain &amp; Cloitre 1991</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Λ(r)</b> — gliding-box lacunarity curve, var/mean² of occupancy vs scale</dd>
+            <dt>Units</dt><dd>dimensionless (≥1 at each r)</dd>
+            <dt>Reads as</dt><dd>↑ Λ = gappier, clumped with large inter-hyphal voids; ≈1 = evenly spread, uniform fill</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Λ(r)</dt><dd>lacunarity at box size r — var/mean² of box occupancy (gappiness)</dd>
+            <dt>r</dt><dd>side length of the gliding box</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 5. Multifractal spectrum -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Multifractal spectrum f(α), Δα</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">A single dimension assumes uniform scaling; a colony rarely is. The
+          generalized dimensions D<sub>q</sub> trace a spectrum <span class="term">f(α)</span>, and its
+          width <span class="term">Δα = α<sub>max</sub> − α<sub>min</sub></span> measures how much the
+          local space-filling exponent varies across the colony.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The multifractal singularity spectrum is an inverted parabola whose width Delta-alpha measures density heterogeneity">
+            <g transform="translate(40,16)">
+              <line class="axis" x1="0" y1="160" x2="270" y2="160"/>
+              <line class="axis" x1="0" y1="160" x2="0" y2="12"/>
+              <path d="M30,150 C70,40 200,40 240,150" fill="none" stroke="var(--purple)" stroke-width="2.5"/>
+              <circle cx="30" cy="150" r="3.5" fill="var(--purple)"/>
+              <circle cx="240" cy="150" r="3.5" fill="var(--purple)"/>
+              <line x1="30" y1="172" x2="240" y2="172" stroke="var(--purple)" stroke-width="1.5" stroke-dasharray="2 3"/>
+              <path d="M30,168 L30,176 M240,168 L240,176" stroke="var(--purple)" stroke-width="1.5"/>
+              <text class="lbl-strong" x="108" y="190" fill="var(--purple)">Δα = width</text>
+              <text class="lbl" x="18" y="148">α<tspan dy="3">min</tspan></text>
+              <text class="lbl" x="226" y="148">α<tspan dy="3">max</tspan></text>
+              <text class="lbl" x="244" y="166">α →</text>
+              <text class="lbl" x="-32" y="80" transform="rotate(-90 -32,80)">f(α)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> reweight box occupancy by an exponent q and re-fit. A point
+            (Δα≈0) means uniform scaling; a wide hump means dense and sparse zones obey different
+            exponents — strong heterogeneity. Needs ≥1 decade of scale.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Vascular</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Halsey 1986; Stošić 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>Δα</b> — width of the multifractal singularity spectrum f(α)</dd>
+            <dt>Units</dt><dd>dimensionless (spectrum width; ≈0 for monofractal)</dd>
+            <dt>Reads as</dt><dd>↑ Δα = more heterogeneous, dense and sparse zones scale differently; ≈0 = uniform space-filling</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f(α)</dt><dd>multifractal singularity spectrum</dd>
+            <dt>α</dt><dd>local scaling (singularity) exponent</dd>
+            <dt>Δα</dt><dd>spectrum width = α<sub>max</sub> − α<sub>min</sub> (heterogeneity)</dd>
+            <dt>α<sub>min</sub></dt><dd>smallest local scaling exponent</dd>
+            <dt>α<sub>max</sub></dt><dd>largest local scaling exponent</dd>
+            <dt>D<sub>q</sub></dt><dd>generalized dimensions reweighted by exponent q</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 6. Minkowski functionals -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Minkowski functionals (area, perimeter, Euler χ)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Three additive morphological numbers — <span class="term">area</span>,
+          <span class="term">perimeter</span>, and <span class="term">Euler χ</span> — read off the mask
+          as a threshold sweeps. χ is the standout: it counts objects minus enclosed holes, so it indexes
+          loop / anastomosis formation at the silhouette level.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The three Minkowski functionals: area as filled region, perimeter as boundary length, and Euler number as objects minus holes">
+            <g transform="translate(14,28)">
+              <path fill="rgba(11,155,118,.20)" stroke="none" d="M30,8 C12,14 12,40 28,52 C18,74 42,92 60,82 C82,90 90,60 76,46 C86,24 60,4 42,14 Z"/>
+              <text class="lbl-strong" x="6" y="112" fill="var(--green)">area</text>
+              <text class="lbl" x="0" y="128">filled pixels</text>
+            </g>
+            <g transform="translate(132,28)">
+              <path fill="none" stroke="var(--orange)" stroke-width="2.5" d="M30,8 C12,14 12,40 28,52 C18,74 42,92 60,82 C82,90 90,60 76,46 C86,24 60,4 42,14 Z"/>
+              <text class="lbl-strong" x="2" y="112" fill="var(--orange)">perimeter</text>
+              <text class="lbl" x="0" y="128">boundary length</text>
+            </g>
+            <g transform="translate(250,28)">
+              <path fill="rgba(11,155,118,.20)" stroke="var(--green)" stroke-width="2" fill-rule="evenodd"
+                d="M34,6 C14,12 12,42 30,56 C18,80 46,98 64,86 C88,92 94,58 78,44 C88,20 60,0 42,12 Z
+                   M40,42 a8,8 0 1,0 0.1,0 Z"/>
+              <text class="lbl" x="30" y="50" fill="var(--vermillion)">hole</text>
+              <text class="lbl-strong" x="6" y="112" fill="var(--green)">Euler χ</text>
+              <text class="lbl" x="0" y="128">1 − holes</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> three numbers, all additive and computable from the raw mask
+            at any threshold. Area and perimeter track size and boundary; χ tracks connectivity — falling
+            as the mesh closes loops. Very robust, no graph needed.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mecke 2000</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area, perimeter, χ</b> — the three additive Minkowski functionals (χ is the standout)</dd>
+            <dt>Units</dt><dd>area / perimeter in pixels; χ integer (objects − holes)</dd>
+            <dt>Reads as</dt><dd>↓ χ (more negative) = more enclosed loops / meshier silhouette; ↑ perimeter at fixed area = rougher boundary</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>χ</dt><dd>Euler number = connected objects − enclosed holes (connectivity)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 7. Minkowski-Bouligand dimension -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Minkowski–Bouligand dimension</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The <span class="term">dilation ("sausage")</span> fractal dimension:
+          thicken the structure by radius δ, measure the dilated area A(δ), and fit its scaling. Because
+          dilation bridges small gaps, it tolerates thin-line breaks that would trip a strict
+          box-count.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Dilating a thin branched structure by a radius produces a sausage whose area scaling gives the Minkowski-Bouligand dimension">
+            <g transform="translate(16,18)">
+              <!-- broad sausage halo -->
+              <path fill="rgba(11,155,118,.14)" stroke="none"
+                d="M60,150 Q56,108 56,90 Q40,72 24,58 M60,90 Q82,72 98,56 M56,90 Q50,60 46,38"
+                stroke-width="26" stroke="rgba(11,155,118,.14)" fill="none" stroke-linecap="round"/>
+              <path stroke="rgba(11,155,118,.16)" stroke-width="26" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                d="M60,150 L60,86 M60,100 L26,58 M60,92 L98,54 M60,86 L46,38 M60,86 L78,34"/>
+              <!-- thin centerline with break -->
+              <path class="struct" stroke="var(--green)" stroke-width="2" d="M60,150 L60,108 M60,100 L26,58 M60,92 L98,54 M60,86 L46,38 M60,86 L78,34"/>
+              <text class="lbl" x="58" y="104" fill="var(--vermillion)">gap</text>
+              <text class="lbl-strong" x="4" y="178" fill="var(--green)">dilate by δ → bridges breaks</text>
+            </g>
+            <g transform="translate(232,22)">
+              <line class="axis" x1="0" y1="146" x2="108" y2="146"/>
+              <line class="axis" x1="0" y1="146" x2="0" y2="16"/>
+              <polyline points="8,34 40,62 72,92 104,124" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+              <circle cx="8" cy="34" r="3" fill="var(--green)"/><circle cx="40" cy="62" r="3" fill="var(--green)"/>
+              <circle cx="72" cy="92" r="3" fill="var(--green)"/><circle cx="104" cy="124" r="3" fill="var(--green)"/>
+              <text class="lbl" x="20" y="162">log δ →</text>
+              <text class="lbl-strong" x="44" y="56" fill="var(--green)">D from A(δ)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the dilation balloon fills small breaks before the scaling is
+            fit, so broken thin hyphae — the low-res failure mode — don't fragment the estimate. A
+            gap-forgiving cousin of box-counting.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Florindo &amp; Bruno 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — Minkowski–Bouligand (dilation / "sausage") fractal dimension</dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling / branched; ≈1 = sparse, near-linear (gap-tolerant reading of D)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>δ</dt><dd>dilation radius the structure is thickened by</dd>
+            <dt>A(δ)</dt><dd>area of the dilated ("sausage") region at radius δ</dd>
+            <dt>D</dt><dd>Minkowski–Bouligand dimension from the A(δ) scaling</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 8. Mass-radius scaling -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Mass–radius scaling M(R) ∝ R<sup>D</sup></h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Grow a circle of radius R from the colony centre and tally the enclosed
+          mass M(R). The scaling exponent in <span class="term">M(R) ∝ R<sup>D</sup></span> is a radial
+          mass-fractal dimension — the same D, but centred on the inoculum.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Concentric circles from the colony center accumulate mass; the log mass versus log radius slope is the radial fractal dimension">
+            <g transform="translate(18,12)">
+              <path fill="rgba(11,155,118,.16)" stroke="none"
+                d="M86,100 C66,86 70,60 86,52 C80,34 100,24 110,40 C128,30 142,52 128,66 C146,74 142,100 122,100
+                   C128,122 104,134 96,116 C82,128 64,116 72,100 Z"/>
+              <g fill="none" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="3 3">
+                <circle cx="96" cy="88" r="20"/><circle cx="96" cy="88" r="38"/><circle cx="96" cy="88" r="56"/>
+              </g>
+              <circle cx="96" cy="88" r="3" fill="var(--blue)"/>
+              <text class="lbl" x="100" y="86" fill="var(--blue)">centre</text>
+              <text class="lbl-strong" x="46" y="178" fill="var(--green)">M inside radius R</text>
+            </g>
+            <g transform="translate(236,22)">
+              <line class="axis" x1="0" y1="146" x2="108" y2="146"/>
+              <line class="axis" x1="0" y1="146" x2="0" y2="16"/>
+              <polyline points="8,134 40,102 72,68 104,36" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <circle cx="8" cy="134" r="3" fill="var(--blue)"/><circle cx="40" cy="102" r="3" fill="var(--blue)"/>
+              <circle cx="72" cy="68" r="3" fill="var(--blue)"/><circle cx="104" cy="36" r="3" fill="var(--blue)"/>
+              <text class="lbl" x="22" y="162">log R →</text>
+              <text class="lbl-strong" x="42" y="58" fill="var(--blue)">slope = D</text>
+              <text class="lbl" x="-30" y="62" transform="rotate(-90 -30,62)">log M</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> accumulate mass within nested circles and fit log M vs log R.
+            D&lt;2 means mass thins with reach — a sparse foraging colony; D→2 means it stays solid out
+            to the edge. The DLA-native form of the dimension.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> — radial mass-fractal dimension, exponent in M(R) ∝ R<sup>D</sup></dd>
+            <dt>Units</dt><dd>dimensionless (≈1.0–2.0)</dd>
+            <dt>Reads as</dt><dd>D → 2 = stays solid out to the edge (compact); D &lt; 2 = mass thins with reach (sparse, radially foraging)</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R</dt><dd>radius of the circle grown from the colony centre</dd>
+            <dt>M(R)</dt><dd>mass (occupied pixels) enclosed within radius R</dd>
+            <dt>D</dt><dd>radial mass-fractal dimension in M(R) ∝ R<sup>D</sup></dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 9. Perimeter-area fractal dim -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Perimeter–area fractal dimension</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Across a set of shapes (or thresholds), fit the scaling of
+          <span class="term">log P</span> against <span class="term">log A</span>. The slope yields a
+          boundary-roughness dimension: smooth compact discs sit near the Euclidean line, fjord-like
+          ramified margins climb above it.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Smooth and rugged colonies plotted as log perimeter against log area; the slope is the perimeter-area fractal dimension">
+            <g transform="translate(18,30)">
+              <circle cx="34" cy="34" r="26" fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl" x="8" y="84">smooth · low P/A</text>
+              <path fill="rgba(11,155,118,.16)" stroke="var(--orange)" stroke-width="1.8" stroke-linejoin="round"
+                d="M34,104 L44,118 L60,114 L52,130 L66,140 L50,146 L56,164 L40,152 L26,164 L30,146 L14,140 L28,130 L20,114 L36,118 Z"/>
+              <text class="lbl" x="6" y="186" fill="var(--orange)">rugged · high P/A</text>
+            </g>
+            <g transform="translate(150,26)">
+              <line class="axis" x1="0" y1="150" x2="178" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <line x1="10" y1="140" x2="168" y2="64" stroke="var(--rule)" stroke-width="1.4" stroke-dasharray="4 4"/>
+              <text class="lbl" x="118" y="86" fill="var(--text-dim)">smooth ref</text>
+              <polyline points="12,142 56,108 104,70 160,28" fill="none" stroke="var(--orange)" stroke-width="2.5"/>
+              <circle cx="12" cy="142" r="3" fill="var(--green)"/><circle cx="56" cy="108" r="3" fill="var(--orange)"/>
+              <circle cx="104" cy="70" r="3" fill="var(--orange)"/><circle cx="160" cy="28" r="3" fill="var(--orange)"/>
+              <text class="lbl" x="60" y="166">log A →</text>
+              <text class="lbl-strong" x="20" y="46" fill="var(--orange)">slope ∝ D<tspan dy="3">PA</tspan></text>
+              <text class="lbl" x="-26" y="64" transform="rotate(-90 -26,64)">log P</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a rugged margin packs more perimeter into the same area, so its
+            log P vs log A slope steepens above the smooth-shape reference. A pure boundary-complexity
+            index from the contour alone.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask (contour)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Mandelbrot 1983</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D<sub>PA</sub></b> — perimeter–area fractal dimension, from the log P vs log A slope</dd>
+            <dt>Units</dt><dd>dimensionless (≈1 smooth boundary → 2 highly convoluted)</dd>
+            <dt>Reads as</dt><dd>↑ D<sub>PA</sub> = fjord-like, ramified margin (more perimeter per area); ≈1 = smooth, compact outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter (boundary length) of a shape</dd>
+            <dt>A</dt><dd>area (filled region) of that shape</dd>
+            <dt>D<sub>PA</sub></dt><dd>perimeter–area fractal dimension — slope of log P vs log A</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 10. Two-point density correlation -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Two-point density correlation C(r)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Pick pairs of occupied pixels and measure how their co-occurrence falls
+          with separation r. The decay <span class="term">C(r) ∝ r<sup>−(d−D)</sup></span> exposes the
+          fractal dimension and, where it bends, a characteristic branch spacing / mesh correlation
+          length.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The two-point correlation function decays as a power law in separation r, with a knee marking the characteristic branch spacing">
+            <g transform="translate(16,24)">
+              <g fill="var(--green)">
+                <circle cx="20" cy="30" r="3"/><circle cx="44" cy="22" r="3"/><circle cx="38" cy="50" r="3"/><circle cx="64" cy="40" r="3"/><circle cx="18" cy="62" r="3"/><circle cx="56" cy="70" r="3"/><circle cx="82" cy="58" r="3"/><circle cx="74" cy="86" r="3"/><circle cx="34" cy="84" r="3"/><circle cx="96" cy="34" r="3"/>
+              </g>
+              <line x1="20" y1="30" x2="44" y2="22" stroke="var(--blue)" stroke-width="1.6"/>
+              <line x1="38" y1="50" x2="82" y2="58" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="3 2"/>
+              <text class="lbl" x="24" y="20" fill="var(--blue)">r</text>
+              <text class="lbl-strong" x="2" y="118" fill="var(--green)">pixel pairs at distance r</text>
+            </g>
+            <g transform="translate(170,22)">
+              <line class="axis" x1="0" y1="150" x2="160" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="14"/>
+              <polyline points="8,28 36,52 64,78 92,98 120,128 150,142" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+              <line x1="92" y1="40" x2="92" y2="150" stroke="var(--orange)" stroke-width="1.4" stroke-dasharray="3 3"/>
+              <text class="lbl" x="70" y="36" fill="var(--orange)">knee ξ</text>
+              <text class="lbl" x="64" y="166">log r →</text>
+              <text class="lbl-strong" x="14" y="40" fill="var(--green)">slope −(d−D)</text>
+              <text class="lbl" x="-28" y="64" transform="rotate(-90 -28,64)">log C(r)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the power-law slope encodes D; the knee ξ where it rolls off
+            marks the mesh correlation length — the typical inter-branch gap. Two structural facts from
+            one statistic, no segmentation.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Witten &amp; Sander 1981</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D</b> (from slope −(d−D)) and knee <b>ξ</b> — fractal dimension plus mesh correlation length</dd>
+            <dt>Units</dt><dd>D dimensionless (≈1.0–2.0); ξ in pixels</dd>
+            <dt>Reads as</dt><dd>↑ D = denser, more space-filling; larger ξ = wider typical inter-branch gap / coarser mesh</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>C(r)</dt><dd>two-point density correlation at separation r</dd>
+            <dt>r</dt><dd>separation distance between a pair of occupied pixels</dd>
+            <dt>d</dt><dd>embedding (Euclidean) dimension of the image (2)</dd>
+            <dt>D</dt><dd>fractal dimension, from the power-law slope −(d−D)</dd>
+            <dt>ξ</dt><dd>correlation length — knee marking characteristic branch spacing</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 11. DLA/DBM regime fit -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DLA / DBM regime fit (effective η, D<sub>f</sub>)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Place the measured dimension on the Laplacian-growth family. An effective
+          <span class="term">η ≈ 1/D</span> maps the colony onto a morphotype axis:
+          <span class="term">η≈1/1.71</span> is diffusion-limited foraging (DLA); <span class="term">D→2</span>
+          is compact, supply-rich growth.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A regime axis from a ramified diffusion-limited cluster at D about 1.71 to a compact disc at D approaching 2">
+            <g transform="translate(14,20)">
+              <path class="struct" stroke="var(--green)" stroke-width="1.5" d="M48,100 L48,62 M48,74 L26,54 M48,70 L72,50 M48,62 L40,38 M48,62 L60,34 M26,54 L14,44 M72,50 L86,40 M40,38 L32,20 M60,34 L70,16"/>
+              <text class="lbl-strong" x="6" y="126" fill="var(--green)">D ≈ 1.71</text>
+              <text class="lbl" x="2" y="142">DLA · foraging</text>
+            </g>
+            <g transform="translate(120,86)">
+              <line x1="0" y1="0" x2="120" y2="0" class="axis" stroke="var(--blue)" stroke-width="2"/>
+              <polygon points="120,-5 132,0 120,5" fill="var(--blue)"/>
+              <polygon points="0,-5 -12,0 0,5" fill="var(--blue)"/>
+              <text class="lbl" x="6" y="-10" fill="var(--blue)">η ≈ 1/D</text>
+              <text class="lbl" x="20" y="20" fill="var(--blue)">supply-rich →</text>
+            </g>
+            <g transform="translate(266,20)">
+              <circle cx="42" cy="58" r="40" fill="rgba(11,155,118,.22)" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl-strong" x="20" y="126" fill="var(--green)">D → 2</text>
+              <text class="lbl" x="4" y="142">compact disc</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> one fitted number selects the growth regime. Microbial colonies
+            are the operative case for this theory (DLA ≈ 1.71), so the fit reports nutrient-limited
+            foraging versus rich compact spread directly from the mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Niemeyer 1984; Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>η, D<sub>f</sub></b> — effective Laplacian-growth exponent (η ≈ 1/D) and fitted growth-form dimension</dd>
+            <dt>Units</dt><dd>both dimensionless (D<sub>f</sub> ≈ 1.71–2.0; η a dimensionless exponent)</dd>
+            <dt>Reads as</dt><dd>D<sub>f</sub> ≈ 1.71 = ramified, open DLA-type front; D<sub>f</sub> → 2 = compact, area-filling silhouette</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>η</dt><dd>effective Laplacian-growth exponent, η ≈ 1/D</dd>
+            <dt>D</dt><dd>measured fractal dimension (DLA ≈ 1.71 → 2 compact)</dd>
+            <dt>D<sub>f</sub></dt><dd>fitted fractal dimension of the growth form</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 12. Dense-branching-morphology signature -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Dense-branching-morphology signature</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Two statistics flag the random tip-splitting (DBM) morphotype:
+          <span class="term">branch width ≈ inter-branch gap</span> (a single dominant length scale) plus
+          an <span class="term">exponential branch-length distribution</span>. Together they fingerprint
+          dense space-filling by repeated tip splitting.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Dense branching morphology shows branch width matching the inter-branch gap and an exponential branch-length distribution">
+            <g transform="translate(16,20)">
+              <g stroke="var(--green)" stroke-width="3" stroke-linecap="round">
+                <line x1="20" y1="120" x2="20" y2="40"/><line x1="44" y1="120" x2="44" y2="40"/>
+                <line x1="68" y1="120" x2="68" y2="40"/><line x1="92" y1="120" x2="92" y2="40"/>
+                <line x1="116" y1="120" x2="116" y2="40"/>
+              </g>
+              <!-- width = gap markers -->
+              <line x1="20" y1="34" x2="44" y2="34" stroke="var(--blue)" stroke-width="1.4"/>
+              <text class="lbl" x="14" y="28" fill="var(--blue)">gap ≈ width</text>
+              <line x1="92" y1="132" x2="92" y2="140" stroke="var(--orange)"/><line x1="116" y1="132" x2="116" y2="140" stroke="var(--orange)"/>
+              <text class="lbl-strong" x="6" y="158" fill="var(--green)">one length scale</text>
+            </g>
+            <g transform="translate(186,22)">
+              <line class="axis" x1="0" y1="148" x2="148" y2="148"/>
+              <line class="axis" x1="0" y1="148" x2="0" y2="14"/>
+              <path d="M6,26 C40,96 90,134 144,142" fill="none" stroke="var(--orange)" stroke-width="2.5"/>
+              <text class="lbl-strong" x="40" y="48" fill="var(--orange)">exp. length dist.</text>
+              <text class="lbl" x="40" y="164">branch length →</text>
+              <text class="lbl" x="-30" y="58" transform="rotate(-90 -30,58)">count</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> when growth fills space by random tip-splitting, branches end
+            up regularly spaced (width ≈ gap) with exponentially distributed lengths. Both are mask-level
+            statistics — a categorical morphotype label without tracing.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ben-Jacob &amp; Garik 1990</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DBM flag</b> — categorical label from branch-width/gap ratio + branch-length distribution shape</dd>
+            <dt>Units</dt><dd>ratio dimensionless (≈1 when width ≈ gap); distribution tested for exponential fit</dd>
+            <dt>Reads as</dt><dd>width/gap ≈ 1 with exponential lengths = dense space-filling by regular tip-splitting; departures = other morphotype</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout green">
+      <h3>Why this family is the robust backbone for confluent mycelium</h3>
+      <p>Every metric here is computed from the whole-mycelium silhouette and <b>never separates one
+        hypha from the next</b>. Each one fits a slope, a variance, or an additive number by integrating
+        over many spatial scales — so a handful of mis-thresholded pixels, a few crossing strands, or a
+        soft low-resolution edge barely move the result.</p>
+      <p>That is exactly why three analog fields — neuroscience, plant-root architecture, and vascular
+        imaging — all fall back to fractal dimension, lacunarity, density, and Minkowski descriptors the
+        moment branches stop being separable. These are the 🟢 ship-now rows: they extend PhenoTypic's
+        existing shape/texture toolkit, need only the mask or grayscale you already have, and require
+        <b>no branch retracing</b> to be trustworthy on dense, overlapping, low-res growth.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

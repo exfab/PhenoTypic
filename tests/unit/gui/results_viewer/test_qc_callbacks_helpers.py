@@ -25,20 +25,21 @@ from phenotypic.gui.results_viewer._qc_tab._callbacks import (
 from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
     mark_review_tile,
 )
+from phenotypic.schema import METADATA
 
 
 def test_left_join_qc_columns_preserves_left_rows() -> None:
     """A left-join over partial QC results keeps every left row."""
     left = pl.DataFrame(
         {
-            "Metadata_ImageFile": [f"img_{i}.tif" for i in range(10)],
+            str(METADATA.IMAGE_NAME): [f"img_{i}.tif" for i in range(10)],
             "Object_Label": list(range(10)),
             "Size_Area": [float(100 + i) for i in range(10)],
         }
     )
     right = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["img_0.tif", "img_1.tif", "img_2.tif"],
+            str(METADATA.IMAGE_NAME): ["img_0.tif", "img_1.tif", "img_2.tif"],
             "Object_Label": [0, 1, 2],
             "QC_SE_Metric": [0.01, 0.05, 0.12],
         }
@@ -215,7 +216,7 @@ def _qc_master() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 3,
-            "Metadata_ImageFile": ["img-A", "img-A", "img-B"],
+            str(METADATA.IMAGE_NAME): ["img-A", "img-A", "img-B"],
             "Object_Label": [1, 2, 1],
             "Bbox_CenterRR": [10.0, 20.0, 30.0],
             "Bbox_CenterCC": [10.0, 20.0, 30.0],

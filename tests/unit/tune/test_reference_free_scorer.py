@@ -72,13 +72,13 @@ def test_score_image_includes_count_term_when_count_check_configured(tmp_path):
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
         {
-            "Metadata_ImageName": ["Synthetic96PlateWithObjects"] * 96,
+            "MetadataImage_ImageName": ["Synthetic96PlateWithObjects"] * 96,
             "Object_Label": list(range(96)),
         }
     ).to_csv(csv, index=False)
     scorer = ReferenceFreeScorer(
         count_check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["Metadata_ImageName"]
+            metadata=str(csv), groupby=["MetadataImage_ImageName"]
         )
     )
     image, measurements = _measured_plate()
@@ -132,7 +132,7 @@ def test_size_cv_term_is_low_cost_for_uniform_sizes():
     image, _ = _measured_plate()
     uniform = pd.DataFrame(
         {
-            "Metadata_ImageName": ["p"] * 24,
+            "MetadataImage_ImageName": ["p"] * 24,
             "Size_Area": [500.0] * 24,
             "Shape_Solidity": [0.95] * 24,
             "Shape_Circularity": [0.9] * 24,
@@ -145,11 +145,11 @@ def test_size_cv_term_is_low_cost_for_uniform_sizes():
 def test_size_cv_uses_replicate_groups_when_configured():
     # Two strains with *within-group* uniform sizes but very different means
     # → within-replicate CV is 0 (perfect) even though the pooled CV is large.
-    scorer = ReferenceFreeScorer(replicate_groupby=["Metadata_Strain"])
+    scorer = ReferenceFreeScorer(replicate_groupby=["MetadataGenetic_Strain"])
     image, _ = _measured_plate()
     frame = pd.DataFrame(
         {
-            "Metadata_Strain": ["A"] * 12 + ["B"] * 12,
+            "MetadataGenetic_Strain": ["A"] * 12 + ["B"] * 12,
             "Size_Area": [100.0] * 12 + [900.0] * 12,
         }
     )
@@ -180,20 +180,20 @@ def test_keyword_only_construction():
 def test_round_trips_through_registry(tmp_path):
     csv = tmp_path / "layout.csv"
     pd.DataFrame(
-        {"Metadata_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
+        {"MetadataImage_ImageName": ["p"] * 96, "Object_Label": list(range(96))}
     ).to_csv(csv, index=False)
     gt_dir = tmp_path / "gt_masks"
     gt_dir.mkdir()
     scorer = ReferenceFreeScorer(
         count_check=ExpectedVsDetectedCount(
-            metadata=str(csv), groupby=["Metadata_ImageName"]
+            metadata=str(csv), groupby=["MetadataImage_ImageName"]
         ),
-        replicate_groupby=["Metadata_Strain"],
+        replicate_groupby=["MetadataGenetic_Strain"],
         gt_masks_source=gt_dir,
     )
     reloaded = ReferenceFreeScorer.model_validate_json(scorer.model_dump_json())
     assert isinstance(reloaded, ReferenceFreeScorer)
-    assert reloaded.replicate_groupby == ["Metadata_Strain"]
+    assert reloaded.replicate_groupby == ["MetadataGenetic_Strain"]
     assert reloaded.gt_masks_source == gt_dir
     # the path-configured count check rehydrates from disk and still scores
     assert reloaded.count_check is not None

@@ -28,6 +28,7 @@ import polars as pl
 from ._cli_file_locking import file_lock
 from ._cli_output_manager import _atomic_write, join_metadata
 from ._cli_utils import load_job_metadata, scan_parquets
+from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.sdk_ import (
     DIR_CHUNKS,
     CHUNK_STATE_JSON,
@@ -114,7 +115,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
     manifest_path = progress_dir / CHUNK_MANIFEST_JSON
     manifest = _read_json(manifest_path, default={ChunkManifestKey.CHUNKS: [], ChunkManifestKey.TOTAL_ROWS: 0})
-    datasets_in_chunk = chunk_df["Metadata_Dataset"].unique().to_list()
+    datasets_in_chunk = chunk_df[str(EXPERIMENT_METADATA.DATASET)].unique().to_list()
     manifest[ChunkManifestKey.CHUNKS].append(
         {
             ChunkManifestKey.NAME: chunk_name,
@@ -166,7 +167,7 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
 
         _run_analysis_plugins(output_dir, progress_dir, combined_with_metadata)
 
-    for ds_name, ds_df in chunk_df.group_by("Metadata_Dataset"):
+    for ds_name, ds_df in chunk_df.group_by(str(EXPERIMENT_METADATA.DATASET)):
         _update_dataset_parquet(output_dir, str(ds_name[0]), ds_df)
 
     logger.info(
@@ -218,6 +219,33 @@ def _scan_unchunked_parquets(
     return new_files
 
 
+def _attach_image_identity(
+    df: pl.DataFrame, stem: str, suffix: str = ""
+) -> pl.DataFrame:
+    """Attach the canonical image-identity columns to *df*.
+
+    Adds :data:`~phenotypic.schema.METADATA.IMAGE_NAME` (the image stem) and,
+    when not already present, :data:`~phenotypic.schema.METADATA.SUFFIX` (the
+    file extension). Non-clobbering: an existing ``Metadata_FileSuffix`` emitted
+    upstream by ``insert_metadata`` is preserved rather than overwritten with a
+    caller-supplied fallback. Replaces the retired ad-hoc per-image-file
+    stem column, which duplicated the canonical image name.
+
+    Args:
+        df: Per-image measurement frame to annotate.
+        stem: Image stem, written to ``Metadata_ImageName``.
+        suffix: File extension (e.g. ``".tif"``), written to
+            ``Metadata_FileSuffix`` only when the frame lacks it.
+
+    Returns:
+        The frame with the identity columns attached.
+    """
+    exprs = [pl.lit(stem).alias(str(METADATA.IMAGE_NAME))]
+    if str(METADATA.SUFFIX) not in df.columns:
+        exprs.append(pl.lit(suffix).alias(str(METADATA.SUFFIX)))
+    return df.with_columns(exprs)
+
+
 def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     """Read per-image Parquet files, ensure ``Metadata_Dataset``, and concat.
 
@@ -234,11 +262,11 @@ def _read_and_concat(parquet_files: list[Path]) -> pl.DataFrame | None:
     for pq_path, lf in lazy_frames.items():
         try:
             df = lf.collect()
-            df = df.with_columns(pl.lit(pq_path.stem).alias("Metadata_ImageFile"))
-            if "Metadata_Dataset" not in df.columns:
+            df = _attach_image_identity(df, pq_path.stem)
+            if str(EXPERIMENT_METADATA.DATASET) not in df.columns:
                 dataset_name = pq_path.parent.parent.name
                 df = df.insert_column(
-                    0, pl.lit(dataset_name).alias("Metadata_Dataset")
+                    0, pl.lit(dataset_name).alias(str(EXPERIMENT_METADATA.DATASET))
                 )
             frames.append(df)
         except Exception as exc:

@@ -2,20 +2,21 @@
 
 Flags ``groupby`` groups whose replicates fail to reproduce one another's
 measurements. Each group is modeled as a two-way random-effects design —
-**subjects are the repeated-measure axis** (``Metadata_Time`` by default) and
-**raters are the replicates that should agree** (``Metadata_Replicate`` by
-default) — and the ICC(2,1) (single-measurement, absolute-agreement)
-coefficient quantifies how consistently the replicates reproduce each subject.
-A single scalar is computed per group and broadcast back to every member row
-so downstream curation can pick up the flag from any row.
+**subjects are the repeated-measure axis** (``MetadataCulture_Time`` by default)
+and **raters are the replicates that should agree**
+(``MetadataSample_BioReplicate`` by default) — and the ICC(2,1)
+(single-measurement, absolute-agreement) coefficient quantifies how consistently
+the replicates reproduce each subject. A single scalar is computed per group and
+broadcast back to every member row so downstream curation can pick up the flag
+from any row.
 
-It treats ``Metadata_Time`` as the repeated-measure subject axis and replicates
-as raters; with growth over time, between-timepoint variance dominates, so the
-ICC primarily flags replicate disagreement that is large relative to the growth
-signal. The ICC is computed with NumPy only (no ``pingouin`` dependency) from
-the classic two-way mean-square decomposition. The subject/rater axes are
-configurable, so the same check serves snapshot designs (e.g.
-subject=``Metadata_StrainID``) by overriding ``subject_label``.
+It treats ``MetadataCulture_Time`` as the repeated-measure subject axis and
+replicates as raters; with growth over time, between-timepoint variance
+dominates, so the ICC primarily flags replicate disagreement that is large
+relative to the growth signal. The ICC is computed with NumPy only (no
+``pingouin`` dependency) from the classic two-way mean-square decomposition. The
+subject/rater axes are configurable, so the same check serves snapshot designs
+(e.g. subject=``MetadataGenetic_Strain``) by overriding ``subject_label``.
 
 ``_HIGHER_IS_BAD`` is ``False``: the ICC is an agreement *score* in roughly
 ``[0, 1]`` where higher is better, so a group fails when its ICC falls to or
@@ -31,8 +32,13 @@ import numpy as np
 import pandas as pd
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_ICC
+from phenotypic.schema import CULTURE_METADATA, QUALITY_ICC, SAMPLE_METADATA
 from phenotypic.sdk_ import ColumnRef
+
+# Module-level defaults for pydantic field annotations (cannot call
+# functions in annotated defaults; resolved once at import time).
+_TIME = str(CULTURE_METADATA.TIME)
+_BIO_REPLICATE = str(SAMPLE_METADATA.BIO_REPLICATE)
 
 
 class ICC(QualityCheck):
@@ -40,11 +46,11 @@ class ICC(QualityCheck):
 
     For each combination of ``self.groupby`` columns, this check builds a
     complete ``subjects × raters`` matrix — one row per ``subject_label``
-    value (the repeated-measure axis, by default ``"Metadata_Time"``) and
+    value (the repeated-measure axis, by default ``"MetadataCulture_Time"``) and
     one column per ``rater_label`` value (the replicates that *should*
-    agree, by default ``"Metadata_Replicate"``) — and computes the
+    agree, by default ``"MetadataSample_BioReplicate"``) — and computes the
     ICC(2,1) two-way random, absolute-agreement coefficient over it. With
-    ``Metadata_Time`` as the subject axis the between-timepoint (growth)
+    ``MetadataCulture_Time`` as the subject axis the between-timepoint (growth)
     variance dominates, so the ICC primarily flags replicate disagreement
     that is large relative to the growth signal. The single per-group ICC
     is the metric, broadcast to every member row so the GUI can pick up the
@@ -105,13 +111,13 @@ class ICC(QualityCheck):
     Attributes:
         subject_label: Column whose distinct values index the *subject*
             (row) axis of the two-way model — the repeated-measure axis.
-            Defaults to ``"Metadata_Time"`` so each timepoint is a subject
+            Defaults to ``"MetadataCulture_Time"`` so each timepoint is a subject
             and the ICC flags replicates that disagree relative to the
-            growth trend. Override (e.g. ``"Metadata_StrainID"``) for a
+            growth trend. Override (e.g. ``"MetadataGenetic_Strain"``) for a
             snapshot reliability design.
         rater_label: Column whose distinct values index the *rater*
             (column) axis of the two-way model — the replicates that
-            should agree. Defaults to ``"Metadata_Replicate"``.
+            should agree. Defaults to ``"MetadataSample_BioReplicate"``.
         warn_threshold: ICC at or below which ``Status`` becomes
             ``"warn"``. Defaults to ``0.75``.
         fail_threshold: ICC at or below which ``Status`` becomes
@@ -129,8 +135,8 @@ class ICC(QualityCheck):
         >>> from phenotypic.analysis.qc import ICC
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 9,
-        ...     "Metadata_Time": [0, 0, 0, 1, 1, 1, 2, 2, 2],
-        ...     "Metadata_Replicate": [1, 2, 3] * 3,
+        ...     "MetadataCulture_Time": [0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...     "MetadataSample_BioReplicate": [1, 2, 3] * 3,
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9,
         ...         20.0, 20.2, 19.8,
@@ -148,7 +154,7 @@ class ICC(QualityCheck):
 
         >>> no_rater = pd.DataFrame({
         ...     "Plate": ["P1"] * 3,
-        ...     "Metadata_Time": [0, 1, 2],
+        ...     "MetadataCulture_Time": [0, 1, 2],
         ...     "Size_Area": [10.0, 20.0, 40.0],
         ... })
         >>> chk = ICC(on="Size_Area", groupby=["Plate"])
@@ -167,8 +173,8 @@ class ICC(QualityCheck):
     warn_threshold: float = 0.75
     fail_threshold: float = 0.50
 
-    subject_label: ColumnRef = "Metadata_Time"
-    rater_label: ColumnRef = "Metadata_Replicate"
+    subject_label: ColumnRef = _TIME
+    rater_label: ColumnRef = _BIO_REPLICATE
 
     def analyze(self, data: pd.DataFrame) -> pd.DataFrame:
         """Reset :attr:`unmatched_groups` and run the base ``analyze``.

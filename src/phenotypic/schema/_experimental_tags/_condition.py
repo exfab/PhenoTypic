@@ -1,22 +1,27 @@
 """Media and growth-condition metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
 class CONDITION_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags describing media and experimental conditions.
+    """Recommended ``MetadataCondition_*`` tags describing media and experimental conditions.
 
     These name the chemical environment and perturbations applied to the colonies
     (medium, carbon/nitrogen source, supplements, treatments, compounds, stress).
-    Members render as ``Metadata_<Label>`` (e.g. ``Metadata_Treatment``) and share the
-    ``Metadata_`` namespace with the other experimental-tag enums. Recommended
-    vocabulary, not a validator.
+    Members render as ``MetadataCondition_<Label>`` (e.g.
+    ``MetadataCondition_Treatment``) in the ``Metadata`` column family shared with
+    the other experimental-tag enums. Recommended vocabulary, not a validator.
     """
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataCondition"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.SPECIMEN_PREP
 
     MEDIA = Entry("Media", "Growth medium name (e.g. YPD, SC, LB).")
     CARBON_SOURCE = Entry("CarbonSource", "Primary carbon source (e.g. glucose, galactose).")

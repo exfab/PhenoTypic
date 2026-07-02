@@ -188,6 +188,7 @@ from phenotypic.gui.results_viewer._filter_state import (
     METHOD_RANGE,
     _coerce_float,
 )
+from phenotypic.schema import METADATA
 
 
 def test_legacy_row_defaults_to_is_any_of() -> None:
@@ -211,7 +212,7 @@ def test_from_store_reads_range_and_compare_and_contains() -> None:
          "range_min": "100", "range_max": "5000"},
         {"column": "Shape_Circularity", "method": METHOD_COMPARE,
          "compare_op": ">=", "compare_value": "0.85"},
-        {"column": "Metadata_ImageFile", "method": METHOD_CONTAINS,
+        {"column": str(METADATA.IMAGE_NAME), "method": METHOD_CONTAINS,
          "text_pattern": "plate_02", "text_regex": False,
          "text_case_sensitive": True},
     ]

@@ -44,10 +44,13 @@ from phenotypic.gui.results_viewer._heatmap_tab._figure import (
     AggregatorName,
     build_heatmap_figure,
 )
+from phenotypic.schema import CULTURE_METADATA, METADATA
 from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
+
+_TIME_COL: str = str(CULTURE_METADATA.TIME)
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +94,7 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
         Args:
             color: Selected color column. ``None`` short-circuits to an
                 empty-state figure.
-            image: Selected ``Metadata_ImageFile`` value. ``None``
+            image: Selected ``Metadata_ImageName`` value. ``None``
                 short-circuits to an empty-state figure.
             time_value: Slider value or ``None``. Compared as a float;
                 see :func:`._figure.build_heatmap_figure` for the
@@ -193,12 +196,12 @@ def register_heatmap_callbacks(app: dash.Dash) -> None:
                 column_names = list(frame.columns)
         color_options = [{"label": c, "value": c} for c in column_names]
 
-        # Image options: unique ``Metadata_ImageFile`` in the active
+        # Image options: unique ``Metadata_ImageName`` in the active
         # frame, or empty when the frame is missing.
         image_options: list[dict[str, str]] = []
-        if frame is not None and "Metadata_ImageFile" in frame.columns:
+        if frame is not None and str(METADATA.IMAGE_NAME) in frame.columns:
             unique = sorted(
-                v for v in frame["Metadata_ImageFile"].unique().to_list() if v is not None
+                v for v in frame[str(METADATA.IMAGE_NAME)].unique().to_list() if v is not None
             )
             image_options = [{"label": str(f), "value": str(f)} for f in unique]
 
@@ -364,10 +367,10 @@ def _build_time_slider_state(
     empty: tuple[
         dict[float, str] | dict[str, str], float, float, float | None, dict[str, str], str
     ] = ({}, 0.0, 1.0, None, _TIME_WRAPPER_HIDDEN, "")
-    if frame is None or "Metadata_Time" not in frame.columns:
+    if frame is None or _TIME_COL not in frame.columns:
         return empty
 
-    raw = frame["Metadata_Time"].to_list()
+    raw = frame[_TIME_COL].to_list()
     coerced = pd.to_numeric(pd.Series(raw), errors="coerce")
     numeric = coerced.dropna()
     if numeric.empty:

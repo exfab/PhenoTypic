@@ -1,7 +1,16 @@
 """Second-order texture features derived from the gray-level co-occurrence matrix."""
 
+import re
+
 from ._measurement_info import Entry
 from ._tiers import DiscriminativeFeature
+
+# ``scale`` is emitted with ``{scale:02d}`` (a *minimum* width), so scales >= 100
+# render more than two digits — match ``\d{2,}`` so large GLCM offsets stay
+# recognizable rather than silently degrading to unrecognized columns.
+_TEXTURE_HEADER_RE = re.compile(
+    r"^(?P<cat>[A-Za-z0-9]+)_(?P<label>[^-]+)-(?:deg\d{3}|avg)-scale\d{2,}$"
+)
 
 
 class TEXTURE(DiscriminativeFeature):
@@ -130,6 +139,22 @@ class TEXTURE(DiscriminativeFeature):
             rings, radial structure). Values near 0 → random, independent patterns. Captures nonlinear
             organization missed by linear correlation.""",
     )
+
+    @classmethod
+    def header_scheme(cls) -> str:
+        return "texture"
+
+    @classmethod
+    def member_for_header(cls, column: str):
+        """Recognize TEXTURE's ``{cat}_{label}-deg###-scale##`` / ``-avg-scale##``."""
+        match = _TEXTURE_HEADER_RE.match(column)
+        if match is None or match.group("cat") != cls.category():
+            return None
+        label = match.group("label")
+        for member in cls:
+            if member.label == label:
+                return member
+        return None
 
     @classmethod
     def get_headers(cls, scale: int, matrix_name=None) -> list[str]:

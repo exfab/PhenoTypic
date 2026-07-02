@@ -64,7 +64,7 @@ def radial_wedge_id(
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``, so the two
             tabs' callbacks don't collide.
-        image_file: ``Metadata_ImageFile`` value identifying the plate image.
+        image_file: ``Metadata_ImageName`` value identifying the plate image.
         label: ``Object_Label`` integer identifying the colony.
         category: Category token string (e.g. ``"debris"``) or
             :data:`RADIAL_RESTORE_SENTINEL` for the center restore wedge.
@@ -86,7 +86,7 @@ def radial_trigger_id(surface: str, image_file: str, label: int) -> dict[str, An
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -109,7 +109,7 @@ def radial_popover_body_id(
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -130,7 +130,7 @@ def radial_store_id(surface: str, image_file: str, label: int) -> dict[str, Any]
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -154,7 +154,7 @@ def radial_custom_input_id(
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -174,7 +174,7 @@ def radial_custom_submit_id(
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -197,7 +197,7 @@ def radial_custom_msg_id(
 
     Args:
         surface: Tile surface, either ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
 
     Returns:
@@ -330,7 +330,7 @@ def build_radial_trigger(
 
     Args:
         surface: Tile surface — ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` integer.
         current_category: The currently assigned category token, or
             ``None`` when no category has been set.  Controls badge vs.
@@ -434,7 +434,7 @@ def build_radial_body(
 
     Args:
         surface: Tile surface — ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` integer.
         custom_categories: List of registered custom category tokens (e.g.
             ``["halo", "ghost"]``).  Each renders as a chip in the expanded
@@ -588,7 +588,7 @@ def _build_custom_section(
 
     Args:
         surface: Tile surface — ``"colony"`` or ``"qc"``.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` integer.
         custom_categories: Registered custom category tokens, in registration
             order (the order drives the custom-palette color cycle).

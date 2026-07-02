@@ -1,22 +1,28 @@
 """Sample identity and provenance metadata tags for the PhenoTypic module."""
 
 from .._measurement_info import Entry
+from .._rembi import REMBI_MODULE
 from .._tiers import IdentityInfo
 
 
 class SAMPLE_METADATA(IdentityInfo):
-    """Recommended ``Metadata_*`` tags identifying a sample and its provenance.
+    """Recommended ``MetadataSample_*`` tags identifying a sample and its provenance.
 
     These distinguish individual biological samples and track where each colony came
     from (replicate, clone, source plate/well, library). Members render as
-    ``Metadata_<Label>`` (e.g. ``Metadata_Replicate``) and share the ``Metadata_``
-    namespace with the other experimental-tag enums. Recommended vocabulary, not a
-    validator: arbitrary metadata columns are still accepted.
+    ``MetadataSample_<Label>`` (e.g. ``MetadataSample_BioReplicate``) in the
+    ``Metadata`` column family shared with the other experimental-tag enums.
+    Recommended vocabulary, not a validator: arbitrary metadata columns are still
+    accepted.
     """
 
     @classmethod
     def category(cls) -> str:
-        return "Metadata"
+        return "MetadataSample"
+
+    @classmethod
+    def rembi_module(cls) -> REMBI_MODULE:
+        return REMBI_MODULE.BIOSAMPLE
 
     SAMPLE_ID = Entry("SampleID", "Unique identifier for the biological sample.")
     BIO_REPLICATE = Entry("BioReplicate",

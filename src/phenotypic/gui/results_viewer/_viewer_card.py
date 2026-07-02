@@ -93,6 +93,7 @@ from phenotypic.gui.results_viewer._picker_navigation import (
     picker_button_disabled_states,
     step_picker_value,
 )
+from phenotypic.sdk_ import is_metadata_header
 
 logger = logging.getLogger(__name__)
 
@@ -101,15 +102,12 @@ logger = logging.getLogger(__name__)
 # paginates natively, but very large frames slow client-side rendering.
 _MAX_DETAILS_ROWS = 5000
 
-#: Prefix used to recognise metadata columns (``Metadata_Dataset`` etc.).
-_METADATA_PREFIX = "Metadata_"
-
 #: Default OSD canvas height; CSS in ``_assets/results_viewer.css`` may override.
 _OSD_CANVAS_STYLE: dict[str, str] = {"height": "600px", "width": "100%"}
 
 #: Column id and human-facing name for the curation Status column injected
 #: as the leftmost column of the per-object DataTable. Clicking a Status
-#: cell toggles whether that ``(Metadata_ImageFile, Object_Label)`` row is
+#: cell toggles whether that ``(Metadata_ImageName, Object_Label)`` row is
 #: marked as removed.
 _STATUS_COLUMN_ID = "Status"
 
@@ -140,7 +138,7 @@ def _encode_picker_value(dataset: str, stem: str) -> str:
 
     Args:
         dataset: Dataset name (matches ``Metadata_Dataset``).
-        stem: Image stem (matches ``Metadata_ImageFile``).
+        stem: Image stem (matches ``Metadata_ImageName``).
 
     Returns:
         A JSON string of shape ``{"dataset": ..., "stem": ...}``.
@@ -526,7 +524,7 @@ def _row_status(
     """Resolve the Status cell value for a single DataTable row.
 
     Args:
-        image_file: Value of ``Metadata_ImageFile`` from the row dict.
+        image_file: Value of ``Metadata_ImageName`` from the row dict.
             Coerced to ``str`` to match the lookup-set dtype.
         object_label: Value of ``Object_Label`` from the row dict.
             Coerced to ``int`` to match the lookup-set dtype.
@@ -562,7 +560,7 @@ def _project_details_columns(
     dragging in the full measurement payload.
     """
     available = set(df.columns)
-    metadata_cols = [c for c in df.columns if c.startswith(_METADATA_PREFIX)]
+    metadata_cols = [c for c in df.columns if is_metadata_header(c)]
     object_label_cols = [KEY_OBJECT_LABEL] if KEY_OBJECT_LABEL in available else []
     seen = set(metadata_cols) | set(object_label_cols)
     extra = [c for c in filter_columns if c in available and c not in seen]
@@ -939,7 +937,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
     # 9. Click-to-toggle on a Status cell. Pattern-matches on every
     #    card's details DataTable; the matching ``data`` State is read
     #    in lock-step so we can resolve the clicked cell's
-    #    ``(Metadata_ImageFile, Object_Label)`` without re-querying the
+    #    ``(Metadata_ImageName, Object_Label)`` without re-querying the
     #    master frame.
     @app.callback(
         Output(STORE_REMOVED_KEYS, "data", allow_duplicate=True),
@@ -960,7 +958,7 @@ def register_callbacks(app: dash.Dash, output_root: OutputRoot) -> None:
                 per matched DataTable (Dash pads with ``None`` for tables
                 with no active cell).
             data_list: Per-table ``data`` lists. Used to recover the
-                clicked row's ``Metadata_ImageFile`` / ``Object_Label``.
+                clicked row's ``Metadata_ImageName`` / ``Object_Label``.
             id_list: Per-table ``id`` dicts. Matched index-aligned with
                 ``active_cells`` so the triggered card can be located.
 

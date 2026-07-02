@@ -135,6 +135,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Sequence, Union, cast
 
 import click
+import yaml
 
 from phenotypic import ImagePipeline
 from phenotypic._core._image_parts.detection_modes import available_modes
@@ -179,6 +180,7 @@ from phenotypic._cli._cli_constants import (
     MIN_SLURM_TIME_MINUTES,
     MAX_SLURM_TIME_MINUTES,
 )
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     dataset_overlays_dir,
@@ -199,6 +201,10 @@ from phenotypic.sdk_.typing_ import CliMode, ImageTypeName, ProcessOnlyLayer
 
 # Set up logger
 logger = logging.getLogger(__name__)
+
+# Resolved at import time so Click `help=` strings and echo messages track the
+# schema enum rather than hard-coding the column name literal.
+_DATASET_COL: str = str(EXPERIMENT_METADATA.DATASET)
 
 
 def setup_logging(debug: bool = False):
@@ -728,7 +734,7 @@ def _print_process_only_dry_run_plan(
     "--no-dataset-column",
     "no_dataset_column",
     is_flag=True,
-    help="Exclude 'Metadata_Dataset' column from master_measurements.csv (included by default)",
+    help=f"Exclude {_DATASET_COL!r} column from master_measurements.csv (included by default)",
 )
 @click.option(
     "--dry-run",
@@ -773,6 +779,16 @@ def _print_process_only_dry_run_plan(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
     help="CSV file to inner-join onto master_measurements.csv on shared columns",
+)
+@click.option(
+    "--study",
+    "study",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    metavar="PATH",
+    help="Optional study.yaml of REMBI Study-level fields (Title, License, "
+         "Author, ...) folded into deliverables/rembi.yaml. CLI study file "
+         "overrides constant Metadata_* columns.",
 )
 @click.option(
     "--checkpoint-interval",
@@ -834,27 +850,38 @@ def phenotypic_cli(
     restart: bool,
     overwrite: bool,
     metadata_csv: Optional[Path],
+    study: Optional[Path],
     checkpoint_interval: Optional[int],
     skip_validation: bool,
     no_qc: bool,
     layer: Optional[str],
 ):
     """
-    Execute a PhenoTypic pipeline on images.
+    Execute a PhenoTypic image-processing pipeline on a file or directory.
 
-    --pipeline: Path to pipeline configuration file
+    The --mode flag selects what the run produces:
 
-    --input: Image file or directory to process
+    \b
+      full       Apply the pipeline and measure every image, then write the
+                 deliverables (measurements, analysis, dashboard, overlays,
+                 QC). Requires --pipeline and --input. This is the default.
+      measure    Re-run measurement only against an existing output root.
+                 Requires --pipeline; no --input (inputs are discovered
+                 from --output).
+      recompile  Refresh aggregate outputs from an existing output root; no
+                 --input or --pipeline (both are reloaded from --output).
+      process    Apply-only export: write ONE image layer per input (chosen
+                 with --layer), mirroring the input tree under --output.
+                 Skips measurement, deliverables, QC, and the dashboard.
 
-    --mode process --layer {rgb|gray|detect_mat|objmap}: apply-only export
-    mode. Runs pipeline.apply() and writes a single image layer per input via
-    the layer accessor's imsave (rgb integer TIFF at the source bit depth;
-    gray/detect_mat float TIFF preserving full precision; objmap 16-bit
-    raw-label PNG; PhenoTypic metadata embedded), mirroring the input tree
-    under --output. Skips measurement, deliverables, QC, and the dashboard;
-    machine-state (progress manifest, event log, pipeline copy) lives under
-    <output>/.phenotypic/. Full local + SLURM + resume reuse. Example::
+    Process-mode export writes each layer via the layer accessor's imsave:
+    rgb integer TIFF at the source bit depth; gray/detect_mat float TIFF
+    preserving full precision; objmap 16-bit raw-label PNG (PhenoTypic
+    metadata embedded). Machine-state (progress manifest, event log, pipeline
+    copy) lives under <output>/.phenotypic/. All modes support local + SLURM
+    execution and content-defined resume. Example:
 
+    \b
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
     """
@@ -1448,6 +1475,17 @@ def phenotypic_cli(
         except Exception as e:
             logger.warning(f"Failed to load pipeline for finalizer: {e}")
 
+        # Parse the optional --study YAML once; its REMBI Study-level fields are
+        # folded into deliverables/rembi.yaml and override constant Metadata_*
+        # study columns. Best-effort: a malformed/unreadable file is logged and
+        # the manifest still emits from the mirror's own columns.
+        study_config: Optional[dict] = None
+        if study is not None:
+            try:
+                study_config = yaml.safe_load(Path(study).read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.warning(f"Failed to read --study file {study}: {e}")
+
         # Aggregate master CSV (if we have completed results)
         if results.total_completed > 0:
             click.echo("\nAggregating measurements...")
@@ -1456,6 +1494,7 @@ def phenotypic_cli(
                 metadata_csv=config.metadata_csv,
                 pipeline=finalizer_pipeline,
                 no_qc=no_qc,
+                study_config=study_config,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")

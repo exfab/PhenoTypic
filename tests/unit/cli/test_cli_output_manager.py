@@ -36,6 +36,7 @@ from phenotypic._cli._cli_output_manager import (
     finalize_post_master_outputs,
     split_master_by_feature,
 )
+from phenotypic.schema import METADATA
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
@@ -47,8 +48,8 @@ def _make_master_df(pipeline: ImagePipeline) -> pl.DataFrame:
     """Build a synthetic master DataFrame matching *pipeline*'s features."""
     headers = _collect_feature_headers(pipeline)
     cols: dict[str, list] = {
-        "Metadata_Dataset": ["ds1", "ds1", "ds1"],
-        "Metadata_ImageFile": ["img1", "img1", "img2"],
+        "MetadataExperiment_Dataset": ["ds1", "ds1", "ds1"],
+        str(METADATA.IMAGE_NAME): ["img1", "img1", "img2"],
         "Object_Label": [1, 2, 1],
         "RowNum": [0, 0, 1],
         "ColNum": [0, 1, 0],
@@ -164,7 +165,7 @@ class TestSplitMasterByFeature:
 
         for key in ("MeasureSize", "MeasureShape"):
             df = pl.read_csv(measurements_by_feature_dir(tmp_path) / f"{key}.csv")
-            for meta_col in ("Metadata_Dataset", "Metadata_ImageFile",
+            for meta_col in ("MetadataExperiment_Dataset", str(METADATA.IMAGE_NAME),
                              "Object_Label", "RowNum", "ColNum"):
                 assert meta_col in df.columns, (
                     f"{meta_col} missing from {key} split"
@@ -207,7 +208,7 @@ class TestSplitMasterByFeature:
 
     def test_empty_meas_returns_empty(self, tmp_path: Path) -> None:
         pipeline = ImagePipeline()  # no measurers
-        master = pl.DataFrame({"Metadata_Dataset": ["ds"], "Object_Label": [1]})
+        master = pl.DataFrame({"MetadataExperiment_Dataset": ["ds"], "Object_Label": [1]})
         assert split_master_by_feature(master, tmp_path, pipeline) == {}
         assert not measurements_by_feature_dir(tmp_path).exists()
 
@@ -245,8 +246,8 @@ class TestAggregateMeasurementsAutoResolve:
         ds_dir = output_dir / "results" / "ds1" / "measurements"
         ds_dir.mkdir(parents=True)
         row = pl.DataFrame({
-            "Metadata_Dataset": ["ds1"],
-            "Metadata_ImageFile": ["img1"],
+            "MetadataExperiment_Dataset": ["ds1"],
+            str(METADATA.IMAGE_NAME): ["img1"],
             "Object_Label": [1],
             "RowNum": [0],
             "ColNum": [0],
@@ -294,7 +295,7 @@ class TestAggregateMeasurementsAutoResolve:
         size_df = pl.read_csv(size_csv)
         assert "Size_Area" in size_df.columns
         assert "Shape_Area" not in size_df.columns
-        assert "Metadata_ImageFile" in size_df.columns
+        assert str(METADATA.IMAGE_NAME) in size_df.columns
 
     def test_no_state_file_keeps_master_and_splits_known_columns(
         self, tmp_path: Path
@@ -306,8 +307,8 @@ class TestAggregateMeasurementsAutoResolve:
         ds_dir = output_dir / "results" / "ds1" / "measurements"
         ds_dir.mkdir(parents=True)
         pl.DataFrame({
-            "Metadata_Dataset": ["ds1"],
-            "Metadata_ImageFile": ["img1"],
+            "MetadataExperiment_Dataset": ["ds1"],
+            str(METADATA.IMAGE_NAME): ["img1"],
             "Object_Label": [1],
             "Size_Area": [10.0],
         }).write_parquet(ds_dir / "img1.parquet")
@@ -326,8 +327,8 @@ class TestAggregateMeasurementsAutoResolve:
         assert size_csv.exists()
         size_df = pl.read_csv(size_csv)
         assert size_df.columns == [
-            "Metadata_Dataset",
-            "Metadata_ImageFile",
+            "MetadataExperiment_Dataset",
+            str(METADATA.IMAGE_NAME),
             "Object_Label",
             "Size_Area",
         ]
@@ -351,8 +352,8 @@ class TestFinalizeReemitsErrorDeliverables:
             [rng.normal(100.0, 5.0, n_good), rng.normal(500.0, 5.0, n_err)]
         )
         return pl.DataFrame({
-            "Metadata_Dataset": ["ds1"] * n,
-            "Metadata_ImageFile": ["plateA"] * n,
+            "MetadataExperiment_Dataset": ["ds1"] * n,
+            str(METADATA.IMAGE_NAME): ["plateA"] * n,
             "Object_Label": labels,
             "Bbox_CenterRR": [10.0 * i for i in labels],
             "Bbox_CenterCC": [20.0 * i for i in labels],
@@ -368,14 +369,14 @@ class TestFinalizeReemitsErrorDeliverables:
         rows = master.filter(pl.col("Object_Label").is_in(err_labels))
         labels = pl.DataFrame(
             {
-                "Metadata_ImageFile": rows.get_column("Metadata_ImageFile").to_list(),
+                str(METADATA.IMAGE_NAME): rows.get_column(str(METADATA.IMAGE_NAME)).to_list(),
                 "Object_Label": rows.get_column("Object_Label").to_list(),
                 "Curation_Category": [category] * rows.height,
                 "Bbox_CenterRR": rows.get_column("Bbox_CenterRR").to_list(),
                 "Bbox_CenterCC": rows.get_column("Bbox_CenterCC").to_list(),
             },
             schema={
-                "Metadata_ImageFile": pl.String,
+                str(METADATA.IMAGE_NAME): pl.String,
                 "Object_Label": pl.Int64,
                 "Curation_Category": pl.String,
                 "Bbox_CenterRR": pl.Float64,
@@ -442,8 +443,8 @@ class TestFinalizeCopiesMetadataCsv:
     def _master_df() -> pl.DataFrame:
         return pl.DataFrame(
             {
-                "Metadata_Dataset": ["ds1", "ds1"],
-                "Metadata_ImageFile": ["plateA", "plateA"],
+                "MetadataExperiment_Dataset": ["ds1", "ds1"],
+                str(METADATA.IMAGE_NAME): ["plateA", "plateA"],
                 "Object_Label": [1, 2],
                 "Size_Area": [100.0, 110.0],
             }
@@ -463,7 +464,8 @@ class TestFinalizeCopiesMetadataCsv:
         # future refactor (e.g. a copy that round-trips through str / a
         # platform-default codec). A byte-for-byte copy preserves the UTF-8 cell.
         source.write_text(
-            "Metadata_ImageFile,Metadata_Strain\nplateA,Säccharomyces\n",
+            str(METADATA.IMAGE_NAME)
+            + ",Metadata_Strain\nplateA,Säccharomyces\n",
             encoding="utf-8",
         )
 

@@ -1,0 +1,876 @@
+<!doctype html>
+<!--
+  CROSS-DOMAIN TRANSFER — Neuroscience → Filamentous Fungi
+  Part of the 14-artifact "Branch Phenotypes for Filamentous Fungi" set.
+  <head> (CSS + font links) copied VERBATIM from _design-system.html. Do not alter CSS.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuroscience → fungal branches · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--blue)">N</div>
+    <div>
+      <div class="hero-kicker">Cross-domain analog · transfer to fungi</div>
+      <h1 class="hero-title">Neuroscience → fungal branches</h1>
+      <p class="lede">Neuroscience has spent seventy years quantifying branched arbors,
+        and the result is the richest branch-tree vocabulary of any field — Sholl radial
+        density, the L-Measure morphometric lexicon, branch-order theory, and TMD
+        persistence fingerprints. A dendritic arbor and a hyphal network are the same
+        object: a rooted tree of segments that splits, tapers, and fills space from a
+        single origin. What transfers is twofold — a <b>graph vocabulary</b> for when the
+        retracing module resolves branches, and a <b>whole-field fallback</b> (radial
+        density, fractal, persistence) for when dense confluent mycelium refuses to be
+        separated. Both halves drop straight onto a colony imaged from its inoculum.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>Provenance · Ne</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Sholl / TMD 🟢 fallback</span>
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span>L-Measure 🟡 retracing-gated</span>
+        <span class="chip">5 methods</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ROW — the four neuroscience signatures ============ -->
+  <section class="band">
+    <h2 class="section-title">Four signatures the field is built on</h2>
+    <p class="section-sub">Sholl radial density, branch-order theory, the TMD persistence
+      barcode, and dense flood-filling reconstruction — each pictured on a neuron, each
+      with its arrow into a fungal colony.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== MARQUEE (a) Sholl concentric analysis ===== -->
+      <article class="card">
+        <figure class="illo" style="margin-top:0">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Sholl concentric-circle analysis on a neuron, transferring to hyphal-density rings">
+            <!-- concentric Sholl shells centred on the soma -->
+            <g transform="translate(95,110)">
+              <circle cx="0" cy="0" r="22" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".55"/>
+              <circle cx="0" cy="0" r="42" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".55"/>
+              <circle cx="0" cy="0" r="62" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".55"/>
+              <circle cx="0" cy="0" r="82" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".55"/>
+              <!-- dendritic arbor radiating from soma -->
+              <g class="struct" stroke="var(--ink)" stroke-width="1.6">
+                <path d="M0,0 L-30,-34 M-30,-34 L-52,-50 M-30,-34 L-44,-66"/>
+                <path d="M0,0 L34,-26 M34,-26 L60,-30 M34,-26 L52,-52"/>
+                <path d="M0,0 L40,18 M40,18 L66,14 M40,18 L58,42"/>
+                <path d="M0,0 L-12,42 M-12,42 L-30,66 M-12,42 L8,70"/>
+                <path d="M0,0 L-40,8 M-40,8 L-68,2 M-40,8 L-60,26"/>
+              </g>
+              <circle cx="0" cy="0" r="7" fill="var(--blue)"/>
+              <!-- crossing markers on one ring -->
+              <circle cx="42" cy="-1" r="2.4" fill="var(--vermillion)"/>
+              <circle cx="-40" cy="11" r="2.4" fill="var(--vermillion)"/>
+              <circle cx="-20" cy="-37" r="2.4" fill="var(--vermillion)"/>
+              <text class="lbl" x="-92" y="-86">soma → rings r₁..rₙ</text>
+              <text class="lbl-strong" x="14" y="98" fill="var(--vermillion)">N(r) = crossings</text>
+            </g>
+            <!-- arrow + fungal density rings -->
+            <text class="lbl-strong" x="248" y="40">→ hyphal-density</text>
+            <text class="lbl-strong" x="248" y="54">   rings</text>
+            <g transform="translate(300,135)">
+              <circle cx="0" cy="0" r="18" fill="none" stroke="var(--green)" stroke-width="1" opacity=".6"/>
+              <circle cx="0" cy="0" r="34" fill="none" stroke="var(--green)" stroke-width="1" opacity=".6"/>
+              <circle cx="0" cy="0" r="50" fill="none" stroke="var(--green)" stroke-width="1" opacity=".6"/>
+              <g stroke="var(--green)" stroke-width="1.3" opacity=".8" fill="none">
+                <path d="M0,0 L-44,-22 M0,0 L-10,-48 M0,0 L40,-28 M0,0 L48,10 M0,0 L20,46 M0,0 L-30,40 M0,0 L-48,4 M0,0 L8,-46"/>
+              </g>
+              <circle cx="0" cy="0" r="4" fill="var(--green)"/>
+              <text class="lbl" x="-30" y="66">inoculum</text>
+            </g>
+          </svg>
+          <figcaption><b>(a) Sholl analysis.</b> Concentric rings centred on the soma; count
+            mask crossings per ring → a radial density profile N(r). On a plate the soma is the
+            <b>inoculum</b> and N(r) reads the same as <b>concentric hyphal-density rings</b> —
+            no branch separation required.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N(r)</b> — arbor–ring crossings as a function of radius</dd>
+            <dt>Units</dt><dd>count per ring (integer ≥ 0), profiled over radius r</dd>
+            <dt>Reads as</dt><dd>higher N(r) = denser branch coverage at that radius; the radius of peak N marks the widest-spread annulus</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the soma / inoculum</dd>
+            <dt>r<sub>1</sub>..r<sub>n</sub></dt><dd>the successive ring radii, innermost to outermost</dd>
+            <dt>N(r)</dt><dd>number of arbor–ring crossings at radius r (radial density profile)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== MARQUEE (b) centrifugal vs Horton-Strahler ===== -->
+      <article class="card">
+        <figure class="illo" style="margin-top:0">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Centrifugal versus Horton-Strahler ordering on the same dendritic tree">
+            <!-- shared dendritic tree drawn once, labelled twice -->
+            <g transform="translate(8,4)">
+              <text class="lbl-strong" x="20" y="14">centrifugal order</text>
+              <g class="struct" stroke="var(--blue)" stroke-width="2">
+                <path d="M70,150 L70,118"/>            <!-- 1 root segment -->
+                <path d="M70,118 L48,92 M70,118 L96,96"/> <!-- 2 -->
+                <path d="M48,92 L34,66 M48,92 L60,66"/>  <!-- 3 -->
+                <path d="M96,96 L86,70 M96,96 L116,74"/> <!-- 3 -->
+              </g>
+              <text class="lbl" x="62" y="138" fill="var(--blue)">1</text>
+              <text class="lbl" x="34" y="106" fill="var(--blue)">2</text>
+              <text class="lbl" x="98" y="110" fill="var(--blue)">2</text>
+              <text class="lbl" x="22" y="60" fill="var(--blue)">3</text>
+              <text class="lbl" x="58" y="58" fill="var(--blue)">3</text>
+              <text class="lbl" x="76" y="62" fill="var(--blue)">3</text>
+              <text class="lbl" x="118" y="68" fill="var(--blue)">3</text>
+              <text class="lbl" x="6" y="170">root → tips, +1 each split</text>
+            </g>
+            <!-- divider -->
+            <line x1="182" y1="14" x2="182" y2="184" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+            <g transform="translate(196,4)">
+              <text class="lbl-strong" x="14" y="14">Horton–Strahler</text>
+              <g class="struct" stroke="var(--vermillion)" stroke-width="2">
+                <path d="M70,150 L70,118"/>
+                <path d="M70,118 L48,92 M70,118 L96,96"/>
+                <path d="M48,92 L34,66 M48,92 L60,66"/>
+                <path d="M96,96 L86,70 M96,96 L116,74"/>
+              </g>
+              <!-- terminals = 1, two order-k meet -> k+1 -->
+              <text class="lbl" x="22" y="60" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="58" y="58" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="76" y="62" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="118" y="68" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="32" y="108" fill="var(--vermillion)">2</text>
+              <text class="lbl" x="100" y="112" fill="var(--vermillion)">2</text>
+              <text class="lbl" x="60" y="138" fill="var(--vermillion)">3</text>
+              <text class="lbl" x="14" y="170">tips=1; k+k → k+1</text>
+            </g>
+          </svg>
+          <figcaption><b>(b) Two orderings, one tree.</b> <b>Centrifugal</b> counts splits from
+            the root outward (root=1, +1 per bifurcation). <b>Horton–Strahler</b> counts inward
+            (tips=1; two equal orders merge to k+1). Same hyphal tree → centrifugal indexes
+            <b>depth from inoculum</b>, Strahler indexes <b>trunk vs twig</b> hierarchy.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>k</b> — branch order assigned to each segment</dd>
+            <dt>Units</dt><dd>integer ≥ 1 (centrifugal: root=1; Strahler: tips=1)</dd>
+            <dt>Reads as</dt><dd>high centrifugal k = deep, many-times-split segment far from the origin; high Strahler k = a thick trunk fed by many tributaries</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>the order of a segment (branch rank in the tree)</dd>
+            <dt>k+1</dt><dd>the promoted order when two equal-order (k) segments merge</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== MARQUEE (c) TMD persistence barcode ===== -->
+      <article class="card">
+        <figure class="illo" style="margin-top:0">
+          <svg viewBox="0 0 360 220" role="img" aria-label="TMD persistence barcode: branch birth at tip, death at bifurcation, with a persistence diagram">
+            <!-- left: rooted tree with a radial distance function -->
+            <g transform="translate(6,6)">
+              <line class="axis" x1="14" y1="170" x2="14" y2="20"/>
+              <text class="lbl" x="-2" y="14" transform="rotate(-90 -2,14)"></text>
+              <text class="lbl" x="16" y="14">radial f</text>
+              <g class="struct" stroke="var(--ink)" stroke-width="1.6">
+                <path d="M40,168 L40,120"/>
+                <path d="M40,120 L24,86 M40,120 L60,92"/>
+                <path d="M24,86 L16,52 M24,86 L36,56"/>
+                <path d="M60,92 L52,60 M60,92 L78,64"/>
+              </g>
+              <circle cx="40" cy="168" r="3.5" fill="var(--blue)"/><text class="lbl" x="44" y="172">root</text>
+              <circle cx="16" cy="52" r="3" fill="var(--vermillion)"/>
+              <circle cx="36" cy="56" r="3" fill="var(--vermillion)"/>
+              <circle cx="52" cy="60" r="3" fill="var(--vermillion)"/>
+              <circle cx="78" cy="64" r="3" fill="var(--vermillion)"/>
+              <text class="lbl" x="20" y="190">birth=tip · death=bifurcation</text>
+            </g>
+            <!-- middle: barcode bars (birth->death) -->
+            <g transform="translate(120,28)">
+              <text class="lbl-strong" x="0" y="-8">barcode</text>
+              <line x1="62" y1="6" x2="6" y2="6" stroke="var(--vermillion)" stroke-width="4"/>
+              <line x1="58" y1="24" x2="20" y2="24" stroke="var(--orange)" stroke-width="4"/>
+              <line x1="54" y1="42" x2="14" y2="42" stroke="var(--green)" stroke-width="4"/>
+              <line x1="48" y1="60" x2="30" y2="60" stroke="var(--blue)" stroke-width="4"/>
+              <line class="axis" x1="6" y1="74" x2="62" y2="74"/>
+              <text class="lbl" x="2" y="88">death ← f → birth</text>
+            </g>
+            <!-- right: persistence diagram -->
+            <g transform="translate(232,18)">
+              <line class="axis" x1="6" y1="150" x2="118" y2="150"/>
+              <line class="axis" x1="6" y1="150" x2="6" y2="22"/>
+              <line x1="6" y1="150" x2="118" y2="38" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+              <circle cx="34" cy="58" r="3.5" fill="var(--vermillion)"/>
+              <circle cx="48" cy="84" r="3.5" fill="var(--orange)"/>
+              <circle cx="40" cy="96" r="3.5" fill="var(--green)"/>
+              <circle cx="62" cy="120" r="3.5" fill="var(--blue)"/>
+              <text class="lbl" x="14" y="166">birth →</text>
+              <text class="lbl" x="-30" y="40" transform="rotate(-90 -30,40)">death</text>
+              <text class="lbl-strong" x="40" y="32" fill="var(--text-dim)">diagram</text>
+            </g>
+          </svg>
+          <figcaption><b>(c) TMD persistence barcode.</b> Walk a radial distance function up the
+            tree: each branch is <b>born at a tip</b> and <b>dies at the bifurcation</b> where it
+            merges. Birth–death pairs become a barcode / persistence diagram — an
+            <b>order-invariant fingerprint that degrades gracefully</b> under tracing error.</figcaption>
+        </figure>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{(birth, death)}</b> — persistence barcode / persistence-image vector of the branch tree</dd>
+            <dt>Units</dt><dd>vector of dimensionless persistence values (birth/death along the radial-distance function)</dd>
+            <dt>Reads as</dt><dd>encodes the radial birth(tip)→death(bifurcation) structure as an order-invariant fingerprint — longer bars = branches that persist across a wider radial span; degrades gracefully under tracing error</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f</dt><dd>radial distance function walked up the tree (the filtration value)</dd>
+            <dt>birth</dt><dd>value of f where a branch starts — at its tip</dd>
+            <dt>death</dt><dd>value of f where a branch ends — at the bifurcation it merges into</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== MARQUEE (d) flood-filling dense tracing ===== -->
+      <article class="card">
+        <figure class="illo" style="margin-top:0">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Flood-filling one process outward from a seed through a tangle of overlapping fibres">
+            <!-- background tangle of overlapping fibres (faint) -->
+            <g stroke="var(--faint)" stroke-width="1.4" fill="none" opacity=".5" stroke-linecap="round">
+              <path d="M30,40 C110,70 150,30 230,80 S320,60 350,110"/>
+              <path d="M20,150 C90,120 160,180 240,130 S330,160 352,120"/>
+              <path d="M60,200 C120,150 100,80 180,60 S250,30 300,70"/>
+              <path d="M40,90 C120,110 140,170 220,170 S300,200 340,180"/>
+              <path d="M200,20 C190,90 250,120 240,200"/>
+              <path d="M120,30 C150,100 90,140 130,210"/>
+            </g>
+            <!-- seed -->
+            <circle cx="70" cy="120" r="6" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="40" y="146" fill="var(--vermillion)">seed</text>
+            <!-- flooded process: one strand grown out, highlighted -->
+            <path d="M70,120 C120,108 132,150 188,138 C236,128 248,96 300,104"
+                  fill="none" stroke="var(--blue)" stroke-width="3.2" stroke-linecap="round"/>
+            <!-- expanding flood-fronts (FFN field of view marches outward) -->
+            <circle cx="70" cy="120" r="26" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+            <circle cx="132" cy="132" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>
+            <circle cx="200" cy="134" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".4"/>
+            <circle cx="262" cy="112" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".35"/>
+            <circle cx="300" cy="104" r="5" fill="var(--blue)"/>
+            <text class="lbl-strong" x="222" y="180" fill="var(--blue)">one process,</text>
+            <text class="lbl-strong" x="222" y="194" fill="var(--blue)">flooded out</text>
+            <text class="lbl" x="14" y="18">overlapping fibre tangle</text>
+          </svg>
+          <figcaption><b>(d) Flood-filling reconstruction.</b> From a single seed, a recurrent
+            field-of-view floods outward and re-segments <b>one</b> process at a time, marching
+            past crossings instead of fusing them. The dense-tracing answer when a skeleton-from-mask
+            would merge every overlap into a false node.</figcaption>
+        </figure>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ METHOD CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Signature methods &amp; their fungal equivalents</h2>
+    <p class="section-sub">One card per signature method. Definition → how it works (illustration)
+      → regime/input/provenance, and the <b>→ Fungi</b> line giving the fungal-branch equivalent.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== CARD 1 — Sholl analysis + variants ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Sholl analysis &amp; its variants</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Centre concentric rings on the soma and count how many times the
+          arbor crosses each ring → the <span class="term">Sholl profile N(r)</span>. Variants read
+          off it: <b>critical radius r<sub>c</sub></b> (radius of peak N), <b>max intersections
+          N<sub>m</sub></b>, <b>enclosing radius</b> (extent), the <b>regression coefficient k</b>
+          (semi-log decay slope), a <b>polynomial decomposition</b>, and the <b>ramification index</b>
+          (N<sub>m</sub> ÷ primary-process count). It needs no branch separation — only crossings.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Sholl intersection profile N(r) with critical radius and decay coefficient">
+            <!-- rings + arbor schematic (left) -->
+            <g transform="translate(70,108)">
+              <circle r="22" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
+              <circle r="44" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
+              <circle r="66" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
+              <circle r="88" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
+              <g class="struct" stroke="var(--green)" stroke-width="1.4">
+                <path d="M0,0 L-28,-26 M-28,-26 L-50,-40 M-28,-26 L-40,-54"/>
+                <path d="M0,0 L30,-20 M30,-20 L56,-22 M30,-20 L46,-46"/>
+                <path d="M0,0 L34,20 M34,20 L58,40 M34,20 L60,12"/>
+                <path d="M0,0 L-22,32 M-22,32 L-34,58 M-22,32 L2,52"/>
+              </g>
+              <circle r="5" fill="var(--green)"/>
+              <text class="lbl" x="-46" y="-92">soma → r</text>
+            </g>
+            <!-- N(r) profile (right) -->
+            <g transform="translate(208,20)">
+              <line class="axis" x1="0" y1="150" x2="130" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="16"/>
+              <polyline points="6,138 30,96 52,52 70,66 96,104 124,138" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+              <circle cx="52" cy="52" r="3.5" fill="var(--vermillion)"/>
+              <line x1="52" y1="52" x2="52" y2="150" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="3 3"/>
+              <text class="lbl-strong" x="40" y="44" fill="var(--vermillion)">N_m</text>
+              <text class="lbl" x="40" y="166" fill="var(--vermillion)">r_c</text>
+              <text class="lbl" x="98" y="166">r →</text>
+              <text class="lbl" x="-34" y="40" transform="rotate(-90 -34,40)">N(r)</text>
+              <text class="lbl" x="78" y="92">slope = k</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> N(r) rises to a peak in the active-growth annulus
+            (r<sub>c</sub>, N<sub>m</sub>) then decays at rate k. Robust because it integrates a
+            whole ring — only fails when two strands touch <em>inside</em> one ring and miscount as
+            one crossing.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Regime</span><span class="mv">B · radial density on the mask</span></div>
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask + origin (inoculum/centroid)</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Concentric hyphal-density rings from the inoculum — <span class="term">ShollMaxIntersections</span>, <span class="term">ShollCriticalRadius</span>, <span class="term">ShollEnclosingRadius</span>, <span class="term">ShollRegressionCoefficient</span> (ramification index 🟡, needs a primary-hypha count).</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl 1953; Ferreira et al. 2014</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>N<sub>m</sub></b>, <b>r<sub>c</sub></b>, <b>k</b> — peak crossings, its radius, and the decay slope read off N(r)</dd>
+            <dt>Units</dt><dd>N<sub>m</sub> count; r<sub>c</sub> distance (px/µm); k per-distance (semi-log slope)</dd>
+            <dt>Reads as</dt><dd>large N<sub>m</sub> = densely branched arbor; large r<sub>c</sub> = spread pushed outward from the origin; steep k = coverage falls off quickly past the peak</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>r</dt><dd>radial distance from the soma / origin</dd>
+            <dt>N(r)</dt><dd>Sholl profile — number of arbor crossings at radius r</dd>
+            <dt>r<sub>c</sub></dt><dd>critical radius — the radius where N(r) peaks</dd>
+            <dt>N<sub>m</sub></dt><dd>maximum intersections — the peak value of N(r)</dd>
+            <dt>k</dt><dd>regression coefficient — semi-log decay slope of N(r)</dd>
+            <dt>ramification index</dt><dd>N<sub>m</sub> ÷ primary-process count</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 2 — branch order ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Centrifugal &amp; Horton–Strahler branch order</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Two ways to rank where a segment sits in the tree. <b>Centrifugal
+          order</b> starts at 1 at the root and increments by 1 at every bifurcation outward — depth
+          from the origin. <b>Horton–Strahler order</b> starts at 1 at every terminal tip; when two
+          segments of order k meet, the parent becomes k+1 (otherwise it keeps max). The Strahler
+          spectrum feeds the <span class="term">bifurcation ratio R<sub>b</sub></span> (Horton's law).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Centrifugal versus Horton-Strahler order assignment with the bifurcation ratio">
+            <g transform="translate(10,8)">
+              <text class="lbl-strong" x="18" y="12" fill="var(--blue)">centrifugal</text>
+              <g class="struct" stroke="var(--blue)" stroke-width="2">
+                <path d="M64,164 L64,128 M64,128 L44,98 M64,128 L88,100 M44,98 L32,70 M44,98 L56,70 M88,100 L78,72 M88,100 L106,74"/>
+              </g>
+              <text class="lbl" x="56" y="150" fill="var(--blue)">1</text>
+              <text class="lbl" x="30" y="116" fill="var(--blue)">2</text>
+              <text class="lbl" x="92" y="118" fill="var(--blue)">2</text>
+              <text class="lbl" x="22" y="64" fill="var(--blue)">3</text>
+              <text class="lbl" x="50" y="62" fill="var(--blue)">3</text>
+              <text class="lbl" x="70" y="66" fill="var(--blue)">3</text>
+              <text class="lbl" x="106" y="68" fill="var(--blue)">3</text>
+            </g>
+            <line x1="172" y1="12" x2="172" y2="178" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+            <g transform="translate(186,8)">
+              <text class="lbl-strong" x="14" y="12" fill="var(--vermillion)">Strahler</text>
+              <g class="struct" stroke="var(--vermillion)" stroke-width="2">
+                <path d="M64,164 L64,128 M64,128 L44,98 M64,128 L88,100 M44,98 L32,70 M44,98 L56,70 M88,100 L78,72 M88,100 L106,74"/>
+              </g>
+              <text class="lbl" x="22" y="64" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="50" y="62" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="70" y="66" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="106" y="68" fill="var(--vermillion)">1</text>
+              <text class="lbl" x="28" y="116" fill="var(--vermillion)">2</text>
+              <text class="lbl" x="94" y="118" fill="var(--vermillion)">2</text>
+              <text class="lbl" x="56" y="150" fill="var(--vermillion)">3</text>
+              <text class="lbl" x="14" y="190">R_b = N_ω ÷ N_(ω+1)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> both require a clean rooted tree with unambiguous
+            parent/child. Anastomosis loops break Strahler outright (no longer a tree), which is why
+            both sit in 🔴 territory for dense mycelium — but the ratio R<sub>b</sub> is a compact
+            branching-style signature once a tree exists.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Regime</span><span class="mv">A · rooted graph (tree)</span></div>
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + graph with parent/child</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Branch hierarchy of a retraced hyphal tree — <span class="term">StrahlerMaxOrder</span> + <span class="term">BifurcationRatio</span>; centrifugal order indexes depth from the inoculum. Gated on retracing closing loops cleanly.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Strahler 1957; Scorcioni et al. 2008</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>b</sub></b> — bifurcation ratio across the Strahler spectrum</dd>
+            <dt>Units</dt><dd>dimensionless ratio (typical branched trees ≈ 3–5); max order is an integer ≥ 1</dd>
+            <dt>Reads as</dt><dd>large R<sub>b</sub> = many fine twigs per trunk (elongated, sparsely rejoining tree); small R<sub>b</sub> = bushy, evenly splitting hierarchy</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>k</dt><dd>the order of a segment (root=1 centrifugal; tips=1 Strahler)</dd>
+            <dt>k+1</dt><dd>promoted order where two equal-order (k) segments meet</dd>
+            <dt>ω</dt><dd>a Strahler order index</dd>
+            <dt>N<sub>ω</sub></dt><dd>count of segments of order ω</dd>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio — N<sub>ω</sub> ÷ N<sub>ω+1</sub> (Horton's law)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 3 — L-Measure vocabulary ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">L-Measure morphometric vocabulary</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">L-Measure is the standard lexicon of per-branch geometry. Four members
+          transfer cleanly: <b>bifurcation angle</b> (local — at the node — vs remote — to a downstream
+          reference point), <b>partition asymmetry</b> |n<sub>L</sub>−n<sub>R</sub>|/(n<sub>L</sub>+n<sub>R</sub>−2)
+          per node, and <b>contraction / tortuosity</b> = geodesic path length ÷ Euclidean
+          endpoint distance (≥ 1, straightness of a segment).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Bifurcation angle local and remote, partition asymmetry, and tortuosity">
+            <!-- bifurcation angle, local vs remote -->
+            <g transform="translate(16,10)">
+              <path class="struct" stroke="var(--ink)" d="M40,160 L40,108"/>
+              <path class="struct" stroke="var(--blue)" d="M40,108 L8,58"/>
+              <path class="struct" stroke="var(--green)" d="M40,108 L84,64"/>
+              <path d="M28,90 A18 18 0 0 0 56,92" fill="none" stroke="var(--vermillion)" stroke-width="1.4"/>
+              <text class="lbl" x="24" y="80" fill="var(--vermillion)">θ local</text>
+              <circle cx="8" cy="58" r="2.6" fill="var(--blue)"/>
+              <circle cx="84" cy="64" r="2.6" fill="var(--green)"/>
+              <line x1="40" y1="108" x2="8" y2="58" stroke="var(--blue)" stroke-width="1" stroke-dasharray="2 3" opacity=".5"/>
+              <text class="lbl" x="0" y="48">remote pt</text>
+              <text class="lbl" x="6" y="178">bifurcation angle</text>
+            </g>
+            <!-- partition asymmetry -->
+            <g transform="translate(150,10)">
+              <path class="struct" stroke="var(--ink)" d="M44,160 L44,116"/>
+              <g class="struct" stroke="var(--purple)" stroke-width="1.6">
+                <path d="M44,116 L20,86 M20,86 L8,60 M20,86 L30,60"/>
+                <path d="M44,116 L70,94"/>
+              </g>
+              <text class="lbl" x="2" y="54" fill="var(--purple)">n_L = 2</text>
+              <text class="lbl" x="58" y="86" fill="var(--purple)">n_R = 1</text>
+              <text class="lbl" x="2" y="178">partition asymmetry</text>
+            </g>
+            <!-- tortuosity -->
+            <g transform="translate(258,10)">
+              <path d="M12,150 C30,120 4,96 34,78 C58,64 40,42 70,30"
+                    fill="none" stroke="var(--orange)" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="12" y1="150" x2="70" y2="30" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3"/>
+              <text class="lbl" x="44" y="96" fill="var(--orange)">path L</text>
+              <text class="lbl" x="2" y="120">Euclid d</text>
+              <text class="lbl-strong" x="0" y="178">τ = L ÷ d ≥ 1</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> all four are per-node / per-segment geometry that becomes
+            available <em>once a branch is traced</em> — robust per-branch, but the angle collapses
+            near crossings and asymmetry needs a clean subtree, so the family is retracing-gated
+            (🟡), not fragile.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Regime</span><span class="mv">A · per-branch geometry</span></div>
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph with node geometry</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Per-hypha geometry on a retraced network — <span class="term">MeanBranchAngle</span>, <span class="term">PartitionAsymmetry</span>, <span class="term">MeanTortuosity</span>; tortuosity is the most overlap-tolerant (per-branch once traced).</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span><span class="prov">Vascular</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Scorcioni et al. 2008; van Pelt 1992; Nunez-Iglesias et al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>θ</b>, partition asymmetry, <b>τ</b> — bifurcation angle, subtree imbalance, and segment tortuosity</dd>
+            <dt>Units</dt><dd>θ degrees (0–180°); asymmetry 0–1; τ dimensionless ≥ 1</dd>
+            <dt>Reads as</dt><dd>wide θ = splayed forking; asymmetry near 1 = one daughter carries almost all the subtree; τ well above 1 = a strongly meandering segment</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>θ</dt><dd>bifurcation angle at a node — local (at node) or remote (to a downstream point)</dd>
+            <dt>n<sub>L</sub></dt><dd>number of tips in the left subtree at a node</dd>
+            <dt>n<sub>R</sub></dt><dd>number of tips in the right subtree at a node</dd>
+            <dt>partition asymmetry</dt><dd>|n<sub>L</sub>−n<sub>R</sub>| / (n<sub>L</sub>+n<sub>R</sub>−2)</dd>
+            <dt>L</dt><dd>geodesic path length of a segment (along the branch)</dd>
+            <dt>d</dt><dd>Euclidean endpoint-to-endpoint distance of the segment</dd>
+            <dt>τ</dt><dd>tortuosity = L ÷ d (≥ 1)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 4 — TMD persistence ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">TMD persistence barcodes</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The Topological Morphology Descriptor walks a distance function
+          (usually radial) up a rooted tree and records, for every branch, a <span class="term">birth</span>
+          (at its tip) and a <span class="term">death</span> (at the bifurcation where it merges into
+          a longer branch). The set of birth–death pairs is a persistence barcode / diagram —
+          vectorizable into a persistence image. It is <b>order-invariant</b> and, crucially,
+          <b>degrades gracefully</b> as tracing error rises.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="TMD: tree to barcode to persistence image">
+            <!-- tree -->
+            <g transform="translate(10,8)">
+              <g class="struct" stroke="var(--ink)" stroke-width="1.5">
+                <path d="M40,170 L40,124 M40,124 L22,90 M40,124 L62,96 M22,90 L12,58 M22,90 L34,60 M62,96 L54,66 M62,96 L82,68"/>
+              </g>
+              <circle cx="40" cy="170" r="3.4" fill="var(--blue)"/>
+              <circle cx="12" cy="58" r="2.8" fill="var(--vermillion)"/><circle cx="34" cy="60" r="2.8" fill="var(--vermillion)"/>
+              <circle cx="54" cy="66" r="2.8" fill="var(--vermillion)"/><circle cx="82" cy="68" r="2.8" fill="var(--vermillion)"/>
+              <text class="lbl" x="2" y="190">tips born → bif death</text>
+            </g>
+            <!-- barcode -->
+            <g transform="translate(120,30)">
+              <text class="lbl-strong" x="0" y="-10">barcode</text>
+              <line x1="66" y1="4" x2="8" y2="4" stroke="var(--vermillion)" stroke-width="4"/>
+              <line x1="60" y1="22" x2="22" y2="22" stroke="var(--orange)" stroke-width="4"/>
+              <line x1="56" y1="40" x2="16" y2="40" stroke="var(--green)" stroke-width="4"/>
+              <line x1="50" y1="58" x2="34" y2="58" stroke="var(--blue)" stroke-width="4"/>
+              <line class="axis" x1="8" y1="72" x2="66" y2="72"/>
+              <text class="lbl" x="4" y="86">long bar = persistent</text>
+            </g>
+            <!-- persistence diagram -->
+            <g transform="translate(232,18)">
+              <line class="axis" x1="6" y1="150" x2="116" y2="150"/>
+              <line class="axis" x1="6" y1="150" x2="6" y2="24"/>
+              <line x1="6" y1="150" x2="116" y2="40" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 3"/>
+              <circle cx="30" cy="56" r="3.5" fill="var(--vermillion)"/>
+              <circle cx="46" cy="82" r="3.5" fill="var(--orange)"/>
+              <circle cx="38" cy="94" r="3.5" fill="var(--green)"/>
+              <circle cx="64" cy="124" r="3.5" fill="var(--blue)"/>
+              <text class="lbl" x="14" y="166">birth →</text>
+              <text class="lbl" x="-32" y="42" transform="rotate(-90 -32,42)">death</text>
+              <text class="lbl" x="40" y="34" fill="var(--text-dim)">far from diag</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a single noisy or mis-merged branch shifts one point in the
+            diagram, not the whole descriptor — so the <em>summary</em> stays usable even when the
+            graph isn't perfect. That graceful failure is exactly why it is the highest-fit Regime-A
+            transfer for dense hyphae.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Regime</span><span class="mv">A · rooted tree → topological summary</span></div>
+          <div class="mrow"><span class="mk">Input</span><span class="mv">rooted graph + a distance function</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">Order-invariant network fingerprint for clustering colony morphotypes — <span class="term">TmdPersistenceImage</span>; the same persistence primitive as astronomy's DisPerSE skeleton.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Kanari et al. 2018</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>{(birth, death)}</b> — the set of branch birth–death pairs, as a persistence barcode / diagram vectorizable into a persistence image</dd>
+            <dt>Units</dt><dd>dimensionless persistence values along the distance function f (each bar's length = death − birth)</dd>
+            <dt>Reads as</dt><dd>a compact order-invariant descriptor of the tree — long bars far from the diagonal = branches spanning a wide radial extent before merging; one mis-traced branch shifts a single point, so the summary stays readable</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>f</dt><dd>distance function (usually radial) walked up the rooted tree</dd>
+            <dt>birth</dt><dd>value of f at a branch's tip, where it is born</dd>
+            <dt>death</dt><dd>value of f at the bifurcation where the branch merges and dies</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 5 — dense-tracing toolkit ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Dense-tracing toolkit</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 reconstruction</span></div>
+        </div>
+        <p class="definition">The reconstruction front-end neuroscience built for tangled,
+          overlapping arbors — the part that <em>produces</em> the graph the metrics above consume.
+          Four members transfer directly: <b>flood-filling networks</b> (FFN — recurrent per-process
+          re-segmentation), <b>U-Net / DeepNeuron</b> (learned dense segmentation), <b>APP2</b>
+          (gray-weighted distance-tree tracing), and <b>SNT A\* minimal-path</b> (least-cost path so
+          a crossing is traversed, not branched).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A-star minimal-path tracing traverses a crossing instead of reading it as a branch">
+            <!-- two crossing strands -->
+            <path d="M24,40 C120,70 200,150 336,176" fill="none" stroke="var(--faint)" stroke-width="6" opacity=".35" stroke-linecap="round"/>
+            <path d="M24,176 C120,150 200,70 336,40" fill="none" stroke="var(--faint)" stroke-width="6" opacity=".35" stroke-linecap="round"/>
+            <!-- crossing node -->
+            <circle cx="180" cy="108" r="9" fill="none" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="3 3"/>
+            <text class="lbl" x="150" y="100" fill="var(--vermillion)">degree-4?</text>
+            <!-- A* minimal path: continues by direction continuity through the crossing -->
+            <path d="M30,44 C124,74 196,148 332,172" fill="none" stroke="var(--blue)" stroke-width="2.6"/>
+            <circle cx="30" cy="44" r="4.5" fill="var(--blue)"/><text class="lbl" x="36" y="40">start</text>
+            <circle cx="332" cy="172" r="4.5" fill="var(--blue)"/><text class="lbl" x="290" y="190">goal (least cost)</text>
+            <!-- cost-surface hint -->
+            <g stroke="var(--green)" stroke-width="1" opacity=".5">
+              <path d="M60,60 l8,5 M100,78 l8,5 M150,98 l8,6 M220,128 l8,5 M270,150 l8,5"/>
+            </g>
+            <text class="lbl" x="60" y="208">A* traverses the X; direction-continuity resolves the degree-4 node</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> rather than skeletonize-then-graph (which fuses every
+            overlap into a false junction), each filament is grown as a single least-cost path —
+            FFN floods one process, A\* threads a minimal path, APP2 weights the distance tree by
+            intensity. <b>This is exactly the backbone PhenoTypic's <span class="term">branch_pathfinding</span>
+            already uses</b> (multi-source Dijkstra least-cost path).</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Regime</span><span class="mv">A · reconstruction (produces the graph)</span></div>
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale field + seeds / cost surface</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">The transfer is the <em>refinements</em>: a vesselness term in the cost surface, degree-4 junction resolution by direction continuity, and a DIADEM-style validation gate for the retracing module.</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots (A*)</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Januszewski et al. 2018; Zhou et al. 2018; Xiao &amp; Peng 2013; Longair et al. 2011</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A\*</dt><dd>heuristic least-cost pathfinding algorithm (SNT minimal-path tracer)</dd>
+            <dt>cost</dt><dd>per-pixel traversal cost (low where the pixel looks filament-like)</dd>
+            <dt>degree-4</dt><dd>a skeleton node with four incident edges — a crossing to resolve, not a branch</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT (blue) ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>Neuroscience's lesson: separate better, or don't separate at all</h3>
+      <p>Neuroscience learned the hard way that <b>per-process graph metrics collapse in dense
+        tissue</b> — count tips, junctions, angles, or loops in a tangle of overlapping neurites and
+        the numbers become artifacts of where strands happen to touch. The field's response splits
+        cleanly in two, and <b>both halves transfer directly to dense hyphae</b>:</p>
+      <ul>
+        <li><b>Reconstruct harder.</b> Invest in better tracing so the graph is real before you
+          measure it — flood-filling networks, U-Net/DeepNeuron segmentation, and A\* / least-cost-path
+          tracing that <em>traverses</em> a crossing instead of reading it as a branch. This is the
+          same backbone <span class="term">branch_pathfinding</span> already runs; the gains come from
+          a vesselness cost term, degree-4 junction resolution, and DIADEM-style validation.</li>
+        <li><b>Or never separate.</b> Fall back on whole-field descriptors that need no per-branch
+          isolation — <b>Sholl</b> radial density, <b>fractal</b> dimension, <b>convex-hull</b>
+          occupancy, and <b>TMD persistence</b> (which degrades gracefully even on an imperfect
+          graph). These are the ship-now layer for confluent mycelium.</li>
+      </ul>
+      <p>Three analog fields — neuroscience, plant RSA, and vascular — reached this same conclusion
+        independently: when structures can't be separated, you fall back to fractal / lacunarity /
+        density / radial / convex-hull descriptors. Persistence is the recurring noise-robust
+        primitive across neuroscience (TMD) and astronomy (DisPerSE).</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Cross-domain transfer card · Neuroscience → filamentous fungi. Part of the
+    “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations are drawn
+    from the spec (§3.1, §3.2, Families C/F/G/H, and the §6 Neuroscience reference block);
+    biological interpretation is for human authoring. Citations were DOI-verified by the source
+    research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

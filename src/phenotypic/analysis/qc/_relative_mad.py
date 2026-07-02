@@ -25,8 +25,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_MAD
+from phenotypic.schema import CULTURE_METADATA, QUALITY_MAD
 from phenotypic.sdk_ import ColumnRef
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class RelativeMAD(QualityCheck):
@@ -81,7 +83,7 @@ class RelativeMAD(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"Metadata_Time"``.
+            group. Defaults to ``"MetadataCulture_Time"``.
         min_replicates: Minimum replicate count required before the MAD
             is considered meaningful. Bins below this threshold receive
             ``metric = NaN``.
@@ -102,7 +104,7 @@ class RelativeMAD(QualityCheck):
         >>> times = [0, 1, 2, 3]
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 12,
-        ...     "Metadata_Time": [t for t in times for _ in range(3)],
+        ...     "MetadataCulture_Time": [t for t in times for _ in range(3)],
         ...     "Replicate": [1, 2, 3] * 4,
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9,
@@ -114,7 +116,7 @@ class RelativeMAD(QualityCheck):
         >>> chk = RelativeMAD(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="Metadata_Time",
+        ...     time_label="MetadataCulture_Time",
         ... )
         >>> result = chk.analyze(data)  # doctest: +SKIP
         >>> "QC_MAD_Metric" in result.columns  # doctest: +SKIP
@@ -125,7 +127,7 @@ class RelativeMAD(QualityCheck):
 
         >>> singleton = pd.DataFrame({
         ...     "Plate": ["P1", "P1"],
-        ...     "Metadata_Time": [0, 1],
+        ...     "MetadataCulture_Time": [0, 1],
         ...     "Size_Area": [10.0, 20.0],
         ... })
         >>> chk = RelativeMAD(
@@ -146,7 +148,7 @@ class RelativeMAD(QualityCheck):
     warn_threshold: float = 0.10
     fail_threshold: float = 0.20
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     min_replicates: int = 2
     eps: float = 1e-9
 

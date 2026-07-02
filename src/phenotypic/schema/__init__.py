@@ -11,11 +11,17 @@ public import surface stays stable:
 It also hosts the metadata vocabulary: ``METADATA`` (framework-populated image
 bookkeeping) and the seven experimental-tag enums (``GENETIC_METADATA``,
 ``SAMPLE_METADATA``, ``PLATE_METADATA``, ``CONDITION_METADATA``,
-``INCUBATION_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
+``CULTURE_METADATA``, ``ACQUISITION_METADATA``, ``EXPERIMENT_METADATA``) that
 standardize ``Metadata_*`` columns for the ``--metadata`` join and ``post/`` ops.
 """
 
-from ._measurement_info import Entry, MeasurementInfo
+from ._measurement_info import (
+    Entry,
+    MeasurementInfo,
+    parse_qualified_header,
+    qualified_header,
+)
+from ._rembi import REMBI_MODULE as REMBI_MODULE, header_to_module as header_to_module
 from ._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -29,11 +35,12 @@ from ._metadata import METADATA
 from ._experimental_tags import (
     ACQUISITION_METADATA,
     CONDITION_METADATA,
+    CULTURE_METADATA,
     EXPERIMENT_METADATA,
     GENETIC_METADATA,
-    INCUBATION_METADATA,
     PLATE_METADATA,
     SAMPLE_METADATA,
+    STUDY_METADATA,
 )
 from ._bbox import BBOX
 from ._color_composition import ColorComposition
@@ -71,14 +78,19 @@ from ._texture import TEXTURE
 __all__ = [
     "Entry",
     "MeasurementInfo",
+    "parse_qualified_header",
+    "qualified_header",
+    "REMBI_MODULE",
+    "header_to_module",
     "METADATA",
     "ACQUISITION_METADATA",
     "CONDITION_METADATA",
+    "CULTURE_METADATA",
     "EXPERIMENT_METADATA",
     "GENETIC_METADATA",
-    "INCUBATION_METADATA",
     "PLATE_METADATA",
     "SAMPLE_METADATA",
+    "STUDY_METADATA",
     "BBOX",
     "ColorComposition",
     "ColorHSV",

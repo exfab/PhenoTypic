@@ -17,6 +17,10 @@ class MODEL_METRICS(QualityInfo):
     def category(cls) -> str:
         return "ModelMetrics"
 
+    @classmethod
+    def header_scheme(cls) -> str:
+        return "metric_qualified"
+
     # fit-quality metrics
     MAE = Entry("MAE", "The mean absolute error")
     MSE = Entry("MSE", "The mean squared error")

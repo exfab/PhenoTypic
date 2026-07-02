@@ -18,13 +18,14 @@ from phenotypic.gui.results_viewer.colony_view._callbacks import (
     register_custom_category_safe,
 )
 from phenotypic.schema import ErrorCategory
+from phenotypic.schema import METADATA
 
 
 def _master() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "Metadata_Dataset": ["d1"] * 3,
-            "Metadata_ImageFile": ["img-A", "img-A", "img-B"],
+            str(METADATA.IMAGE_NAME): ["img-A", "img-A", "img-B"],
             "Object_Label": [1, 2, 1],
             "Bbox_CenterRR": [10.0, 20.0, 30.0],
             "Bbox_CenterCC": [10.0, 20.0, 30.0],

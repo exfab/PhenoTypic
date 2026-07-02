@@ -13,13 +13,15 @@ import scipy.optimize as optimize
 from joblib import Parallel, delayed
 from pydantic import Field, PrivateAttr
 
+from phenotypic.schema import CULTURE_METADATA, MeasurementInfo, MODEL_METRICS, qualified_header
 from phenotypic.sdk_ import ColumnRef
-from phenotypic.schema import MODEL_METRICS
 
 from ._set_analyzer import SetAnalyzer
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 LossKind = Literal["linear", "soft_l1", "huber", "cauchy", "arctan"]
@@ -72,12 +74,15 @@ class ModelFitter(SetAnalyzer, ABC):
 
     _measurement_infoclass: ClassVar[type]
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     loss: LossKind = "huber"
     f_scale: float = Field(default=1.0, gt=0, allow_inf_nan=False)
     verbose: bool = False
 
     _latest_model_scores: pd.DataFrame = PrivateAttr(
+        default_factory=pd.DataFrame
+    )
+    _latest_fit_internal: pd.DataFrame = PrivateAttr(
         default_factory=pd.DataFrame
     )
 
@@ -247,6 +252,22 @@ class ModelFitter(SetAnalyzer, ABC):
         }
         return {**model_cols, **metric_cols}
 
+    @property
+    def _metric_token(self) -> str:
+        """The ``<metric>`` header segment derived from ``self.on``."""
+        from phenotypic.util._measurement_outputs import metric_token
+
+        return metric_token(str(self.on))
+
+    def _qualified_rename_map(self, results: pd.DataFrame) -> Dict[Any, str]:
+        """Map member-object columns to their metric-qualified header strings."""
+        token = self._metric_token
+        return {
+            column: qualified_header(column, token)
+            for column in results.columns
+            if isinstance(column, MeasurementInfo)
+        }
+
     # ------------------------------------------------------------------ #
     # Per-group fit — replaces the old `_apply2group_func` boilerplate
     # ------------------------------------------------------------------ #
@@ -331,7 +352,10 @@ class ModelFitter(SetAnalyzer, ABC):
         for col_key, val in self._post_fit_columns().items():
             results.insert(loc=len(results.columns), column=col_key, value=val)
 
-        self._latest_model_scores = results
+        self._latest_fit_internal = results
+        self._latest_model_scores = results.rename(
+            columns=self._qualified_rename_map(results)
+        )
         return self._latest_model_scores
 
     def results(self) -> pd.DataFrame:
@@ -347,13 +371,13 @@ class ModelFitter(SetAnalyzer, ABC):
         """Apply `criteria` (if any) to both the model-scores and measurements frames."""
         if criteria is not None:
             model_scores = self._filter_by(
-                    df=self._latest_model_scores, criteria=criteria, copy=True
+                    df=self._latest_fit_internal, criteria=criteria, copy=True
             )
             measurements = self._filter_by(
                     df=self._latest_measurements, criteria=criteria, copy=True
             )
         else:
-            model_scores = self._latest_model_scores.copy()
+            model_scores = self._latest_fit_internal.copy()
             measurements = self._latest_measurements.copy()
         return model_scores, measurements
 

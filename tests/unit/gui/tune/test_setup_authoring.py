@@ -22,7 +22,7 @@ from phenotypic.tune.targets import Param
 
 def _metadata(path: Path) -> Path:
     path.write_text(
-        "Metadata_ImageName,Object_Label\n"
+        "MetadataImage_ImageName,Object_Label\n"
         + "\n".join(f"plate,{i}" for i in range(96)),
         encoding="utf-8",
     )
@@ -84,7 +84,7 @@ def test_write_authored_setup_spec_preserves_existing_spec_search_space(
         scorer=QCScorer(
             check=ExpectedVsDetectedCount(
                 metadata=str(metadata_path),
-                groupby=["Metadata_ImageName"],
+                groupby=["MetadataImage_ImageName"],
             )
         ),
         evaluator=Evaluator(),

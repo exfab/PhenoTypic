@@ -1,0 +1,961 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family A: Whole-silhouette size & shape (Regime B)
+  Content drawn from branch-phenotypes-catalog.md §0 (regime/fit legend) and
+  "Family A — Whole-silhouette size & shape". Shared <head> + component markup copied
+  verbatim from _design-system.html. Authoring CONTENT only.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family A — Size &amp; shape · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-b)">A</div>
+    <div>
+      <div class="hero-kicker">Family A · Regime B · whole-silhouette</div>
+      <h1 class="hero-title">Size &amp; shape of the colony silhouette</h1>
+      <p class="lede">The bedrock descriptors: how big the colony is and what gross
+        outline it takes. Every one is read straight off the binary mask — no individual
+        hyphae need to be resolved — which is why this family is the most robust, ship-now
+        layer and already largely lives in PhenoTypic's <span class="term">SHAPE</span>/<span class="term">SIZE</span> schema.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Binary mask</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>🟢 ship-now</span>
+        <span class="chip">13 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) → regime/input/provenance/citation. Provenance: My = mycology, Ne = neuroscience, Ro = roots/RSA, Va = vascular, Ge = geomorph/physics.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== 1. Projected area ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Projected area</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Total colony footprint: the number of foreground pixels in the
+          mask multiplied by the physical area of one pixel. The single most direct, very-high-robustness
+          measure of how much surface the mycelium occupies.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Colony silhouette with its area filled and its perimeter outlined">
+            <!-- colony silhouette with filled area + traced perimeter -->
+            <path id="silA" d="M180,40 C150,38 130,58 134,80 C104,82 92,112 116,130
+                 C100,160 140,182 168,166 C188,188 230,176 226,148
+                 C256,140 256,100 226,96 C236,66 206,44 184,58 C182,46 182,42 180,40 Z"
+                 fill="rgba(11,155,118,.18)" stroke="none"/>
+            <!-- pixel hatch hint inside the area -->
+            <g stroke="rgba(11,155,118,.35)" stroke-width="1">
+              <path d="M120,80 H236 M112,100 H244 M112,120 H244 M118,140 H236 M134,160 H224"/>
+            </g>
+            <!-- perimeter trace on top -->
+            <use href="#silA" fill="none" stroke="var(--green)" stroke-width="2.5"
+                 stroke-linejoin="round"/>
+            <text class="lbl-strong" x="150" y="116" fill="var(--green)">A = Σ px</text>
+            <text class="lbl" x="232" y="78">perimeter P</text>
+            <line class="axis" x1="232" y1="82" x2="220" y2="96"/>
+          </svg>
+          <figcaption><b>Mechanism:</b> count every mask pixel (the shaded interior) and scale by
+            pixel area; the same outline doubles as the <b>perimeter</b> contour for the next card. Needs only the binary mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A</b> — projected footprint, foreground mask pixels × pixel area</dd>
+            <dt>Units</dt><dd>px² (mm²)</dd>
+            <dt>Reads as</dt><dd>large A = a big silhouette covering more surface; small A = a compact footprint — pure extent, independent of outline shape</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>A</dt><dd>projected area = Σ mask pixels × physical area of one pixel</dd>
+            <dt>P</dt><dd>perimeter — length of the colony boundary contour</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 2. Perimeter ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Perimeter</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Length of the colony boundary, measured by walking the
+          <span class="term">chain-coded</span> contour pixel-to-pixel around the mask edge.
+          Medium robustness only — it is scale-sensitive, growing as resolution exposes more of a
+          ragged filamentous margin.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Chain-coded boundary walk around a colony, with a zoom showing pixel steps">
+            <!-- colony outline -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.10)"
+              d="M120,60 C96,64 92,96 112,104 C92,124 108,156 130,148
+                 C140,176 184,170 188,148 C214,160 238,132 220,114
+                 C242,98 224,64 200,76 C196,52 150,50 120,60 Z"/>
+            <!-- marker dots along the contour (the 'walk') -->
+            <g fill="var(--blue)">
+              <circle cx="120" cy="60" r="2.6"/><circle cx="112" cy="104" r="2.6"/>
+              <circle cx="130" cy="148" r="2.6"/><circle cx="188" cy="148" r="2.6"/>
+              <circle cx="220" cy="114" r="2.6"/><circle cx="200" cy="76" r="2.6"/>
+            </g>
+            <!-- zoom box on the margin -->
+            <rect x="248" y="120" width="96" height="80" rx="6" fill="var(--surface)" stroke="var(--rule)"/>
+            <!-- staircase of pixel steps inside zoom -->
+            <path d="M256,184 H272 V168 H288 V152 H304 V136 H328"
+                  fill="none" stroke="var(--blue)" stroke-width="2"/>
+            <g stroke="var(--rule)" stroke-width=".8">
+              <path d="M256,136 H328 M256,152 H328 M256,168 H328 M272,128 V192 M288,128 V192 M304,128 V192"/>
+            </g>
+            <text class="lbl" x="252" y="116">step-by-step</text>
+            <text class="lbl-strong" x="40" y="40" fill="var(--green)">trace edge → P</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> trace the outline one boundary pixel at a time and sum the step
+            lengths (the staircase zoom). More margin detail = longer P, so report it with a fixed pixel scale.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>P</b> — boundary length, summed steps of the chain-coded contour walk</dd>
+            <dt>Units</dt><dd>px (mm); scale-sensitive — a raggeder margin lengthens it</dd>
+            <dt>Reads as</dt><dd>long P for a given area = a crenulated, filamentous margin; short P = a smooth, taut outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter — summed step lengths of the chain-coded boundary walk</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 3. Equivalent diameter ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Equivalent diameter</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The diameter a perfect circle would need to enclose the same
+          area as the colony: <span class="term">√(4A/π)</span>. A single, high-robustness size scalar
+          that lets colonies of any outline be compared on one length axis.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An irregular colony and the equal-area circle whose diameter is the equivalent diameter">
+            <!-- irregular colony -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.16)"
+              d="M86,70 C64,80 70,118 92,118 C78,150 116,172 138,152
+                 C150,176 188,160 182,138 C204,140 210,104 188,100
+                 C198,74 162,58 144,76 C124,58 100,60 86,70 Z"/>
+            <text class="lbl-strong" x="96" y="118" fill="var(--green)">area A</text>
+            <!-- equal-area circle -->
+            <circle cx="270" cy="112" r="56" fill="rgba(0,114,178,.07)" stroke="var(--blue)" stroke-width="2" stroke-dasharray="5 4"/>
+            <line x1="214" y1="112" x2="326" y2="112" stroke="var(--blue)" stroke-width="2"/>
+            <circle cx="214" cy="112" r="3" fill="var(--blue)"/><circle cx="326" cy="112" r="3" fill="var(--blue)"/>
+            <text class="lbl-strong" x="236" y="104" fill="var(--blue)">d = √(4A/π)</text>
+            <text class="lbl" x="246" y="180">same area</text>
+            <!-- equivalence arrow -->
+            <path d="M196,112 H214" stroke="var(--text-dim)" stroke-width="1.5" marker-end="url(#arrA)"/>
+            <defs><marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/></marker></defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> take the colony's area A and solve for the diameter of the
+            circle with that exact area. Outline-free, so it is stable under a ragged margin.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Papagianni &amp; Mattey 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d = √(4A/π)</b> — diameter of the circle with the same area</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large d = a bigger silhouette on one length axis; small d = a smaller one — a size scalar that ignores how ragged the outline is</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d</dt><dd>equivalent diameter = √(4A/π) — diameter of the equal-area circle</dd>
+            <dt>A</dt><dd>colony area (foreground mask pixels)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 4. Circularity / form factor (MARQUEE b) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Circularity / form factor</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How disc-like the silhouette is: <span class="term">4πA/P²</span>,
+          which equals 1 for a perfect circle and falls toward 0 as the margin sends out filaments
+          and lobes (inflating P relative to A). A medium-robustness compact-vs-filamentous index.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A near-circle with circularity near 1 beside a lobed colony with circularity below 1">
+            <!-- left: near-circle, C = 1 -->
+            <circle cx="92" cy="104" r="56" fill="rgba(11,155,118,.16)" stroke="var(--green)" stroke-width="2.5"/>
+            <text class="lbl-strong" x="62" y="108" fill="var(--green)">C ≈ 1</text>
+            <text class="lbl" x="60" y="180">smooth disc</text>
+            <!-- divider -->
+            <line class="axis" x1="180" y1="30" x2="180" y2="190"/>
+            <!-- right: lobed / filamentous, C < 1 -->
+            <path class="struct" stroke="var(--vermillion)" fill="rgba(213,94,0,.12)"
+              d="M268,52
+                 C258,58 262,70 252,72 C238,68 236,84 248,90
+                 C232,92 230,108 244,112 C232,120 238,138 252,134
+                 C250,150 268,156 272,142 C282,158 300,150 296,136
+                 C312,140 320,122 306,116 C320,108 314,90 300,94
+                 C312,84 306,66 292,72 C292,56 276,50 268,52 Z"/>
+            <text class="lbl-strong" x="244" y="108" fill="var(--vermillion)">C &lt; 1</text>
+            <text class="lbl" x="240" y="186">lobed margin</text>
+            <text class="lbl-strong" x="118" y="210">C = 4πA ÷ P²</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> compare area against the square of the perimeter. The disc spends
+            the least boundary per unit area (C = 1); each extra lobe lengthens P and drives C down.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>C = 4πA ÷ P²</b> — how disc-like the silhouette is</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>C ≈ 1 = a compact smooth disc; ↓ toward 0 = a filamentous, lobed margin that inflates P relative to A</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>C</dt><dd>circularity / form factor = 4πA ÷ P²; 1 = perfect circle, →0 as the margin filaments out</dd>
+            <dt>A</dt><dd>colony area (foreground mask pixels)</dd>
+            <dt>P</dt><dd>perimeter — length of the colony boundary</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 5. Solidity (template-adapted) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Solidity / convexity / fullness</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Ratio of the colony's actual area to its <span class="term">convex-hull</span>
+          area. ≈1 for a compact disc; well below 1 when a filamentous margin leaves large concave voids
+          inside the hull — a high-robustness compact-vs-diffuse discriminator.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Solidity = colony area over its convex-hull area">
+            <!-- convex hull -->
+            <polygon points="60,40 150,30 250,70 280,150 200,190 90,175 45,110"
+                     fill="rgba(217,138,0,.08)" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- irregular colony -->
+            <path class="struct" fill="rgba(11,155,118,.16)" stroke="var(--green)"
+              d="M150,60 C120,55 95,80 100,105 C70,110 70,150 105,150 C110,180 165,175 170,150
+                 C210,165 235,135 210,115 C240,95 215,55 180,72 C172,52 158,52 150,60 Z"/>
+            <text class="lbl" x="250" y="44">convex hull</text>
+            <text class="lbl-strong" x="112" y="120">colony area</text>
+            <text class="lbl-strong" x="60" y="208">Solidity = area<tspan fill="var(--green)">▣</tspan> ÷ hull<tspan fill="var(--orange)">▢</tspan></text>
+          </svg>
+          <figcaption><b>Mechanism:</b> overlay the smallest convex polygon containing the mask; the area ratio
+            falls as the margin gets more indented/branched. Needs only the binary mask.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>S = area ÷ hull area</b> — how fully the outline fills its convex hull</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>S ≈ 1 = a convex compact disc; ↓ toward 0 = deep concave bays between filaments, an indented star-like margin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>Solidity</dt><dd>colony area ÷ convex-hull area; ≈1 for a compact disc, &lt;1 with concave voids</dd>
+            <dt>area</dt><dd>colony's actual area (foreground mask pixels)</dd>
+            <dt>hull</dt><dd>area of the smallest convex polygon enclosing the mask</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 6. Convex-hull area / territory ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Convex-hull area / territory</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Area of the smallest convex polygon that wraps the entire colony — the
+          "territory" the mycelium has reached, including the empty gaps between outermost filaments. A
+          high-robustness measure of total spatial reach.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Convex hull stretched like a rubber band around the outermost points of a colony">
+            <!-- colony -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.16)"
+              d="M150,52 C124,56 118,86 138,96 C108,100 104,138 130,144
+                 C124,176 168,184 178,158 C204,176 238,150 220,128
+                 C246,118 240,78 214,86 C214,56 174,46 150,52 Z"/>
+            <!-- extreme points -->
+            <g fill="var(--blue)">
+              <circle cx="150" cy="52" r="3.4"/><circle cx="220" cy="80" r="3.4"/>
+              <circle cx="228" cy="138" r="3.4"/><circle cx="178" cy="178" r="3.4"/>
+              <circle cx="124" cy="148" r="3.4"/><circle cx="106" cy="118" r="3.4"/>
+              <circle cx="120" cy="78" r="3.4"/>
+            </g>
+            <!-- hull (rubber band) -->
+            <polygon points="150,52 220,80 228,138 178,178 124,148 106,118 120,78"
+                     fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+            <text class="lbl-strong" x="244" y="110" fill="var(--blue)">hull area</text>
+            <text class="lbl" x="244" y="126">= territory</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> snap a rubber band around the outermost colony points (blue
+            vertices); the enclosed polygon area is the territory — empty inter-filament gaps included.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>A<sub>hull</sub></b> — area of the smallest convex polygon wrapping the colony</dd>
+            <dt>Units</dt><dd>px² (mm²)</dd>
+            <dt>Reads as</dt><dd>large A<sub>hull</sub> = the outline reaches far, its extreme points span a wide territory; small = a tightly bounded outer envelope, gaps between filaments included</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 7. Hull occupancy / coverage ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hull occupancy / coverage</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">How fully the colony fills the territory it reaches: network (mask) area
+          divided by convex-hull area. High values mean a densely packed front; low values mean a sparse,
+          space-filling exploration of the same reach. High robustness.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two colonies with identical hulls but different fill fractions">
+            <!-- shared hull shape, left = dense, right = sparse -->
+            <!-- left: high occupancy -->
+            <polygon points="40,50 120,40 150,110 110,170 50,160 28,100"
+                     fill="none" stroke="var(--sky)" stroke-width="2" stroke-dasharray="5 4"/>
+            <path fill="rgba(11,155,118,.30)" stroke="var(--green)" stroke-width="1.5"
+              d="M52,58 C44,90 50,150 96,160 C132,150 140,108 120,52 C92,46 64,48 52,58 Z"/>
+            <text class="lbl-strong" x="52" y="200" fill="var(--green)">high fill</text>
+            <!-- right: low occupancy, same hull -->
+            <polygon points="220,50 300,40 330,110 290,170 230,160 208,100"
+                     fill="none" stroke="var(--sky)" stroke-width="2" stroke-dasharray="5 4"/>
+            <path fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"
+              d="M268,100 L268,56 M268,100 L228,70 M268,100 L312,64 M268,100 L300,150
+                 M268,100 L236,150 M268,100 L218,108 M268,100 L322,110 M268,100 L270,168"/>
+            <text class="lbl-strong" x="234" y="200" fill="var(--green)">low fill</text>
+            <text class="lbl" x="116" y="30">hull</text>
+            <text class="lbl" x="296" y="30">same hull</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> divide occupied area by the hull area. Two colonies can share a
+            territory (dashed hull) yet differ sharply in how much of it the hyphae actually cover.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sholl/SNT</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>φ = area ÷ hull area</b> — fraction of the reached territory the mask actually covers</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>φ → 1 = a densely packed front filling its envelope; ↓ toward 0 = sparse, space-filling strands spanning the same reach</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>occupancy</dt><dd>network (mask) area ÷ convex-hull area; high = dense fill, low = sparse</dd>
+            <dt>hull</dt><dd>area of the convex hull (the reached territory)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 8. Eccentricity / aspect ratio (MARQUEE c) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Eccentricity / aspect ratio</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Elongation of the silhouette, from the <span class="term">best-fit ellipse</span>:
+          the ratio of its foci distance (eccentricity, 0 = circle → 1 = line) or of its axis lengths.
+          High robustness — it captures directional, oval growth that circularity alone misses.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A best-fit ellipse over an elongated colony, showing major and minor axes and the two foci">
+            <!-- elongated colony -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.14)"
+              d="M64,118 C70,96 120,86 180,84 C242,82 296,96 300,114
+                 C296,134 240,146 180,144 C118,142 70,140 64,118 Z"/>
+            <!-- best-fit ellipse -->
+            <ellipse cx="182" cy="114" rx="118" ry="30" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <!-- major axis -->
+            <line x1="64" y1="114" x2="300" y2="114" stroke="var(--blue)" stroke-width="1.5"/>
+            <text class="lbl" x="208" y="108" fill="var(--blue)">major axis a</text>
+            <!-- minor axis -->
+            <line x1="182" y1="84" x2="182" y2="144" stroke="var(--purple)" stroke-width="1.5"/>
+            <text class="lbl" x="186" y="80" fill="var(--purple)">minor b</text>
+            <!-- foci -->
+            <g fill="var(--vermillion)">
+              <circle cx="82" cy="114" r="3.6"/><circle cx="282" cy="114" r="3.6"/>
+            </g>
+            <text class="lbl" x="70" y="134" fill="var(--vermillion)">focus</text>
+            <text class="lbl" x="264" y="134" fill="var(--vermillion)">focus</text>
+            <text class="lbl-strong" x="98" y="200">e = c/a → 1 as colony elongates</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> fit the ellipse with the colony's second moments; a long, thin
+            colony pushes the two foci (red) apart, so eccentricity e = c/a rises toward 1.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>e = c/a</b> — elongation of the best-fit ellipse</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>e ≈ 0 = a round, non-directional silhouette; ↑ toward 1 = an increasingly stretched, oval, one-directional outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>e</dt><dd>eccentricity = c/a; 0 = circle, →1 as the colony elongates</dd>
+            <dt>a</dt><dd>semi-major axis of the best-fit ellipse</dd>
+            <dt>b</dt><dd>semi-minor axis of the best-fit ellipse</dd>
+            <dt>c</dt><dd>focal distance — centre-to-focus distance of the ellipse</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 9. Major/minor ellipse axes ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Major / minor ellipse axes</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The two axis lengths of the same best-fit ellipse, reported as absolute
+          sizes rather than a ratio: the long-axis extent and the short-axis extent of the colony. High
+          robustness, and they give eccentricity its physical scale.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Best-fit ellipse with its major and minor axis lengths called out as measured spans">
+            <!-- colony -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.12)"
+              d="M96,150 C84,118 110,72 176,66 C242,72 268,118 256,150
+                 C242,176 110,176 96,150 Z"/>
+            <!-- ellipse -->
+            <ellipse cx="176" cy="118" rx="92" ry="54" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <!-- major axis with end caps -->
+            <line x1="84" y1="118" x2="268" y2="118" stroke="var(--blue)" stroke-width="2"/>
+            <line x1="84" y1="110" x2="84" y2="126" stroke="var(--blue)" stroke-width="2"/>
+            <line x1="268" y1="110" x2="268" y2="126" stroke="var(--blue)" stroke-width="2"/>
+            <text class="lbl-strong" x="120" y="110" fill="var(--blue)">major length</text>
+            <!-- minor axis with end caps -->
+            <line x1="176" y1="64" x2="176" y2="172" stroke="var(--purple)" stroke-width="2"/>
+            <line x1="168" y1="64" x2="184" y2="64" stroke="var(--purple)" stroke-width="2"/>
+            <line x1="168" y1="172" x2="184" y2="172" stroke="var(--purple)" stroke-width="2"/>
+            <text class="lbl-strong" x="182" y="150" fill="var(--purple)">minor</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> read the absolute lengths of the fitted ellipse's two axes
+            (blue span, purple span). They size the spread in the colony's longest and shortest directions.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>major, minor</b> — the two axis lengths of the best-fit ellipse</dd>
+            <dt>Units</dt><dd>px (µm) each</dd>
+            <dt>Reads as</dt><dd>large major with small minor = a long thin silhouette; major ≈ minor = a round outline — absolute spans in the longest and shortest directions</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>major</dt><dd>major-axis length of the best-fit ellipse — the colony's longest-direction extent</dd>
+            <dt>minor</dt><dd>minor-axis length of the best-fit ellipse — the shortest-direction extent</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 10. Width / depth / width:depth ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Width / depth / width:depth</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The colony's bounding-box extents — its horizontal width and vertical depth
+          — and their ratio. The ratio captures spread anisotropy relative to the image axes (e.g. growth
+          biased along a gradient). High robustness.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Axis-aligned bounding box around a colony, with width and depth spans labelled">
+            <!-- colony -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.14)"
+              d="M96,96 C108,72 168,70 210,82 C262,76 300,98 286,124
+                 C300,150 240,166 196,158 C140,168 92,150 100,128
+                 C86,116 88,104 96,96 Z"/>
+            <!-- bounding box -->
+            <rect x="86" y="70" width="214" height="98" fill="none" stroke="var(--blue)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- width measure -->
+            <line x1="86" y1="186" x2="300" y2="186" stroke="var(--blue)" stroke-width="1.5"/>
+            <line x1="86" y1="180" x2="86" y2="192" stroke="var(--blue)" stroke-width="1.5"/>
+            <line x1="300" y1="180" x2="300" y2="192" stroke="var(--blue)" stroke-width="1.5"/>
+            <text class="lbl-strong" x="150" y="204" fill="var(--blue)">width</text>
+            <!-- depth measure -->
+            <line x1="318" y1="70" x2="318" y2="168" stroke="var(--purple)" stroke-width="1.5"/>
+            <line x1="312" y1="70" x2="324" y2="70" stroke="var(--purple)" stroke-width="1.5"/>
+            <line x1="312" y1="168" x2="324" y2="168" stroke="var(--purple)" stroke-width="1.5"/>
+            <text class="lbl-strong" x="326" y="124" fill="var(--purple)">depth</text>
+            <text class="lbl" x="120" y="62">width : depth ratio = anisotropy</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> take the axis-aligned bounding box; its horizontal and vertical
+            spans are width and depth, and their ratio flags directionally biased spread.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Galkovskyi 2012</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>width, depth, width:depth</b> — bounding-box spans and their ratio</dd>
+            <dt>Units</dt><dd>width, depth in px (mm); the ratio is dimensionless (1 = square envelope)</dd>
+            <dt>Reads as</dt><dd>ratio ≫ 1 or ≪ 1 = an outline stretched along one image axis; ratio ≈ 1 = an axis-balanced bounding envelope</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>width</dt><dd>horizontal extent of the axis-aligned bounding box</dd>
+            <dt>depth</dt><dd>vertical extent of the axis-aligned bounding box</dd>
+            <dt>width : depth</dt><dd>their ratio — spread anisotropy relative to the image axes</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 11. Centroid / radius of gyration (MARQUEE d) ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Centroid / radius of gyration</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The mass centre of the silhouette (centroid), and how far that mass spreads
+          around it: the radius of gyration <span class="term">√(Σr²/N)</span>, the root-mean-square distance
+          of occupied pixels from the centroid. High robustness; large when growth pushes mass outward.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Occupied pixels spread about a centroid, with the radius-of-gyration circle marking their RMS distance">
+            <!-- colony cloud (mass points) -->
+            <g fill="rgba(11,155,118,.55)">
+              <circle cx="180" cy="110" r="3"/><circle cx="150" cy="92" r="3"/><circle cx="210" cy="96" r="3"/>
+              <circle cx="138" cy="120" r="3"/><circle cx="222" cy="124" r="3"/><circle cx="165" cy="138" r="3"/>
+              <circle cx="198" cy="138" r="3"/><circle cx="120" cy="100" r="3"/><circle cx="240" cy="104" r="3"/>
+              <circle cx="160" cy="76" r="3"/><circle cx="204" cy="72" r="3"/><circle cx="252" cy="132" r="3"/>
+              <circle cx="110" cy="128" r="3"/><circle cx="176" cy="158" r="3"/><circle cx="232" cy="150" r="3"/>
+              <circle cx="132" cy="150" r="3"/>
+            </g>
+            <!-- radial spokes from centroid to a few points -->
+            <g stroke="var(--rule)" stroke-width="1">
+              <line x1="180" y1="110" x2="120" y2="100"/><line x1="180" y1="110" x2="240" y2="104"/>
+              <line x1="180" y1="110" x2="176" y2="158"/><line x1="180" y1="110" x2="160" y2="76"/>
+            </g>
+            <text class="lbl" x="146" y="100">r</text>
+            <!-- Rg circle -->
+            <circle cx="180" cy="110" r="62" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <!-- centroid -->
+            <circle cx="180" cy="110" r="4.5" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="188" y="108" fill="var(--vermillion)">centroid</text>
+            <text class="lbl-strong" x="120" y="186" fill="var(--blue)">R_g = √(Σr² ÷ N)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> find the centroid (red), measure each pixel's distance r to it,
+            and take the root-mean-square. The dashed circle is that R_g — the effective radius of mass spread.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Cox &amp; Thomas (in Paul &amp; Thomas 1998)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>R<sub>g</sub> = √(Σr² ÷ N)</b> — RMS distance of occupied pixels from the centroid</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>large R<sub>g</sub> = mass flung outward, a spread-out silhouette; small R<sub>g</sub> = mass clustered near the centre, a compact outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>R<sub>g</sub></dt><dd>radius of gyration = √(Σr² ÷ N) — RMS distance of pixels from the centroid</dd>
+            <dt>r</dt><dd>distance of an occupied pixel from the centroid</dd>
+            <dt>N</dt><dd>number of occupied (mask) pixels</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 12. Zernike shape moments ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Zernike shape moments</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">An orthogonal, rotation-invariant signature of the whole shape: the mask is
+          projected onto a basis of <span class="term">Zernike</span> polynomials on the unit disc, and the
+          coefficient magnitudes form a compact fingerprint that compares shapes regardless of orientation.
+          High robustness.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony projected onto Zernike basis modes producing a coefficient bar fingerprint">
+            <!-- colony on unit disc -->
+            <circle cx="78" cy="104" r="58" fill="none" stroke="var(--rule)" stroke-width="1.5" stroke-dasharray="3 3"/>
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.16)"
+              d="M78,56 C56,62 56,90 72,96 C50,108 60,138 82,132
+                 C86,154 116,148 116,128 C134,128 134,98 116,98
+                 C124,76 100,58 88,68 C84,58 82,56 78,56 Z"/>
+            <text class="lbl" x="52" y="180">on unit disc</text>
+            <!-- projection arrow -->
+            <path d="M146,104 H172" stroke="var(--text-dim)" stroke-width="1.5" marker-end="url(#arrZ)"/>
+            <defs><marker id="arrZ" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/></marker></defs>
+            <!-- mini basis modes -->
+            <g transform="translate(150,30)">
+              <circle cx="12" cy="12" r="10" fill="var(--blue)" opacity=".5"/>
+              <path d="M40,2 a10,10 0 0 1 0,20 z" fill="var(--blue)" opacity=".5"/><circle cx="40" cy="12" r="10" fill="none" stroke="var(--blue)"/>
+              <text class="lbl" x="-2" y="40">basis modes</text>
+            </g>
+            <!-- coefficient bars -->
+            <g transform="translate(214,40)">
+              <line class="axis" x1="0" y1="120" x2="120" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="14"/>
+              <rect x="6"  y="40"  width="14" height="80" fill="var(--blue)"/>
+              <rect x="28" y="74"  width="14" height="46" fill="var(--blue)"/>
+              <rect x="50" y="56"  width="14" height="64" fill="var(--blue)"/>
+              <rect x="72" y="92"  width="14" height="28" fill="var(--blue)"/>
+              <rect x="94" y="80"  width="14" height="40" fill="var(--blue)"/>
+              <text class="lbl-strong" x="2" y="138" fill="var(--blue)">|Z| coefficients</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> decompose the shape into orthogonal Zernike modes; the coefficient
+            magnitudes (bars) are a rotation-invariant fingerprint, so two equivalent shapes match at any angle.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">CellProfiler</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>|Z<sub>n,m</sub>|</b> — magnitudes of the Zernike coefficients (a rotation-invariant shape fingerprint)</dd>
+            <dt>Units</dt><dd>dimensionless (normalized on the unit disc)</dd>
+            <dt>Reads as</dt><dd>energy in low modes = a smooth near-circular outline; strong high-order magnitudes = fine lobed, wavy boundary detail — matched regardless of orientation</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>|Z|</dt><dd>magnitude of a Zernike coefficient — one entry of the rotation-invariant shape fingerprint</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== 13. Enclosed holes / mean hole size ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Enclosed holes / mean hole size</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The count and mean area of background regions that are fully enclosed by the
+          mycelium — interior gaps the colony has grown around. Medium robustness: small holes can vanish
+          when resolution is low.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A colony body with several fully enclosed interior background holes highlighted">
+            <!-- colony body (fill rule punches holes) -->
+            <path stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.18)" fill-rule="evenodd"
+              d="M80,60 C150,40 250,46 290,90 C312,130 300,176 230,182
+                 C150,190 76,176 64,128 C58,98 60,72 80,60 Z
+                 M132,96 a16,12 0 1 0 .1,0 Z
+                 M210,108 a22,16 0 1 0 .1,0 Z
+                 M168,150 a12,10 0 1 0 .1,0 Z"/>
+            <!-- highlight holes -->
+            <ellipse cx="132" cy="96" rx="16" ry="12" fill="var(--bg)" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+            <ellipse cx="210" cy="108" rx="22" ry="16" fill="var(--bg)" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+            <ellipse cx="168" cy="150" rx="12" ry="10" fill="var(--bg)" stroke="var(--vermillion)" stroke-width="2" stroke-dasharray="4 3"/>
+            <text class="lbl-strong" x="232" y="106" fill="var(--vermillion)">enclosed hole</text>
+            <text class="lbl" x="100" y="208">count = 3 · mean area = Σ/3</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> label background regions and keep only those wholly ringed by mycelium
+            (red dashed). Report how many there are and their average size — both shrink at low resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Seethepalli 2021</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>n<sub>holes</sub>, ā</b> — count of enclosed interior gaps and their mean area</dd>
+            <dt>Units</dt><dd>count is an integer; ā in px² (mm²)</dd>
+            <dt>Reads as</dt><dd>many/large holes = a lacy, perforated silhouette riddled with interior voids; zero holes = a solid, gap-free outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>count</dt><dd>number of fully enclosed interior background holes</dd>
+            <dt>mean area</dt><dd>Σ hole areas ÷ count — average size of an enclosed hole</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT (handling dense/overlap/low-res) ============ -->
+  <section class="band">
+    <div class="callout green">
+      <h3>Why this family survives dense, overlapping, low-resolution hyphae</h3>
+      <p>Every metric here reads off the <b>binary mask alone</b> — none of them ever tries to separate
+        one hypha from another. Because they never count tips, junctions, angles, or loops, they cannot be
+        derailed by the crossings and confluence that break skeleton-graph metrics first. They are exactly
+        the Regime-B descriptors three independent analog fields (neuroscience, root architecture, vascular)
+        fall back to when structures cannot be resolved.</p>
+      <p>Robustness does vary within the family, and the catalog flags it: area, equivalent diameter,
+        solidity, convex hull, eccentricity, axes, width/depth, and radius of gyration are <b>very-high to high</b>
+        robustness because they depend on bulk pixel counts and outer extent. Two are weaker by construction —
+        <b>perimeter</b> is scale-sensitive (a raggeder margin lengthens it, so fix the pixel scale), and
+        <b>enclosed holes</b> are medium robustness because small interior gaps are lost at low resolution.
+        These size and shape descriptors are the safe, ship-now backbone for confluent mycelium, and most of
+        them already live in PhenoTypic's existing <span class="term">SHAPE</span>/<span class="term">SIZE</span> schema.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

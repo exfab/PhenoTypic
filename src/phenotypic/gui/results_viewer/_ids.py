@@ -678,7 +678,7 @@ def colony_cell_id(image_file: str, label: int) -> Dict[str, str | int]:
     """Build the pattern-matching id for a colony-grid cell container.
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
@@ -691,7 +691,7 @@ def colony_cell_remove_btn_id(image_file: str, label: int) -> Dict[str, str | in
     """Build the pattern-matching id for a colony-cell single-action remove button.
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
@@ -709,7 +709,7 @@ def colony_cell_count_badge_id(image_file: str, label: int) -> Dict[str, str | i
     tile per object).
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
@@ -727,7 +727,7 @@ def colony_cell_popover_body_id(image_file: str, label: int) -> Dict[str, str | 
     member's crop until the user actually opens the stack.
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
@@ -746,7 +746,7 @@ def colony_cell_popover_data_id(image_file: str, label: int) -> Dict[str, str | 
     has to be re-derived on click.
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:
@@ -764,7 +764,7 @@ def colony_cell_expand_btn_id(image_file: str, label: int) -> Dict[str, str | in
     representative thumbnail).
 
     Args:
-        image_file: ``Metadata_ImageFile`` for the cell's representative colony.
+        image_file: ``Metadata_ImageName`` for the cell's representative colony.
         label: ``Object_Label`` for the cell's representative colony.
 
     Returns:

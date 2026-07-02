@@ -85,7 +85,7 @@ def launch_results_viewer(
         FileNotFoundError: If *output_root* does not contain a valid CLI
             output layout.
         ValueError: If the master measurements parquet is missing
-            required ``Metadata_Dataset`` / ``Metadata_ImageFile``
+            required ``Metadata_Dataset`` / ``Metadata_ImageName``
             columns.
     """
     root = Path(output_root).resolve()

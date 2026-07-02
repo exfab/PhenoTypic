@@ -18,6 +18,7 @@ from phenotypic.gui.results_viewer._filter_state import (
     METHOD_IS_ANY_OF,
     METHOD_RANGE,
 )
+from phenotypic.schema import METADATA
 
 
 def test_blank_row_has_all_keys_and_defaults() -> None:
@@ -101,7 +102,7 @@ def _type_ids(node):
 
 
 def test_render_row_has_method_dropdown() -> None:
-    row = _normalise_spec([{"id": "r1", "column": "Metadata_Strain"}])[0]
+    row = _normalise_spec([{"id": "r1", "column": "MetadataGenetic_Strain"}])[0]
     node = _render_filter_row("r1", row, [], is_numeric=False)
     assert "filter-row-method" in _type_ids(node)
 
@@ -119,7 +120,7 @@ def test_range_method_renders_min_max_inputs() -> None:
 
 def test_contains_method_renders_text_controls() -> None:
     row = _normalise_spec(
-        [{"id": "r1", "column": "Metadata_ImageFile", "method": METHOD_CONTAINS}]
+        [{"id": "r1", "column": str(METADATA.IMAGE_NAME), "method": METHOD_CONTAINS}]
     )[0]
     node = _render_filter_row("r1", row, [], is_numeric=False)
     ids_present = _type_ids(node)
@@ -129,7 +130,7 @@ def test_contains_method_renders_text_controls() -> None:
 
 
 def test_method_dropdown_disables_range_compare_for_text_column() -> None:
-    row = _normalise_spec([{"id": "r1", "column": "Metadata_Strain"}])[0]
+    row = _normalise_spec([{"id": "r1", "column": "MetadataGenetic_Strain"}])[0]
     node = _render_filter_row("r1", row, [], is_numeric=False)
     dropdown = next(
         c for c in _iter(node)
@@ -154,7 +155,7 @@ def test_method_dropdown_enables_range_compare_for_numeric_column() -> None:
 
 def test_value_options_only_target_mounted_list_value_controls() -> None:
     options = _value_options_for_mounted_values(
-        ["Size_Area", "Metadata_Strain"],
+        ["Size_Area", "MetadataGenetic_Strain"],
         [
             {"type": "filter-row-column", "index": "range-row"},
             {"type": "filter-row-column", "index": "list-row"},
@@ -162,7 +163,7 @@ def test_value_options_only_target_mounted_list_value_controls() -> None:
         [{"type": "filter-row-values", "index": "list-row"}],
         {
             "Size_Area": ["1", "2"],
-            "Metadata_Strain": ["BY4741", "BY4742"],
+            "MetadataGenetic_Strain": ["BY4741", "BY4742"],
         },
     )
 
@@ -188,8 +189,8 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     overlay_dir.mkdir(parents=True, exist_ok=True)
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["d1", "d1"],
-            "Metadata_ImageFile": ["a", "b"],
+            "MetadataExperiment_Dataset": ["d1", "d1"],
+            str(METADATA.IMAGE_NAME): ["a", "b"],
             "Size_Area": [1.0, 2.0],
         }
     )

@@ -19,10 +19,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import polars as pl
 
+from phenotypic.schema import EXPERIMENT_METADATA
+
 logger = logging.getLogger(__name__)
 
 # Virtual source-path column. Named ``filename`` so callers that derive
-# ``Metadata_ImageFile`` from it (and drop it afterwards) are unchanged from
+# ``Metadata_ImageName`` from it (and drop it afterwards) are unchanged from
 # the previous DuckDB reader, which exposed the same column.
 SOURCE_PATH_COLUMN = "filename"
 
@@ -55,7 +57,7 @@ def aggregate_parquet_files(
             already carries that column.
         keep_filename: If ``True``, retain the ``filename`` source-path column
             in the output. Useful when callers need to derive per-file
-            metadata (e.g. ``Metadata_ImageFile``).
+            metadata (e.g. ``Metadata_ImageName``).
 
     Returns:
         A single Polars DataFrame with all measurements concatenated, or
@@ -108,14 +110,14 @@ def aggregate_parquet_files(
     if (
         include_dataset_column
         and path_to_dataset
-        and "Metadata_Dataset" not in df.columns
+        and str(EXPERIMENT_METADATA.DATASET) not in df.columns
     ):
         mapping = {_source_path_key(p): name for p, name in path_to_dataset.items()}
         df = df.with_columns(
             pl.col(SOURCE_PATH_COLUMN)
             .str.replace_all(r"\\", "/")
             .replace_strict(mapping, default=None)
-            .alias("Metadata_Dataset")
+            .alias(str(EXPERIMENT_METADATA.DATASET))
         )
 
     if not keep_filename and SOURCE_PATH_COLUMN in df.columns:

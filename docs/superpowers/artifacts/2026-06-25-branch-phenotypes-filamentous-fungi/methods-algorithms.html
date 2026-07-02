@@ -1,0 +1,1372 @@
+<!doctype html>
+<!--
+  CONSOLIDATED VIEW — Methods & algorithms (extraction / tracing / enhancement / segmentation)
+  Part of the 14-artifact "Branch Phenotypes for Filamentous Fungi" set.
+  This is a VIEW: it aggregates the METHOD cards scattered across the four cross-domain
+  artifacts (vascular, neuroscience, plant-roots, geophysics-astronomy) plus the spec toolkit.
+  It does not duplicate the phenotype/metric families — only the techniques that turn dense,
+  faint, overlapping hyphae into a measurable network. Every method links back to its source.
+  <head> (CSS + font links) copied VERBATIM from _design-system.html. Do not alter CSS.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Methods &amp; algorithms · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--ink)">⚙</div>
+    <div>
+      <div class="hero-kicker">Cross-field view · how to extract branches from dense, noisy images</div>
+      <h1 class="hero-title">Methods &amp; algorithms</h1>
+      <p class="lede">These are the <b>extraction, tracing, enhancement, and segmentation</b> techniques —
+        <em>not</em> the phenotypes — aggregated from the four analog fields into one place. It is the
+        actionable toolkit for turning dense, faint, overlapping hyphae on textured agar into a measurable
+        network: a front-end that denoises and enhances, a tracer that threads crossings, a learned
+        segmenter, a junction resolver, and a validation gate. This page is a <b>view</b> — nothing here
+        is new; each method links back to the source artifact it was drawn from.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Enhance</span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>Trace</span>
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span>Segment</span>
+        <span class="chip"><span class="dot" style="background:var(--purple)"></span>Deblend</span>
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>Validate</span>
+        <span class="chip">21 methods · 5 stages</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (function of each method, not regime) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Method function</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--green)"></span>Enhance · denoise / lift faint signal</span>
+        <span class="item"><span class="sw" style="background:var(--blue)"></span>Trace · skeleton / least-cost path</span>
+        <span class="item"><span class="sw" style="background:var(--orange)"></span>Segment · learned mask</span>
+        <span class="item"><span class="sw" style="background:var(--purple)"></span>Deblend · split touching structure</span>
+        <span class="item"><span class="sw" style="background:var(--vermillion)"></span>Validate · trace QC / 3-D</span>
+      </div>
+    </div>
+    <div>
+      <h4>How to read a card</h4>
+      <div class="row">
+        <span class="item">Method name → mechanism → an original diagram → <b>From</b> (field) · <b>→ Fungi</b> · <b>See</b> (source artifact) · <b>Source</b> (citation).</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 1 — ENHANCEMENT & DENOISING (FRONT-END) ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">1 · Enhancement &amp; denoising (front-end)</h2>
+    <p class="section-sub">Before any threshold: lift faint thin hyphae above the per-pixel noise floor and
+      strip agar texture. The governing principle is <b>integration beats thresholding</b> — accumulate
+      sub-noise signal over scales, lines, or orientation so SNR grows as √(pixels integrated).</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1.1 Hessian vesselness / tubeness -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hessian vesselness / tubeness (Frangi/Sato)</h3>
+          <div class="badges"><span class="badge b-b">Enhance</span></div>
+        </div>
+        <p class="definition">The multiscale second-derivative filter behind essentially all curvilinear
+          enhancement. At each scale σ it eigen-decomposes the image <span class="term">Hessian</span>: a tube
+          gives one near-zero eigenvalue λ<sub>1</sub> (along it) and one large-negative λ<sub>2</sub> (across
+          it). The eigenvalue-ratio "vesselness" rewards tubes and suppresses blobs and isotropic noise —
+          recommended independently by the vascular, astronomy, <em>and</em> mycology pipelines.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hessian eigenvectors along and across a faint tube, with a multiscale vesselness response peaking at the matching scale">
+            <!-- faint tube -->
+            <path d="M24,86 C100,64 180,72 250,58" stroke="rgba(0,114,178,.30)" stroke-width="14" fill="none" stroke-linecap="round"/>
+            <path class="struct" stroke="var(--blue)" d="M24,86 C100,64 180,72 250,58"/>
+            <!-- eigenvectors at a point -->
+            <g transform="translate(140,74)">
+              <line x1="-24" y1="6" x2="24" y2="-6" stroke="var(--green)" stroke-width="2.4" marker-end="url(#ahv)"/>
+              <text class="lbl" x="26" y="-6" fill="var(--green)">λ₁≈0 (along)</text>
+              <line x1="-6" y1="-22" x2="6" y2="22" stroke="var(--vermillion)" stroke-width="2.4" marker-end="url(#ahv)"/>
+              <text class="lbl" x="-62" y="40" fill="var(--vermillion)">λ₂≪0 (across)</text>
+            </g>
+            <!-- multiscale response bars -->
+            <g transform="translate(40,190)">
+              <text class="lbl" x="0" y="-52">vesselness vs scale σ</text>
+              <line class="axis" x1="0" y1="0" x2="270" y2="0"/>
+              <rect x="14"  y="-14" width="26" height="14" fill="rgba(11,155,118,.35)"/>
+              <rect x="52"  y="-42" width="26" height="42" fill="rgba(11,155,118,.75)"/>
+              <rect x="90"  y="-24" width="26" height="24" fill="rgba(11,155,118,.40)"/>
+              <rect x="128" y="-12" width="26" height="12" fill="rgba(11,155,118,.28)"/>
+              <line x1="65" y1="-48" x2="65" y2="0" stroke="var(--green)" stroke-width="1" stroke-dasharray="2 3"/>
+              <text class="lbl-strong" x="46" y="-52" fill="var(--green)">peak: σ ≈ radius</text>
+              <text class="lbl" x="176" y="-16">→ feeds threshold / cost</text>
+            </g>
+            <defs>
+              <marker id="ahv" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
+                <path d="M0,0 L5,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> sweep a scale ladder σ; the eigenvalue ratio responds maximally where
+            σ matches the local tube width, so thick and thin hyphae are enhanced alike before segmentation.
+            The single most portable, most cross-validated pre-filter — and the strongest cost-surface term.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Astronomy</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">add a Frangi/Sato vesselness channel to <span class="term">assemble_composite_cost</span> so faint thin hyphae survive thresholding — the top cost-surface upgrade for <span class="term">branch_pathfinding</span></span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-vascular.html">Vascular</a> · <a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Sato et al. 1998; Cautun et al. 2013</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>λ<sub>1</sub></dt><dd>smaller-magnitude Hessian eigenvalue; ≈ 0 along a tube's axis</dd>
+            <dt>λ<sub>2</sub></dt><dd>larger-magnitude Hessian eigenvalue; large-negative across a bright tube (|λ<sub>2</sub>| ≫ |λ<sub>1</sub>|)</dd>
+            <dt>σ</dt><dd>Gaussian filter scale (px); vesselness peaks where σ ≈ local tube radius</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 1.2 Matched filter / Radon -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Matched filter / Radon line integration</h3>
+          <div class="badges"><span class="badge b-b">Enhance</span></div>
+        </div>
+        <p class="definition">Cross-correlate the frame with a thin-line <span class="term">template</span>
+          matched to hyphal width (provably optimal SNR in Gaussian noise), or integrate along every candidate
+          line with the <span class="term">Radon transform</span> so a faint streak becomes a peak in an
+          (angle, offset) accumulator. Both sum the whole feature's flux instead of trusting low-SNR pixels.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A faint line invisible per pixel becomes a sharp peak after line integration by matched filter or Radon transform">
+            <!-- noisy strip with hidden faint line -->
+            <g transform="translate(14,14)">
+              <rect x="0" y="0" width="200" height="66" fill="rgba(32,30,24,.04)" stroke="var(--rule)"/>
+              <g fill="rgba(32,30,24,.30)">
+                <circle cx="16" cy="16" r="1.7"/><circle cx="48" cy="48" r="1.7"/><circle cx="80" cy="20" r="1.7"/>
+                <circle cx="112" cy="52" r="1.7"/><circle cx="140" cy="26" r="1.7"/><circle cx="176" cy="44" r="1.7"/>
+                <circle cx="30" cy="40" r="1.7"/><circle cx="96" cy="14" r="1.7"/><circle cx="160" cy="56" r="1.7"/>
+              </g>
+              <line x1="8" y1="46" x2="192" y2="28" stroke="rgba(0,114,178,.45)" stroke-width="2.2"/>
+              <text class="lbl" x="4" y="-2">faint line — invisible per pixel</text>
+            </g>
+            <!-- integration arrow -->
+            <line x1="108" y1="92" x2="108" y2="116" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axmr)"/>
+            <text class="lbl" x="114" y="108">integrate along every line</text>
+            <!-- accumulator with a clear peak -->
+            <g transform="translate(14,126)">
+              <line class="axis" x1="0" y1="66" x2="330" y2="66"/>
+              <line class="axis" x1="0" y1="66" x2="0" y2="2"/>
+              <polyline fill="none" stroke="var(--blue)" stroke-width="1.6"
+                points="0,58 24,60 48,56 72,61 96,55 120,59 148,18 176,58 200,60 226,56 252,60 278,57 304,60 328,58"/>
+              <circle cx="148" cy="18" r="3.6" fill="var(--blue)"/>
+              <text class="lbl-strong" x="122" y="12" fill="var(--blue)">SNR peak</text>
+              <text class="lbl" x="0" y="82">accumulator (angle, offset) →</text>
+            </g>
+            <defs>
+              <marker id="axmr" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> a line kernel matched to hyphal width is the cheapest principled
+            faint-hypha enhancer; Radon adds no prior on angle or position. Summing sub-noise pixels coherently
+            lifts SNR as √(pixels integrated), so straight and gently-curved growth leaders surface below the floor.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">an SNR-lifting line-filter front-end before <span class="term">branch_pathfinding</span> thresholds — faint straight-hypha detection and enhancement</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vio &amp; Andreani 2016; Nir et al. 2018</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>SNR</dt><dd>signal-to-noise ratio of the detection; grows as √(pixels integrated)</dd>
+            <dt>Radon</dt><dd>integral of image intensity along every candidate line (angle, offset)</dd>
+            <dt>template</dt><dd>line-shaped kernel matched to the signal, cross-correlated with the image</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 1.3 Starlet / curvelet denoising -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Starlet / curvelet wavelet denoising</h3>
+          <div class="badges"><span class="badge b-b">Enhance</span></div>
+        </div>
+        <p class="definition">The isotropic undecimated (à trous) <span class="term">starlet</span> wavelet
+          models noise per scale and thresholds via a multiresolution support; <span class="term">curvelets</span>
+          add anisotropic atoms matched to thin curved edges. A pre-denoise that strips agar texture at the fine
+          scale while preserving faint thin structure at the mid scale, then reconstructs.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An image split into wavelet scales, noise thresholded per scale, then reconstructed into clean thin hyphae">
+            <!-- scale stack -->
+            <g transform="translate(14,16)">
+              <rect x="0" y="0" width="70" height="42" fill="rgba(32,30,24,.10)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="25">fine (noise)</text>
+              <rect x="0" y="52" width="70" height="42" fill="rgba(0,114,178,.16)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="77">mid (hyphae)</text>
+              <rect x="0" y="104" width="70" height="42" fill="rgba(217,138,0,.16)" stroke="var(--rule)"/>
+              <text class="lbl" x="6" y="129">coarse (bg)</text>
+            </g>
+            <!-- per-scale decision -->
+            <g transform="translate(110,16)">
+              <text class="lbl" x="0" y="25">threshold ✕</text>
+              <text class="lbl-strong" x="0" y="77" fill="var(--blue)">keep ✓</text>
+              <text class="lbl" x="0" y="129">subtract</text>
+            </g>
+            <line x1="184" y1="80" x2="216" y2="80" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axst)"/>
+            <text class="lbl" x="180" y="72">reconstruct</text>
+            <!-- clean output -->
+            <g transform="translate(226,26)">
+              <rect x="0" y="0" width="120" height="120" fill="var(--surface)" stroke="var(--border)"/>
+              <path class="struct" stroke="var(--blue)" d="M14,100 C50,70 70,60 106,30 M40,90 L60,72 M70,60 L92,66"/>
+              <text class="lbl" x="10" y="116">clean thin hyphae</text>
+            </g>
+            <defs>
+              <marker id="axst" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> decompose, threshold noise per scale (curvelet atoms align with curved
+            hyphae), and reconstruct. The SNR-lifting front-end that pairs with the matched/Radon filter to lift
+            faint hyphae above the per-pixel floor.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">prepend a denoise stage that strips agar texture while keeping thin curved hyphae — paired with the matched/Radon line filter as the front-end for retracing</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Starck et al. 2007; Starck, Candès &amp; Donoho 2002</span></div>
+        </div>
+      </article>
+
+      <!-- 1.4 Rolling Hough Transform -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Rolling Hough Transform (orientation in noise)</h3>
+          <div class="badges"><span class="badge b-b">Enhance</span></div>
+        </div>
+        <p class="definition">Run a <span class="term">local Hough transform</span> over a disk around every
+          pixel, returning the probability P(linear) that the pixel belongs to a coherent line plus its
+          orientation θ. It asks "is there local linear coherence?" not "is this pixel bright?", so faint
+          coherent hyphae survive while incoherent agar speckle cancels.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A rolling local Hough disk over a noisy field extracts a coherent orientation while speckle cancels">
+            <!-- noisy field with faint coherent hyphae -->
+            <g transform="translate(14,16)">
+              <rect x="0" y="0" width="196" height="176" fill="rgba(32,30,24,.03)" stroke="var(--rule)"/>
+              <g fill="rgba(32,30,24,.28)">
+                <circle cx="24" cy="22" r="1.8"/><circle cx="70" cy="40" r="1.8"/><circle cx="120" cy="20" r="1.8"/>
+                <circle cx="168" cy="50" r="1.8"/><circle cx="40" cy="120" r="1.8"/><circle cx="150" cy="132" r="1.8"/>
+                <circle cx="96" cy="152" r="1.8"/><circle cx="178" cy="100" r="1.8"/><circle cx="20" cy="80" r="1.8"/>
+              </g>
+              <g stroke="rgba(0,114,178,.5)" stroke-width="2">
+                <line x1="20" y1="42" x2="118" y2="122"/>
+                <line x1="60" y1="22" x2="158" y2="102"/>
+                <line x1="100" y1="52" x2="178" y2="118"/>
+              </g>
+              <circle cx="72" cy="72" r="24" fill="none" stroke="var(--vermillion)" stroke-width="1.6" stroke-dasharray="4 3"/>
+              <circle cx="130" cy="94" r="24" fill="none" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".55"/>
+              <text class="lbl" x="0" y="192">rolling local-Hough disk</text>
+            </g>
+            <!-- coherent orientation output -->
+            <g transform="translate(228,30)">
+              <rect x="0" y="0" width="120" height="150" fill="var(--surface)" stroke="var(--border)"/>
+              <g stroke="var(--blue)" stroke-width="2.4">
+                <line x1="20" y1="30" x2="44" y2="54"/><line x1="56" y1="26" x2="80" y2="50"/><line x1="92" y1="34" x2="116" y2="58"/>
+                <line x1="20" y1="80" x2="44" y2="104"/><line x1="56" y1="76" x2="80" y2="100"/><line x1="92" y1="84" x2="116" y2="108"/>
+              </g>
+              <text class="lbl-strong" x="8" y="142" fill="var(--blue)">orientation θ + P(linear)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> per pixel the disk-local Hough accumulates only direction-coherent
+            neighbours; random speckle cancels. The output is a clean orientation/anisotropy field at low SNR —
+            feeds anisotropy metrics and the retracing cost surface's orientation term.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a noise-robust hyphal orientation channel for the cost surface — tip orientation and anisotropy at low SNR</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Clark, Peek &amp; Putman 2014</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>θ</dt><dd>local linear orientation returned at each pixel (degrees)</dd>
+            <dt>P(linear)</dt><dd>probability the pixel belongs to a coherent linear structure</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 2 — TRACING & SKELETONIZATION ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">2 · Tracing &amp; skeletonization</h2>
+    <p class="section-sub">Turn the enhanced field into a centreline graph. The recurring lesson: grow each
+      strand as a single least-cost path so a crossing is <em>traversed</em>, not fused — and rank branches by
+      persistence, not brightness, so texture never becomes a hallucinated branch.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 2.1 A* / least-cost path -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">A* / least-cost-path tracing (RootNav / SNT)</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Make each pixel cheap-to-traverse where it looks hypha-like, then run
+          <span class="term">A*</span> (or multi-source Dijkstra) from tip to source. The path glides
+          <b>through</b> a crossing because continuing straight costs less than the sharp turn onto the other
+          strand. <b>This is exactly what PhenoTypic's <span class="term">branch_pathfinding</span> already
+          does</b> — the transfer is the refinements, not a new paradigm.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A least-cost path traces one strand straight through an X crossing while a faint second strand is left untouched">
+            <!-- faint crossing strand -->
+            <path d="M70,44 C140,96 200,120 300,178" stroke="var(--faint)" stroke-width="7" fill="none" stroke-linecap="round" opacity=".35"/>
+            <!-- cost-field tube around our strand -->
+            <path d="M56,178 C140,150 210,120 306,50" stroke="var(--green)" stroke-width="12" fill="none" stroke-linecap="round" opacity=".16"/>
+            <!-- traced path through the X -->
+            <path d="M56,178 C140,150 210,120 306,50" stroke="var(--blue)" stroke-width="2.6" fill="none" stroke-dasharray="2 6" stroke-linecap="round"/>
+            <circle cx="56" cy="178" r="4.5" fill="var(--vermillion)"/><text class="lbl-strong" x="18" y="198" fill="var(--vermillion)">start (tip)</text>
+            <circle cx="306" cy="50" r="4.5" fill="var(--ink)"/><text class="lbl" x="262" y="44">goal (source)</text>
+            <circle cx="184" cy="120" r="11" fill="none" stroke="var(--orange)" stroke-width="2"/>
+            <text class="lbl-strong" x="150" y="148" fill="var(--orange)">X-crossing traversed</text>
+            <g stroke="var(--blue)" stroke-width="1" opacity=".5">
+              <path d="M96,166 l6,-2 M132,154 l6,-3 M222,104 l5,-4 M262,82 l5,-4"/>
+            </g>
+            <text class="lbl" x="70" y="32">cost = "how un-hypha-like is this pixel?"</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> a composite cost surface makes hypha pixels cheap; Dijkstra/A* finds the
+            minimal path. At the X, the straight continuation is cheaper than turning, so the strands stay
+            separate — the same backbone <span class="term">branch_pathfinding</span> runs.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the backbone is already in place; the borrowed refinements are a vesselness cost term and direction-continuity edge pairing at junctions in <span class="term">branch_pathfinding</span></span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-plant-roots.html">Plant roots</a> · <a href="crossdomain-neuroscience.html">Neuroscience</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Pound et al. 2013 (RootNav); Longair et al. 2011 (SNT)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>A*</dt><dd>heuristic least-cost pathfinding, run tip→source (SNT minimal-path tracer)</dd>
+            <dt>cost</dt><dd>per-pixel traversal cost — cheap where the pixel looks hypha-like</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2.2 Flood-filling networks -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Flood-filling networks (dense tracing)</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">From a single seed, a recurrent field-of-view floods outward and re-segments
+          <b>one</b> process at a time, marching past crossings instead of fusing them. The dense-tracing answer
+          for a tangle where a skeleton-from-mask would merge every overlap into a false node.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A flood-filling network grows one strand outward from a seed through a tangle of overlapping fibres">
+            <!-- background tangle of overlapping fibres (faint) -->
+            <g stroke="var(--faint)" stroke-width="1.4" fill="none" opacity=".5" stroke-linecap="round">
+              <path d="M30,40 C110,70 150,30 230,80 S320,60 350,110"/>
+              <path d="M20,150 C90,120 160,180 240,130 S330,160 352,120"/>
+              <path d="M60,200 C120,150 100,80 180,60 S250,30 300,70"/>
+              <path d="M40,90 C120,110 140,170 220,170 S300,200 340,180"/>
+              <path d="M200,20 C190,90 250,120 240,200"/>
+              <path d="M120,30 C150,100 90,140 130,210"/>
+            </g>
+            <!-- seed -->
+            <circle cx="70" cy="120" r="6" fill="var(--vermillion)"/>
+            <text class="lbl-strong" x="40" y="146" fill="var(--vermillion)">seed</text>
+            <!-- flooded process highlighted -->
+            <path d="M70,120 C120,108 132,150 188,138 C236,128 248,96 300,104"
+                  fill="none" stroke="var(--blue)" stroke-width="3.2" stroke-linecap="round"/>
+            <!-- expanding flood-fronts -->
+            <circle cx="70" cy="120" r="26" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+            <circle cx="132" cy="132" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>
+            <circle cx="200" cy="134" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".4"/>
+            <circle cx="262" cy="112" r="22" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 4" opacity=".35"/>
+            <circle cx="300" cy="104" r="5" fill="var(--blue)"/>
+            <text class="lbl-strong" x="222" y="180" fill="var(--blue)">one process,</text>
+            <text class="lbl-strong" x="222" y="194" fill="var(--blue)">flooded out</text>
+            <text class="lbl" x="14" y="18">overlapping fibre tangle</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> rather than skeletonize-then-graph (which fuses every overlap), each
+            filament is grown as a single flooded process, so the field-of-view marches past a crossing rather
+            than reading it as a junction.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a per-process re-segmentation route for dense mycelial tangles where mask-skeletons collapse crossings into false nodes</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-neuroscience.html">Neuroscience</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Januszewski et al. 2018</span></div>
+        </div>
+      </article>
+
+      <!-- 2.3 APP2 gray-weighted pruning -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">APP2 gray-weighted distance-tree pruning</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Build an initial over-connected reconstruction as a <span class="term">gray-weighted
+          distance tree</span> (each pixel weighted by how hypha-like it is), then <span class="term">hierarchically
+          prune</span> spurs by leaf-to-root significance. The gray weighting keeps the tracer on the bright
+          centreline; the pruning removes texture spurs without a brightness cut.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An over-connected gray-weighted tree with low-significance spurs pruned back to the main centreline">
+            <!-- gray-weighted intensity band along the trunk -->
+            <path d="M40,180 C90,150 120,110 170,90 C220,70 270,60 320,44"
+                  stroke="rgba(0,114,178,.18)" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <!-- kept trunk -->
+            <path class="struct" stroke="var(--blue)" stroke-width="2.6"
+                  d="M40,180 C90,150 120,110 170,90 C220,70 270,60 320,44"/>
+            <text class="lbl-strong" x="60" y="150" fill="var(--blue)">gray-weighted trunk (kept)</text>
+            <!-- kept real branch -->
+            <path class="struct" stroke="var(--blue)" stroke-width="2.2" d="M170,90 C186,116 196,140 208,168"/>
+            <text class="lbl" x="196" y="184" fill="var(--blue)">real branch</text>
+            <!-- pruned spurs (faint, with scissor mark) -->
+            <g stroke="var(--faint)" stroke-width="1.6" fill="none" stroke-dasharray="3 3">
+              <path d="M120,110 C128,96 126,88 138,80"/>
+              <path d="M270,60 C278,72 276,80 288,86"/>
+              <path d="M90,150 C80,142 74,142 66,150"/>
+            </g>
+            <g stroke="var(--vermillion)" stroke-width="1.4">
+              <line x1="126" y1="98" x2="138" y2="86"/><line x1="138" y1="98" x2="126" y2="86"/>
+              <line x1="276" y1="70" x2="288" y2="82"/><line x1="288" y1="70" x2="276" y2="82"/>
+            </g>
+            <text class="lbl" x="230" y="112" fill="var(--vermillion)">low-significance spurs → pruned</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the initial reconstruction over-connects; gray-weighting biases the tree
+            onto the bright centreline, and hierarchical pruning removes leaf spurs by significance — a natural
+            spur-cleanup refinement for a least-cost tracer.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">gray-weighted distance-tree tracing + hierarchical spur pruning as a post-trace cleanup for <span class="term">branch_pathfinding</span> fragments</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-neuroscience.html">Neuroscience</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Xiao &amp; Peng 2013 (APP2)</span></div>
+        </div>
+      </article>
+
+      <!-- 2.4 Steger subpixel curvilinear detector -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Steger subpixel curvilinear detector</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Use the <span class="term">2nd directional derivative</span> (Hessian of Gaussian)
+          to locate a line's centre to <span class="term">subpixel</span> precision <em>and</em> recover its
+          width w from the transverse profile — with an explicit line model that removes the asymmetry bias of
+          naive ridge detection. The best tracer when a hypha is only a few pixels across.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="The Steger detector fixes a subpixel centreline between grid pixels on a faint few-pixel tube and reads its width">
+            <!-- pixel grid -->
+            <g stroke="var(--rule)" stroke-width="0.8" opacity=".7">
+              <path d="M20,20 H340 M20,44 H340 M20,68 H340 M20,92 H340 M20,116 H340
+                       M20,20 V116 M52,20 V116 M84,20 V116 M116,20 V116 M148,20 V116 M180,20 V116
+                       M212,20 V116 M244,20 V116 M276,20 V116 M308,20 V116 M340,20 V116"/>
+            </g>
+            <!-- faint few-pixel tube straddling pixels -->
+            <path d="M24,98 C90,78 180,68 336,54" stroke="rgba(0,114,178,.28)" stroke-width="18" fill="none" stroke-linecap="round"/>
+            <!-- subpixel centreline not snapped to grid -->
+            <path d="M24,98 C90,78 180,68 336,54" stroke="var(--vermillion)" stroke-width="1.8" fill="none"/>
+            <text class="lbl-strong" x="118" y="44" fill="var(--vermillion)">subpixel centreline (between pixels)</text>
+            <!-- width bracket -->
+            <g transform="translate(216,74)">
+              <line x1="0" y1="-11" x2="0" y2="11" stroke="var(--green)" stroke-width="2"/>
+              <line x1="-5" y1="-11" x2="5" y2="-11" stroke="var(--green)" stroke-width="2"/>
+              <line x1="-5" y1="11" x2="5" y2="11" stroke="var(--green)" stroke-width="2"/>
+              <text class="lbl" x="8" y="4" fill="var(--green)">width w</text>
+            </g>
+            <!-- 2nd-derivative profile -->
+            <g transform="translate(40,150)">
+              <line class="axis" x1="0" y1="40" x2="280" y2="40"/>
+              <path d="M0,38 C60,38 90,8 140,8 C190,8 220,38 280,38" fill="none" stroke="var(--blue)" stroke-width="2"/>
+              <line x1="140" y1="8" x2="140" y2="40" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 3"/>
+              <text class="lbl" x="0" y="56">2nd directional derivative → centre at the extremum</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the explicit line model fits the transverse profile, giving subpixel
+            centreline and diameter even at a few pixels' width. Density-tolerant and already standard in
+            biomedical vessel/neurite tracing — top pick for tracing faint hyphae.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a subpixel hyphal centreline + width tracer at poor resolution — evaluate as the tracing front-end for <span class="term">branch_pathfinding</span></span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Steger 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>w</dt><dd>recovered line/hypha width from the transverse intensity profile (px)</dd>
+            <dt>2nd deriv.</dt><dd>Hessian of Gaussian; its extremum locates the subpixel centreline</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2.5 DisPerSE Morse-persistence skeleton -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DisPerSE Morse-persistence skeleton</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Find filaments as <span class="term">ridge lines</span> (ascending 1-manifolds)
+          between density critical points, then prune by <span class="term">persistence</span> — the density
+          contrast from a feature's birth to its death. Persistence gives each branch a statistical significance
+          instead of a brightness cut, so noise features are removed with confidence.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A persistent ridge between a density maximum and a saddle kept, low-persistence stubs pruned, shown on a persistence diagram">
+            <!-- density landscape with ridge -->
+            <g transform="translate(14,14)">
+              <rect x="0" y="0" width="190" height="176" fill="rgba(32,30,24,.03)" stroke="var(--rule)"/>
+              <path d="M24,40 C80,55 120,120 176,146" stroke="var(--blue)" stroke-width="2.6" fill="none"/>
+              <circle cx="24" cy="40" r="5" fill="var(--vermillion)"/><text class="lbl" x="28" y="34" fill="var(--vermillion)">max</text>
+              <circle cx="176" cy="146" r="5" fill="var(--blue)"/><text class="lbl" x="140" y="162" fill="var(--blue)">saddle</text>
+              <text class="lbl-strong" x="66" y="90">persistent ridge → kept</text>
+              <g stroke="var(--faint)" stroke-width="1.4" fill="none" stroke-dasharray="3 3">
+                <path d="M60,150 C66,140 64,134 74,128"/>
+                <path d="M138,30 C144,40 140,46 150,52"/>
+              </g>
+              <g fill="none" stroke="var(--faint)"><circle cx="60" cy="150" r="3"/><circle cx="138" cy="30" r="3"/></g>
+              <text class="lbl" x="4" y="192" fill="var(--faint)">low-persistence stubs → pruned</text>
+            </g>
+            <!-- persistence diagram -->
+            <g transform="translate(224,24)">
+              <line class="axis" x1="0" y1="150" x2="120" y2="150"/>
+              <line class="axis" x1="0" y1="150" x2="0" y2="10"/>
+              <line x1="0" y1="150" x2="120" y2="30" stroke="var(--rule)" stroke-dasharray="3 3"/>
+              <circle cx="40" cy="40" r="4" fill="var(--blue)"/>
+              <text class="lbl" x="44" y="40" fill="var(--blue)">signal</text>
+              <g fill="var(--faint)">
+                <circle cx="80" cy="92" r="2.6"/><circle cx="96" cy="116" r="2.6"/><circle cx="60" cy="78" r="2.6"/>
+              </g>
+              <text class="lbl" x="52" y="138" fill="var(--faint)">noise (near diagonal)</text>
+              <text class="lbl" x="0" y="166">birth →</text>
+              <text class="lbl" x="-12" y="46" transform="rotate(-90 -12,46)">death</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> topological persistence is provably noise-robust and scale-free. True
+            structure sits far from the diagonal of the persistence diagram, noise near it; a single cut prunes
+            texture stubs — the same primitive as neuroscience's TMD barcode.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a noise-robust skeletonizer whose per-branch persistence ranks candidate hyphae by significance — feeds a persistence-based path-quality filter in <span class="term">_path_quality</span></span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Sousbie 2011</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>persistence</dt><dd>density contrast from a feature's birth to its death; the pruning threshold = statistical significance</dd>
+            <dt>max / saddle</dt><dd>the density-maximum and saddle critical points anchoring a ridge</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2.6 FilFinder spine + width -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">FilFinder medial-axis spine + width</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Adaptive-threshold the frame to a mask, reduce to a 1-pixel <span class="term">medial
+          axis</span>, graph-prune to spines, then fit <span class="term">perpendicular intensity profiles</span>
+          (Gaussian/Plummer) to recover the FWHM width along each spine. The ISM-filament pipeline pattern:
+          mask → skeleton → graph metrics + a transverse-profile width.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A filament reduced to a medial-axis spine with a perpendicular intensity profile giving FWHM width">
+            <!-- filament body -->
+            <path d="M24,150 C90,120 170,128 320,96" stroke="rgba(11,155,118,.28)" stroke-width="18" fill="none" stroke-linecap="round"/>
+            <!-- spine -->
+            <path d="M24,150 C90,120 170,128 320,96" stroke="var(--ink)" stroke-width="1.6" fill="none"/>
+            <text class="lbl-strong" x="40" y="118">medial-axis spine</text>
+            <!-- perpendicular profile -->
+            <g transform="translate(180,124)">
+              <line x1="0" y1="-26" x2="0" y2="26" stroke="var(--vermillion)" stroke-width="1.4" stroke-dasharray="3 3"/>
+              <path d="M-40,40 C-16,40 -8,6 0,6 C8,6 16,40 40,40" fill="none" stroke="var(--blue)" stroke-width="2" transform="translate(0,-2)"/>
+              <text class="lbl" x="6" y="56" fill="var(--blue)">profile → FWHM</text>
+            </g>
+            <text class="lbl" x="40" y="188">length · curvature · branch-count from the spine graph</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> mask → skeleton → graph metrics (length, curvature, branch count) plus a
+            Gaussian/Plummer fit to the transverse cut for width. The direct analog of hyphal centreline +
+            diameter, though width needs ≥3–4 px of transverse resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a mask→spine→width pipeline giving hyphal centreline, length/branch-count, and diameter once a clean mask exists</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Koch &amp; Rosolowsky 2015</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>FWHM</dt><dd>full width at half maximum of the perpendicular intensity profile = spine width</dd>
+            <dt>medial axis</dt><dd>1-pixel-wide skeleton (spine) of the mask</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 3 — LEARNED SEGMENTATION ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">3 · Learned segmentation</h2>
+    <p class="section-sub">The data-driven route from a noisy image to a clean hyphal mask, once labels exist —
+      with class-imbalance-aware losses for thin sparse positives and corrective-annotation loops that reach a
+      usable segmenter without a big pre-labelled set.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 3.1 U-Net -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">U-Net encoder–decoder (Dice/Combo loss)</h3>
+          <div class="badges"><span class="badge b-phys">Segment</span></div>
+        </div>
+        <p class="definition">The <span class="term">U-Net</span> encoder–decoder with skip connections — introduced
+          on a vessel-segmentation benchmark (DRIVE/STARE) — is the default learned route from a noisy image to a
+          clean mask. A <span class="term">Combo (BCE + Dice) loss</span> handles the extreme class imbalance of
+          thin sparse positives against a vast background; a Hough pass can clean the predicted line.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A U-Net encoder decoder with skip connections turning a noisy field into a thin-feature mask under a Combo loss">
+            <!-- encoder -->
+            <g transform="translate(10,44)">
+              <rect x="0" y="0" width="22" height="100" rx="3" fill="rgba(0,114,178,.18)" stroke="var(--blue)"/>
+              <rect x="30" y="14" width="18" height="72" rx="3" fill="rgba(0,114,178,.24)" stroke="var(--blue)"/>
+              <rect x="56" y="30" width="14" height="40" rx="3" fill="rgba(0,114,178,.30)" stroke="var(--blue)"/>
+              <text class="lbl" x="0" y="118">encoder ↓</text>
+            </g>
+            <!-- bottleneck -->
+            <rect x="92" y="88" width="14" height="20" rx="3" fill="rgba(184,99,143,.30)" stroke="var(--purple)"/>
+            <!-- decoder -->
+            <g transform="translate(120,44)">
+              <rect x="0" y="30" width="14" height="40" rx="3" fill="rgba(11,155,118,.28)" stroke="var(--green)"/>
+              <rect x="22" y="14" width="18" height="72" rx="3" fill="rgba(11,155,118,.22)" stroke="var(--green)"/>
+              <rect x="48" y="0" width="22" height="100" rx="3" fill="rgba(11,155,118,.16)" stroke="var(--green)"/>
+              <text class="lbl" x="34" y="118">decoder ↑</text>
+            </g>
+            <!-- skip connections -->
+            <g stroke="var(--orange)" stroke-width="1.4" stroke-dasharray="3 3" fill="none">
+              <path d="M32,50 C70,22 130,22 168,50"/>
+              <path d="M58,62 C92,40 116,40 150,62"/>
+            </g>
+            <text class="lbl" x="78" y="26" fill="var(--orange)">skips</text>
+            <!-- in / out tiles -->
+            <g transform="translate(214,50)">
+              <rect x="0" y="0" width="44" height="44" rx="4" fill="rgba(40,32,16,.06)" stroke="var(--border)"/>
+              <path d="M4,38 C18,20 28,30 40,8" fill="none" stroke="var(--text-dim)" stroke-width="1.2"/>
+              <path d="M6,10 C20,28 30,18 42,36" fill="none" stroke="var(--text-dim)" stroke-width="1.2"/>
+              <text class="lbl" x="2" y="58">noisy in</text>
+              <line x1="50" y1="22" x2="74" y2="22" stroke="var(--vermillion)" stroke-width="2"/>
+              <path d="M70,17 L78,22 L70,27 Z" fill="var(--vermillion)"/>
+              <rect x="82" y="0" width="44" height="44" rx="4" fill="rgba(11,155,118,.08)" stroke="var(--green)"/>
+              <path d="M86,38 C100,20 110,30 122,8" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+              <text class="lbl" x="84" y="58">thin-feature mask</text>
+            </g>
+            <text class="lbl-strong" x="214" y="16" fill="var(--purple)">Combo (BCE+Dice) loss</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the contracting path captures context, the expanding path restores
+            resolution, and skip connections re-inject fine detail so thin structures survive the bottleneck;
+            the Dice/Combo loss keeps sparse positives from being washed out.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Astronomy</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">imbalance-aware pixel-wise hyphal segmentation once labels exist; the learned-mask → Hough-cleanup pattern is a strong template</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-vascular.html">Vascular</a> · <a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ronneberger et al. 2015 (U-Net); Jeong et al. 2024 (Combo loss)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>BCE</dt><dd>binary cross-entropy, the per-pixel classification loss term</dd>
+            <dt>Dice</dt><dd>Dice-overlap loss term, robust to thin/sparse-positive class imbalance</dd>
+            <dt>Combo</dt><dd>weighted sum BCE + Dice used to train the network</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 3.2 RootNav 2 / SegRoot -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">RootNav 2 / SegRoot deep segmentation</h3>
+          <div class="badges"><span class="badge b-phys">Segment</span></div>
+        </div>
+        <p class="definition">Domain-specialized deep segmenters for occlusion-heavy 2-D projections of branched
+          nets. <span class="term">SegRoot</span> is an encoder–decoder pixel segmenter; <span class="term">RootNav
+          2</span> couples a learned segmentation stage to an automatic architecture-recovery step — the same
+          "2-D projection of an overlapping branched net" problem as hyphae on agar.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A learned segmentation stage feeding an architecture-recovery stage that produces an ordered branched net">
+            <!-- stage 1: raw tangle -->
+            <g transform="translate(14,30)">
+              <rect x="0" y="0" width="96" height="120" rx="6" fill="rgba(40,32,16,.05)" stroke="var(--border)"/>
+              <g stroke="var(--faint)" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".7">
+                <path d="M48,6 C44,50 52,90 48,116"/>
+                <path d="M48,34 C30,44 20,58 12,74"/>
+                <path d="M48,60 C66,70 78,84 86,100"/>
+                <path d="M48,86 C34,96 26,104 18,116"/>
+              </g>
+              <text class="lbl" x="8" y="136">occluded input</text>
+            </g>
+            <line x1="116" y1="90" x2="140" y2="90" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axrn)"/>
+            <!-- stage 2: learned mask -->
+            <g transform="translate(148,30)">
+              <rect x="0" y="0" width="96" height="120" rx="6" fill="rgba(11,155,118,.08)" stroke="var(--green)"/>
+              <g stroke="var(--green)" stroke-width="2.4" fill="none" stroke-linecap="round">
+                <path d="M48,6 C44,50 52,90 48,116"/>
+                <path d="M48,34 C30,44 20,58 12,74"/>
+                <path d="M48,60 C66,70 78,84 86,100"/>
+              </g>
+              <text class="lbl-strong" x="8" y="16" fill="var(--green)">learned mask</text>
+              <text class="lbl" x="8" y="136">SegRoot / U-Net</text>
+            </g>
+            <line x1="250" y1="90" x2="274" y2="90" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#axrn)"/>
+            <!-- stage 3: ordered net -->
+            <g transform="translate(282,30)">
+              <rect x="0" y="0" width="64" height="120" rx="6" fill="var(--surface)" stroke="var(--blue)"/>
+              <g stroke="var(--blue)" stroke-width="2.4" fill="none" stroke-linecap="round">
+                <path d="M32,6 C30,50 34,90 32,116"/>
+                <path d="M32,34 L14,52"/><path d="M32,60 L54,78"/>
+              </g>
+              <circle cx="32" cy="34" r="3" fill="var(--orange)"/><circle cx="32" cy="60" r="3" fill="var(--orange)"/>
+              <text class="lbl-strong" x="4" y="16" fill="var(--blue)">architecture</text>
+              <text class="lbl" x="4" y="136">RootNav 2</text>
+            </g>
+            <defs>
+              <marker id="axrn" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> a learned pixel segmenter first isolates the net from occlusion, then an
+            architecture-recovery step orders it into parent/child structure — the segment-then-trace division
+            PhenoTypic uses, with the segmentation stage learned.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a domain template for a learned hyphal segmentation stage feeding <span class="term">branch_pathfinding</span> architecture recovery on occluded plates</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-plant-roots.html">Plant roots</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Yasrab et al. 2019 (RootNav 2.0); Wang et al. 2019 (SegRoot)</span></div>
+        </div>
+      </article>
+
+      <!-- 3.3 RootPainter interactive correction -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">RootPainter interactive correction</h3>
+          <div class="badges"><span class="badge b-phys">Segment</span></div>
+        </div>
+        <p class="definition">Train a CNN on occlusion-heavy images without a big pre-labelled set: the model
+          predicts, a human <span class="term">paints only the fixes</span> on its mistakes, and the model
+          retrains on those corrections — converging on a usable segmenter fast. The operator never labels whole
+          images, only the model's current weaknesses.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A corrective loop: the CNN predicts a mask, a human paints only the fixes, the model retrains on the corrections">
+            <!-- model predict -->
+            <rect x="24" y="40" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--blue)" stroke-width="2"/>
+            <text class="lbl-strong" x="40" y="64" fill="var(--blue)">CNN predicts</text>
+            <text class="lbl" x="40" y="80">mask + errors</text>
+            <!-- human correct -->
+            <rect x="240" y="40" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--vermillion)" stroke-width="2"/>
+            <text class="lbl-strong" x="256" y="64" fill="var(--vermillion)">human paints</text>
+            <text class="lbl" x="256" y="80">only the fixes</text>
+            <!-- retrain -->
+            <rect x="132" y="150" width="96" height="52" rx="9" fill="var(--surface)" stroke="var(--green)" stroke-width="2"/>
+            <text class="lbl-strong" x="148" y="174" fill="var(--green)">retrain on</text>
+            <text class="lbl" x="148" y="190">corrections</text>
+            <!-- arrows -->
+            <path d="M120,60 L236,60" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#axrp)"/>
+            <path d="M286,92 C290,128 264,148 230,160" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#axrp)"/>
+            <path d="M130,160 C96,148 70,128 74,92" fill="none" stroke="var(--text-dim)" stroke-width="1.8" marker-end="url(#axrp)"/>
+            <defs>
+              <marker id="axrp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+            <text class="lbl" x="118" y="118">accuracy climbs each pass →</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> the operator corrects only the model's weaknesses, reaching a working
+            segmenter on the hardest dense/occluded fields with a fraction of the annotation budget.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a GUI corrective-annotation affordance for the ambiguous-junction minority — targets fungal edge precision (~28% in MyceliumSeg), the documented bottleneck</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-plant-roots.html">Plant roots</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Smith et al. 2022 (RootPainter)</span></div>
+        </div>
+      </article>
+
+      <!-- 3.4 MyceliumSeg -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">MyceliumSeg (fungal-native segmentation)</h3>
+          <div class="badges"><span class="badge b-phys">Segment</span></div>
+        </div>
+        <p class="definition">A fungal-native segmentation dataset and model — the in-domain reference point for
+          the analog transfers above. It also quantifies the core difficulty: <b>~84% region accuracy but only
+          ~28% edge accuracy</b>, i.e. the mask body is easy and the hypha <em>boundaries</em> are the hard part.
+          That edge-precision gap is what the corrective-annotation loop exists to close.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A hypha mask where the interior region is accurately filled but the boundary edges are imprecise, shown as two accuracy bars">
+            <!-- hypha with good interior, ragged edge -->
+            <g transform="translate(14,24)">
+              <path d="M12,140 C60,120 120,110 190,80"
+                    fill="none" stroke="rgba(11,155,118,.5)" stroke-width="20" stroke-linecap="round"/>
+              <!-- ragged predicted edge -->
+              <path d="M12,128 C60,108 120,98 190,68" fill="none" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 2" opacity=".8"/>
+              <path d="M12,152 C60,132 120,122 190,92" fill="none" stroke="var(--vermillion)" stroke-width="1.2" stroke-dasharray="3 2" opacity=".8"/>
+              <text class="lbl-strong" x="30" y="112" fill="var(--green)">region ✓ filled</text>
+              <text class="lbl" x="120" y="60" fill="var(--vermillion)">edges ✗ imprecise</text>
+            </g>
+            <!-- accuracy bars -->
+            <g transform="translate(232,40)">
+              <text class="lbl" x="0" y="-8">accuracy</text>
+              <rect x="0" y="0" width="112" height="22" rx="4" fill="rgba(11,155,118,.12)" stroke="var(--green)"/>
+              <rect x="0" y="0" width="94" height="22" rx="4" fill="rgba(11,155,118,.55)"/>
+              <text class="lbl-strong" x="6" y="15" fill="var(--ink)">region ~84%</text>
+              <rect x="0" y="34" width="112" height="22" rx="4" fill="rgba(213,94,0,.10)" stroke="var(--vermillion)"/>
+              <rect x="0" y="34" width="31" height="22" rx="4" fill="rgba(213,94,0,.5)"/>
+              <text class="lbl-strong" x="36" y="49" fill="var(--ink)">edge ~28%</text>
+              <text class="lbl" x="0" y="86">edge precision = the</text>
+              <text class="lbl" x="0" y="100">documented bottleneck</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> region-vs-edge accuracy split makes the failure mode explicit — the mask
+            interior is reliable, the boundary is not. It grounds the transfer: import the analog fields'
+            edge-precision tricks (vesselness, corrective loops) rather than reinventing them.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the in-domain benchmark and edge-precision target the whole retracing effort is measured against</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-plant-roots.html">Plant roots</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Wang et al. 2025 (MyceliumSeg)</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 4 — JUNCTION RESOLUTION & DEBLENDING ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">4 · Junction resolution &amp; deblending</h2>
+    <p class="section-sub">The accuracy ceiling: in a flat image two strands crossing and one real branch make
+      the identical pixel pattern. Geometry and topology — not pixel degree — decide whether to traverse, branch,
+      or split.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 4.1 degree-4 node classification -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Degree-4 node classification (direction continuity)</h3>
+          <div class="badges"><span class="badge b-a">Trace</span></div>
+        </div>
+        <p class="definition">Classify graph nodes by degree, then resolve each degree-4 node by pairing incident
+          edges with the smallest turning angle. Two collinear pairs → an <b>X-crossing</b> (traverse); a single
+          dominant axis with a side branch → a true <b>branch</b>; two strands closing a cycle → an
+          <b>anastomosis</b>. Direction continuity, not degree, decides — the fix for the dominant tracing error.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A degree-4 skeleton node resolved by direction continuity into a crossing, a true branch, or an anastomosis loop">
+            <!-- crossing -->
+            <g transform="translate(8,12)">
+              <text class="lbl-strong" x="0" y="8">crossing</text>
+              <path d="M6,18 C40,30 60,66 96,84" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+              <path d="M6,84 C40,66 60,30 96,18" fill="none" stroke="var(--green)" stroke-width="2.4"/>
+              <circle cx="51" cy="51" r="4" fill="none" stroke="var(--vermillion)" stroke-width="1.6"/>
+              <text class="lbl" x="0" y="106">continue by min turn</text>
+            </g>
+            <!-- true branch -->
+            <g transform="translate(128,12)">
+              <text class="lbl-strong" x="0" y="8">true branch</text>
+              <path d="M6,84 C30,60 44,52 51,51" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M51,51 C70,46 84,30 96,16" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M51,51 C66,58 80,72 92,86" fill="none" stroke="var(--orange)" stroke-width="2.4"/>
+              <circle cx="51" cy="51" r="4" fill="var(--orange)"/>
+              <text class="lbl" x="0" y="106">one parent, two daughters</text>
+            </g>
+            <!-- anastomosis -->
+            <g transform="translate(248,12)">
+              <text class="lbl-strong" x="0" y="8">fusion loop</text>
+              <path d="M4,16 C26,40 26,62 8,86" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M8,86 C40,70 60,70 92,86" fill="none" stroke="var(--purple)" stroke-width="2.4"/>
+              <path d="M4,16 C40,30 60,30 96,16" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M96,16 C78,40 78,62 92,86" fill="none" stroke="var(--purple)" stroke-width="2.4"/>
+              <ellipse cx="50" cy="51" rx="22" ry="16" fill="rgba(184,99,143,.10)" stroke="none"/>
+              <text class="lbl" x="0" y="106">load-bearing cycle</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> pair the four incident edges by minimal turning angle. If continuity
+            holds → crossing (traverse, don't branch); if not → a real branch, or a fusion that closes a cycle.
+            Directly addresses the documented retracing ceiling.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Roots</span><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a degree-classification pass after <span class="term">extract_fragment_paths</span> so crossings are traversed, not mis-read as branch points — separates branch vs crossing vs anastomosis</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-vascular.html">Vascular</a> · <a href="crossdomain-plant-roots.html">Plant roots</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger et al. 2015 (NEFI); vascular A/V topology</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton-graph vertex with 4 incident edges (node degree = 4)</dd>
+            <dt>turning angle</dt><dd>angle between two incident edges; the min-turn pairing tests direction continuity</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4.2 SExtractor multi-threshold deblending -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">SExtractor multi-threshold deblending</h3>
+          <div class="badges"><span class="badge b-phys">Deblend</span></div>
+        </div>
+        <p class="definition">Estimate a background mesh, <span class="term">σ-threshold</span> to connected
+          components, then run a <span class="term">flux multi-thresholding</span> tree that splits blended
+          objects at their saddle points. The classic recipe for separating touching/overlapping sources by
+          relative-brightness topology.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two blended blobs split at their saddle point by rising flux threshold contours">
+            <!-- blended pair with contour levels -->
+            <g transform="translate(40,26)">
+              <path fill="rgba(11,155,118,.10)" stroke="var(--green)" stroke-width="1.4"
+                d="M20,90 C20,40 80,40 90,80 C100,40 160,40 160,90 C160,140 100,140 90,100 C80,140 20,140 20,90 Z"/>
+              <ellipse cx="55" cy="90" rx="22" ry="30" fill="none" stroke="var(--blue)" stroke-width="1.2"/>
+              <ellipse cx="125" cy="90" rx="22" ry="30" fill="none" stroke="var(--blue)" stroke-width="1.2"/>
+              <ellipse cx="55" cy="90" rx="10" ry="16" fill="none" stroke="var(--vermillion)" stroke-width="1.2"/>
+              <ellipse cx="125" cy="90" rx="10" ry="16" fill="none" stroke="var(--vermillion)" stroke-width="1.2"/>
+              <line x1="90" y1="58" x2="90" y2="122" stroke="var(--text-dim)" stroke-width="1.4" stroke-dasharray="3 3"/>
+              <text class="lbl-strong" x="74" y="52">saddle split</text>
+            </g>
+            <text class="lbl" x="40" y="196">rising flux thresholds re-separate the two peaks</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> as the threshold rises, a single blended blob breaks into separate peaks
+            at the saddle; the tree decides where to split. Separates touching hyphae by brightness topology — but
+            fragments near the noise floor, so pair it with wavelet denoise or persistence deblending.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">deblend overlapping/touching hyphae via a multi-threshold tree — best paired with a denoise front-end so it does not fragment on texture</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bertin &amp; Arnouts 1996</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>σ</dt><dd>background noise standard deviation; detection threshold is a multiple of σ above the mesh</dd>
+            <dt>saddle</dt><dd>flux level between two peaks where a blended blob is split</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4.3 DRUID persistent-homology deblending -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DRUID persistent-homology deblending</h3>
+          <div class="badges"><span class="badge b-phys">Deblend</span></div>
+        </div>
+        <p class="definition">Compute a <span class="term">persistent-homology</span> hierarchy of intensity peaks
+          and deblend by <span class="term">topological lifetime</span>: peaks with long birth→death persistence
+          are real sources, short-lived ones are noise. A threshold-free deblender that applies DisPerSE's
+          persistence idea to <em>separating</em> dense overlapping sources.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An intensity landscape with two peaks and a merge tree; long-lived peaks kept as separate sources, short-lived merged as noise">
+            <!-- intensity landscape (two real peaks + a noise bump) -->
+            <g transform="translate(14,18)">
+              <line class="axis" x1="0" y1="120" x2="200" y2="120"/>
+              <path d="M0,118 C30,118 44,40 66,40 C88,40 96,96 110,96 C124,96 134,30 156,30 C178,30 190,118 200,118"
+                    fill="none" stroke="var(--green)" stroke-width="2.2"/>
+              <!-- noise bump -->
+              <path d="M96,96 C100,84 104,84 108,96" fill="none" stroke="var(--faint)" stroke-width="1.4" stroke-dasharray="2 2"/>
+              <circle cx="66" cy="40" r="3.4" fill="var(--blue)"/><circle cx="156" cy="30" r="3.4" fill="var(--blue)"/>
+              <circle cx="103" cy="84" r="2.6" fill="var(--faint)"/>
+              <text class="lbl" x="40" y="34" fill="var(--blue)">peak A</text>
+              <text class="lbl" x="132" y="24" fill="var(--blue)">peak B</text>
+              <text class="lbl" x="0" y="138">intensity profile with a saddle between peaks</text>
+            </g>
+            <!-- merge tree / persistence -->
+            <g transform="translate(232,20)">
+              <text class="lbl" x="0" y="-4">persistence (lifetime)</text>
+              <line class="axis" x1="0" y1="150" x2="0" y2="6"/>
+              <!-- long bars = real, short = noise -->
+              <line x1="16" y1="20" x2="16" y2="120" stroke="var(--blue)" stroke-width="6"/>
+              <line x1="44" y1="30" x2="44" y2="120" stroke="var(--blue)" stroke-width="6"/>
+              <line x1="72" y1="98" x2="72" y2="120" stroke="var(--faint)" stroke-width="6"/>
+              <line class="axis" x1="0" y1="120" x2="100" y2="120"/>
+              <text class="lbl" x="6" y="138">A   B   ·</text>
+              <text class="lbl-strong" x="0" y="158" fill="var(--blue)">long → keep</text>
+              <text class="lbl" x="60" y="112" fill="var(--faint)">short → merge</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> rank candidate peaks by topological lifetime; long-lived peaks are split
+            as distinct sources, short-lived ones are merged as noise — so overlapping hyphae are separated with
+            statistical confidence and texture never spawns a spurious source.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Astronomy</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">threshold-free topological deblending of dense overlapping hyphae — the deblend counterpart to persistence-based path-quality pruning</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-geophysics-astronomy.html">Astronomy</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Whitehead et al. 2024 (DRUID; arXiv:2410.22508)</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Symbols</span>
+          <dl>
+            <dt>lifetime</dt><dd>persistence (birth→death) of an intensity peak in the homology hierarchy</dd>
+            <dt>merge tree</dt><dd>hierarchy of peaks joined at their saddles; long lifetimes = separate sources</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ============ SECTION 5 — VALIDATION & 3-D (OCCLUSION) ============ -->
+  <!-- ======================================================================= -->
+  <section class="band">
+    <h2 class="section-title">5 · Validation &amp; 3-D (occlusion)</h2>
+    <p class="section-sub">How to know a trace is right — and how to remove the crossing-vs-branch ambiguity at
+      its physical source. Score topology against ground truth, or image in 3-D so overlaps are no longer
+      projected onto one plane.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 5.1 DIADEM metric -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">DIADEM topology-similarity metric</h3>
+          <div class="badges"><span class="badge b-a">Validate</span></div>
+        </div>
+        <p class="definition">Score an automated trace against a ground-truth reconstruction by
+          <span class="term">matching bifurcation and termination nodes</span> along the tree — a
+          topology-similarity metric — rather than comparing per-metric summaries. The right QC for a maturing
+          tracer: it rewards getting the branch <em>structure</em> right, not just the totals.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="An automated trace overlaid on a ground-truth tree with matched and mismatched bifurcation and termination nodes scored">
+            <!-- ground truth (faint) -->
+            <g stroke="var(--faint)" stroke-width="3" fill="none" opacity=".5" stroke-linecap="round">
+              <path d="M60,196 L60,140 M60,140 L34,96 M60,140 L92,100 M34,96 L18,58 M34,96 L48,58 M92,100 L82,64 M92,100 L114,66"/>
+            </g>
+            <text class="lbl" x="10" y="212" fill="var(--faint)">ground truth</text>
+            <!-- automated trace -->
+            <g stroke="var(--blue)" stroke-width="1.8" fill="none" stroke-linecap="round">
+              <path d="M60,196 L60,140 M60,140 L34,96 M60,140 L92,100 M34,96 L18,58 M34,96 L48,58 M92,100 L82,64"/>
+              <!-- a mismatched (missed) branch -->
+            </g>
+            <!-- matched nodes -->
+            <g>
+              <circle cx="60" cy="140" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <circle cx="34" cy="96" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <circle cx="18" cy="58" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <circle cx="48" cy="58" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/>
+              <circle cx="82" cy="64" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/>
+            </g>
+            <!-- mismatched node -->
+            <g>
+              <circle cx="114" cy="66" r="5" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+              <line x1="110" y1="62" x2="118" y2="70" stroke="var(--vermillion)" stroke-width="1.6"/>
+              <line x1="118" y1="62" x2="110" y2="70" stroke="var(--vermillion)" stroke-width="1.6"/>
+            </g>
+            <!-- legend -->
+            <g transform="translate(176,40)">
+              <circle cx="8" cy="6" r="4.5" fill="none" stroke="var(--green)" stroke-width="2"/><text class="lbl" x="20" y="10">matched node ✓</text>
+              <circle cx="8" cy="30" r="4.5" fill="none" stroke="var(--vermillion)" stroke-width="2"/><text class="lbl" x="20" y="34">missed node ✗</text>
+              <text class="lbl-strong" x="0" y="66" fill="var(--ink)">DIADEM score =</text>
+              <text class="lbl" x="0" y="84">matched bifurcations/</text>
+              <text class="lbl" x="0" y="100">terminations ÷ total</text>
+              <rect x="0" y="112" width="150" height="24" rx="5" fill="rgba(11,155,118,.10)" stroke="var(--green)"/>
+              <text class="lbl-strong" x="10" y="128" fill="var(--ink)">score ∈ [0, 1]  (5/6 here)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> walk both trees and match branch/termination nodes within tolerance; the
+            score is the fraction correctly matched. A topology-aware gate that catches a wrong <em>structure</em>
+            even when length totals happen to agree.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a DIADEM-style topology-similarity diagnostic in <span class="term">_path_quality</span> / <span class="term">_diagnostics</span> as the retracing validation gate before Regime-A metrics ship</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-neuroscience.html">Neuroscience</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Gillette et al. 2011 (DIADEM metric)</span></div>
+        </div>
+      </article>
+
+      <!-- 5.2 3-D imaging (X-ray-CT / RSAtrace3D / confocal) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">X-ray-CT / RSAtrace3D &amp; confocal z-stacks</h3>
+          <div class="badges"><span class="badge b-a">Validate</span></div>
+        </div>
+        <p class="definition">Physically remove occlusion by imaging in 3-D. A crossing that is ambiguous in a
+          flat projection is <em>two disjoint strands at different depths</em> in a volume. RSA uses
+          <span class="term">X-ray-CT + RSAtrace3D</span>; the mycology analog is <span class="term">confocal /
+          light-sheet z-stacks</span> — trading throughput for separability.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A 2D projection where two strands appear to cross, resolved in a 3D z-stack where they occupy different depth slices">
+            <!-- 2D projection: apparent crossing -->
+            <g transform="translate(14,24)">
+              <rect x="0" y="0" width="120" height="120" rx="6" fill="rgba(40,32,16,.05)" stroke="var(--border)"/>
+              <path class="struct" stroke="var(--blue)" d="M14,14 L106,106"/>
+              <path class="struct" stroke="var(--green)" d="M106,14 L14,106"/>
+              <circle cx="60" cy="60" r="9" fill="none" stroke="var(--orange)" stroke-width="2"/>
+              <text class="lbl" x="18" y="136">2-D: ambiguous crossing</text>
+            </g>
+            <line x1="140" y1="84" x2="164" y2="84" stroke="var(--text-dim)" stroke-width="1.6" marker-end="url(#ax3d)"/>
+            <text class="lbl" x="136" y="76">z-stack</text>
+            <!-- 3D: stacked depth slices, strands separated -->
+            <g transform="translate(190,20)">
+              <!-- back slice: green strand -->
+              <g transform="translate(24,0)">
+                <rect x="0" y="0" width="110" height="60" rx="6" fill="rgba(11,155,118,.06)" stroke="var(--green)" transform="skewX(-18)"/>
+                <path stroke="var(--green)" stroke-width="2.4" fill="none" d="M92,10 L6,50" transform="skewX(-18)"/>
+                <text class="lbl" x="6" y="-4" fill="var(--green)">z = 2 (deep)</text>
+              </g>
+              <!-- front slice: blue strand -->
+              <g transform="translate(0,72)">
+                <rect x="0" y="0" width="110" height="60" rx="6" fill="rgba(0,114,178,.06)" stroke="var(--blue)" transform="skewX(-18)"/>
+                <path stroke="var(--blue)" stroke-width="2.4" fill="none" d="M14,10 L100,50" transform="skewX(-18)"/>
+                <text class="lbl" x="6" y="76" fill="var(--blue)">z = 1 (surface)</text>
+              </g>
+              <text class="lbl-strong" x="6" y="150" fill="var(--ink)">disjoint at different depths</text>
+            </g>
+            <defs>
+              <marker id="ax3d" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--text-dim)"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption><b>Mechanism:</b> the depth axis separates what the projection fused. The two strands that
+            share a pixel in 2-D live on different z-slices in the volume, so the crossing dissolves — the only
+            method here that removes the ambiguity rather than reasoning around it.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">confocal / light-sheet z-stacks as the throughput-for-separability trade when 2-D retracing cannot resolve a crossing</span></div>
+          <div class="mrow"><span class="mk">See</span><span class="mv"><a href="crossdomain-plant-roots.html">Plant roots</a></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Teramoto et al. 2020 (RSAtrace3D)</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CLOSING CALLOUT — concrete upgrades for branch_pathfinding ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>For the PhenoTypic retracing module (branch_pathfinding)</h3>
+      <p>PhenoTypic already runs the right backbone — a multi-source Dijkstra least-cost path with
+        structural-quality path filtering. The literature says the accuracy gains at crossings come from
+        <em>refinements</em> to that backbone, not a different tracing paradigm. From spec §5, the concrete
+        upgrades:</p>
+      <ul>
+        <li><b>Vesselness cost term.</b> Add a Frangi/Sato multiscale-Hessian channel to
+          <span class="term">assemble_composite_cost</span> so faint thin hyphae survive thresholding — the most
+          portable, most cross-validated pre-filter (recommended by three fields at once).</li>
+        <li><b>Degree-4 node resolution.</b> Classify junctions and resolve degree-4 nodes by direction
+          continuity (smallest turning angle) into crossing vs branch vs anastomosis — the fix for the dominant
+          tracing error.</li>
+        <li><b>Persistence-based path quality.</b> Rank candidate branches by DisPerSE/DRUID-style
+          <em>persistence</em> (birth→death significance) in <span class="term">_path_quality</span> rather than
+          a raw cost threshold — the noise-robust primitive two unrelated fields converged on.</li>
+        <li><b>Astronomy denoise front-end.</b> Prepend a starlet/curvelet denoise (strip agar texture while
+          keeping thin hyphae) and a matched/Radon line filter to lift faint hyphae above the per-pixel floor
+          before any thresholding.</li>
+        <li><b>DIADEM-style validation gate.</b> Add a topology-similarity diagnostic to
+          <span class="term">_path_quality</span> / <span class="term">_diagnostics</span> so Regime-A metrics
+          ship only once retracing accuracy is measured against ground truth.</li>
+        <li><b>RootPainter-style interactive correction.</b> Offer a GUI corrective-annotation affordance for the
+          ambiguous-junction minority — the realistic path to closing the fungal edge-precision gap.</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. This is a consolidated
+    <b>view</b> of the extraction/tracing/enhancement/segmentation methods aggregated from the four cross-domain
+    artifacts and the spec toolkit (§3.2, §3.3, §5); nothing here is new. Method definitions and citations are
+    drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

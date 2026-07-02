@@ -9,7 +9,7 @@ row in FEATURES.md that references the function name.
 
 The tests share a function-scoped sandbox helper that builds a real
 ``master_measurements.parquet`` with grid columns (``Grid_RowNum`` /
-``Grid_ColNum``), ``Metadata_ImageFile``, ``Metadata_Time``, and a
+``Grid_ColNum``), ``Metadata_ImageName``, ``Metadata_Time``, and a
 representative measurement column. Specific tests override the fixture
 shape when they need a different frame (e.g. no grid columns for the
 empty-state test, or multi-row-per-cell for the aggregator semantics
@@ -31,6 +31,7 @@ from playwright.sync_api import Page
 
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
@@ -73,7 +74,7 @@ def _default_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         "Metadata_Dataset": "ds1",
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 0.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -189,7 +190,7 @@ def _se_entry(
     *,
     instance_id: str,
     on: str = "Size_Area",
-    groupby: tuple[str, ...] = ("Metadata_ImageFile",),
+    groupby: tuple[str, ...] = (str(METADATA.IMAGE_NAME),),
     warn_threshold: float = 0.10,
     fail_threshold: float = 0.20,
     enabled: bool = True,
@@ -485,7 +486,7 @@ def test_aggregator_semantics(
                 rows.append(
                     {
                         "Metadata_Dataset": "ds1",
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Metadata_Time": 4.0,
                         "Object_Label": label,
                         "Grid_RowNum": r,
@@ -499,7 +500,7 @@ def test_aggregator_semantics(
     rows.append(
         {
             "Metadata_Dataset": "ds1",
-            "Metadata_ImageFile": _IMAGES[0],
+            str(METADATA.IMAGE_NAME): _IMAGES[0],
             "Metadata_Time": 4.0,
             "Object_Label": label,
             "Grid_RowNum": 2,
@@ -687,7 +688,7 @@ def test_colony_tile_size_icon_stepper(
                 [
                     {
                         "Metadata_Dataset": "ds1",
-                        "Metadata_ImageFile": _IMAGES[0],
+                        str(METADATA.IMAGE_NAME): _IMAGES[0],
                         "Metadata_Time": t,
                         "Object_Label": idx,
                         "Grid_RowNum": 1,
@@ -772,7 +773,7 @@ def test_removed_cells_visually_distinct(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
+            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
     instance_id = "qc-Count-overly"
@@ -787,7 +788,7 @@ def test_removed_cells_visually_distinct(
                     "enabled": True,
                     "params": {
                         "metadata": str(csv_path),
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                         "on": "Object_Label",
                     },
                 },
@@ -870,7 +871,7 @@ def _no_grid_df_factory() -> pl.DataFrame:
         [
             {
                 "Metadata_Dataset": "ds1",
-                "Metadata_ImageFile": _IMAGES[0],
+                str(METADATA.IMAGE_NAME): _IMAGES[0],
                 "Metadata_Time": 0.0,
                 "Object_Label": idx,
                 "Size_Area": 100.0 + idx,
@@ -953,7 +954,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
     for image in _IMAGES:
         for _ in range(100):
             label += 1
-            rows.append({"Metadata_ImageFile": image, "Object_Label": label})
+            rows.append({str(METADATA.IMAGE_NAME): image, "Object_Label": label})
     csv_path = output_dir / "count_metadata.csv"
     pl.DataFrame(rows).write_csv(csv_path)
 
@@ -970,7 +971,7 @@ def test_heatmap_renders_qc_augmented_frame_not_stale(
                     "enabled": True,
                     "params": {
                         "metadata": str(csv_path),
-                        "groupby": ["Metadata_ImageFile"],
+                        "groupby": [str(METADATA.IMAGE_NAME)],
                         "on": "Object_Label",
                     },
                 },

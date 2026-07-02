@@ -28,6 +28,7 @@ from phenotypic.gui.results_viewer._filtered_state import (
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
+    is_metadata_header,
     migrate_legacy_qc,
 )
 
@@ -38,6 +39,12 @@ logger = logging.getLogger(__name__)
 #: viewer's display frame because it reflects whatever ``PostMeasurement``
 #: ops the user configured.
 _CACHE_RELATIVE = Path(VIEWER_CACHE_DIRNAME) / "dzi"
+# Legacy master column shim. Post category-flip the canonical image-stem column
+# is ``str(METADATA.IMAGE_NAME) == "MetadataImage_ImageName"`` (== KEY_IMAGE_FILE).
+# Masters written before the flip used the pre-namespace ``Metadata_ImageName``;
+# this literal recognizes those old masters so they still load (aliased below to
+# the canonical column). Keep the literal — it is a legacy recognizer, not a live
+# column name.
 _IMAGENAME_COL = "Metadata_ImageName"
 
 
@@ -119,7 +126,7 @@ class OutputRoot:
             FileNotFoundError: If neither a deliverables bundle nor a run
                 output directory can be located at ``root`` (no
                 ``master_measurements.parquet``), or no datasets are found.
-            ValueError: If the master DataFrame lacks ``Metadata_ImageFile``
+            ValueError: If the master DataFrame lacks ``Metadata_ImageName``
                 (or the ``Metadata_ImageName`` fallback), or lacks
                 ``Metadata_Dataset`` with no ``results/`` to recover it from.
         """
@@ -165,7 +172,8 @@ class OutputRoot:
         if not datasets:
             raise FileNotFoundError(
                 f"No datasets found in {layout.deliverables_base!s}. Expected a "
-                "Metadata_Dataset column or deliverables/overlays/<dataset>/ dirs."
+                "MetadataExperiment_Dataset column or "
+                "deliverables/overlays/<dataset>/ dirs."
             )
 
         master_df = _ensure_required_columns(master_df, layout, datasets)
@@ -253,7 +261,7 @@ class OutputRoot:
 
         Args:
             dataset: Dataset name (matches ``Metadata_Dataset``).
-            stem: Image stem (matches ``Metadata_ImageFile`` minus
+            stem: Image stem (matches ``Metadata_ImageName`` minus
                 its extension).
 
         Returns:
@@ -295,7 +303,7 @@ class OutputRoot:
 
         Args:
             df: Any DataFrame that has the ``Metadata_Dataset`` and
-                ``Metadata_ImageFile`` columns (typically a filtered
+                ``Metadata_ImageName`` columns (typically a filtered
                 slice of :attr:`master_df`).
 
         Returns:
@@ -412,14 +420,17 @@ def _ensure_required_columns(
     layout: BundleLayout,
     datasets: list[str],
 ) -> pl.DataFrame:
-    """Backfill ``Metadata_Dataset`` and ``Metadata_ImageFile`` if missing.
+    """Backfill the dataset and image-stem key columns if missing.
 
     Real-world masters produced by older runs or by aggregators that
     skip ``include_dataset_column`` may lack one or both of these
     columns. The dataset is recoverable from the on-disk layout
     (``results/<dataset>/measurements/<stem>.parquet``) when a full-run
-    ``results/`` is present; the image stem can fall back to
-    ``Metadata_ImageName`` when present.
+    ``results/`` is present; the image stem (``KEY_IMAGE_FILE`` ==
+    ``MetadataImage_ImageName`` post category-flip) falls back to the
+    pre-flip legacy ``Metadata_ImageName`` column (``_IMAGENAME_COL``)
+    when present, so masters written before the namespace migration still
+    load.
 
     Args:
         df: Loaded master DataFrame.
@@ -456,7 +467,7 @@ def _ensure_required_columns(
 
     if layout.results_dir is None:
         raise ValueError(
-            "Master measurements parquet is missing column 'Metadata_Dataset' and "
+            f"Master measurements parquet is missing column {KEY_DATASET!r} and "
             "this is a standalone deliverables bundle (no results/ to recover it "
             "from). Recompile the run with the current version: "
             "`python -m phenotypic --mode recompile --output <dir>`."
@@ -544,9 +555,6 @@ def _scan_overlay_index(
     return frozenset(pairs)
 
 
-_METADATA_PREFIX = "Metadata_"
-
-
 def _all_parse_as_float(values: list[str]) -> bool:
     """Return True iff ``values`` is non-empty and every entry parses as float.
 
@@ -568,7 +576,7 @@ def _all_parse_as_float(values: list[str]) -> bool:
 class _LazyColumnValueSets(Mapping[str, list[str]]):
     """Sorted unique string values per column, computed on first access.
 
-    Eagerly materialises ``Metadata_*`` columns (always small, always
+    Eagerly materialises metadata-family columns (always small, always
     surfaced in the filter sidebar) and defers everything else until a
     callback actually asks for it. Avoids the multi-MB string allocation
     that would otherwise happen at boot for wide masters with hundreds
@@ -579,7 +587,7 @@ class _LazyColumnValueSets(Mapping[str, list[str]]):
         self._df = df
         self._cache: dict[str, list[str]] = {}
         for column in df.columns:
-            if column.startswith(_METADATA_PREFIX):
+            if is_metadata_header(column):
                 self._cache[column] = self._compute(column)
 
     def _compute(self, column: str) -> list[str]:

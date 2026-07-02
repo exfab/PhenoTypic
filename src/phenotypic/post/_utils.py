@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-_PREFIX = "Metadata_"
+# Schema-aware metadata prefixing lives in ``phenotypic.sdk_`` so the post
+# package does not pull in the core image stack. Re-exported here for the post
+# ops (and any legacy callers) that import it from this module.
+from phenotypic.sdk_ import ensure_metadata_prefix
 
-
-def _ensure_prefix(name: str) -> str:
-    """Prepend Metadata_ if not already present."""
-    return name if name.startswith(_PREFIX) else f"{_PREFIX}{name}"
+__all__ = ["ensure_metadata_prefix"]

@@ -12,8 +12,8 @@ class TestExpandMetadataInit:
     def test_basic_construction(self):
         """ExpandMetadata can be created with column, labels, delimiter."""
         em = ExpandMetadata(column="ImageName", labels=["Strain", "Cond"], delimiter="_")
-        assert em.column == "Metadata_ImageName"
-        assert em.labels == ["Metadata_Strain", "Metadata_Cond"]
+        assert em.column == "MetadataImage_ImageName"
+        assert em.labels == ["MetadataGenetic_Strain", "Metadata_Cond"]
         assert em.delimiter == "_"
 
     def test_auto_prepends_metadata_prefix(self):
@@ -25,11 +25,11 @@ class TestExpandMetadataInit:
     def test_no_double_prefix(self):
         """Already-prefixed names are not double-prefixed."""
         em = ExpandMetadata(
-            column="Metadata_ImageName",
-            labels=["Metadata_Strain", "Condition"],
+            column="MetadataImage_ImageName",
+            labels=["MetadataGenetic_Strain", "Condition"],
         )
-        assert em.column == "Metadata_ImageName"
-        assert em.labels == ["Metadata_Strain", "Metadata_Condition"]
+        assert em.column == "MetadataImage_ImageName"
+        assert em.labels == ["MetadataGenetic_Strain", "Metadata_Condition"]
 
     def test_empty_labels_accepted_as_unset(self):
         """An empty labels list is the valid 'unset' state, not an error.
@@ -50,31 +50,31 @@ class TestExpandMetadataOperate:
         """Split a metadata column into multiple new columns."""
         em = ExpandMetadata(column="ImageName", labels=["Strain", "Cond", "Time"], delimiter="_")
         df = pd.DataFrame({
-            "Metadata_ImageName": ["WT_30C_24h", "mut_37C_48h"],
+            "MetadataImage_ImageName": ["WT_30C_24h", "mut_37C_48h"],
             "Object_Label": [1, 2],
             "Shape_Area": [100, 200],
         })
         result = em.apply(df)
 
-        assert "Metadata_Strain" in result.columns
+        assert "MetadataGenetic_Strain" in result.columns
         assert "Metadata_Cond" in result.columns
-        assert "Metadata_Time" in result.columns
-        assert list(result["Metadata_Strain"]) == ["WT", "mut"]
+        assert "MetadataCulture_Time" in result.columns
+        assert list(result["MetadataGenetic_Strain"]) == ["WT", "mut"]
         assert list(result["Metadata_Cond"]) == ["30C", "37C"]
-        assert list(result["Metadata_Time"]) == ["24h", "48h"]
+        assert list(result["MetadataCulture_Time"]) == ["24h", "48h"]
 
     def test_original_column_kept(self):
         """The original column is always preserved."""
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter="_")
-        df = pd.DataFrame({"Metadata_ImageName": ["x_y"], "Object_Label": [1]})
+        df = pd.DataFrame({"MetadataImage_ImageName": ["x_y"], "Object_Label": [1]})
         result = em.apply(df)
-        assert "Metadata_ImageName" in result.columns
+        assert "MetadataImage_ImageName" in result.columns
 
     def test_mismatched_split_count_raises(self):
         """Raises ValueError when split produces wrong number of parts."""
         em = ExpandMetadata(column="ImageName", labels=["A", "B", "C"], delimiter="_")
         df = pd.DataFrame({
-            "Metadata_ImageName": ["WT_30C_24h", "mut_37C"],  # second row has 2 parts, not 3
+            "MetadataImage_ImageName": ["WT_30C_24h", "mut_37C"],  # second row has 2 parts, not 3
             "Object_Label": [1, 2],
         })
         with pytest.raises(ValueError, match="split"):
@@ -96,19 +96,19 @@ class TestExpandMetadataOperate:
             regex=True,
         )
         df = pd.DataFrame({
-            "Metadata_ImageName": ["WT_30C-24h", "mut-37C_48h"],
+            "MetadataImage_ImageName": ["WT_30C-24h", "mut-37C_48h"],
             "Object_Label": [1, 2],
         })
         result = em.apply(df)
-        assert list(result["Metadata_Strain"]) == ["WT", "mut"]
+        assert list(result["MetadataGenetic_Strain"]) == ["WT", "mut"]
         assert list(result["Metadata_Cond"]) == ["30C", "37C"]
-        assert list(result["Metadata_Time"]) == ["24h", "48h"]
+        assert list(result["MetadataCulture_Time"]) == ["24h", "48h"]
 
     def test_non_regex_delimiter(self):
         """Default string delimiter with special regex chars is treated literally."""
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter=".")
         df = pd.DataFrame({
-            "Metadata_ImageName": ["hello.world", "foo.bar"],
+            "MetadataImage_ImageName": ["hello.world", "foo.bar"],
             "Object_Label": [1, 2],
         })
         result = em.apply(df)
@@ -119,12 +119,12 @@ class TestExpandMetadataOperate:
         """New columns appear adjacent to the source column."""
         em = ExpandMetadata(column="ImageName", labels=["A", "B"], delimiter="_")
         df = pd.DataFrame({
-            "Metadata_ImageName": ["x_y"],
+            "MetadataImage_ImageName": ["x_y"],
             "Object_Label": [1],
             "Shape_Area": [100],
         })
         result = em.apply(df)
         cols = list(result.columns)
-        src_idx = cols.index("Metadata_ImageName")
+        src_idx = cols.index("MetadataImage_ImageName")
         assert cols[src_idx + 1] == "Metadata_A"
         assert cols[src_idx + 2] == "Metadata_B"

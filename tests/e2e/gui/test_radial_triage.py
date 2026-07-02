@@ -26,6 +26,7 @@ from playwright.sync_api import Page, expect
 from phenotypic.sdk_ import error_category_parquet_path
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import _build_sandbox, _start_live_server
+from phenotypic.schema import METADATA
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow (see tests/CLAUDE.md). The single test here drives a
@@ -58,7 +59,7 @@ def _build_master_df() -> pl.DataFrame:
                 rows.append(
                     {
                         "Metadata_Dataset": _DATASET,
-                        "Metadata_ImageFile": image,
+                        str(METADATA.IMAGE_NAME): image,
                         "Object_Label": label,
                         "Grid_RowNum": r,
                         "Grid_ColNum": c,

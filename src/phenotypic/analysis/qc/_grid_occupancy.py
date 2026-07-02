@@ -63,7 +63,7 @@ class GridOccupancy(ExpectedVsDetectedCount):
             :class:`ExpectedVsDetectedCount` (the path form round-trips
             through JSON).
         groupby: Columns that define one plate. Usually
-            ``["Metadata_ImageFile"]``. Must be present in both the
+            ``["MetadataImage_ImageName"]``. Must be present in both the
             metadata frame and the measurement frame.
         on: Base-class required column and curation member value. Defaults
             to ``"Object_Label"``; occupancy does not count over it.
@@ -93,16 +93,16 @@ class GridOccupancy(ExpectedVsDetectedCount):
         >>> import pandas as pd
         >>> from phenotypic.analysis.qc import GridOccupancy
         >>> metadata = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["p1.png"] * 96,
+        ...     "MetadataImage_ImageName": ["p1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["p1.png"] * 92,
+        ...     "MetadataImage_ImageName": ["p1.png"] * 92,
         ...     "Object_Label": list(range(92)),
         ...     "Grid_RowMajorIdx": list(range(90)) + [5, 17],
         ... })
         >>> chk = GridOccupancy(
-        ...     metadata=metadata, groupby=["Metadata_ImageFile"]
+        ...     metadata=metadata, groupby=["MetadataImage_ImageName"]
         ... )
         >>> out = chk.analyze(measurements)
         >>> int(out["QC_Occupancy_Filled"].iloc[0])

@@ -151,16 +151,16 @@ class ExpectedVsDetectedCount(QualityCheck):
         ...     ExpectedVsDetectedCount,
         ... )
         >>> metadata = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["plate1.png"] * 96,
+        ...     "MetadataImage_ImageName": ["plate1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["plate1.png"] * 95,
+        ...     "MetadataImage_ImageName": ["plate1.png"] * 95,
         ...     "Object_Label": list(range(95)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
-        ...     groupby=["Metadata_ImageFile"],
+        ...     groupby=["MetadataImage_ImageName"],
         ... )
         >>> result = chk.analyze(measurements)  # doctest: +SKIP
         >>> "QC_Count_Metric" in result.columns  # doctest: +SKIP
@@ -170,16 +170,16 @@ class ExpectedVsDetectedCount(QualityCheck):
         the metric is infinite and the key is recorded:
 
         >>> metadata = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["plate1.png"] * 96,
+        ...     "MetadataImage_ImageName": ["plate1.png"] * 96,
         ...     "Object_Label": list(range(96)),
         ... })
         >>> measurements = pd.DataFrame({
-        ...     "Metadata_ImageFile": ["plate2.png"] * 10,
+        ...     "MetadataImage_ImageName": ["plate2.png"] * 10,
         ...     "Object_Label": list(range(10)),
         ... })
         >>> chk = ExpectedVsDetectedCount(
         ...     metadata=metadata,
-        ...     groupby=["Metadata_ImageFile"],
+        ...     groupby=["MetadataImage_ImageName"],
         ... )
         >>> _ = chk.analyze(measurements)  # doctest: +SKIP
         >>> chk.unmatched_groups  # doctest: +SKIP

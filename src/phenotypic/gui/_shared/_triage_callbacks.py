@@ -319,7 +319,7 @@ def apply_wedge_mark(
 
     Args:
         filtered: The shared :class:`CurationLabels`.
-        image_file: ``Metadata_ImageFile`` of the colony.
+        image_file: ``Metadata_ImageName`` of the colony.
         label: ``Object_Label`` of the colony.
         category: The decoded wedge category, or
             :data:`RADIAL_RESTORE_SENTINEL` to clear it.

@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vascular networks → fungal branches · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--vermillion)">V</div>
+    <div>
+      <div class="hero-kicker">Cross-domain analog · transfer to fungi</div>
+      <h1 class="hero-title">Vascular networks → fungal branches</h1>
+      <p class="lede">Vessel-network image analysis is the most mature 2-D branching-quantification
+        field, and it is the origin of the tube-enhancement filters and junction-classification ideas
+        the fungal retracing module should adopt. Retinal, microvascular, and OCT-angiography pipelines
+        spent two decades on exactly the problem PhenoTypic faces: pull a dense curvilinear net out of a
+        noisy plane, then decide which crossings are real branches.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--vermillion)"></span>Cross-domain · Vascular (Va)</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Density/FD transfer 🟢</span>
+        <span class="chip"><span class="dot" style="background:var(--orange)"></span>Tracing transfer 🟡</span>
+        <span class="chip">9 signature methods</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND (verbatim) ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE ILLUSTRATIONS ============ -->
+  <section class="band">
+    <h2 class="section-title">The four transfers that matter</h2>
+    <p class="section-sub">Before the method-by-method catalog: the vascular ideas with the clearest path
+      into PhenoTypic's retracing module and Regime-B fallbacks. Each is depicted as it actually operates.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- MARQUEE (a) Hessian tubeness -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">(a) Hessian "tubeness" enhancement</h3>
+          <div class="badges"><span class="badge b-b">pre-filter</span><span class="badge b-fit-green">🟢 origin tech</span></div>
+        </div>
+        <p class="definition">A faint, noisy tube cross-section is read by a multiscale second-derivative
+          (Hessian) filter, which responds to a bright ridge bounded by two dark flanks and returns a clean
+          enhanced centerline — the single most portable vascular preprocessing step.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Noisy tube profile passed through a multiscale Hessian filter yields a clean enhanced ridge">
+            <text class="lbl-strong" x="6" y="16">noisy input</text>
+            <!-- noisy tube intensity profile -->
+            <g transform="translate(8,26)">
+              <line class="axis" x1="0" y1="60" x2="96" y2="60"/>
+              <polyline fill="none" stroke="var(--text-dim)" stroke-width="1.6"
+                points="0,52 8,49 14,55 20,42 26,47 33,30 39,38 45,18 50,26 55,16 60,28 66,40 72,33 79,49 85,44 92,53 96,50"/>
+              <text class="lbl" x="30" y="78">faint ridge</text>
+            </g>
+            <!-- arrow -->
+            <g transform="translate(112,52)">
+              <line x1="0" y1="14" x2="34" y2="14" stroke="var(--vermillion)" stroke-width="2"/>
+              <path d="M30,9 L38,14 L30,19 Z" fill="var(--vermillion)"/>
+              <text class="lbl" x="-2" y="-2">∂²/∂x²</text>
+              <text class="lbl" x="-4" y="38">scales σ</text>
+            </g>
+            <!-- Hessian eigen sketch: 3 nested scale kernels -->
+            <g transform="translate(158,26)">
+              <text class="lbl" x="0" y="-2">multiscale</text>
+              <ellipse cx="34" cy="36" rx="32" ry="9" fill="none" stroke="var(--orange)" stroke-width="1.4"/>
+              <ellipse cx="34" cy="36" rx="22" ry="6" fill="none" stroke="var(--orange)" stroke-width="1.4" opacity=".75"/>
+              <ellipse cx="34" cy="36" rx="12" ry="3.5" fill="none" stroke="var(--orange)" stroke-width="1.6"/>
+              <text class="lbl" x="2" y="62">λ₁≈0, λ₂≪0</text>
+            </g>
+            <!-- arrow 2 -->
+            <g transform="translate(238,52)">
+              <line x1="0" y1="14" x2="22" y2="14" stroke="var(--vermillion)" stroke-width="2"/>
+              <path d="M18,9 L26,14 L18,19 Z" fill="var(--vermillion)"/>
+            </g>
+            <!-- enhanced clean ridge -->
+            <g transform="translate(268,26)">
+              <text class="lbl-strong" x="0" y="-2">enhanced</text>
+              <line class="axis" x1="0" y1="60" x2="80" y2="60"/>
+              <path fill="rgba(213,94,0,.12)" stroke="none"
+                d="M0,60 C24,60 30,12 40,12 C50,12 56,60 80,60 Z"/>
+              <path fill="none" stroke="var(--vermillion)" stroke-width="2.4"
+                d="M0,58 C24,58 32,12 40,12 C48,12 56,58 80,58"/>
+              <line x1="40" y1="10" x2="40" y2="60" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="2 3"/>
+              <text class="lbl" x="18" y="78">single ridge</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> at each scale σ the 2×2 image Hessian is eigen-decomposed; a tube
+            has one near-zero eigenvalue (along the vessel) and one large-negative eigenvalue (across it).
+            The vesselness response peaks at the scale matching the tube width. A natural extra term for
+            <b>branch_pathfinding's cost surface</b>.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale (pre-threshold)</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">add a Frangi/Sato vesselness channel to <span class="term">assemble_composite_cost</span> so faint thin hyphae survive thresholding</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Sato et al. 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>smaller-magnitude Hessian eigenvalue; near 0 along a tube's axis</dd>
+            <dt>λ₂</dt><dd>larger-magnitude Hessian eigenvalue; large-negative across a bright tube</dd>
+            <dt>σ</dt><dd>Gaussian filter scale (px); the tube is enhanced most at σ ≈ its radius</dd>
+            <dt>∂²/∂x²</dt><dd>second spatial derivative — the operator forming the Hessian</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- MARQUEE (b) three tortuosity definitions -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">(b) Three tortuosity definitions</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The same wavy strand scored three ways: the <span class="term">Distance-Metric</span>
+          (path ÷ chord), the <span class="term">Inflection-Count Metric</span> (number of bends × DM), and the
+          <span class="term">Sum-of-Angles Metric</span> (integrated turning per unit length).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="One wavy strand evaluated by distance-metric, inflection-count, and sum-of-angles tortuosity">
+            <!-- DM -->
+            <g transform="translate(6,8)">
+              <text class="lbl-strong" x="0" y="10">DM = L / C</text>
+              <path class="struct" stroke="var(--vermillion)"
+                d="M4,52 C18,28 30,76 46,52 C62,28 74,76 92,52"/>
+              <line x1="4" y1="52" x2="92" y2="52" stroke="var(--blue)" stroke-width="1.4" stroke-dasharray="4 3"/>
+              <text class="lbl" x="2" y="74">L = path</text>
+              <text class="lbl" x="40" y="68" fill="var(--blue)">C = chord</text>
+            </g>
+            <!-- ICM -->
+            <g transform="translate(126,8)">
+              <text class="lbl-strong" x="0" y="10">ICM = n·DM</text>
+              <path class="struct" stroke="var(--vermillion)"
+                d="M4,52 C18,28 30,76 46,52 C62,28 74,76 92,52"/>
+              <circle cx="25" cy="52" r="3.2" fill="var(--orange)"/>
+              <circle cx="46" cy="52" r="3.2" fill="var(--orange)"/>
+              <circle cx="67" cy="52" r="3.2" fill="var(--orange)"/>
+              <text class="lbl" x="0" y="74">n = inflections</text>
+            </g>
+            <!-- SOAM -->
+            <g transform="translate(246,8)">
+              <text class="lbl-strong" x="0" y="10">SOAM = Σθ / L</text>
+              <path class="struct" stroke="var(--vermillion)"
+                d="M4,52 C18,28 30,76 46,52 C62,28 74,76 92,52"/>
+              <path d="M18,38 L25,52 L32,40" fill="none" stroke="var(--green)" stroke-width="1.6"/>
+              <path d="M60,40 L67,52 L74,38" fill="none" stroke="var(--green)" stroke-width="1.6"/>
+              <text class="lbl" x="20" y="36" fill="var(--green)">θ</text>
+              <text class="lbl" x="0" y="74">Σ turning angle</text>
+            </g>
+            <line class="axis" x1="8" y1="96" x2="352" y2="96"/>
+            <text class="lbl" x="8" y="112">same strand, three scores: DM sees overall detour · ICM weights how many bends · SOAM weights how sharp</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> DM is cheap but blind to a strand that wiggles without net detour;
+            ICM adds a bend count; SOAM integrates curvature so high-frequency coiling registers. Vascular
+            work showed SOAM best separates pathological from normal curvature.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">traced skeleton (per branch)</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">per-hypha waviness once retraced — the <span class="term">MEAN_TORTUOSITY</span> member plus DM/ICM/SOAM variants</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et al. 2003; Hart et al. 1999</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM / ICM / SOAM</b> — path-vs-chord, bend-count, and integrated-turning waviness of one strand (a retraced hypha)</dd>
+            <dt>Units</dt><dd>dimensionless (≥1; DM = ICM = 1 for a straight strand, SOAM = 0)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a more meandering, tightly-curling strand path; near-minimum ⇒ a taut, near-straight run</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>Distance-Metric tortuosity = L / C (dimensionless; 1 = straight)</dd>
+            <dt>ICM</dt><dd>Inflection-Count Metric = n · DM (bend-weighted)</dd>
+            <dt>SOAM</dt><dd>Sum-of-Angles Metric = Σθ / L (integrated turning per unit length, rad/px)</dd>
+            <dt>L</dt><dd>path length along the strand (px)</dd>
+            <dt>C</dt><dd>chord = straight-line end-to-end distance (px)</dd>
+            <dt>n</dt><dd>number of inflection points (sign changes of curvature)</dd>
+            <dt>θ</dt><dd>local turning angle summed along the path (rad)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- MARQUEE (c) degree-4 resolution -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">(c) Resolving a degree-4 node</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">A four-way skeleton node is the accuracy ceiling: by direction-continuity it
+          is an <b>X-crossing</b> (two strands pass through), but the same degree-4 signature can be a true
+          <b>branch</b> or a <b>fusion loop</b> (anastomosis). Geometry, not degree, decides.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A degree-4 node resolved as a crossing by direction continuity versus a true branch versus an anastomosis loop">
+            <!-- crossing -->
+            <g transform="translate(8,12)">
+              <text class="lbl-strong" x="0" y="8">crossing</text>
+              <path d="M6,18 C40,30 60,66 96,84" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+              <path d="M6,84 C40,66 60,30 96,18" fill="none" stroke="var(--green)" stroke-width="2.4"/>
+              <circle cx="51" cy="51" r="4" fill="none" stroke="var(--vermillion)" stroke-width="1.6"/>
+              <text class="lbl" x="0" y="106">continue by min turn</text>
+            </g>
+            <!-- true branch -->
+            <g transform="translate(128,12)">
+              <text class="lbl-strong" x="0" y="8">true branch</text>
+              <path d="M6,84 C30,60 44,52 51,51" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M51,51 C70,46 84,30 96,16" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M51,51 C66,58 80,72 92,86" fill="none" stroke="var(--orange)" stroke-width="2.4"/>
+              <circle cx="51" cy="51" r="4" fill="var(--orange)"/>
+              <text class="lbl" x="0" y="106">one parent, two daughters</text>
+            </g>
+            <!-- anastomosis -->
+            <g transform="translate(248,12)">
+              <text class="lbl-strong" x="0" y="8">fusion loop</text>
+              <path d="M4,16 C26,40 26,62 8,86" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M8,86 C40,70 60,70 92,86" fill="none" stroke="var(--purple)" stroke-width="2.4"/>
+              <path d="M4,16 C40,30 60,30 96,16" fill="none" stroke="var(--ink)" stroke-width="2.4"/>
+              <path d="M96,16 C78,40 78,62 92,86" fill="none" stroke="var(--purple)" stroke-width="2.4"/>
+              <ellipse cx="50" cy="51" rx="22" ry="16" fill="rgba(184,99,143,.10)" stroke="none"/>
+              <text class="lbl" x="0" y="106">load-bearing cycle</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> classify graph nodes by degree, then resolve each degree-4 node by
+            pairing incident edges with the smallest turning angle. If continuity holds → crossing (traverse,
+            don't branch); if not → a real branch or a fusion that closes a cycle. Directly addresses the
+            documented retracing ceiling.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph + edge geometry</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">degree-classification pass after <span class="term">extract_fragment_paths</span> — separates branch vs crossing vs anastomosis</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger et al. 2015 (NEFI); vascular A/V topology</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton-graph vertex with 4 incident edges (node degree = 4)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- MARQUEE (d) density on untraceable bed -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">(d) Density where tracing fails</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">In a confluent strand bed the individual strands cannot be separated, yet
+          vessel-area %, junction density, and box-counting fractal dimension are still computable — because
+          they never separate strands in the first place.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A dense untraceable strand bed where area-percent and fractal dimension remain computable">
+            <!-- dense bed -->
+            <g transform="translate(8,12)" stroke="var(--text-dim)" stroke-width="1.5" fill="none" stroke-linecap="round">
+              <path d="M4,20 C50,30 90,10 140,28 C175,40 200,18 240,30"/>
+              <path d="M6,48 C44,38 96,58 150,44 C190,34 214,52 244,42"/>
+              <path d="M4,74 C40,86 90,66 132,82 C176,98 210,74 246,86"/>
+              <path d="M2,100 C46,90 88,108 138,96 C182,86 214,104 246,96"/>
+              <path d="M20,8 C30,46 18,80 34,118"/>
+              <path d="M70,6 C82,44 66,82 80,120"/>
+              <path d="M120,8 C108,44 126,82 112,120"/>
+              <path d="M170,6 C182,46 166,82 180,120"/>
+              <path d="M214,8 C202,46 220,80 206,118"/>
+            </g>
+            <text class="lbl" x="10" y="150">cannot trace individual strands ✗</text>
+            <!-- measurable readouts -->
+            <g transform="translate(268,18)">
+              <rect x="0" y="0" width="80" height="34" rx="5" fill="rgba(11,155,118,.10)" stroke="var(--green)" stroke-width="1.2"/>
+              <text class="lbl-strong" x="8" y="15" fill="var(--green)">area %</text>
+              <text class="lbl" x="8" y="28">38.2</text>
+              <rect x="0" y="42" width="80" height="34" rx="5" fill="rgba(0,114,178,.08)" stroke="var(--blue)" stroke-width="1.2"/>
+              <text class="lbl-strong" x="8" y="57" fill="var(--blue)">FD (box)</text>
+              <text class="lbl" x="8" y="70">1.78</text>
+              <rect x="0" y="84" width="80" height="34" rx="5" fill="rgba(213,94,0,.08)" stroke="var(--vermillion)" stroke-width="1.2"/>
+              <text class="lbl-strong" x="8" y="99" fill="var(--vermillion)">junction ρ</text>
+              <text class="lbl" x="8" y="112">global</text>
+            </g>
+            <text class="lbl-strong" x="10" y="172" fill="var(--green)">density/fractal readouts ✓ still valid</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> AngioTool-style metrics (vessel-area %, junction density per area)
+            and box-counting FD integrate over the whole field, so they survive overlap that destroys any
+            tip/node count. This is the safe backbone for confluent mycelial mats.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the 🟢 <span class="term">COMPLEXITY</span> family — area fraction, mass FD, lacunarity — for mats too dense to retrace</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zudaire et al. 2011 (AngioTool); Zahid et al. 2016</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area % · D · junction ρ</b> — coverage fraction, box-counting fractal dimension, and branch-points-per-area of a confluent mat</dd>
+            <dt>Units</dt><dd>percent · dimensionless · count·area⁻¹</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a denser, more plane-filling, more junction-rich mycelial bed; lower ⇒ sparse, open coverage</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area %</dt><dd>vessel-area percent = foreground pixels ÷ field area × 100</dd>
+            <dt>FD (box)</dt><dd>box-counting fractal dimension — log–log slope of occupied boxes vs scale</dd>
+            <dt>junction ρ</dt><dd>junction density = branch-point count ÷ field area (per unit area)</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ SIGNATURE METHODS ============ -->
+  <section class="band">
+    <h2 class="section-title">Signature methods of vascular image quantification</h2>
+    <p class="section-sub">One card per method. Definition → how it works (illustration) →
+      regime/input, the hyphal equivalent (→ Fungi), and the vascular source. Citations are taken verbatim
+      from the catalog's §6 Vascular / angiogenesis reference list.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- 1. Network density -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Network density</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Three field-level density readouts: <span class="term">vessel-area %</span>
+          (foreground fraction), <span class="term">junction density</span> (branch points per unit area),
+          and <span class="term">end-point count</span> (free terminals). The AngioTool / AngioQuant family
+          made these the standard angiogenesis quantifiers.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Vessel-area percent, junction density and end-point count over a field">
+            <!-- field of vessels -->
+            <g transform="translate(10,14)">
+              <rect x="0" y="0" width="200" height="150" rx="6" fill="rgba(11,155,118,.05)" stroke="var(--border)"/>
+              <g stroke="var(--text-dim)" stroke-width="3" fill="none" stroke-linecap="round">
+                <path d="M14,30 C60,40 100,20 150,44"/>
+                <path d="M30,110 C70,90 110,120 160,100"/>
+                <path d="M70,32 C78,70 64,96 84,124"/>
+                <path d="M118,28 L150,44 L120,72"/>
+                <path d="M150,44 C170,70 178,100 170,128"/>
+              </g>
+              <!-- junctions -->
+              <circle cx="70" cy="38" r="4" fill="var(--orange)"/>
+              <circle cx="150" cy="44" r="4" fill="var(--orange)"/>
+              <circle cx="84" cy="96" r="4" fill="var(--orange)"/>
+              <!-- end points -->
+              <circle cx="14" cy="30" r="3.5" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+              <circle cx="84" cy="124" r="3.5" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+              <circle cx="170" cy="128" r="3.5" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+              <circle cx="120" cy="72" r="3.5" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/>
+            </g>
+            <g transform="translate(228,28)">
+              <circle cx="6" cy="6" r="4" fill="var(--orange)"/><text class="lbl" x="16" y="10">junction</text>
+              <circle cx="6" cy="30" r="3.5" fill="none" stroke="var(--vermillion)" stroke-width="1.8"/><text class="lbl" x="16" y="34">end-point</text>
+              <rect x="0" y="50" width="14" height="10" fill="rgba(11,155,118,.4)"/><text class="lbl" x="20" y="59">area %</text>
+              <text class="lbl-strong" x="0" y="86">area% = Σfg ÷ field</text>
+              <text class="lbl-strong" x="0" y="104">ρⱼ = #∘ ÷ area</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> threshold the field, count occupied pixels for area %, then tally
+            graph nodes by degree. Normalizing per unit area keeps the numbers stable even when individual
+            vessels can't be separated — why these survive density.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">mask (+ skeleton for ρ/end-points)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">coverage fraction + junction density per area as 🟢 mask-level branchiness proxies (vs fragile tip/node counts)</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zudaire et al. 2011 (AngioTool); Niemistö et al. 2005 (AngioQuant)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>area % · ρⱼ · #endpoints</b> — coverage fraction, junction density, and free-terminal count of the mycelial field</dd>
+            <dt>Units</dt><dd>percent · count·area⁻¹ · integer</dd>
+            <dt>Reads as</dt><dd>higher area %/ρⱼ ⇒ denser, more branch-crowded coverage; more end-points ⇒ more free hyphal tips</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>area %</dt><dd>vessel-area percent = Σ foreground pixels ÷ field area × 100</dd>
+            <dt>ρⱼ</dt><dd>junction density = junction (branch-point) count ÷ field area</dd>
+            <dt>#∘</dt><dd>count of graph junction nodes in the field</dd>
+            <dt>end-point count</dt><dd>number of free terminals (degree-1 skeleton nodes)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 2. Calibre & branching laws -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Calibre &amp; branching laws</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-red">🔴 A-fragile</span></div>
+        </div>
+        <p class="definition">Vessel <span class="term">diameter</span> from the distance transform, plus
+          the optimality laws: <span class="term">Murray's law</span> (d₀³ = d₁³ + d₂³ at a bifurcation) and
+          the <span class="term">bifurcation ratio</span> R<sub>b</sub> (segment counts across branch orders).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Parent and daughter vessel diameters obeying Murray's law and the order bifurcation ratio">
+            <!-- bifurcation with diameters -->
+            <g transform="translate(14,18)">
+              <path d="M4,72 L70,72" fill="none" stroke="var(--blue)" stroke-width="12" stroke-linecap="round"/>
+              <path d="M70,72 L138,40" fill="none" stroke="var(--green)" stroke-width="8" stroke-linecap="round"/>
+              <path d="M70,72 L138,110" fill="none" stroke="var(--orange)" stroke-width="7" stroke-linecap="round"/>
+              <text class="lbl-strong" x="22" y="62" fill="var(--blue)">d₀</text>
+              <text class="lbl-strong" x="104" y="34" fill="var(--green)">d₁</text>
+              <text class="lbl-strong" x="104" y="124" fill="var(--orange)">d₂</text>
+              <text class="lbl" x="0" y="150">Murray: d₀³ = d₁³ + d₂³</text>
+            </g>
+            <!-- order ratio bars -->
+            <g transform="translate(214,20)">
+              <line class="axis" x1="0" y1="120" x2="120" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="6"/>
+              <rect x="8"  y="20"  width="20" height="100" fill="rgba(213,94,0,.5)"/>
+              <rect x="42" y="58"  width="20" height="62"  fill="rgba(217,138,0,.5)"/>
+              <rect x="76" y="86"  width="20" height="34"  fill="rgba(0,114,178,.45)"/>
+              <text class="lbl" x="10" y="134">ω1</text>
+              <text class="lbl" x="44" y="134">ω2</text>
+              <text class="lbl" x="78" y="134">ω3</text>
+              <text class="lbl-strong" x="0" y="14">Nω</text>
+              <text class="lbl" x="0" y="158">R_b = Nω / Nω₊₁</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> diameter = 2× the distance-transform radius along the centerline;
+            cube-summing daughters tests transport optimality; counting segments per Strahler order and
+            taking successive ratios gives R<sub>b</sub>. All require clean per-branch separation and noisy
+            few-pixel widths — fragile at low resolution.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton + diameters (graph tree)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Neuro</span><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">cord/rhizomorph calibre classes &amp; Rall/Murray junction exponent — aspirational until retracing + sub-px width are reliable</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Patton et al. 2006; Barry &amp; Williams 2015 (AnaMorf)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>d · x · R<sub>b</sub></b> — strand diameter, Murray junction exponent (d₀<sup>x</sup> = d₁<sup>x</sup> + d₂<sup>x</sup>), and cross-order bifurcation ratio of a cord/rhizomorph tree</dd>
+            <dt>Units</dt><dd>d in px (µm); x and R<sub>b</sub> dimensionless (x ≈ 3, R<sub>b</sub> typically 3–5)</dd>
+            <dt>Reads as</dt><dd>larger d ⇒ thicker cords; x near 3 ⇒ diameters split by a near-optimal cube law; higher R<sub>b</sub> ⇒ more segments added per branch order</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>d₀</dt><dd>parent (pre-bifurcation) vessel diameter (px)</dd>
+            <dt>d₁, d₂</dt><dd>the two daughter vessel diameters after the bifurcation (px)</dd>
+            <dt>d₀³ = d₁³ + d₂³</dt><dd>Murray's law — cube of parent diameter equals sum of daughter cubes (junction exponent ≈ 3)</dd>
+            <dt>R<sub>b</sub></dt><dd>bifurcation ratio = N<sub>ω</sub> ÷ N<sub>ω+1</sub> (segment counts across successive branch orders)</dd>
+            <dt>N<sub>ω</sub></dt><dd>number of segments at Strahler order ω</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 3. Curvature / tortuosity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Curvature &amp; tortuosity</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">How non-straight a vessel is, formalized three ways — the
+          <span class="term">Distance-Metric</span> (path length ÷ Euclidean chord), the
+          <span class="term">Inflection-Count Metric</span> (bends × DM), and the
+          <span class="term">Sum-of-Angles Metric</span> (integrated turning per unit length).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A tortuous vessel: path length over chord, inflection points, and integrated turning angle">
+            <g transform="translate(16,30)">
+              <path class="struct" stroke="var(--vermillion)" stroke-width="2.4"
+                d="M6,70 C40,10 64,120 100,66 C136,16 160,118 196,70 C224,34 250,96 280,64"/>
+              <line x1="6" y1="70" x2="280" y2="64" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 4"/>
+              <text class="lbl" x="6" y="98" fill="var(--blue)">chord C (Euclidean)</text>
+              <text class="lbl-strong" x="6" y="20" fill="var(--vermillion)">path L (geodesic)</text>
+              <!-- inflections -->
+              <circle cx="63" cy="74" r="3.4" fill="var(--orange)"/>
+              <circle cx="132" cy="66" r="3.4" fill="var(--orange)"/>
+              <circle cx="222" cy="66" r="3.4" fill="var(--orange)"/>
+              <!-- angle wedge -->
+              <path d="M150,40 L160,56 L172,42" fill="none" stroke="var(--green)" stroke-width="1.6"/>
+              <text class="lbl" x="158" y="36" fill="var(--green)">θ</text>
+            </g>
+            <text class="lbl" x="16" y="172">DM = L/C   ·   ICM = (#inflections)·DM   ·   SOAM = (Σθ)/L</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> DM captures the gross detour; ICM penalizes many reversals even at
+            equal detour; SOAM integrates local curvature so tight coiling dominates. Each is a per-branch
+            scalar, robust once the branch is traced.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">traced branch centerline</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Neuro</span><span class="prov">Mycology</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">per-hypha waviness / contraction (<span class="term">MEAN_TORTUOSITY</span> + DM/ICM/SOAM); robust per-branch once a strand is retraced</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Bullitt et al. 2003; Hart et al. 1999</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>DM / ICM / SOAM</b> — detour, bend-count, and integrated-curvature waviness of a single retraced hypha</dd>
+            <dt>Units</dt><dd>dimensionless (DM, ICM ≥ 1; 1 = perfectly straight; SOAM ≥ 0)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a more winding, sharply-coiling hyphal centerline; near-minimum ⇒ a straight, direct run</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>DM</dt><dd>Distance-Metric = L / C (path length ÷ Euclidean chord; 1 = straight)</dd>
+            <dt>ICM</dt><dd>Inflection-Count Metric = (#inflections) · DM</dd>
+            <dt>SOAM</dt><dd>Sum-of-Angles Metric = Σθ / L (integrated turning per unit length, rad/px)</dd>
+            <dt>L</dt><dd>geodesic path length along the branch (px)</dd>
+            <dt>C</dt><dd>Euclidean chord = straight end-to-end distance (px)</dd>
+            <dt>θ</dt><dd>local turning angle summed along the branch (rad)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 4. Fractal dimension & lacunarity -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Fractal dimension &amp; lacunarity</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Box-counting <span class="term">fractal dimension</span> indexes how completely
+          the vascular bed fills the plane; <span class="term">lacunarity</span> measures the gappiness that
+          two beds of equal FD can still differ in. Retinal and OCT-A work added the
+          <span class="term">multifractal</span> spectrum for density heterogeneity across scales.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Box-counting log-log slope for fractal dimension and gliding-box lacunarity">
+            <!-- vessel under grid -->
+            <g transform="translate(10,16)">
+              <g stroke="var(--rule)" stroke-width="1">
+                <path d="M0,0 H140 M0,28 H140 M0,56 H140 M0,84 H140 M0,112 H140 M0,140 H140
+                         M0,0 V140 M28,0 V140 M56,0 V140 M84,0 V140 M112,0 V140 M140,0 V140"/>
+              </g>
+              <g stroke="var(--vermillion)" stroke-width="2" fill="none" stroke-linecap="round">
+                <path d="M14,126 C30,90 40,80 70,70 C96,60 110,40 124,14"/>
+                <path d="M70,70 C84,84 96,108 102,130"/>
+                <path d="M70,70 C46,66 30,52 22,30"/>
+              </g>
+              <text class="lbl" x="2" y="156">count N(ε) occupied boxes</text>
+            </g>
+            <!-- log-log -->
+            <g transform="translate(212,16)">
+              <line class="axis" x1="0" y1="130" x2="120" y2="130"/>
+              <line class="axis" x1="0" y1="130" x2="0" y2="10"/>
+              <polyline points="8,120 40,92 72,58 106,24" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+              <circle cx="8" cy="120" r="3" fill="var(--blue)"/><circle cx="40" cy="92" r="3" fill="var(--blue)"/>
+              <circle cx="72" cy="58" r="3" fill="var(--blue)"/><circle cx="106" cy="24" r="3" fill="var(--blue)"/>
+              <text class="lbl-strong" x="56" y="50" fill="var(--blue)">slope = D</text>
+              <text class="lbl" x="2" y="146">log(1/ε) →</text>
+              <text class="lbl" x="-30" y="44" transform="rotate(-90 -30,44)">log N(ε)</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> tile at shrinking ε, count occupied boxes, take the log-log slope (D).
+            Lacunarity slides a box and tracks variance/mean² of occupancy vs scale. Both integrate over scale,
+            so they tolerate noise and overlap — no separation needed.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Physics</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the core 🟢 <span class="term">COMPLEXITY</span> members — mass FD, lacunarity, multifractal width — for confluent mats</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Masters 2004; Zahid et al. 2016; Stošić &amp; Stošić 2006</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>D / Λ</b> — box-counting fractal dimension and lacunarity of a confluent mycelial mat</dd>
+            <dt>Units</dt><dd>dimensionless (D between 1 and 2 for a 2-D bed; Λ ≥ 0)</dd>
+            <dt>Reads as</dt><dd>higher D ⇒ more space-filling, self-similar branching; higher Λ ⇒ gappier, more clumped coverage at equal D</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>D</dt><dd>box-counting fractal dimension = slope of log N(ε) vs log(1/ε)</dd>
+            <dt>N(ε)</dt><dd>count of occupied boxes at box size ε</dd>
+            <dt>ε</dt><dd>box (tile) edge length, shrunk across scales (px)</dd>
+            <dt>Λ</dt><dd>lacunarity = gliding-box variance ÷ mean² of occupancy vs scale (gappiness)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 5. Inter-segment space metrics -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Inter-segment space metrics</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Quantify the <em>space between</em> vessels rather than the vessels: the
+          <span class="term">mesh / avascular-zone area</span> — size and count of background regions fully
+          enclosed by the network — a primary VESGEN / capillary-plexus readout.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Enclosed avascular mesh regions measured between vessels">
+            <g transform="translate(20,18)">
+              <!-- network outline forming meshes -->
+              <g stroke="var(--text-dim)" stroke-width="3" fill="none" stroke-linecap="round">
+                <path d="M10,20 L120,14 L230,28"/>
+                <path d="M6,90 L116,96 L228,86"/>
+                <path d="M14,160 L124,168 L236,158"/>
+                <path d="M20,20 L12,90 L18,160"/>
+                <path d="M120,14 L118,96 L124,168"/>
+                <path d="M228,28 L226,86 L236,158"/>
+                <path d="M64,16 L62,162"/>
+                <path d="M172,20 L176,160"/>
+              </g>
+              <!-- shaded meshes -->
+              <polygon points="22,24 60,20 62,90 16,88" fill="rgba(58,159,214,.16)" stroke="none"/>
+              <polygon points="120,16 170,18 174,96 120,94" fill="rgba(58,159,214,.22)" stroke="none"/>
+              <polygon points="64,96 116,96 122,166 64,160" fill="rgba(58,159,214,.13)" stroke="none"/>
+              <text class="lbl-strong" x="124" y="60" fill="#1f7fb5">mesh</text>
+              <text class="lbl" x="22" y="58">small</text>
+              <text class="lbl" x="76" y="132">large</text>
+            </g>
+            <text class="lbl" x="20" y="206">avascular-zone area &amp; count = 1/(branch density)</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> label background components fully enclosed by foreground (holes), then
+            measure their areas. A denser net leaves smaller, more numerous meshes — the inverse view of
+            branch density, computable straight from the mask via the Euler number.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">enclosed-hole count / mean hole size + the <span class="term">EULER_NUMBER</span> member as a loop/mesh proxy</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Vickerman et al. 2009 (VESGEN); Carpentier et al. 2020</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>mesh area &amp; count</b> — size and number of avascular zones fully enclosed by the network (the inter-hyphal gaps of a mat)</dd>
+            <dt>Units</dt><dd>area in px² (mm²); count is an integer (≈ inverse of branch density)</dd>
+            <dt>Reads as</dt><dd>smaller, more numerous meshes ⇒ a denser, more finely-reticulated net; larger, fewer meshes ⇒ an open, sparsely-branched net</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>mesh area</dt><dd>area of a background region fully enclosed by the network (px² per hole)</dd>
+            <dt>mesh count</dt><dd>number of enclosed avascular zones ≈ 1 ÷ (branch density)</dd>
+            <dt>Euler number</dt><dd>connected components − enclosed holes; counts loops/meshes from the mask</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 6. Hessian tubeness (origin technology) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Hessian "tubeness" filter (origin tech)</h3>
+          <div class="badges"><span class="badge b-b">pre-filter</span><span class="badge b-fit-green">🟢 most portable</span></div>
+        </div>
+        <p class="definition">The Frangi / Sato multiscale <span class="term">vesselness</span> filter — the
+          origin technology behind essentially all curvilinear enhancement. At each scale it eigen-decomposes
+          the image Hessian and rewards a bright tube (one small, one large-negative eigenvalue).</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Hessian eigenvalue tube test at multiple scales producing a vesselness response">
+            <!-- eigenvector ellipse on a tube -->
+            <g transform="translate(20,18)">
+              <path d="M0,60 C40,52 80,68 130,58" fill="none" stroke="var(--text-dim)" stroke-width="14" stroke-linecap="round" opacity=".5"/>
+              <ellipse cx="66" cy="61" rx="34" ry="9" fill="none" stroke="var(--vermillion)" stroke-width="2"/>
+              <line x1="32" y1="61" x2="100" y2="61" stroke="var(--green)" stroke-width="2"/>
+              <line x1="66" y1="52" x2="66" y2="70" stroke="var(--orange)" stroke-width="2"/>
+              <text class="lbl" x="104" y="60" fill="var(--green)">λ₁≈0</text>
+              <text class="lbl" x="50" y="46" fill="var(--orange)">λ₂≪0</text>
+              <text class="lbl" x="0" y="100">tube ⇒ |λ₂| ≫ |λ₁|</text>
+            </g>
+            <!-- scale ladder & response peak -->
+            <g transform="translate(196,16)">
+              <text class="lbl" x="0" y="-2">vesselness vs scale</text>
+              <line class="axis" x1="0" y1="120" x2="130" y2="120"/>
+              <line class="axis" x1="0" y1="120" x2="0" y2="6"/>
+              <path d="M6,114 C40,108 52,30 66,28 C80,30 96,108 124,112" fill="none" stroke="var(--blue)" stroke-width="2.4"/>
+              <line x1="66" y1="28" x2="66" y2="120" stroke="var(--blue)" stroke-width="1" stroke-dasharray="2 3"/>
+              <text class="lbl" x="44" y="138">σ ≈ radius</text>
+              <text class="lbl-strong" x="40" y="22" fill="var(--blue)">peak</text>
+              <text class="lbl" x="2" y="158">→ feeds threshold / cost</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> compute the Hessian at a ladder of scales σ; the eigenvalue ratio
+            distinguishes a tube (anisotropic) from a blob or noise (isotropic); the response is taken at the
+            scale that best matches the local width. This is exactly the curvilinear front-end every other
+            analog field assumes.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale (pre-segmentation)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Astronomy</span><span class="prov">Neuro</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">a Frangi/Sato vesselness term in <span class="term">assemble_composite_cost</span> — the single strongest transfer for recovering faint hyphae</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Frangi et al. 1998; Sato et al. 1998</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>λ₁</dt><dd>smaller-magnitude Hessian eigenvalue; ≈ 0 along a tube's axis</dd>
+            <dt>λ₂</dt><dd>larger-magnitude Hessian eigenvalue; large-negative across a bright tube (|λ₂| ≫ |λ₁|)</dd>
+            <dt>σ</dt><dd>Gaussian scale (px); vesselness peaks where σ ≈ local tube radius</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 7. Degree-4 junction classification -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Degree-4 junction classification</h3>
+          <div class="badges"><span class="badge b-a">Regime A</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">Classify graph nodes by degree, then decide whether each degree-4 node is a
+          <span class="term">crossing</span> (two vessels overlap), a true <span class="term">branch</span>,
+          or a <span class="term">fusion</span> — using direction continuity, not degree alone. The A/V-topology
+          step that fixes the dominant tracing error.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Degree-4 node classification by direction continuity into crossing, branch or fusion">
+            <g transform="translate(18,24)">
+              <text class="lbl-strong" x="0" y="6">deg-4 node</text>
+              <line x1="20" y1="20" x2="60" y2="60" stroke="var(--ink)" stroke-width="2.2"/>
+              <line x1="100" y1="20" x2="60" y2="60" stroke="var(--ink)" stroke-width="2.2"/>
+              <line x1="20" y1="100" x2="60" y2="60" stroke="var(--ink)" stroke-width="2.2"/>
+              <line x1="100" y1="100" x2="60" y2="60" stroke="var(--ink)" stroke-width="2.2"/>
+              <circle cx="60" cy="60" r="5" fill="var(--vermillion)"/>
+              <text class="lbl" x="14" y="124">4 incident edges</text>
+            </g>
+            <g transform="translate(150,12)">
+              <text class="lbl" x="0" y="10">smallest turning-angle pairing →</text>
+              <!-- crossing decision -->
+              <g transform="translate(8,24)">
+                <path d="M0,0 C20,16 32,32 48,48" fill="none" stroke="var(--blue)" stroke-width="2.2"/>
+                <path d="M48,0 C32,16 20,32 0,48" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+                <text class="lbl-strong" x="6" y="66" fill="var(--blue)">crossing</text>
+              </g>
+              <!-- branch -->
+              <g transform="translate(86,24)">
+                <path d="M0,48 C14,30 22,26 26,24" fill="none" stroke="var(--ink)" stroke-width="2.2"/>
+                <path d="M26,24 C38,16 44,8 48,0" fill="none" stroke="var(--ink)" stroke-width="2.2"/>
+                <path d="M26,24 C36,30 42,40 48,48" fill="none" stroke="var(--orange)" stroke-width="2.2"/>
+                <text class="lbl-strong" x="6" y="66" fill="#9c6500">branch</text>
+              </g>
+              <!-- fusion -->
+              <g transform="translate(164,24)">
+                <path d="M2,0 C18,16 18,32 4,48" fill="none" stroke="var(--purple)" stroke-width="2.2"/>
+                <path d="M46,0 C30,16 30,32 44,48" fill="none" stroke="var(--purple)" stroke-width="2.2"/>
+                <text class="lbl-strong" x="6" y="66" fill="var(--purple)">fusion</text>
+              </g>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> pair the four incident edges by minimal turning angle. If two
+            collinear pairs emerge → an X-crossing to be traversed; a single dominant axis with a side branch
+            → a real branch; two strands meeting and closing a cycle → anastomosis. Resolves the documented
+            accuracy ceiling.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">skeleton graph + edge directions</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">post-<span class="term">extract_fragment_paths</span> degree-classification so crossings are traversed, not mis-read as branch points</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Dirnberger et al. 2015 (NEFI); vascular A/V topology</span></div>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>degree-4 node</dt><dd>skeleton-graph vertex with 4 incident edges (node degree = 4)</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- 8. Learned segmentation (U-Net) -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Learned segmentation (U-Net)</h3>
+          <div class="badges"><span class="badge b-b">Regime B/A</span><span class="badge b-fit-amber">🟡 label-gated</span></div>
+        </div>
+        <p class="definition">The <span class="term">U-Net</span> encoder–decoder with skip connections,
+          introduced on a vessel-segmentation benchmark, is now the default learned route from a noisy image
+          to a clean vessel mask — replacing or seeding the matched-filter front-ends that preceded it.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="U-Net encoder decoder with skip connections turning a noisy field into a vessel mask">
+            <!-- encoder -->
+            <g transform="translate(10,40)">
+              <rect x="0" y="0" width="22" height="100" rx="3" fill="rgba(0,114,178,.18)" stroke="var(--blue)"/>
+              <rect x="30" y="14" width="18" height="72" rx="3" fill="rgba(0,114,178,.24)" stroke="var(--blue)"/>
+              <rect x="56" y="30" width="14" height="40" rx="3" fill="rgba(0,114,178,.30)" stroke="var(--blue)"/>
+              <text class="lbl" x="0" y="118">encoder ↓</text>
+            </g>
+            <!-- bottleneck -->
+            <rect x="92" y="84" width="14" height="20" rx="3" fill="rgba(184,99,143,.30)" stroke="var(--purple)"/>
+            <!-- decoder -->
+            <g transform="translate(120,40)">
+              <rect x="0" y="30" width="14" height="40" rx="3" fill="rgba(11,155,118,.28)" stroke="var(--green)"/>
+              <rect x="22" y="14" width="18" height="72" rx="3" fill="rgba(11,155,118,.22)" stroke="var(--green)"/>
+              <rect x="48" y="0" width="22" height="100" rx="3" fill="rgba(11,155,118,.16)" stroke="var(--green)"/>
+              <text class="lbl" x="34" y="118">decoder ↑</text>
+            </g>
+            <!-- skip connections -->
+            <g stroke="var(--orange)" stroke-width="1.4" stroke-dasharray="3 3" fill="none">
+              <path d="M32,46 C70,18 130,18 168,46"/>
+              <path d="M58,58 C92,36 116,36 150,58"/>
+            </g>
+            <text class="lbl" x="78" y="22" fill="var(--orange)">skips</text>
+            <!-- in / out tiles -->
+            <g transform="translate(214,46)">
+              <rect x="0" y="0" width="44" height="44" rx="4" fill="rgba(40,32,16,.06)" stroke="var(--border)"/>
+              <path d="M4,38 C18,20 28,30 40,8" fill="none" stroke="var(--text-dim)" stroke-width="1.2"/>
+              <path d="M6,10 C20,28 30,18 42,36" fill="none" stroke="var(--text-dim)" stroke-width="1.2"/>
+              <text class="lbl" x="2" y="58">noisy in</text>
+              <line x1="50" y1="22" x2="74" y2="22" stroke="var(--vermillion)" stroke-width="2"/>
+              <path d="M70,17 L78,22 L70,27 Z" fill="var(--vermillion)"/>
+              <rect x="82" y="0" width="44" height="44" rx="4" fill="rgba(11,155,118,.08)" stroke="var(--green)"/>
+              <path d="M86,38 C100,20 110,30 122,8" fill="none" stroke="var(--green)" stroke-width="2.2"/>
+              <text class="lbl" x="84" y="58">clean mask</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> the contracting path captures context, the expanding path restores
+            resolution, and skip connections re-inject fine detail so thin structures survive. Trained on
+            labeled vessels with a class-imbalance-aware loss; the same architecture transfers to hyphae.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">grayscale + labels (training)</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Neuro</span><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">learned hyphal segmentation once labels exist (cf. MyceliumSeg); pairs with corrective-annotation loops to beat edge-precision limits</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Ronneberger et al. 2015 (U-Net)</span></div>
+        </div>
+      </article>
+
+      <!-- 9. Density-first metrics that avoid tracing -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Density-first metrics (trace-free)</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The OCT-angiography lesson: when vessels are too dense to trace, report
+          <span class="term">vessel-density</span>, <span class="term">perfusion-area fraction</span>, and
+          <span class="term">fractal dimension</span> instead of a graph. Tracing-free metrics that degrade
+          gracefully where skeleton-graph counts collapse.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Two paths from a dense field: a failing skeleton trace versus robust density and fractal readouts">
+            <!-- dense field -->
+            <g transform="translate(12,16)">
+              <rect x="0" y="0" width="116" height="140" rx="6" fill="rgba(40,32,16,.05)" stroke="var(--border)"/>
+              <g stroke="var(--text-dim)" stroke-width="2" fill="none" stroke-linecap="round">
+                <path d="M8,16 C40,28 70,12 108,26"/>
+                <path d="M6,44 C44,34 78,52 110,40"/>
+                <path d="M8,76 C40,88 74,66 108,82"/>
+                <path d="M6,108 C48,98 80,116 110,104"/>
+                <path d="M22,8 C28,46 18,90 30,132"/>
+                <path d="M58,8 C66,46 52,92 64,132"/>
+                <path d="M94,8 C86,46 100,90 90,132"/>
+              </g>
+            </g>
+            <!-- branch up to fail, down to robust -->
+            <g transform="translate(140,18)">
+              <!-- trace path -->
+              <line x1="0" y1="30" x2="40" y2="14" stroke="var(--vermillion)" stroke-width="2"/>
+              <path d="M34,9 L44,12 L37,20 Z" fill="var(--vermillion)"/>
+              <g transform="translate(48,0)">
+                <rect x="0" y="0" width="78" height="40" rx="6" fill="rgba(213,94,0,.08)" stroke="var(--vermillion)"/>
+                <text class="lbl-strong" x="8" y="17" fill="var(--vermillion)">skeleton trace</text>
+                <text class="lbl" x="8" y="32">counts collapse ✗</text>
+              </g>
+              <!-- density path -->
+              <line x1="0" y1="60" x2="40" y2="84" stroke="var(--green)" stroke-width="2"/>
+              <path d="M34,79 L44,86 L34,92 Z" fill="var(--green)"/>
+              <g transform="translate(48,62)">
+                <rect x="0" y="0" width="78" height="56" rx="6" fill="rgba(11,155,118,.08)" stroke="var(--green)"/>
+                <text class="lbl-strong" x="8" y="17" fill="var(--green)">density / FD</text>
+                <text class="lbl" x="8" y="33">vessel-density %</text>
+                <text class="lbl" x="8" y="48">graceful ✓</text>
+              </g>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> skip the graph entirely. Threshold → area fraction; box-count → FD;
+            slide a box → lacunarity. These integrate over the whole field, so dense overlap that destroys
+            tip/junction counts barely moves them — the robust fallback when separation is impossible.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask / grayscale</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Vascular</span><span class="prov">Mycology</span><span class="prov">Geomorph</span></span></div>
+          <div class="mrow"><span class="mk">→ Fungi</span><span class="mv">the safe 🟢 backbone for confluent mycelium — coverage %, mass FD, lacunarity in the <span class="term">COMPLEXITY</span> family</span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Zahid et al. 2016; Zudaire et al. 2011 (AngioTool)</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>vessel-density % · perfusion fraction · D</b> — coverage percent, occupied-area fraction, and box-counting fractal dimension of a too-dense-to-trace mat</dd>
+            <dt>Units</dt><dd>percent · fraction 0–1 · dimensionless (D between 1 and 2)</dd>
+            <dt>Reads as</dt><dd>higher ⇒ a denser, more plane-filling mycelial bed; lower ⇒ sparse, open coverage — all stable where tip/node counts collapse</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>vessel-density %</dt><dd>foreground (vessel) pixels ÷ field area × 100</dd>
+            <dt>perfusion-area fraction</dt><dd>fraction of field occupied by perfused vessels (0–1)</dd>
+            <dt>D</dt><dd>box-counting fractal dimension — log–log slope of occupied boxes vs scale</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout blue">
+      <h3>What transfers from vessels to hyphae — and what does not</h3>
+      <p>Vascular image analysis splits cleanly into two halves, and the split is exactly the Regime
+        A / Regime B boundary PhenoTypic already lives on:</p>
+      <ul>
+        <li><b>Skeleton-graph metrics</b> — tip and junction counts, branch order, bifurcation ratio,
+          Murray's law, per-segment diameter — <b>degrade on dense mycelium</b>: overlap creates false
+          nodes, hides tips, and collapses angles. These are the 🟡/🔴 rows, gated on retracing maturity.</li>
+        <li><b>Whole-field density / fractal / lacunarity metrics</b> — vessel-area %, box-counting FD,
+          lacunarity, multifractal width, mesh area — <b>transfer robustly to confluent mats</b> because they
+          never separate strands. These are the 🟢 ship-now backbone and map onto the new
+          <span class="term">COMPLEXITY</span> family.</li>
+      </ul>
+      <p>The <b>strongest single transfer is the Hessian "tubeness" front-end</b> (Frangi/Sato): a multiscale
+        vesselness channel recovers faint thin hyphae before thresholding and slots straight into
+        <span class="term">branch_pathfinding</span>'s composite cost surface — it helps both halves at once.</p>
+      <p>This is not animal-only machinery. The same vesselness-plus-graph toolkit has a <b>documented port to
+        plant leaf-vein networks</b>, which are likewise a 2-D projection of a dense reticulate branching net —
+        precedent that the vascular methods generalize cleanly beyond the cardiovascular system, and a direct
+        template for applying them to filamentous fungi on agar.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER (verbatim) ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

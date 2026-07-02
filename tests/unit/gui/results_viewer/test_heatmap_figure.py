@@ -15,6 +15,7 @@ import pytest
 
 from phenotypic.gui._design import OI_VERMILION
 from phenotypic.gui.results_viewer._heatmap_tab._figure import build_heatmap_figure
+from phenotypic.schema import METADATA
 
 
 def _make_minimal_frame(
@@ -33,7 +34,7 @@ def _make_minimal_frame(
             for c in range(1, cols + 1):
                 label_counter += 1
                 rec: dict[str, object] = {
-                    "Metadata_ImageFile": img,
+                    str(METADATA.IMAGE_NAME): img,
                     "Grid_RowNum": r,
                     "Grid_ColNum": c,
                     "Size_Area": float(100 + r * 10 + c),
@@ -41,7 +42,7 @@ def _make_minimal_frame(
                 if add_label:
                     rec["Object_Label"] = label_counter
                 if add_time:
-                    rec["Metadata_Time"] = 4
+                    rec["MetadataCulture_Time"] = 4
                 records.append(rec)
     return pl.from_dicts(records)
 
@@ -71,7 +72,7 @@ class TestEmptyStateNoGridColumns:
     def test_empty_state_when_grid_columns_absent(self) -> None:
         frame = pl.DataFrame(
             {
-                "Metadata_ImageFile": ["image_a.tif"] * 4,
+                str(METADATA.IMAGE_NAME): ["image_a.tif"] * 4,
                 "Object_Label": list(range(1, 5)),
                 "Size_Area": [10.0, 20.0, 30.0, 40.0],
             }
@@ -102,7 +103,7 @@ class TestImageFilterAppliedBeforeAggregator:
         # max should be 5.
         frame = pl.DataFrame(
             {
-                "Metadata_ImageFile": [
+                str(METADATA.IMAGE_NAME): [
                     "image_a.tif",
                     "image_a.tif",
                     "image_b.tif",
@@ -135,7 +136,7 @@ class TestAggregatorSemantics:
     def test_aggregator_mean_vs_max_changes_value(self) -> None:
         frame = pl.DataFrame(
             {
-                "Metadata_ImageFile": ["image_a.tif"] * 2,
+                str(METADATA.IMAGE_NAME): ["image_a.tif"] * 2,
                 "Object_Label": [1, 2],
                 "Grid_RowNum": [1, 1],
                 "Grid_ColNum": [1, 1],
@@ -208,11 +209,11 @@ class TestTimeFilter:
     def test_time_filter_applied(self) -> None:
         frame = pl.DataFrame(
             {
-                "Metadata_ImageFile": ["image_a.tif"] * 4,
+                str(METADATA.IMAGE_NAME): ["image_a.tif"] * 4,
                 "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 1, 1],
                 "Grid_ColNum": [1, 1, 1, 1],
-                "Metadata_Time": [4, 4, 8, 8],
+                "MetadataCulture_Time": [4, 4, 8, 8],
                 "Size_Area": [1.0, 3.0, 100.0, 200.0],
             }
         )
@@ -236,14 +237,14 @@ class TestNanOnlyPivot:
     def test_nan_only_pivot_does_not_crash(self) -> None:
         frame = pl.DataFrame(
             {
-                "Metadata_ImageFile": ["image_a.tif"] * 4,
+                str(METADATA.IMAGE_NAME): ["image_a.tif"] * 4,
                 "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 2, 2],
                 "Grid_ColNum": [1, 2, 1, 2],
                 "Size_Area": [None, None, None, None],
             },
             schema={
-                "Metadata_ImageFile": pl.String,
+                str(METADATA.IMAGE_NAME): pl.String,
                 "Object_Label": pl.Int64,
                 "Grid_RowNum": pl.Int64,
                 "Grid_ColNum": pl.Int64,
@@ -269,7 +270,7 @@ class TestPandasInputAccepted:
     def test_accepts_pandas_dataframe_input(self) -> None:
         frame = pd.DataFrame(
             {
-                "Metadata_ImageFile": ["image_a.tif"] * 4,
+                str(METADATA.IMAGE_NAME): ["image_a.tif"] * 4,
                 "Object_Label": [1, 2, 3, 4],
                 "Grid_RowNum": [1, 1, 2, 2],
                 "Grid_ColNum": [1, 2, 1, 2],

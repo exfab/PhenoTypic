@@ -1,0 +1,806 @@
+<!doctype html>
+<!--
+  Branch Phenotypes for Filamentous Fungi — Family E (Margin / boundary complexity & macromorphotype).
+  Head + component markup copied verbatim from _design-system.html; content authored from the
+  catalog spec §0 + "Family E". Do not alter the CSS.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family E — Margin &amp; macromorphotype · Branch Phenotypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2eee4; --surface:#fbf8f1; --surface-2:#f6f1e7; --inset:#efe9db;
+    --ink:#201e18; --text:#2c2920; --text-dim:#6c6557; --faint:#8a8273;
+    --border:#e2dac9; --rule:#cdc1a9;
+    --blue:#0072B2; --sky:#3a9fd6; --green:#0b9b76; --orange:#d98a00;
+    --vermillion:#D55E00; --purple:#b8638f; --yellow:#b8901f;
+    --regime-a:var(--blue); --regime-b:var(--green); --regime-dyn:var(--sky); --regime-phys:var(--purple);
+    --fit-green:var(--green); --fit-amber:var(--orange); --fit-red:var(--vermillion);
+    --shadow:0 1px 2px rgba(40,32,16,.05), 0 6px 22px -12px rgba(40,32,16,.22);
+    --radius:14px; --maxw:1180px;
+    --sans:"IBM Plex Sans", ui-sans-serif, Segoe UI, sans-serif;
+    --serif:"Fraunces", Georgia, "Times New Roman", serif;
+    --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 12% -5%, #faf6ee 0, transparent 45%),
+      radial-gradient(circle at 100% 0, #f6efe0 0, transparent 40%);}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:30;background:rgba(242,238,228,.86);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  .brand{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand b{color:var(--ink);font-weight:600}
+  .topbar nav{margin-left:auto;display:flex;gap:14px;font-family:var(--mono);font-size:12.5px}
+  .topbar nav a{color:var(--text-dim)}
+
+  /* ---- hero ---- */
+  .hero{padding:clamp(30px,6vw,64px) 0 26px;display:grid;grid-template-columns:auto 1fr;gap:clamp(18px,4vw,34px);align-items:start}
+  .family-badge{font-family:var(--serif);font-weight:700;font-size:clamp(46px,9vw,84px);line-height:.9;
+    width:clamp(78px,15vw,128px);height:clamp(78px,15vw,128px);display:grid;place-items:center;
+    color:#fff;border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .family-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.22),transparent 60%)}
+  .hero-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .hero-title{font-family:var(--serif);font-weight:600;font-size:clamp(28px,5vw,46px);line-height:1.04;margin:0 0 12px;color:var(--ink);letter-spacing:-.01em}
+  .lede{font-size:clamp(16px,2.2vw,19px);color:var(--text);max-width:62ch;margin:0 0 16px}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px}
+
+  /* ---- chips / badges ---- */
+  .chip{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;
+    display:inline-flex;align-items:center;gap:5px;line-height:1.2;border:1px solid transparent;white-space:nowrap}
+  .b-a{background:rgba(0,114,178,.10);color:var(--blue);border-color:rgba(0,114,178,.25)}
+  .b-b{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.28)}
+  .b-dyn{background:rgba(58,159,214,.14);color:#1f7fb5;border-color:rgba(58,159,214,.3)}
+  .b-phys{background:rgba(184,99,143,.14);color:var(--purple);border-color:rgba(184,99,143,.3)}
+  .b-fit-green{background:rgba(11,155,118,.12);color:var(--green);border-color:rgba(11,155,118,.3)}
+  .b-fit-amber{background:rgba(217,138,0,.14);color:#9c6500;border-color:rgba(217,138,0,.3)}
+  .b-fit-red{background:rgba(213,94,0,.12);color:var(--vermillion);border-color:rgba(213,94,0,.3)}
+
+  /* ---- legend ---- */
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+  .legend h4{margin:0 0 8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .legend .row{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+
+  /* ---- sections ---- */
+  .band{padding:30px 0 6px}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-dim);margin:0 0 20px;max-width:70ch}
+  .rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);border:0;margin:6px 0 0}
+
+  /* ---- card grid ---- */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);min-width:0;display:flex;flex-direction:column;gap:12px}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .metric-name{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--ink);margin:0;line-height:1.2;min-width:0;overflow-wrap:break-word}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .definition{margin:0;color:var(--text);font-size:14.5px}
+  .definition .term{font-family:var(--mono);font-size:.92em;background:var(--inset);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+  /* ---- illustration ---- */
+  figure.illo{margin:2px 0 0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 12px 8px}
+  figure.illo svg{display:block;width:100%;height:auto}
+  figure.illo svg .lbl{font-family:var(--mono);font-size:11px;fill:var(--text-dim)}
+  figure.illo svg .lbl-strong{font-family:var(--mono);font-size:11.5px;fill:var(--ink);font-weight:500}
+  figure.illo svg .axis{stroke:var(--rule);stroke-width:1}
+  figure.illo svg .struct{stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  figure.illo figcaption{font-size:12.5px;color:var(--text-dim);margin-top:9px;line-height:1.45}
+  figure.illo figcaption b{color:var(--ink);font-weight:600}
+
+  /* ---- meta row ---- */
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding-top:10px;border-top:1px dashed var(--border)}
+  .meta .mrow{display:flex;gap:8px;font-size:12.5px;color:var(--text-dim);align-items:baseline}
+  .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none;width:74px}
+  .meta .mv{min-width:0;overflow-wrap:break-word}
+  .prov{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--inset);color:var(--text-dim);
+    border-radius:5px;padding:1px 6px;margin:0 4px 4px 0}
+  .cite{font-style:italic;color:var(--text-dim)}
+
+  /* ---- variable key ---- */
+  .varkey{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .varkey .vk-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .varkey dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .varkey dt{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .varkey dd{margin:0;font-size:12.5px;color:var(--text-dim);min-width:0}
+
+  /* ---- output metric ---- */
+  .outmetric{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:9px;padding:10px 12px}
+  .outmetric .om-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#9c6500;display:block;margin-bottom:6px}
+  .outmetric dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .outmetric dt{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);white-space:nowrap;padding-top:2px}
+  .outmetric dd{margin:0;font-size:12.5px;color:var(--text);min-width:0}
+  .outmetric dd b{font-family:var(--mono);color:var(--ink);font-weight:600;font-size:.95em}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--orange);
+    border-radius:10px;padding:18px 20px;margin:22px 0 6px;box-shadow:var(--shadow)}
+  .callout.green{border-left-color:var(--green)} .callout.blue{border-left-color:var(--blue)}
+  .callout h3{margin:0 0 8px;font-family:var(--serif);font-size:19px;color:var(--ink)}
+  .callout p{margin:0 0 8px}.callout p:last-child{margin-bottom:0}
+  .callout ul{margin:8px 0 0;padding-left:18px}.callout li{margin:4px 0}
+
+  /* ---- footer ---- */
+  .footer{margin-top:46px;border-top:1px solid var(--rule);padding:26px 0 50px;color:var(--text-dim);font-size:13.5px}
+  .footer .flinks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:10px;font-family:var(--mono);font-size:12.5px}
+  .footer .note{max-width:75ch}
+
+  @media(max-width:560px){
+    .hero{grid-template-columns:1fr}.legend{grid-template-columns:1fr}
+    .meta .mk{width:64px}
+  }
+  @media print{
+    body{background:#fff}.topbar{position:static}.card,.callout,.legend{box-shadow:none}
+    .card{break-inside:avoid}
+  }
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar"><div class="wrap">
+  <span class="brand"><b>Branch Phenotypes</b> · Filamentous Fungi</span>
+  <nav>
+    <a href="index.html">All families</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Spec</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="family-badge" style="background:var(--regime-b)">E</div>
+    <div>
+      <div class="hero-kicker">Family · Regime B · margin &amp; macromorphotype</div>
+      <h1 class="hero-title">Margin complexity &amp; macromorphotype</h1>
+      <p class="lede">How rugged is the colony edge, and what gross growth form does the whole
+        silhouette belong to? These descriptors read the boundary and overall shape of a
+        mask — entire vs. ragged margins, compact vs. diffuse forms — without ever
+        resolving a single hypha, which is why most survive dense, low-resolution growth.</p>
+      <div class="chip-row">
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>Mask / RGB</span>
+        <span class="chip"><span class="dot" style="background:var(--green)"></span>🟢 mostly ship-now</span>
+        <span class="chip">7 metrics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEGEND ============ -->
+  <section class="legend" aria-label="Legend">
+    <div>
+      <h4>Regime</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--regime-a)"></span>A · resolved branches (skeleton+graph)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-b)"></span>B · whole-silhouette (mask)</span>
+        <span class="item"><span class="sw" style="background:var(--regime-dyn)"></span>Dyn · time-lapse</span>
+        <span class="item"><span class="sw" style="background:var(--regime-phys)"></span>Phys · colour/RGB</span>
+      </div>
+    </div>
+    <div>
+      <h4>Fit to PhenoTypic (low-res, dense, overlapping)</h4>
+      <div class="row">
+        <span class="item"><span class="sw" style="background:var(--fit-green)"></span>🟢 B-robust · ship-now</span>
+        <span class="item"><span class="sw" style="background:var(--fit-amber)"></span>🟡 A-feasible · retracing-gated</span>
+        <span class="item"><span class="sw" style="background:var(--fit-red)"></span>🔴 A-fragile · aspirational</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE — margin-type gallery ============ -->
+  <section class="band">
+    <h2 class="section-title">The macromorphotype vocabulary</h2>
+    <p class="section-sub">Family E sits where colloquial colony description meets computable
+      geometry: a handful of edge categories and silhouette classes that biologists already
+      use by eye, recast as mask-readable numbers.</p>
+    <hr class="rule">
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 720 220" role="img" aria-label="Five colony margin types from smooth (entire) to root-like (rhizoid)">
+        <!-- entire -->
+        <g transform="translate(72,86)">
+          <circle cx="0" cy="0" r="46" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.10)"/>
+          <text class="lbl-strong" x="0" y="86" text-anchor="middle">entire</text>
+        </g>
+        <!-- undulate -->
+        <g transform="translate(208,86)">
+          <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.10)"
+            d="M46,0 C46,16 36,18 36,30 C34,44 18,40 8,46 C-6,52 -20,42 -32,36 C-46,28 -44,12 -42,-2
+               C-40,-18 -30,-24 -20,-36 C-8,-48 8,-44 22,-40 C38,-34 46,-16 46,0 Z"/>
+          <text class="lbl-strong" x="0" y="86" text-anchor="middle">undulate</text>
+        </g>
+        <!-- lobate -->
+        <g transform="translate(348,86)">
+          <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.10)"
+            d="M48,-4 C58,8 44,22 40,34 C50,46 30,56 18,50 C8,62 -10,56 -16,44
+               C-32,50 -46,36 -40,22 C-54,12 -48,-8 -34,-12 C-40,-30 -20,-42 -6,-34
+               C4,-50 26,-44 26,-28 C44,-32 54,-16 48,-4 Z"/>
+          <text class="lbl-strong" x="0" y="86" text-anchor="middle">lobate</text>
+        </g>
+        <!-- filamentous -->
+        <g transform="translate(496,86)">
+          <circle cx="0" cy="0" r="30" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.12)"/>
+          <g stroke="var(--green)" stroke-width="1.4" stroke-linecap="round">
+            <path d="M0,-30 L0,-50 M16,-25 L28,-42 M26,-15 L46,-26 M30,0 L52,0 M26,15 L46,26
+                     M16,25 L28,42 M0,30 L0,50 M-16,25 L-28,42 M-26,15 L-46,26 M-30,0 L-52,0
+                     M-26,-15 L-46,-26 M-16,-25 L-28,-42"/>
+          </g>
+          <text class="lbl-strong" x="0" y="86" text-anchor="middle">filamentous</text>
+        </g>
+        <!-- rhizoid -->
+        <g transform="translate(648,86)">
+          <circle cx="0" cy="0" r="22" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.12)"/>
+          <g stroke="var(--green)" stroke-width="1.6" fill="none" stroke-linecap="round">
+            <path d="M0,-22 C-4,-36 6,-42 2,-56 M2,-56 C0,-64 8,-66 6,-72"/>
+            <path d="M16,-12 C28,-22 26,-34 40,-40 M40,-40 C46,-44 44,-50 52,-52"/>
+            <path d="M20,8 C36,10 40,24 56,24 M40,12 C48,20 46,28 54,32"/>
+            <path d="M4,22 C6,38 -6,44 -2,58 M-2,58 C-2,66 6,68 4,74"/>
+            <path d="M-16,14 C-30,22 -30,36 -46,40 M-30,22 C-38,30 -36,40 -44,46"/>
+            <path d="M-20,-8 C-36,-12 -42,-26 -58,-26 M-38,-12 C-48,-18 -48,-26 -56,-28"/>
+          </g>
+          <text class="lbl-strong" x="0" y="86" text-anchor="middle">rhizoid</text>
+        </g>
+      </svg>
+      <figcaption><b>Margin-type gallery.</b> The classic edge ladder, from a smooth
+        <b>entire</b> rim through wavy <b>undulate</b> and bay-and-headland <b>lobate</b>
+        edges to a fringe of <b>filamentous</b> projections and finally branched, root-like
+        <b>rhizoid</b> growth. Separating rhizoid from plain filamentous is the one step that
+        needs genuine edge detail.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section class="band">
+    <h2 class="section-title">Metrics</h2>
+    <p class="section-sub">One card per metric. Definition → how it works (illustration) → regime/input/provenance/citation.</p>
+    <hr class="rule">
+    <div class="card-grid" style="margin-top:18px">
+
+      <!-- ===== CARD 1 — Macroscopic margin type ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Macroscopic margin type</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">A categorical label for the colony edge — <span class="term">entire</span>,
+          <span class="term">undulate</span>, <span class="term">lobate</span>,
+          <span class="term">filamentous</span> or <span class="term">rhizoid</span> — assigned
+          from boundary shape. Compresses a continuum of margin ruggedness into the descriptive
+          classes mycologists already use.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="A single colony edge classified along the margin-type axis">
+            <line class="axis" x1="30" y1="186" x2="330" y2="186"/>
+            <!-- representative edge arcs along the axis -->
+            <path class="struct" stroke="var(--green)" d="M40,150 a30,30 0 0 1 56,0"/>
+            <text class="lbl" x="40" y="200">entire</text>
+            <path class="struct" stroke="var(--green)" d="M118,150 q10,-24 20,0 q10,24 20,0 q10,-24 18,0"/>
+            <text class="lbl" x="120" y="200">undulate</text>
+            <path class="struct" stroke="var(--green)" d="M200,150 q8,-30 22,-8 q14,-22 22,4 q12,-18 18,4"/>
+            <text class="lbl" x="208" y="200">lobate</text>
+            <g stroke="var(--green)" stroke-width="1.6" stroke-linecap="round">
+              <path d="M286,150 a26,26 0 0 1 44,0"/>
+              <path d="M292,140 l-8,-16 M304,131 l-4,-19 M318,131 l6,-18 M328,141 l12,-12"/>
+            </g>
+            <text class="lbl" x="290" y="200">filament/rhizoid</text>
+            <text class="lbl-strong" x="30" y="40">edge ruggedness  →</text>
+            <text class="lbl" x="30" y="58">smooth</text>
+            <text class="lbl" x="276" y="58">root-like</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> features of the contour — waviness, lobe depth, fringe
+            projections — are scored or fed to a classifier and mapped to one named class. Reads
+            only the silhouette boundary, so it holds up at low resolution (except the rhizoid/
+            filamentous split, which wants edge detail).</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask / RGB</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium — rhizoid vs filamentous needs edge detail</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">morphotyping; CNN classifiers</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>margin type</b> — one named edge class assigned from boundary shape</dd>
+            <dt>Units</dt><dd>categorical (entire / undulate / lobate / filamentous / rhizoid)</dd>
+            <dt>Reads as</dt><dd>entire = smooth rim; through undulate and lobate = increasingly wavy/bayed; to filamentous/rhizoid = fringed, root-like edge</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 2 — Convex-perimeter deficit / convexity ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Convex-perimeter deficit / convexity</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">The ratio of the <span class="term">convex-hull perimeter</span>
+          to the colony's actual perimeter. A smooth disc scores near 1; an indented, ragged
+          margin makes the true perimeter much longer than the taut hull, driving convexity down
+          — a direct read of how concave the edge is.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Convex hull boundary versus the longer indented colony perimeter">
+            <!-- convex hull (smooth, taut) -->
+            <polygon points="70,44 200,30 300,96 270,170 150,190 64,128"
+                     fill="rgba(217,138,0,.07)" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"/>
+            <!-- actual indented colony perimeter -->
+            <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.12)"
+              d="M86,60 q24,-6 38,8 q18,-22 40,-6 q22,-18 50,4 q-14,18 6,30 q22,12 4,34
+                 q14,22 -14,26 q-20,22 -42,2 q-26,16 -42,-8 q-26,2 -20,-26 q-22,-12 -2,-32
+                 q-14,-22 24,-30 Z"/>
+            <text class="lbl" x="232" y="42">hull perim<tspan fill="var(--orange)"> P_h</tspan></text>
+            <text class="lbl-strong" x="120" y="120">colony perim P</text>
+            <text class="lbl-strong" x="40" y="210">convexity = P_h<tspan fill="var(--orange)">▱</tspan> ÷ P<tspan fill="var(--green)">∿</tspan></text>
+          </svg>
+          <figcaption><b>Mechanism:</b> wrap the mask in its convex hull and compare boundary
+            lengths. Each bay and notch the margin adds lengthens P while P_h barely changes, so
+            the deficit grows with concavity. Needs only the mask outline.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>convexity = P<sub>h</sub> / P</b> — convex-hull perimeter over actual perimeter</dd>
+            <dt>Units</dt><dd>dimensionless 0–1</dd>
+            <dt>Reads as</dt><dd>near 1 = smooth taut disc-like edge; falling toward 0 = deeply bayed, indented, ragged margin</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>colony perimeter — length of the actual (indented) mask boundary</dd>
+            <dt>P_h</dt><dd>convex-hull perimeter — length of the taut hull wrapping the mask</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 3 — Perimeter-to-area ratio ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Perimeter-to-area ratio</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">Boundary length divided by enclosed area, <span class="term">P / A</span>.
+          A compact disc minimises edge per unit area; as the colony spreads filaments and frays
+          its margin, perimeter outpaces area and the ratio climbs — a simple ruggedness index.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Low perimeter-to-area compact disc versus high-ratio frilly colony">
+            <!-- compact, low P/A -->
+            <g transform="translate(96,96)">
+              <circle cx="0" cy="0" r="50" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.14)"/>
+              <text class="lbl-strong" x="0" y="6" text-anchor="middle" fill="var(--ink)">low P/A</text>
+              <text class="lbl" x="0" y="76" text-anchor="middle">compact</text>
+            </g>
+            <!-- frilly, high P/A -->
+            <g transform="translate(258,96)">
+              <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.10)"
+                d="M0,-50 q10,-2 8,8 q14,-6 12,8 q12,0 6,12 q14,6 4,16 q12,10 -2,16
+                   q6,14 -10,12 q0,14 -14,8 q-10,12 -20,2 q-16,4 -16,-10 q-16,-2 -10,-16
+                   q-14,-8 -2,-18 q-10,-14 6,-16 q-4,-16 14,-12 q4,-12 16,-6 q6,-8 14,-4 Z"/>
+              <text class="lbl-strong" x="0" y="4" text-anchor="middle" fill="var(--ink)">high P/A</text>
+              <text class="lbl" x="0" y="76" text-anchor="middle">frayed</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> count contour pixels for P and foreground pixels for A and
+            divide. Independent of where the edge complexity sits, it scales up the moment the
+            margin gains structure. Pure mask arithmetic — no segmentation.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Roots</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Paul &amp; Thomas 1998</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>P / A</b> — boundary length divided by enclosed area (or the scale-free P²/A form)</dd>
+            <dt>Units</dt><dd>px⁻¹ (P²/A dimensionless)</dd>
+            <dt>Reads as</dt><dd>low = compact smooth disc; climbing = frayed, filament-fringed, high-perimeter outline</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>P</dt><dd>perimeter — boundary length of the colony mask (pixels)</dd>
+            <dt>A</dt><dd>area — number of foreground (colony) pixels enclosed</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 4 — Roughness / hairy-length ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Roughness / hairy-length</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-amber">🟡 A-feasible</span></div>
+        </div>
+        <p class="definition">The length of filaments that protrude beyond a compact core boundary —
+          the "hairiness" of the colony. Quantifies how far loose hyphae reach past the dense centre,
+          but it needs those filaments to be individually resolved, so it is the fragile member of
+          this family.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Compact core with protruding filaments measured beyond the core boundary">
+            <!-- core boundary -->
+            <circle cx="180" cy="110" r="56" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 4"
+                    fill="rgba(217,138,0,.06)"/>
+            <circle cx="180" cy="110" r="40" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.14)"/>
+            <!-- protruding filaments -->
+            <g stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" fill="none">
+              <path d="M180,70 C182,50 176,42 180,24"/>
+              <path d="M212,82 C228,68 230,58 246,48"/>
+              <path d="M220,110 C242,108 250,118 270,114"/>
+              <path d="M208,142 C224,156 224,166 238,176"/>
+              <path d="M180,150 C178,170 184,178 180,196"/>
+              <path d="M150,140 C132,154 130,166 114,176"/>
+              <path d="M140,110 C118,110 110,120 90,116"/>
+              <path d="M152,80 C136,66 134,56 120,46"/>
+            </g>
+            <line x1="180" y1="110" x2="246" y2="48" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="3 3"/>
+            <text class="lbl" x="60" y="60">core boundary</text>
+            <text class="lbl-strong" x="250" y="36" fill="var(--green)">hairy length</text>
+            <text class="lbl" x="120" y="212">protrusion beyond the dense core</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> fit a compact core, then measure how far filaments extend
+            past it (summed or mean length). The trouble: at low resolution the protruding hyphae
+            blur into the agar, so this degrades fast — hence the 🟡 retracing-gated fit.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask (hi-res)</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">low — needs filaments resolved</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>hairy length</b> — summed or mean reach of filaments protruding past the compact core boundary</dd>
+            <dt>Units</dt><dd>px (µm)</dd>
+            <dt>Reads as</dt><dd>short/zero = clean tightly-bounded rim; long = shaggy, hairy fringe of loose filaments beyond the core</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 5 — Pellet/clump/dispersed classification ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Pellet / clump / dispersed classification</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">A rule- or ML-assigned macromorphology label — <span class="term">pellet</span>,
+          <span class="term">clump</span> or <span class="term">dispersed</span> — derived from a
+          bundle of silhouette features (area, compactness, roughness, circularity). The standard
+          submerged-fermentation classification, read almost entirely from shape.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Pellet, clump and dispersed forms from compact to diffuse">
+            <!-- pellet -->
+            <g transform="translate(70,100)">
+              <circle cx="0" cy="0" r="40" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.22)"/>
+              <text class="lbl-strong" x="0" y="70" text-anchor="middle">pellet</text>
+            </g>
+            <!-- clump -->
+            <g transform="translate(180,100)">
+              <path class="struct" stroke="var(--green)" fill="rgba(11,155,118,.16)"
+                d="M-10,-38 q22,-8 30,8 q22,2 14,22 q14,16 -6,26 q-2,20 -24,14
+                   q-20,12 -30,-6 q-22,-6 -12,-26 q-10,-22 12,-26 q4,-16 16,-6 Z"/>
+              <text class="lbl-strong" x="0" y="70" text-anchor="middle">clump</text>
+            </g>
+            <!-- dispersed -->
+            <g transform="translate(294,100)" stroke="var(--green)" stroke-width="1.4" fill="none" stroke-linecap="round">
+              <path d="M-34,-6 C-20,-18 -8,-2 6,-16 M-22,16 C-8,4 4,20 18,8
+                       M-30,-22 C-16,-30 -8,-18 4,-30 M-6,30 C8,20 18,34 30,22
+                       M10,-2 C24,-12 30,2 40,-8 M-38,8 C-28,16 -16,6 -8,16"/>
+              <text class="lbl-strong" x="0" y="70" text-anchor="middle" fill="var(--ink)">dispersed</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> a compact disc with high circularity and solidity reads as
+            a <b>pellet</b>; a looser, lower-circularity aggregate as a <b>clump</b>; a diffuse,
+            high-perimeter mycelium as <b>dispersed</b>. Built from mask features, so it tolerates
+            overlap — but see the clump↔pellet ambiguity below.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium — clump↔pellet ambiguity</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992; Wucherpfennig 2019</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>macromorphology class</b> — one label from a bundle of silhouette features</dd>
+            <dt>Units</dt><dd>categorical (pellet / clump / dispersed)</dd>
+            <dt>Reads as</dt><dd>pellet = compact, round, filled; clump = looser, rougher aggregate; dispersed = diffuse, high-perimeter mycelium</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 6 — Smooth-vs-hairy pellet class ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Smooth-vs-hairy pellet class</h3>
+          <div class="badges"><span class="badge b-b">Regime B</span><span class="badge b-fit-green">🟢 B-robust</span></div>
+        </div>
+        <p class="definition">A two-way split among pellets, by thresholding edge roughness, the
+          relative annular diameter (<span class="term">RAD</span>) or compactness. A
+          <span class="term">smooth</span> pellet has a clean dense rim; a
+          <span class="term">hairy</span> pellet wears a loose fringe of outer filaments.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Smooth pellet with a clean rim versus hairy pellet with a fringed outer zone">
+            <!-- smooth pellet -->
+            <g transform="translate(96,104)">
+              <circle cx="0" cy="0" r="46" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.20)"/>
+              <text class="lbl-strong" x="0" y="80" text-anchor="middle">smooth</text>
+            </g>
+            <!-- hairy pellet -->
+            <g transform="translate(256,104)">
+              <circle cx="0" cy="0" r="50" stroke="var(--orange)" stroke-width="1.6" stroke-dasharray="4 4"
+                      fill="none"/>
+              <circle cx="0" cy="0" r="34" class="struct" stroke="var(--green)" fill="rgba(11,155,118,.20)"/>
+              <g stroke="var(--green)" stroke-width="1.5" stroke-linecap="round">
+                <path d="M0,-34 L0,-54 M17,-29 L28,-46 M29,-17 L48,-28 M34,0 L54,0 M29,17 L48,28
+                         M17,29 L28,46 M0,34 L0,54 M-17,29 L-28,46 M-29,17 L-48,28 M-34,0 L-54,0
+                         M-29,-17 L-48,-28 M-17,-29 L-28,-46"/>
+              </g>
+              <text class="lbl" x="38" y="-44" fill="var(--orange)">RAD zone</text>
+              <text class="lbl-strong" x="0" y="80" text-anchor="middle">hairy</text>
+            </g>
+          </svg>
+          <figcaption><b>Mechanism:</b> within the pellet class, measure roughness or the outer
+            loose-zone fraction (RAD) and threshold. A low value marks a smooth, tightly-bounded
+            pellet; a high value a hairy pellet with a fuzzy filamentous corona. Mask-derived.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">binary mask</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">Tucker &amp; Thomas 1992</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>pellet class</b> — thresholded on edge roughness / RAD / compactness</dd>
+            <dt>Units</dt><dd>categorical (smooth / hairy)</dd>
+            <dt>Reads as</dt><dd>smooth = clean dense rim, RAD near 0; hairy = fuzzy filamentous corona ringing the core</dd>
+          </dl>
+        </div>
+        <div class="varkey">
+          <span class="vk-title">Variables</span>
+          <dl>
+            <dt>RAD</dt><dd>relative annular diameter — fraction of the pellet radius taken up by the loose outer filament zone; thresholded to split smooth from hairy</dd>
+          </dl>
+        </div>
+      </article>
+
+      <!-- ===== CARD 7 — Elevation / surface texture ===== -->
+      <article class="card">
+        <div class="card-head">
+          <h3 class="metric-name">Elevation / surface texture</h3>
+          <div class="badges"><span class="badge b-phys">🎨 Phys</span><span class="badge b-fit-amber">🎨 colour-gated</span></div>
+        </div>
+        <p class="definition">The vertical and surface character of the colony —
+          <span class="term">flat / raised / umbonate</span> and
+          <span class="term">smooth / fuzzy / cottony</span>. Unlike the rest of the family this is
+          not a pure silhouette read: it needs shading, oblique lighting or 3-D to see relief and
+          nap, so it sits on the Phys (colour) overlay.</p>
+        <figure class="illo">
+          <svg viewBox="0 0 360 220" role="img" aria-label="Flat, raised and umbonate elevation profiles in side view with surface texture">
+            <line class="axis" x1="24" y1="150" x2="336" y2="150"/>
+            <!-- flat -->
+            <path class="struct" stroke="var(--purple)" d="M40,150 q40,-18 80,0"/>
+            <text class="lbl" x="56" y="170">flat</text>
+            <!-- raised -->
+            <path class="struct" stroke="var(--purple)" d="M146,150 q44,-46 88,0"/>
+            <text class="lbl" x="166" y="170">raised</text>
+            <!-- umbonate -->
+            <path class="struct" stroke="var(--purple)" d="M250,150 q14,-30 32,-30 q6,-30 14,-30 q8,0 14,30 q18,0 32,30"/>
+            <text class="lbl" x="268" y="170">umbonate</text>
+            <!-- fuzzy/cottony nap on top of raised -->
+            <g stroke="var(--purple)" stroke-width="1.1" stroke-linecap="round" opacity="0.8">
+              <path d="M168,124 l-4,-12 M182,116 l0,-13 M196,113 l3,-13 M210,116 l5,-12 M224,124 l6,-11"/>
+            </g>
+            <text class="lbl-strong" x="24" y="40">side-view relief + nap</text>
+            <text class="lbl" x="24" y="58">needs shading / oblique light / 3-D</text>
+          </svg>
+          <figcaption><b>Mechanism:</b> read height profile from shading or a 3-D surface and
+            surface nap from local texture contrast. Because flat, raised and umbonate look almost
+            identical from straight overhead, this depends on lighting cues — the only Phys-overlay
+            metric in the family.</figcaption>
+        </figure>
+        <div class="meta">
+          <div class="mrow"><span class="mk">Input</span><span class="mv">RGB / oblique / 3-D</span></div>
+          <div class="mrow"><span class="mk">Robust</span><span class="mv">medium–low — needs shading / 3-D</span></div>
+          <div class="mrow"><span class="mk">From</span><span class="mv"><span class="prov">Mycology</span></span></div>
+          <div class="mrow"><span class="mk">Source</span><span class="mv cite">morphotyping</span></div>
+        </div>
+        <div class="outmetric">
+          <span class="om-title">Output metric</span>
+          <dl>
+            <dt>Value</dt><dd><b>elevation &amp; surface class</b> — relief profile plus surface nap read from shading / 3-D</dd>
+            <dt>Units</dt><dd>categorical (flat / raised / umbonate; smooth / fuzzy / cottony)</dd>
+            <dt>Reads as</dt><dd>flat → raised → umbonate = rising central relief; smooth → fuzzy → cottony = increasingly napped surface</dd>
+          </dl>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ MARQUEE — convex-perimeter deficit (large) ============ -->
+  <section class="band">
+    <h2 class="section-title">Reading concavity off the hull</h2>
+    <p class="section-sub">The most threshold-robust descriptors in this family are the ones that
+      compare the colony against its convex hull — concavity that never depends on resolving a
+      single filament.</p>
+    <hr class="rule">
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 720 240" role="img" aria-label="Convex hull boundary in dashed amber overlaid on the deeply indented green colony perimeter">
+        <!-- convex hull -->
+        <polygon points="120,46 360,28 600,90 560,200 320,222 96,150"
+                 fill="rgba(217,138,0,.06)" stroke="var(--orange)" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <!-- indented actual perimeter -->
+        <path class="struct" stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.10)"
+          d="M150,66 q44,-10 70,10 q34,-26 74,-4 q40,-26 92,2 q-12,28 18,46 q40,18 8,52
+             q24,38 -26,44 q-30,40 -78,8 q-48,28 -84,-8 q-48,6 -38,-44 q-40,-22 -6,-54
+             q-26,-40 44,-50 Z"/>
+        <!-- annotation pointing to a bay -->
+        <circle cx="262" cy="118" r="4" fill="var(--vermillion)"/>
+        <line x1="262" y1="118" x2="320" y2="70" stroke="var(--vermillion)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text class="lbl" x="324" y="66" fill="var(--vermillion)">each bay lengthens P, not P_h</text>
+        <text class="lbl-strong" x="470" y="40" fill="var(--orange)">convex hull (smooth) — P_h</text>
+        <text class="lbl-strong" x="150" y="232" fill="var(--green)">actual indented perimeter — P</text>
+      </svg>
+      <figcaption><b>Convex-perimeter deficit.</b> The taut amber hull traces the shortest boundary
+        enclosing the colony; the green outline is what the margin actually does. Every inward bay
+        the edge carves adds to the true perimeter P while the hull perimeter P_h stays nearly
+        fixed — so <b>convexity = P_h / P</b> falls smoothly as the margin gets more ragged,
+        with no per-hypha measurement anywhere in the calculation.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ MARQUEE — pellet / clump / dispersed trio (large) ============ -->
+  <section class="band">
+    <h2 class="section-title">The macromorphology axis: compact → diffuse</h2>
+    <p class="section-sub">Submerged-culture morphology lines up on one silhouette axis, from a
+      tight pellet through a loose clump to a fully diffuse mycelium.</p>
+    <hr class="rule">
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 720 230" role="img" aria-label="Pellet, clump and dispersed forms arranged along a compact-to-diffuse axis">
+        <line class="axis" x1="60" y1="196" x2="660" y2="196"/>
+        <text class="lbl-strong" x="60" y="30">compact</text>
+        <text class="lbl-strong" x="586" y="30" text-anchor="start">diffuse / filamentous</text>
+        <line x1="60" y1="40" x2="660" y2="40" stroke="var(--rule)" stroke-width="1" marker-end=""/>
+        <!-- pellet: compact disc -->
+        <g transform="translate(150,116)">
+          <circle cx="0" cy="0" r="50" class="struct" stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.24)"/>
+          <text class="lbl-strong" x="0" y="92" text-anchor="middle">pellet</text>
+          <text class="lbl" x="0" y="110" text-anchor="middle">high circularity + solidity</text>
+        </g>
+        <!-- clump: loose aggregate -->
+        <g transform="translate(360,116)">
+          <path class="struct" stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.16)"
+            d="M-14,-46 q28,-12 40,8 q28,4 18,28 q18,20 -8,32 q-2,26 -30,18
+               q-26,16 -38,-8 q-28,-8 -16,-32 q-12,-28 16,-32 q6,-20 18,-8 Z"/>
+          <text class="lbl-strong" x="0" y="92" text-anchor="middle">clump</text>
+          <text class="lbl" x="0" y="110" text-anchor="middle">lower circularity, rougher</text>
+        </g>
+        <!-- dispersed: diffuse mycelium -->
+        <g transform="translate(580,116)" stroke="var(--green)" stroke-width="1.6" fill="none" stroke-linecap="round">
+          <path d="M-50,-10 C-30,-26 -10,-4 10,-22 M-34,22 C-12,6 8,28 28,12
+                   M-44,-30 C-22,-40 -8,-24 10,-40 M-8,40 C12,26 28,46 46,30
+                   M14,-4 C34,-18 44,2 60,-12 M-56,10 C-40,22 -22,8 -10,22
+                   M30,-30 C46,-36 50,-22 64,-30 M-30,-2 C-12,-12 -4,0 12,-8"/>
+          <text class="lbl-strong" x="0" y="92" text-anchor="middle" fill="var(--ink)">dispersed</text>
+          <text class="lbl" x="0" y="110" text-anchor="middle" fill="var(--text-dim)">high P/A, low solidity</text>
+        </g>
+      </svg>
+      <figcaption><b>Pellet → clump → dispersed.</b> A compact disc, a loose aggregate, and a
+        diffuse filamentous mat — the same growth scored three ways by how much of its silhouette
+        is filled. Circularity, solidity and perimeter-to-area move monotonically along this axis,
+        which is why the classification works from shape alone.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ MARQUEE — smooth vs hairy pellet (large) ============ -->
+  <section class="band">
+    <h2 class="section-title">Smooth vs hairy: the outer-zone fraction</h2>
+    <p class="section-sub">Within the pellet class, the split is the loose outer corona — the
+      relative annular diameter (RAD) that separates a clean dense pellet from a fringed one.</p>
+    <hr class="rule">
+    <figure class="illo" style="margin-top:18px">
+      <svg viewBox="0 0 720 230" role="img" aria-label="A clean dense pellet beside a pellet with a protruding outer filament zone marked RAD">
+        <!-- smooth pellet -->
+        <g transform="translate(180,112)">
+          <circle cx="0" cy="0" r="74" class="struct" stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.22)"/>
+          <text class="lbl-strong" x="0" y="112" text-anchor="middle">smooth pellet</text>
+          <text class="lbl" x="0" y="130" text-anchor="middle">clean dense rim · RAD ≈ 0</text>
+        </g>
+        <!-- hairy pellet -->
+        <g transform="translate(520,112)">
+          <!-- outer extent (loose zone) -->
+          <circle cx="0" cy="0" r="92" stroke="var(--orange)" stroke-width="2" stroke-dasharray="6 5" fill="none"/>
+          <!-- dense core -->
+          <circle cx="0" cy="0" r="56" class="struct" stroke="var(--green)" stroke-width="2.5" fill="rgba(11,155,118,.22)"/>
+          <!-- protruding filaments forming the corona -->
+          <g stroke="var(--green)" stroke-width="1.7" stroke-linecap="round">
+            <path d="M0,-56 L0,-94 M28,-48 L46,-80 M48,-28 L80,-46 M56,0 L94,0 M48,28 L80,46
+                     M28,48 L46,80 M0,56 L0,94 M-28,48 L-46,80 M-48,28 L-80,46 M-56,0 L-94,0
+                     M-48,-28 L-80,-46 M-28,-48 L-46,-80"/>
+          </g>
+          <!-- RAD bracket -->
+          <line x1="56" y1="-2" x2="92" y2="-2" stroke="var(--vermillion)" stroke-width="1.4"/>
+          <text class="lbl" x="60" y="-12" fill="var(--vermillion)">RAD</text>
+          <text class="lbl" x="-44" y="-66" fill="var(--orange)">outer loose zone</text>
+          <text class="lbl-strong" x="0" y="124" text-anchor="middle">hairy pellet</text>
+          <text class="lbl" x="0" y="142" text-anchor="middle">filamentous corona · RAD high</text>
+        </g>
+      </svg>
+      <figcaption><b>Smooth vs hairy pellet.</b> Both share a dense core, but the hairy form adds a
+        loose outer ring of protruding filaments. The relative annular diameter — the fraction of
+        the radius taken up by that outer zone, (d_total − d_core) / d_total — is the threshold
+        that separates them, alongside edge roughness.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ CALLOUT ============ -->
+  <section class="band">
+    <div class="callout green">
+      <h3>Industrial fermentation reads morphology straight off the silhouette</h3>
+      <p>Submerged-culture morphology assessment classifies <b>pellet</b>, <b>clump</b> and
+        <b>dispersed</b> forms almost entirely from silhouette geometry — area, circularity,
+        compactness, solidity and perimeter-to-area — because in stirred bioreactors those gross
+        shape classes are what drive broth rheology and oxygen transfer. This is the same Regime-B
+        logic PhenoTypic already applies to compact colonies, scaled up to whole growth forms.</p>
+      <p>The documented soft spot is the <b>clump ↔ pellet ambiguity</b>: a loose, slightly
+        irregular pellet and a tight, rounded clump occupy overlapping regions of shape space, so
+        the boundary between those two classes is the one a rule or classifier gets wrong first.</p>
+      <ul>
+        <li><b>Most threshold-robust:</b> the convex-hull comparisons — <b>convex-perimeter
+          deficit / convexity</b> and <b>perimeter-to-area ratio</b> — and the
+          <b>pellet/clump/dispersed</b> label that rests on them. None require resolving an
+          individual filament, so they hold up under dense, low-resolution growth.</li>
+        <li><b>Most fragile:</b> <b>roughness / hairy-length</b> (🟡) needs the protruding
+          filaments actually resolved, and <b>elevation / surface texture</b> (🎨) needs shading
+          or 3-D — both fail on a flat, overhead, low-resolution mask.</li>
+        <li><b>Reads-as-named caveat:</b> the <b>macroscopic margin type</b> label is robust except
+          for the rhizoid-vs-filamentous split, which needs genuine edge detail.</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer"><div class="wrap">
+  <div class="flinks">
+    <a href="index.html">↩ All families index</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/branch-phenotypes-catalog.md">Full catalog (spec)</a>
+    <a href="../../specs/2026-06-25-branch-phenotypes-filamentous-fungi/astronomy-thin-structures.md">Astronomy companion</a>
+  </div>
+  <p class="note">Part of the “Branch Phenotypes for Filamentous Fungi” catalog. Metric definitions and citations
+    are drawn from the spec; biological interpretation is for human authoring. Citations were DOI-verified by the
+    source research pass — see the spec's verification caveats before external use.</p>
+</div></footer>
+
+</body>
+</html>

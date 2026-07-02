@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>phenotypic.tune — How the tuning engine works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --font-serif: 'IBM Plex Serif', Georgia, serif;
+
+    --bg: #0b1622;
+    --bg-2: #0e1c2b;
+    --surface: #122334;
+    --surface-2: #16293c;
+    --border: rgba(180, 210, 240, 0.12);
+    --border-strong: rgba(180, 210, 240, 0.22);
+    --text: #e8f0f8;
+    --text-dim: #93a8bd;
+    --text-faint: #647a90;
+
+    --gold: #e0a64a;
+    --gold-dim: rgba(224, 166, 74, 0.12);
+    --teal: #3fb8af;
+    --teal-dim: rgba(63, 184, 175, 0.12);
+    --blue: #5aa6e8;
+    --blue-dim: rgba(90, 166, 232, 0.12);
+    --rose: #e0708a;
+    --rose-dim: rgba(224, 112, 138, 0.12);
+    --green: #6fc28a;
+    --green-dim: rgba(111, 194, 138, 0.12);
+    --violet: #9d8df0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @keyframes fadeUp { from { opacity:0; transform: translateY(12px);} to {opacity:1; transform:none;} }
+  .animate { animation: fadeUp .45s ease-out both; animation-delay: calc(var(--i,0)*.05s); }
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0ms!important;transition-duration:.01ms!important;} html{scroll-behavior:auto;} }
+
+  /* ---- top nav ---- */
+  .topnav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(10px);
+    background: rgba(11,22,34,0.82);
+    border-bottom: 1px solid var(--border);
+  }
+  .topnav__inner {
+    max-width: 1080px; margin: 0 auto; padding: 11px 24px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .topnav__brand {
+    font-family: var(--font-mono); font-weight: 600; font-size: 13px;
+    color: var(--gold); letter-spacing: .5px; white-space: nowrap;
+  }
+  .topnav__brand span { color: var(--text-faint); }
+  .topnav__links { display: flex; gap: 4px; flex-wrap: wrap; }
+  .topnav__links a {
+    font-family: var(--font-mono); font-size: 11.5px; text-decoration: none;
+    color: var(--text-dim); padding: 4px 9px; border-radius: 5px;
+    transition: background .15s, color .15s;
+  }
+  .topnav__links a:hover { background: var(--gold-dim); color: var(--gold); }
+
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---- hero ---- */
+  .hero { padding: 64px 0 40px; border-bottom: 1px solid var(--border); }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(30px, 5vw, 50px); font-weight: 700; letter-spacing: -1.2px; line-height: 1.05; text-wrap: balance; }
+  h1 .accent { color: var(--gold); }
+  .lede { font-size: 18px; color: var(--text-dim); max-width: 720px; margin-top: 18px; line-height: 1.65; }
+  .lede code, .lede strong { color: var(--text); }
+
+  .hero-meta { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 30px; }
+  .hero-meta div { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); }
+  .hero-meta strong { display: block; font-size: 22px; color: var(--gold); font-weight: 600; margin-bottom: 2px; }
+  .hero-meta .teal { color: var(--teal); }
+  .hero-meta .blue { color: var(--blue); }
+  .hero-meta .rose { color: var(--rose); }
+
+  /* ---- sections ---- */
+  section.block { padding: 52px 0; border-bottom: 1px solid var(--border); }
+  .sec-num {
+    font-family: var(--font-mono); font-size: 12px; color: var(--gold);
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  h2 { font-size: clamp(23px, 3.4vw, 32px); font-weight: 700; letter-spacing: -.6px; }
+  h3 { font-size: 17px; font-weight: 600; margin: 26px 0 12px; color: var(--text); }
+  .sec-intro { color: var(--text-dim); font-size: 15.5px; max-width: 760px; margin-top: 12px; line-height: 1.7; }
+  p { color: var(--text-dim); font-size: 15px; line-height: 1.7; max-width: 800px; }
+  p + p { margin-top: 12px; }
+  p code, li code, td code, .sec-intro code, h3 code {
+    font-family: var(--font-mono); font-size: .86em; background: var(--gold-dim);
+    color: var(--gold); padding: 1px 5px; border-radius: 3px; overflow-wrap: break-word;
+  }
+  strong { color: var(--text); font-weight: 600; }
+
+  ul, ol { color: var(--text-dim); font-size: 15px; line-height: 1.7; padding-left: 22px; margin: 12px 0; max-width: 800px; }
+  li { margin: 6px 0; }
+  li::marker { color: var(--gold); }
+
+  /* ---- cards ---- */
+  .grid { display: grid; gap: 16px; margin-top: 24px; }
+  .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px){ .grid.cols-2,.grid.cols-3,.grid.cols-4 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; min-width: 0;
+  }
+  .card h4 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .card p { font-size: 13.5px; line-height: 1.6; }
+  .card .tag {
+    font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .t-gold { background: var(--gold);} .t-teal{background:var(--teal);} .t-blue{background:var(--blue);}
+  .t-rose{background:var(--rose);} .t-green{background:var(--green);} .t-violet{background:var(--violet);}
+  .tag.t-gold{background:var(--gold-dim);color:var(--gold);}
+  .tag.t-teal{background:var(--teal-dim);color:var(--teal);}
+  .tag.t-blue{background:var(--blue-dim);color:var(--blue);}
+  .tag.t-rose{background:var(--rose-dim);color:var(--rose);}
+  .tag.t-green{background:var(--green-dim);color:var(--green);}
+
+  .card.accent-gold { border-top: 2px solid var(--gold); }
+  .card.accent-teal { border-top: 2px solid var(--teal); }
+  .card.accent-blue { border-top: 2px solid var(--blue); }
+  .card.accent-rose { border-top: 2px solid var(--rose); }
+  .card.accent-green { border-top: 2px solid var(--green); }
+
+  /* ---- formula block ---- */
+  .formula {
+    background: var(--bg-2); border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--teal); border-radius: 8px;
+    padding: 16px 20px; margin: 16px 0; font-family: var(--font-mono);
+    font-size: 15px; color: var(--text); overflow-x: auto; line-height: 1.9;
+  }
+  .formula .lbl { color: var(--text-faint); font-size: 12px; }
+  .formula .hi { color: var(--gold); }
+  .formula .hi2 { color: var(--teal); }
+  .formula .cmt { color: var(--text-faint); font-size: 12px; }
+  var { font-family: var(--font-mono); font-style: normal; color: var(--blue); }
+
+  /* ---- inline SVG visualizations ---- */
+  .viz { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 22px 18px; margin: 22px 0; }
+  .viz .vtitle { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; }
+  .viz svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .viz figcaption { font-size: 13px; color: var(--text-faint); margin-top: 14px; line-height: 1.6; }
+  .viz figcaption b { color: var(--text-dim); font-weight: 600; }
+  .subsec-tag { display:inline-block; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); background: var(--gold-dim); padding: 3px 9px; border-radius: 20px; margin: 30px 0 4px; }
+
+  /* ---- callouts ---- */
+  .callout {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0;
+    padding: 15px 18px; margin: 20px 0; font-size: 14px; color: var(--text-dim); line-height: 1.65;
+  }
+  .callout.teal { border-left-color: var(--teal); }
+  .callout.rose { border-left-color: var(--rose); }
+  .callout strong { color: var(--text); }
+  .callout code { font-family: var(--font-mono); font-size: 12px; background: var(--teal-dim); color: var(--teal); padding: 1px 5px; border-radius: 3px; }
+
+  /* ---- tables ---- */
+  .table-wrap { overflow-x: auto; margin: 22px 0; border: 1px solid var(--border); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 520px; }
+  thead th {
+    text-align: left; padding: 11px 14px; background: var(--surface-2);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--gold); border-bottom: 1px solid var(--border-strong); white-space: nowrap;
+  }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: top; overflow-wrap: break-word; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.015); }
+  td strong { color: var(--text); }
+  td code, th code { font-family: var(--font-mono); font-size: 12px; color: var(--teal); background: var(--teal-dim); padding: 1px 5px; border-radius: 3px; }
+
+  /* ---- code block ---- */
+  pre {
+    background: var(--bg-2); border: 1px solid var(--border-strong);
+    border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 16px 0;
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; color: var(--text);
+  }
+  pre .c { color: var(--text-faint); }
+  pre .k { color: var(--gold); }
+  pre .s { color: var(--green); }
+  pre .f { color: var(--blue); }
+
+  /* ---- step / timeline ---- */
+  .steps { margin-top: 26px; display: grid; gap: 0; }
+  .step { display: grid; grid-template-columns: 44px 1fr; gap: 18px; padding-bottom: 26px; position: relative; }
+  .step:not(:last-child)::before {
+    content:''; position:absolute; left:21px; top:40px; bottom:0; width:2px; background: var(--border-strong);
+  }
+  .step__num {
+    width: 44px; height: 44px; border-radius: 10px; background: var(--surface);
+    border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 600; font-size: 16px; color: var(--gold); flex: none; z-index: 1;
+  }
+  .step__body h4 { font-size: 16px; font-weight: 600; margin-bottom: 5px; }
+  .step__body p { font-size: 14px; margin: 0; }
+  .step__body .meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--teal); margin-top: 6px; }
+
+  /* ---- mermaid (canonical diagram-shell) ---- */
+  .diagram-shell { position: relative; margin: 26px 0; }
+  .diagram-shell__hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-bottom: 8px; opacity:.75; }
+  .mermaid-wrap {
+    position: relative; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px 20px; overflow: auto; display: flex;
+    justify-content: center; align-items: center; min-height: 380px; cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .zoom-controls { position:absolute; top:8px; right:8px; display:flex; gap:2px; z-index:10; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:2px; }
+  .zoom-controls button { width:28px;height:28px;border:none;background:transparent;color:var(--text-dim);font-family:var(--font-mono);font-size:14px;cursor:pointer;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s; }
+  .zoom-controls button:hover { background: var(--border); color: var(--text); }
+  .mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 320px; }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); padding: 0 6px; white-space: nowrap; align-self:center; }
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 12px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon { stroke-width: 1.5px !important; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* ---- io columns ---- */
+  .io-split { display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+  @media (max-width: 860px){ .io-split { grid-template-columns: 1fr; } }
+  .io-col h3 { margin-top: 0; }
+  .filetree { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.85; color: var(--text-dim); }
+  .filetree .dir { color: var(--gold); }
+  .filetree .file { color: var(--teal); }
+  .filetree .note { color: var(--text-faint); }
+
+  footer { padding: 40px 0 70px; color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
+  footer a { color: var(--teal); }
+
+  .pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .pill { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); }
+  .pill b { color: var(--gold); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav__inner">
+    <div class="topnav__brand">phenotypic<span>.</span>tune</div>
+    <div class="topnav__links">
+      <a href="#loop">Loop</a>
+      <a href="#inputs">Inputs</a>
+      <a href="#space">Search&nbsp;space</a>
+      <a href="#strategies">Strategies</a>
+      <a href="#eval">Evaluation</a>
+      <a href="#scorers">Scorers</a>
+      <a href="#importance">Importance</a>
+      <a href="#pareto">Pareto</a>
+      <a href="#general">Held-out</a>
+      <a href="#flow">Full&nbsp;flow</a>
+      <a href="#outputs">Outputs</a>
+      <a href="#run">A&nbsp;run</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="eyebrow animate" style="--i:0">Module deep-dive · image-pipeline hyperparameter tuning</div>
+    <h1 class="animate" style="--i:1">Tuning a pipeline is one<br><span class="accent">ask-and-tell loop.</span></h1>
+    <p class="lede animate" style="--i:2">
+      A <strong>strategy</strong> proposes a parameter combo &rarr; an <strong>evaluator</strong> builds a
+      pipeline and scores it on a calibration set &rarr; a <strong>scorer</strong> turns segmentation quality
+      into a number &rarr; the result is <em>told back</em> so the next proposal is better-informed.
+      Everything the optimizer sees is a bounded <strong>cost &isin; [0,1]</strong> — <code>0</code> = perfect,
+      <code>1</code> = worst — and <strong>everything is minimized.</strong>
+    </p>
+    <div class="hero-meta animate" style="--i:3">
+      <div><strong>4</strong> scoring objectives</div>
+      <div><strong class="teal">6</strong> search strategies</div>
+      <div><strong class="blue">2</strong> importance methods</div>
+      <div><strong class="rose">∈ [0,1]</strong> cost convention</div>
+    </div>
+    <div class="pill-row animate" style="--i:4">
+      <span class="pill"><b>entry</b> python -m phenotypic.tune run</span>
+      <span class="pill"><b>orchestrator</b> TuningEngine.optimize()</span>
+      <span class="pill"><b>backends</b> Optuna · journal</span>
+      <span class="pill"><b>scale</b> local · SLURM fleet · resume</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 0. THE LOOP ================= -->
+<section class="block" id="loop">
+  <div class="container">
+    <div class="sec-num">00 — THE BIG PICTURE</div>
+    <h2>The ask-and-tell loop</h2>
+    <p class="sec-intro">
+      The whole module is an optimization loop driven by <code>TuningEngine.optimize()</code> (<code>_engine.py</code>).
+      One <strong>search space</strong> is inferred once up front; then each trial repeats the same four moves until the
+      strategy exhausts or the budget caps.
+    </p>
+
+    <div class="formula" style="border-left-color: var(--gold);">
+      <span class="lbl">per trial &mdash;</span><br>
+      strategy.<span class="hi">suggest()</span> &rarr; evaluator.<span class="hi2">evaluate(...)</span> &rarr; store.<span class="hi">append(Trial)</span> &rarr; strategy.<span class="hi2">register_result(...)</span> &rarr; <span class="cmt">bump budget (n_trials, max_failures)</span>
+    </div>
+
+    <div class="diagram-shell animate">
+      <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom · drag to pan · double-click to fit · ⛶ opens full size</p>
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+          <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+          <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+          <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+          <span class="zoom-label">Loading…</span>
+        </div>
+        <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+      </div>
+      <script type="text/plain" class="diagram-source">
+flowchart LR
+  SP["infer_search_space()<br/><i>pipeline fields → Knobs</i>"]:::setup
+  ST["Strategy<br/>TPE · CMA-ES · GP<br/>NSGA-II · random · grid"]:::strat
+  EV["Evaluator.evaluate()<br/><i>build + score on<br/>calibration set</i>"]:::eval
+  SC["Scorer<br/><i>quality → cost ∈ [0,1]</i>"]:::score
+  STORE["StudyStore<br/><i>journal every trial</i>"]:::store
+
+  SP --> ST
+  ST -->|"suggest(): params + channel"| EV
+  EV -->|"score_image → cost"| SC
+  SC -->|"finalize → scalar / vector"| EV
+  EV -->|"EvaluationResult"| STORE
+  STORE -->|"register_result(): tell"| ST
+  STORE -->|"best() / pareto knee"| OUT["best_pipeline.json<br/>+ importance + report"]:::out
+
+  classDef setup fill:#16293c,stroke:#e0a64a,color:#e8f0f8;
+  classDef strat fill:#122334,stroke:#5aa6e8,color:#e8f0f8;
+  classDef eval fill:#122334,stroke:#3fb8af,color:#e8f0f8;
+  classDef score fill:#122334,stroke:#e0708a,color:#e8f0f8;
+  classDef store fill:#16293c,stroke:#9d8df0,color:#e8f0f8;
+  classDef out fill:#16293c,stroke:#6fc28a,color:#e8f0f8;
+      </script>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--gold)"></div>one-time setup</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--blue)"></div>strategy (decide)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--teal)"></div>evaluator (run)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--rose)"></div>scorer (judge)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--violet)"></div>journal</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div>deliverables</div>
+    </div>
+
+    <div class="callout teal">
+      <strong>Resume is built in.</strong> A deterministic strategy (grid/random journal) is fast-forwarded by replaying
+      <code>suggest()</code> N times past recorded trials; an Optuna RDB store restores the sampler state in place. The
+      split, the study name (<code>tune_cost_v1</code>), and the budget counters all seed from the store so resume is symmetric.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1. INPUTS ================= -->
+<section class="block" id="inputs">
+  <div class="container">
+    <div class="sec-num">01 — WHAT YOU PROVIDE</div>
+    <h2>User input: the spec, the images, the flags</h2>
+    <p class="sec-intro">
+      A run needs three things: a <strong>tuning&nbsp;spec</strong> (the self-contained recipe), a <strong>directory of
+      calibration plates</strong>, and optional <strong>CLI flags</strong> that override the spec or fan the run out over SLURM.
+    </p>
+
+    <h3>The CLI surface</h3>
+    <pre><span class="c"># Run a spec over an image directory (the engine)</span>
+uv run python -m phenotypic.tune <span class="k">run</span> spec.json <span class="f">-i</span> ./plates <span class="f">-o</span> ./out
+
+<span class="c"># Override the strategy / budget on the fly</span>
+uv run python -m phenotypic.tune run spec.json -i ./plates \
+    <span class="f">--strategy</span> tpe <span class="f">--n-trials</span> 200 <span class="f">--screen</span>
+
+<span class="c"># Distributed: a shared Optuna study + a SLURM worker fleet</span>
+uv run python -m phenotypic.tune run spec.json -i ./plates \
+    <span class="f">--slurm</span> <span class="f">--n-workers</span> 8 <span class="f">--storage-url</span> postgresql+psycopg://user@host/db
+
+<span class="c"># Infer a reviewable search space from a pipeline (no engine run)</span>
+uv run python -m phenotypic.tune <span class="k">auto-space</span> pipeline.json <span class="f">-o</span> ./out</pre>
+
+    <div class="grid cols-2">
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>The <code>tuning_spec.json</code> recipe</h4>
+        <p>One round-trippable pydantic model (<code>TuningSpec</code>) carrying every moving part. Knob targets are
+        cross-checked against the live pipeline at construction (out-of-range op, wrong class, missing field — with a
+        did-you-mean).</p>
+      </div>
+      <div class="card accent-teal">
+        <h4><span class="dot t-teal"></span>Calibration plates</h4>
+        <p>Every image under <code>-i</code> loads as a <code>GridImage</code> (arrayed-colony plates). <code>--nrows/--ncols</code>
+        pin a known uniform grid for cell-aware scoring. Unreadable files are skipped, not fatal. A held-out slice is
+        reserved deterministically by content hash.</p>
+      </div>
+    </div>
+
+    <h3>Anatomy of a spec</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>What it carries</th></tr></thead>
+        <tbody>
+          <tr><td><code>pipeline</code></td><td>ImagePipeline</td><td>The base pipeline being tuned, embedded (serialized via its own <code>to_json</code>).</td></tr>
+          <tr><td><code>search_space</code></td><td>SearchSpace</td><td>The hand-authored or inferred set of <strong>Knobs</strong> (tunable dimensions).</td></tr>
+          <tr><td><code>scorer</code></td><td>ScorerField</td><td>The objective — any <code>Scorer</code> subclass (supervised / reference-free / QC / composite).</td></tr>
+          <tr><td><code>strategy</code></td><td>StrategyConfig</td><td><code>GridConfig</code> / <code>RandomConfig</code> / <code>OptunaConfig</code> — the optimizer + sampler.</td></tr>
+          <tr><td><code>evaluator</code></td><td>Evaluator</td><td>The candidate-evaluation policy (rung ladder, robust aggregate, pruning).</td></tr>
+          <tr><td><code>budget</code></td><td>Budget</td><td><code>n_trials</code> cap + <code>max_failures</code> safety valve.</td></tr>
+          <tr><td><code>held_out</code></td><td>HeldOutConfig</td><td>The generalization policy: fraction, group key, gap margins.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <strong>Two ways to get a space.</strong> Hand-author <code>Knob</code>s, or run <code>auto-space</code> to mine the
+      pipeline's pydantic fields into a generous, flagged-for-review <code>InferredSearchSpace</code> — written to
+      <code>deliverables/tuning_spec.json</code> for you to edit before running the engine.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. SEARCH SPACE ================= -->
+<section class="block" id="space">
+  <div class="container">
+    <div class="sec-num">02 — STAGE ZERO (ONCE, BEFORE THE LOOP)</div>
+    <h2>How a parameter becomes a tunable dimension</h2>
+    <p class="sec-intro">
+      <code>infer_search_space()</code> (<code>_search_space/_infer.py</code>) walks the pipeline's pydantic operation
+      fields. Each field becomes a <strong>Knob</strong> (a tunable dimension) or an <strong>Excluded</strong> record.
+      Two tiers decide the domain.
+    </p>
+
+    <div class="grid cols-2">
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>Tier 1 — explicit <code>TuneSpec</code></h4>
+        <p>If a field carries a <code>TuneSpec</code> marker it wins outright: explicit <code>low/high/step/log</code> or
+        <code>categories</code>. A subset assertion enforces <strong>TuneSpec ⊆ field bounds</strong> — you can never tune
+        outside the operation's own pydantic validation.</p>
+      </div>
+      <div class="card accent-teal">
+        <h4><span class="dot t-teal"></span>Tier 2 — type heuristics</h4>
+        <p>No marker? The field's type decides. Bounded numerics map to their <code>ge/le</code> range; unbounded numerics
+        get a window around the default; open sets (str / Path / ndarray) are excluded. Recurses exactly <strong>one level</strong>
+        into operation-valued fields.</p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field type</th><th>Inferred domain</th></tr></thead>
+        <tbody>
+          <tr><td><code>bool</code></td><td><code>Categorical(True, False)</code></td></tr>
+          <tr><td><code>Literal[...]</code> / <code>Enum</code></td><td><code>Categorical(choices)</code></td></tr>
+          <tr><td>numeric <strong>with</strong> <code>ge/le</code></td><td><code>IntRange</code> / <code>FloatRange(low, high)</code></td></tr>
+          <tr><td>numeric <strong>unbounded</strong>, default <code>d</code></td><td>window <code>[d/4, d·4]</code> &nbsp;(<code>_DEFAULT_UNBOUNDED_FACTOR = 4</code>), stamped <code>needs_review</code></td></tr>
+          <tr><td><code>str</code> / <code>Path</code> / <code>ndarray</code></td><td><strong>Excluded</strong> (open set / not scalar-tunable)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The log-scale auto-trip</h3>
+    <p>A range is flagged <code>log=True</code> when it spans enough orders of magnitude — sampling becomes uniform in log space:</p>
+    <div class="formula">
+      <span class="lbl">unbounded heuristic</span> &nbsp; high / low &gt; <span class="hi">10</span> &nbsp;<span class="cmt">(_LOG_SPAN_THRESHOLD)</span><br>
+      <span class="lbl">explicit bounds &nbsp;&nbsp;</span> &nbsp; high / low &ge; <span class="hi">100</span> &nbsp;<span class="cmt">(_BOUNDED_LOG_SPAN_THRESHOLD)</span>
+    </div>
+
+    <h3>Domains → Optuna suggest calls</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Domain</th><th>Suggest call</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td><code>Categorical</code></td><td><code>trial.suggest_categorical(key, choices)</code></td><td>—</td></tr>
+          <tr><td><code>IntRange</code></td><td><code>trial.suggest_int(key, low, high, step, log)</code></td><td>step normalizes to 1 under log</td></tr>
+          <tr><td><code>FloatRange</code></td><td><code>trial.suggest_float(key, low, high, step, log)</code></td><td>stepped float drops its step under log</td></tr>
+          <tr><td><code>Fixed</code></td><td>injected as a constant</td><td>never a trial dimension</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout teal">
+      <strong>Conditional knobs (define-by-run).</strong> A sub-parameter is only suggested when its parent values match
+      (<code>knob.is_active(chosen)</code>) — an op's knobs enter the space only when that op is actually selected. This is
+      what lets one space describe a pipeline whose shape changes per trial.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. STRATEGIES ================= -->
+<section class="block" id="strategies">
+  <div class="container">
+    <div class="sec-num">03 — DECIDE THE NEXT PARAMETERS</div>
+    <h2>Strategies &amp; samplers</h2>
+    <p class="sec-intro">
+      The strategy answers “what to try next.” Four are Optuna samplers (all seeded), plus two zero-dependency homegrown
+      strategies. Multi-objective auto-overrides to NSGA-II.
+    </p>
+
+    <div class="grid cols-2">
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>TPE <span class="tag t-gold" style="margin-left:auto">default</span></h4>
+        <p><strong>Tree-structured Parzen Estimator.</strong> Models the inputs given the outcome <code>p(x|y)</code> and
+        inverts via Bayes. After <code>n_startup</code> random trials it sorts by score and splits at quantile γ:
+        <code>l(x)</code> = density among <strong>good</strong> trials, <code>g(x)</code> = density among the rest.</p>
+        <div class="formula" style="font-size:14px; margin-bottom:0;">
+          EI(x) &nbsp;&prop;&nbsp; <span class="hi">l(x) / g(x)</span><br>
+          <span class="cmt">propose values common among good, rare among bad</span>
+        </div>
+      </div>
+      <div class="card accent-blue">
+        <h4><span class="dot t-blue"></span>CMA-ES</h4>
+        <p>Evolution strategy adapting a <strong>covariance matrix</strong> over a continuous space. Strong once the space
+        is continuous-dominant (e.g. a post-screening focused round); falls back to independent sampling for categoricals.</p>
+      </div>
+      <div class="card accent-teal">
+        <h4><span class="dot t-teal"></span>GP</h4>
+        <p>Gaussian-process Bayesian optimization — for <strong>low-dimensional, expensive</strong> evaluations where each
+        trial is costly and the surrogate's uncertainty estimates pay off.</p>
+      </div>
+      <div class="card accent-rose">
+        <h4><span class="dot t-rose"></span>NSGA-II <span class="tag t-rose" style="margin-left:auto">multi-obj</span></h4>
+        <p>Genetic multi-objective sampler. <strong>Auto-selected</strong> whenever there are ≥ 2 objectives, regardless of
+        the configured sampler, and pruning is disabled (Optuna pruners are single-objective).</p>
+      </div>
+      <div class="card accent-green">
+        <h4><span class="dot t-green"></span>Random <span class="tag t-green" style="margin-left:auto">no learning</span></h4>
+        <p>Seeded i.i.d. sampling; <code>register_result</code> is a no-op. Continuous log floats sample as
+        <code>exp(uniform(log low, log high))</code>. A solid baseline and the explore-round workhorse.</p>
+      </div>
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>Grid <span class="tag t-gold" style="margin-left:auto">exhaustive</span></h4>
+        <p>Exhaustive conditional Cartesian product (<code>enumerate_grid</code>). Conditional knobs only enter the product
+        when active. <strong>Raises on a continuous <code>FloatRange</code></strong> — it is not enumerable.</p>
+      </div>
+    </div>
+
+    <!-- ===== SUBSECTION 3.1 — TPE ===== -->
+    <span class="subsec-tag">Deep dive · 3.1</span>
+    <h3 style="font-size:20px; margin-top:6px;">TPE — the density-ratio sampler</h3>
+    <p>
+      TPE is the default because it natively handles our mixed continuous / categorical / conditional space. Instead of
+      modeling the objective <code>p(y|x)</code> directly (as a Gaussian process does), it models the <strong>inputs given
+      the outcome</strong> <code>p(x|y)</code> and inverts via Bayes. After <code>n_startup_trials</code> random probes it
+      sorts every observed trial by cost and splits them at a quantile <strong>γ</strong> into two non-parametric
+      (Parzen-window / KDE) densities:
+    </p>
+    <ul>
+      <li><code>l(x)</code> — density of parameter values among the <strong>good</strong> trials (the lowest-cost γ-fraction);</li>
+      <li><code>g(x)</code> — density among <strong>the rest</strong>.</li>
+    </ul>
+    <p>The next candidate maximizes Expected Improvement, which for TPE collapses to maximizing the density ratio:</p>
+    <div class="formula" style="border-left-color: var(--gold);">
+      next θ = <span class="hi">argmax</span><sub>θ</sub> &nbsp; <span class="hi">l(θ) / g(θ)</span> &nbsp;&nbsp;<span class="cmt">propose values common among good trials, rare among bad ones</span>
+    </div>
+
+    <figure class="viz">
+      <div class="vtitle">TPE · split-by-quantile then maximize l(θ)/g(θ)</div>
+      <svg viewBox="0 0 720 400" role="img" aria-label="TPE density ratio visualization">
+        <!-- ===== Panel A: trials scatter, split at gamma ===== -->
+        <text x="60" y="34" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#93a8bd">observed trials</text>
+        <!-- axes -->
+        <line x1="70" y1="40" x2="70" y2="172" stroke="#647a90" stroke-width="1"/>
+        <line x1="70" y1="172" x2="690" y2="172" stroke="#647a90" stroke-width="1"/>
+        <text x="46" y="110" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#647a90" transform="rotate(-90 46 110)" text-anchor="middle">cost ↑ (worse)</text>
+        <!-- gamma split line -->
+        <line x1="70" y1="130" x2="690" y2="130" stroke="#3fb8af" stroke-width="1.4" stroke-dasharray="6 4"/>
+        <text x="684" y="125" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#3fb8af" text-anchor="end">γ quantile split</text>
+        <!-- bad trials (above gamma): blue hollow -->
+        <g fill="none" stroke="#5aa6e8" stroke-width="1.6">
+          <circle cx="110" cy="70" r="4.5"/><circle cx="150" cy="108" r="4.5"/><circle cx="205" cy="88" r="4.5"/>
+          <circle cx="320" cy="74" r="4.5"/><circle cx="400" cy="114" r="4.5"/><circle cx="455" cy="92" r="4.5"/>
+          <circle cx="520" cy="78" r="4.5"/><circle cx="560" cy="118" r="4.5"/><circle cx="620" cy="100" r="4.5"/>
+          <circle cx="660" cy="64" r="4.5"/><circle cx="378" cy="58" r="4.5"/>
+        </g>
+        <!-- good trials (below gamma): gold filled -->
+        <g fill="#e0a64a">
+          <circle cx="240" cy="150" r="4.5"/><circle cx="270" cy="160" r="4.5"/><circle cx="300" cy="156" r="4.5"/>
+          <circle cx="332" cy="162" r="4.5"/><circle cx="356" cy="148" r="4.5"/><circle cx="286" cy="142" r="4.5"/>
+        </g>
+        <text x="364" y="156" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#e0a64a">good (lowest-cost γ)</text>
+
+        <!-- ===== Panel B: densities ===== -->
+        <text x="60" y="222" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#93a8bd">fitted densities over θ</text>
+        <line x1="70" y1="352" x2="690" y2="352" stroke="#647a90" stroke-width="1"/>
+        <!-- g(x): broad, blue -->
+        <path d="M120,352 C265,352 265,302 410,302 C555,302 555,352 700,352" fill="none" stroke="#5aa6e8" stroke-width="2"/>
+        <text x="600" y="318" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#5aa6e8">g(θ) · rest</text>
+        <!-- l(x): peaked, gold -->
+        <path d="M170,352 C230,352 230,250 300,250 C370,250 370,352 430,352" fill="rgba(224,166,74,0.16)" stroke="#e0a64a" stroke-width="2.2"/>
+        <text x="196" y="270" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#e0a64a">l(θ) · good</text>
+        <!-- next pick -->
+        <line x1="300" y1="250" x2="300" y2="196" stroke="#e8f0f8" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <polygon points="300,192 296,200 304,200" fill="#e8f0f8"/>
+        <text x="300" y="186" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#e8f0f8" text-anchor="middle">next θ = argmax l/g</text>
+        <text x="380" y="378" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#647a90" text-anchor="middle">parameter value θ →</text>
+      </svg>
+      <figcaption>
+        Trials are split at <b>γ</b> into good (gold) and rest (blue); a KDE is fit to each. The sampler picks the θ where
+        the <b>ratio l(θ)/g(θ) is highest</b> — densely good, sparsely bad. Each dimension gets its own KDE and conditional
+        dimensions form a tree, so TPE handles categorical and define-by-run knobs without a continuous-only assumption.
+      </figcaption>
+    </figure>
+
+    <!-- ===== SUBSECTION 3.2 — CMA-ES & NSGA-II ===== -->
+    <span class="subsec-tag">Deep dive · 3.2</span>
+    <h3 style="font-size:20px; margin-top:6px;">CMA-ES &amp; NSGA-II — the population samplers</h3>
+    <p>
+      Both evolve a <em>population</em> of candidates generation by generation rather than fitting a per-dimension density.
+      CMA-ES is the single-objective workhorse for continuous-dominant spaces (e.g. a post-screening focused round);
+      NSGA-II is auto-selected the moment there are ≥ 2 objectives.
+    </p>
+
+    <h4 style="font-size:15px; font-weight:600; margin:22px 0 6px; color:var(--text);">CMA-ES — covariance-matrix adaptation</h4>
+    <p>
+      It maintains a multivariate Gaussian <code>N(m, σ²C)</code> over the continuous parameters. Each generation samples
+      λ candidates, ranks them by cost, recombines the best μ into a new mean, and <strong>adapts the covariance
+      <code>C</code> and step size <code>σ</code></strong> so the sampling ellipse rotates and stretches along the
+      directions that have been paying off — then shrinks as it homes in. Categorical knobs fall back to independent sampling.
+    </p>
+    <div class="formula" style="border-left-color: var(--blue);">
+      m<sup>(g+1)</sup> = <span class="hi2">Σᵢ wᵢ · xᵢ:λ</span> &nbsp;<span class="cmt">weighted recombination of the top-μ ranked samples</span><br>
+      C, σ &nbsp;<span class="hi2">adapt</span>&nbsp; toward the local cost contour &nbsp;<span class="cmt">(rank-μ + rank-one update, step-size control)</span>
+    </div>
+
+    <figure class="viz">
+      <div class="vtitle">CMA-ES · the sampling ellipse adapts toward the optimum</div>
+      <svg viewBox="0 0 720 330" role="img" aria-label="CMA-ES covariance adaptation visualization">
+        <!-- objective contours around optimum -->
+        <g transform="rotate(-20 575 150)" fill="none" stroke="rgba(180,210,240,0.10)" stroke-width="1.2">
+          <ellipse cx="575" cy="150" rx="36" ry="26"/>
+          <ellipse cx="575" cy="150" rx="78" ry="56"/>
+          <ellipse cx="575" cy="150" rx="128" ry="92"/>
+          <ellipse cx="575" cy="150" rx="186" ry="134"/>
+        </g>
+        <!-- optimum star -->
+        <path d="M575,134 l4.5,11 11.5,0 -9.3,7 3.6,11 -9.8,-6.8 -9.8,6.8 3.6,-11 -9.3,-7 11.5,0 z" fill="#6fc28a"/>
+        <text x="575" y="120" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#6fc28a" text-anchor="middle">optimum</text>
+
+        <!-- mean trajectory arrows -->
+        <g stroke="#93a8bd" stroke-width="1.5" fill="none" stroke-dasharray="5 4">
+          <path d="M150,222 L300,196"/><path d="M312,193 L444,168"/><path d="M456,165 L548,152"/>
+        </g>
+        <g fill="#93a8bd">
+          <polygon points="306,195 297,193 300,201"/><polygon points="450,166 441,164 444,172"/><polygon points="554,151 545,149 548,157"/>
+        </g>
+
+        <!-- Gen 1 -->
+        <ellipse cx="150" cy="222" rx="82" ry="56" transform="rotate(12 150 222)" fill="rgba(90,166,232,0.06)" stroke="#5aa6e8" stroke-width="1.8"/>
+        <g fill="#5aa6e8"><circle cx="118" cy="208" r="3"/><circle cx="170" cy="200" r="3"/><circle cx="142" cy="246" r="3"/><circle cx="196" cy="236" r="3"/><circle cx="120" cy="244" r="3"/><circle cx="178" cy="262" r="3"/></g>
+        <circle cx="150" cy="222" r="4.5" fill="#e8f0f8"/>
+        <text x="150" y="300" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#5aa6e8" text-anchor="middle">generation 1</text>
+
+        <!-- Gen 2 -->
+        <ellipse cx="312" cy="193" rx="68" ry="38" transform="rotate(-12 312 193)" fill="rgba(63,184,175,0.07)" stroke="#3fb8af" stroke-width="1.8"/>
+        <g fill="#3fb8af"><circle cx="286" cy="186" r="3"/><circle cx="332" cy="180" r="3"/><circle cx="350" cy="200" r="3"/><circle cx="300" cy="208" r="3"/><circle cx="270" cy="198" r="3"/></g>
+        <circle cx="312" cy="193" r="4.5" fill="#e8f0f8"/>
+        <text x="312" y="250" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#3fb8af" text-anchor="middle">generation 2</text>
+
+        <!-- Gen 3 -->
+        <ellipse cx="456" cy="165" rx="44" ry="24" transform="rotate(-26 456 165)" fill="rgba(224,166,74,0.08)" stroke="#e0a64a" stroke-width="1.8"/>
+        <g fill="#e0a64a"><circle cx="438" cy="160" r="3"/><circle cx="470" cy="156" r="3"/><circle cx="478" cy="174" r="3"/><circle cx="444" cy="178" r="3"/></g>
+        <circle cx="456" cy="165" r="4.5" fill="#e8f0f8"/>
+        <text x="452" y="210" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#e0a64a" text-anchor="middle">generation 3</text>
+
+        <text x="70" y="40" font-family="'IBM Plex Mono',monospace" font-size="12" fill="#93a8bd">mean m → · ellipse = covariance σ²C</text>
+      </svg>
+      <figcaption>
+        Each generation the population mean <b>m</b> (white dot) marches toward the optimum while the covariance ellipse
+        <b>rotates and shrinks</b> to align with the cost contour — exploring broadly at first, then converging tightly.
+      </figcaption>
+    </figure>
+
+    <h4 style="font-size:15px; font-weight:600; margin:26px 0 6px; color:var(--text);">NSGA-II — non-dominated sorting genetic algorithm</h4>
+    <p>
+      The multi-objective sampler. Each generation it sorts the population into <strong>dominance fronts</strong>
+      (F₁ = non-dominated, F₂ = dominated only by F₁, …), then selects survivors by rank first and, within a tie, by
+      <strong>crowding distance</strong> (a diversity term that favors isolated points so the front spreads out).
+      Elitist crossover + mutation breed the next generation. The output is the Pareto front; the run then reports its
+      <strong>knee point</strong> (§07) as the single recommended config.
+    </p>
+    <div class="formula" style="border-left-color: var(--rose);">
+      rank by <span class="hi">dominance</span>: a ≼ b iff a ≤ b on every axis &amp; &lt; on one<br>
+      tie-break by <span class="hi2">crowding distance</span> = Σ<sub>axes</sub> normalized neighbor gap &nbsp;<span class="cmt">(keeps the front diverse)</span>
+    </div>
+
+    <figure class="viz">
+      <div class="vtitle">NSGA-II · the Pareto front in two-objective cost space</div>
+      <svg viewBox="0 0 720 360" role="img" aria-label="NSGA-II Pareto front visualization">
+        <!-- axes -->
+        <line x1="70" y1="40" x2="70" y2="300" stroke="#647a90" stroke-width="1"/>
+        <line x1="70" y1="300" x2="690" y2="300" stroke="#647a90" stroke-width="1"/>
+        <text x="380" y="332" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#647a90" text-anchor="middle">objective 1 cost →</text>
+        <text x="44" y="170" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#647a90" transform="rotate(-90 44 170)" text-anchor="middle">objective 2 cost →</text>
+        <!-- better corner -->
+        <text x="86" y="292" font-family="'IBM Plex Mono',monospace" font-size="11" fill="#6fc28a">← better</text>
+
+        <!-- dominated trials -->
+        <g fill="none" stroke="#5aa6e8" stroke-width="1.4" opacity="0.45">
+          <circle cx="232" cy="120" r="4"/><circle cx="332" cy="150" r="4"/><circle cx="300" cy="110" r="4"/>
+          <circle cx="432" cy="180" r="4"/><circle cx="480" cy="150" r="4"/><circle cx="560" cy="210" r="4"/>
+          <circle cx="402" cy="128" r="4"/><circle cx="520" cy="112" r="4"/><circle cx="612" cy="198" r="4"/>
+          <circle cx="360" cy="92" r="4"/><circle cx="250" cy="210" r="4"/><circle cx="470" cy="238" r="4"/>
+        </g>
+        <text x="500" y="120" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#5aa6e8" opacity="0.7">dominated trials</text>
+
+        <!-- chord between extremes -->
+        <line x1="110" y1="80" x2="640" y2="285" stroke="#e0a64a" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.5"/>
+
+        <!-- Pareto front polyline + points -->
+        <polyline points="110,80 150,140 210,190 300,225 410,250 530,270 640,285" fill="none" stroke="#e0a64a" stroke-width="2.2"/>
+        <g fill="#e0a64a">
+          <circle cx="110" cy="80" r="5"/><circle cx="150" cy="140" r="5"/><circle cx="210" cy="190" r="5"/>
+          <circle cx="410" cy="250" r="5"/><circle cx="530" cy="270" r="5"/><circle cx="640" cy="285" r="5"/>
+        </g>
+        <text x="150" y="74" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#e0a64a">Pareto front F₁ (non-dominated)</text>
+
+        <!-- knee point -->
+        <circle cx="300" cy="225" r="5" fill="#3fb8af"/>
+        <circle cx="300" cy="225" r="10" fill="none" stroke="#3fb8af" stroke-width="1.8"/>
+        <line x1="300" y1="225" x2="246" y2="183" stroke="#3fb8af" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>
+        <text x="312" y="244" font-family="'IBM Plex Mono',monospace" font-size="11.5" fill="#3fb8af">knee → recommended</text>
+      </svg>
+      <figcaption>
+        Minimizing both axes, the <b>front F₁</b> (gold) is the non-dominated lower-left envelope; everything up-and-right
+        (blue) is dominated. The <b>knee</b> (teal) — the front point of maximum perpendicular distance from the chord
+        between the extremes — is the elbow the run recommends.
+      </figcaption>
+    </figure>
+
+    <div class="callout">
+      <strong>Two-round screening freeze</strong> (<code>--screen</code>): an unpruned <em>explore</em> round samples
+      broadly, parameter importance is computed, the least-important knobs are <strong>frozen</strong> to their best value,
+      and a <em>focused</em> round tunes the reduced space — often switching to CMA-ES now that the space is smaller and
+      more continuous.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. EVALUATION ================= -->
+<section class="block" id="eval">
+  <div class="container">
+    <div class="sec-num">04 — RUN ONE PROPOSAL</div>
+    <h2>Evaluation: rung ladder + robust aggregate</h2>
+    <p class="sec-intro">
+      This is the heart of <code>Evaluator.evaluate()</code> — where “accuracy over speed” becomes real math. A candidate
+      is scored on a <strong>growing ladder</strong> of plates, reduced by a <strong>spread-penalized median</strong>, and
+      cheap losers are killed early.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step__num">A</div>
+        <div class="step__body">
+          <h4>Fidelity ladder (ASHA rungs)</h4>
+          <p>Rather than always scoring every plate, images are scored in growing blocks. Each image is scored <strong>once</strong> (memoized across rungs).</p>
+          <div class="formula" style="font-size:14px;">
+            first rung = max(<span class="hi">rung_floor=6</span>, ⌈n / <span class="hi2">rung_factor=3</span>⌉)<br>
+            each next &nbsp;= previous × rung_factor &nbsp;&nbsp;&middot;&middot;&middot;&nbsp;&nbsp; last rung = all n
+          </div>
+          <div class="meta">too few images for min_rungs=2 → self-disables to one full-fidelity pass</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step__num">B</div>
+        <div class="step__body">
+          <h4>Robust per-term aggregation</h4>
+          <p>After each rung, every term's per-image <strong>cost</strong> values are reduced not by a mean but by a median
+          plus an IQR penalty, then clamped:</p>
+          <div class="formula" style="font-size:14px;">
+            term = clamp01( <span class="hi">median</span>(b₁…bₖ) + <span class="hi2">λ</span> · IQR(b₁…bₖ) ) &nbsp;&nbsp;<span class="cmt">λ = 0.5, IQR = Q75 − Q25</span>
+          </div>
+          <p>The <code>+λ·IQR</code> term <strong>penalizes parameters that work inconsistently across plates</strong> — a
+          config brilliant on two plates and terrible on three (high IQR) is dragged toward worse cost and loses to a steady one.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step__num">C</div>
+        <div class="step__body">
+          <h4>Finalize to the objective</h4>
+          <p><code>scorer.finalize(terms)</code> collapses the term dict to the scalar Optuna minimizes (or a dict for
+          multi-objective). The shared projection is <code>mean(objectives.values())</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step__num">D</div>
+        <div class="step__body">
+          <h4>Pruning decision (between rungs only)</h4>
+          <p>The pruner is <strong>Successive Halving / ASHA</strong>. At each rung trials are ranked by interim value;
+          only the top <code>1/reduction_factor</code> (top third) survive — under minimize, the ASHA pruner keeps the
+          <strong>lowest-cost</strong> third. A clear loser dies after 6 plates instead of wasting the full set.</p>
+          <div class="meta">disabled during explore rounds (unbiased importance) · disabled for multi-objective · grid/random never prune</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Failure taxonomy</h3>
+    <div class="grid cols-3">
+      <div class="card accent-rose">
+        <h4><span class="dot t-rose"></span>Won't build</h4>
+        <p>Candidate can't construct → hard <code>failed=True</code>, score floored to <strong>1.0</strong> (worst).</p>
+      </div>
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>One image raises</h4>
+        <p>That image contributes the worst term (<code>1.0</code>) to every term; the loop continues. Failures honestly
+        drag the aggregate <strong>up toward worse cost</strong>.</p>
+      </div>
+      <div class="card accent-rose">
+        <h4><span class="dot t-rose"></span>All images raise</h4>
+        <p>Whole-candidate <code>failed=True</code> — feeds the <code>max_failures</code> safety valve.</p>
+      </div>
+    </div>
+
+    <h3>Two diagnostic flags carried per trial</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Flag</th><th>Definition</th><th>Catches</th></tr></thead>
+        <tbody>
+          <tr><td><code>gap</code></td><td>relative IQR of the primary term on the goodness-equivalent <code>1 − cost</code>, denominator floored at <code>≈0.02</code></td><td>a cheap instability / overfit smell (moves the singularity to the harmless bad-cost end)</td></tr>
+          <tr><td><code>suspicious</code></td><td><code>score ≤ 0.3</code> <strong>AND</strong> <code>Count ≥ 0.7</code> (cost)</td><td>the gaming signature: low cost <em>because</em> the pipeline under-detects</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. SCORERS ================= -->
+<section class="block" id="scorers">
+  <div class="container">
+    <div class="sec-num">05 — JUDGE THE RESULT</div>
+    <h2>The four scoring objectives</h2>
+    <p class="sec-intro">
+      Every scorer returns named per-image terms as <strong>natural</strong> values and declares a <code>Sense</code>; the
+      base <code>score_image</code> orients each to <strong>cost &isin; [0,1]</strong> via <code>to_cost</code>
+      (a <code>HIGHER_BETTER</code> term like Dice is complemented <code>1−value</code>; a divergence passes through).
+    </p>
+
+    <div class="grid cols-2">
+      <div class="card accent-blue">
+        <h4><span class="dot t-blue"></span>A · SupervisedScorer <span class="tag t-blue" style="margin-left:auto">ground truth</span></h4>
+        <p><strong>Mask tier</strong> — region overlap. For each matched predicted/GT pair, Dice or IoU (they rank
+        identically), macro-averaged into term <code>Region</code>:</p>
+        <div class="formula" style="font-size:13px;">
+          Dice = 2|A∩B| / (|A|+|B|)<br>
+          IoU &nbsp;= |A∩B| / |A∪B|
+        </div>
+        <p>Matching is <strong>greedy by descending IoU</strong>; at τ=0.5 the assignment is provably one-to-one. Binary GT
+        is split into per-cell instances on a <strong>geometric, detection-independent</strong> grid so under-segmentation
+        is scored honestly. <strong>Count tier</strong> when only counts exist → term <code>CountMAE</code>.</p>
+      </div>
+      <div class="card accent-teal">
+        <h4><span class="dot t-teal"></span>B · ReferenceFreeScorer <span class="tag t-teal" style="margin-left:auto">no GT</span></h4>
+        <p>Four fixed-normalized [0,1] proxy terms (fixed normalization avoids the “Böck trap” where the optimum migrates):</p>
+        <div class="table-wrap" style="margin:10px 0;">
+          <table style="min-width:0;">
+            <tbody>
+              <tr><td><code>ShapeRegularity</code></td><td>mean(Solidity, Circularity, 1−Eccentricity)</td></tr>
+              <tr><td><code>Contrast</code></td><td>Otsu between-class ratio η = σ²_B / σ²_T</td></tr>
+              <tr><td><code>SizeCV</code></td><td>1/(1+CV), CV = σ/μ within replicate groups</td></tr>
+              <tr><td><code>Count</code>?</td><td>threshold-anchored count fold (optional)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Gated by meta-validation:</strong> trusted only if Spearman ρ with GT clears <code>ρ ≥ 0.7</code>
+        (<code>0.8</code> for unattended). Otherwise it abstains and the engine degrades to QC.</p>
+      </div>
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>C · QCScorer <span class="tag t-gold" style="margin-left:auto">count-only</span></h4>
+        <p>The count divergence is the natural value (a loss). Because it is unbounded, the scorer supplies an
+        <strong>anchor</strong> (the check's <code>fail_threshold</code>) and the base folds it:</p>
+        <div class="formula" style="font-size:13px;">
+          metric = |detected − expected| / expected<br>
+          cost = 1 − exp( <span class="hi">−ln2</span> · metric / thr )
+        </div>
+        <p>metric 0 → cost <strong>0.0</strong>; metric = threshold → exactly <strong>0.5</strong>; metric → ∞ → cost
+        <strong>1.0</strong>. Averaged across <code>groupby</code> units → term <code>Count</code>.</p>
+      </div>
+      <div class="card accent-rose">
+        <h4><span class="dot t-rose"></span>D · CompositeScorer <span class="tag t-rose" style="margin-left:auto">blend</span></h4>
+        <p>Each child owns a namespaced prefix (<code>s0.</code>, <code>s1.</code>…), is finalized to a per-child cost
+        <code>bᵢ ∈ [0,1]</code>, then blended over the study-global active set. Default is the <strong>augmented
+        Tchebycheff</strong> scalarization (see below). Can also run <code>multi_objective=True</code> to feed NSGA-II a
+        per-child cost vector.</p>
+      </div>
+    </div>
+
+    <h3>The composite blend — augmented Tchebycheff</h3>
+    <p>The single-objective default. The <code>max</code> makes it <strong>conjunctive</strong> (the worst axis dominates —
+    every objective must be good); the <code>ρ·Σ</code> augmentation upgrades minimizers from weakly to <strong>properly</strong>
+    Pareto optimal:</p>
+    <div class="formula" style="border-left-color: var(--rose);">
+      Tᵨ(b) = <span class="hi">maxᵢ</span> wᵢ(bᵢ + ε) &nbsp;+&nbsp; <span class="hi2">ρ</span> · Σᵢ wᵢ·bᵢ &nbsp;&nbsp;<span class="cmt">(minimize)</span><br>
+      T_norm = Tᵨ(b) / Tᵨ(1…1) &nbsp;∈&nbsp; (0, 1] &nbsp;&nbsp;<span class="cmt">study-global normalizer → argmin-preserving across trials</span><br>
+      <span class="cmt">utopia z*ᵢ = −ε,&nbsp; _UTOPIA_EPS = 1e-3,&nbsp; rho = 0.05 &nbsp;(framework-derived, never user-set)</span>
+    </div>
+    <div class="callout rose">
+      <strong>Never a geometric mean of cost.</strong> <code>0</code> is the product's annihilator, so one perfect axis
+      (cost 0) would zero the product and dominate — the opposite of the conjunctive property. The compensatory opt-out is
+      <code>blend="weighted_mean"</code> (<code>Σwᵢbᵢ / Σwᵢ</code>), which a strong axis can use to offset a weak one — but it
+      cannot reach non-convex-front compromises, which is why it is not the default.
+    </div>
+
+    <h3>Summary</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scorer</th><th>Term(s)</th><th>Formula (oriented to cost ↓)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Supervised (mask)</strong></td><td><code>Region</code></td><td>1 − Dice/IoU, macro-avg over matched pairs</td></tr>
+          <tr><td><strong>Supervised (count)</strong></td><td><code>CountMAE</code></td><td>1 − exp(−ln2·metric/thr)</td></tr>
+          <tr><td><strong>Reference-free</strong></td><td><code>ShapeRegularity, Contrast, SizeCV, Count?</code></td><td>fixed-normalized proxies, complemented to cost</td></tr>
+          <tr><td><strong>QC</strong></td><td><code>Count</code></td><td>1 − exp(−ln2·metric/thr)</td></tr>
+          <tr><td><strong>Composite</strong></td><td>child blend</td><td>augmented Tchebycheff (or weighted mean) / multi-objective dict</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 6. IMPORTANCE ================= -->
+<section class="block" id="importance">
+  <div class="container">
+    <div class="sec-num">06 — WHICH KNOBS MATTERED</div>
+    <h2>Parameter importance</h2>
+    <p class="sec-intro">
+      Computed <em>after</em> the study in <code>compute_param_importance_report</code> with <strong>capability dispatch</strong>
+      (never a type check). A knob is “important” if changing it moves the objective a lot.
+    </p>
+    <div class="grid cols-2">
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>fANOVA <span class="tag t-gold" style="margin-left:auto">preferred</span></h4>
+        <p><strong>Functional ANOVA.</strong> Fit a random-forest surrogate of <code>score = f(params)</code>, then
+        decompose the surrogate's prediction variance into per-parameter (and interaction) contributions. A parameter's
+        importance = the fraction of total objective variance explained by varying it.</p>
+        <div class="meta" style="color:var(--gold);">accounts for interactions · interactions_estimated = True</div>
+      </div>
+      <div class="card accent-teal">
+        <h4><span class="dot t-teal"></span>RF-permutation <span class="tag t-teal" style="margin-left:auto">fallback</span></h4>
+        <p>Used for per-objective requests or when no native model exists. Fit
+        <code>RandomForestRegressor(n_estimators=200)</code>, then <code>permutation_importance(n_repeats=10)</code>:
+        the drop in model accuracy when one parameter's values are shuffled. Categoricals are one-hot encoded and summed back.</p>
+        <div class="meta" style="color:var(--teal);">main effects only · interactions_estimated = False · {} below 2 usable trials</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7. PARETO ================= -->
+<section class="block" id="pareto">
+  <div class="container">
+    <div class="sec-num">07 — MULTIPLE OBJECTIVES</div>
+    <h2>Pareto math: dominance &amp; the knee point</h2>
+    <p class="sec-intro">
+      When the scorer is multi-objective, directions become <code>["minimize"] * n</code>, NSGA-II is forced, pruning is off,
+      and trials carry a per-objective vector.
+    </p>
+    <div class="grid cols-2">
+      <div class="card accent-blue">
+        <h4><span class="dot t-blue"></span>Dominance</h4>
+        <p><code>a</code> dominates <code>b</code> iff <code>a</code> is <strong>≤</strong> <code>b</code> on <strong>every</strong>
+        axis AND strictly <strong>&lt;</strong> on <strong>at least one</strong>. The <strong>Pareto front</strong> is all
+        non-dominated trials (ties deduplicated).</p>
+      </div>
+      <div class="card accent-gold">
+        <h4><span class="dot t-gold"></span>Knee point — picking one</h4>
+        <p>Draw the chord between the lexicographic extremes <code>lo = min(vectors)</code> and <code>hi = max(vectors)</code>;
+        the recommended trial is the one with <strong>maximum perpendicular distance to that chord</strong> — the elbow
+        where you stop gaining on one objective without sacrificing another.</p>
+        <div class="meta" style="color:var(--gold);">exact for 2 objectives · heuristic for ≥ 3</div>
+      </div>
+    </div>
+    <div class="callout">
+      A multi-objective run additionally publishes <code>deliverables/pareto/</code>: the front parquet, one
+      <code>best_&lt;objective&gt;.json</code> per axis, and overwrites <code>best_pipeline.json</code> with the knee. A
+      single-objective run's empty front makes this a no-op (the back-compat lock).
+    </div>
+  </div>
+</section>
+
+<!-- ================= 8. GENERALIZATION ================= -->
+<section class="block" id="general">
+  <div class="container">
+    <div class="sec-num">08 — DO YOU TRUST THE WINNER?</div>
+    <h2>The held-out generalization check</h2>
+    <p class="sec-intro">
+      A held-out split is reserved deterministically by a 3-tier policy, the winner is re-evaluated on it, and the gap is
+      reported. <strong>Report-only — the winner never changes.</strong>
+    </p>
+
+    <h3>The 3-tier split policy</h3>
+    <ol>
+      <li><strong>Skip</strong> if fewer than <code>min_heldout_plates</code> (default 6) plates.</li>
+      <li>Hold out a <strong>whole group</strong> if ≥ 2 groups exist — the strongest cross-batch test.</li>
+      <li>Else hold out <code>ceil(held_out_fraction · n)</code> (default 0.2) within-group.</li>
+    </ol>
+    <p>The seed is folded from a <strong>SHA-256 content hash</strong> of sorted plate names, so the same dataset always
+    yields the same split regardless of resume order.</p>
+
+    <h3>The overfit gate</h3>
+    <p>The standard loss-space generalization gap. Because cost <em>is</em> a loss, this is direction-correct by
+    construction — no custom sign flip:</p>
+    <div class="formula" style="border-left-color: var(--rose);">
+      abs_gap = <span class="hi">heldout_cost − cal_cost</span> &nbsp;&nbsp;<span class="cmt">positive = overfit</span><br>
+      rel_gap = abs_gap / max(1 − cal_cost, <span class="hi2">_GAP_EPS≈0.02</span>) &nbsp;&nbsp;<span class="cmt">on the goodness-equivalent</span><br>
+      flag &nbsp;⟺&nbsp; rel_gap &gt; rel_margin (0.15) &nbsp;<span class="hi">AND</span>&nbsp; abs_gap &gt; abs_margin (0.05)
+    </div>
+    <p>The relative term divides by the goodness-equivalent <code>1 − cal_cost</code> so a near-perfect calibration
+    (cost ≈ 0) doesn't explode.</p>
+  </div>
+</section>
+
+<!-- ================= 9. FULL FLOW ================= -->
+<section class="block" id="flow">
+  <div class="container">
+    <div class="sec-num">09 — EVERYTHING AT ONCE</div>
+    <h2>The complete data flow</h2>
+    <p class="sec-intro">
+      One trial, end to end — and the post-study finalize. The same loop runs whether locally, in a screening freeze, or
+      across a SLURM fleet sharing one Optuna study.
+    </p>
+
+    <div class="diagram-shell animate">
+      <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom · drag to pan · double-click to fit · ⛶ opens full size</p>
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+          <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+          <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+          <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+          <span class="zoom-label">Loading…</span>
+        </div>
+        <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+      </div>
+      <script type="text/plain" class="diagram-source">
+flowchart TD
+  IN["tuning_spec.json + plate images + CLI flags"]:::io
+  INFER["infer_search_space()<br/>pipeline fields → Knobs<br/><i>Tier-1 TuneSpec / Tier-2 heuristics<br/>numeric [d/4, d·4], log if span &gt; 10× / 100×</i>"]:::setup
+  SPLIT["resolve_split()<br/><i>content-hash held-out reserve</i>"]:::setup
+
+  IN --> INFER
+  IN --> SPLIT
+  INFER --> STRAT
+
+  subgraph LOOP["TuningEngine.optimize() — per trial"]
+    direction TB
+    STRAT["Strategy.suggest()<br/><i>TPE maximizes EI ∝ l(x)/g(x)</i><br/>materialize active knobs → params<br/>hand back ASHA PruningChannel"]:::strat
+    BUILD{"build_pipeline(base, params)"}:::eval
+    RUNG["rung ladder: max(6,⌈n/3⌉) ×3 … n<br/>score each image once (memoized)"]:::eval
+    SCORE["Scorer.score_image → cost ∈ [0,1]<br/><i>supervised 1−Dice · ref-free shape/contrast/CV<br/>qc 1−exp(−ln2·m/thr) · composite Tchebycheff</i>"]:::score
+    AGG["robust-aggregate per term<br/>clamp01(median + λ·IQR), λ=0.5"]:::eval
+    FIN["scorer.finalize → running scalar"]:::eval
+    PRUNE{"between rungs:<br/>should_prune()?"}:::eval
+    RES["EvaluationResult<br/>{score, terms, objectives?, gap,<br/>suspicious, failed, pruned}"]:::eval
+    JOURNAL["store.append(Trial)<br/>budget: number+=1; failures+=failed"]:::store
+
+    STRAT --> BUILD
+    BUILD -->|"can't build"| FAILED["FAIL · cost 1.0"]:::fail
+    BUILD -->|ok| RUNG
+    RUNG --> SCORE --> AGG --> FIN --> PRUNE
+    PRUNE -->|"yes (loser)"| PRUNED["PRUNED · partial aggregate"]:::fail
+    PRUNE -->|"no → next rung"| RUNG
+    PRUNE -->|"final rung"| RES
+    FAILED --> JOURNAL
+    PRUNED --> JOURNAL
+    RES --> JOURNAL
+    JOURNAL -->|"register_result(): tell"| STRAT
+  end
+
+  LOOP -->|"is_exhausted / n_trials / max_failures"| POST
+  subgraph POST["post-study finalize"]
+    direction TB
+    BEST["store.best() / pareto knee"]:::out
+    IMP["param importance<br/>fANOVA | RF-permutation"]:::out
+    HELD["held-out re-eval → generalization gap<br/><i>report-only</i>"]:::out
+  end
+  SPLIT -.held-out plates.-> HELD
+  POST --> DELIV["deliverables/<br/>best_pipeline.json · trials.parquet<br/>param_importance.json · generalization.json<br/>pareto/ (multi-obj)"]:::io
+
+  classDef io fill:#16293c,stroke:#6fc28a,color:#e8f0f8;
+  classDef setup fill:#16293c,stroke:#e0a64a,color:#e8f0f8;
+  classDef strat fill:#122334,stroke:#5aa6e8,color:#e8f0f8;
+  classDef eval fill:#122334,stroke:#3fb8af,color:#e8f0f8;
+  classDef score fill:#122334,stroke:#e0708a,color:#e8f0f8;
+  classDef store fill:#16293c,stroke:#9d8df0,color:#e8f0f8;
+  classDef out fill:#16293c,stroke:#e0a64a,color:#e8f0f8;
+  classDef fail fill:#2a1820,stroke:#e0708a,color:#e8f0f8;
+      </script>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10. OUTPUTS ================= -->
+<section class="block" id="outputs">
+  <div class="container">
+    <div class="sec-num">10 — WHAT YOU GET BACK</div>
+    <h2>User output: the deliverables</h2>
+    <p class="sec-intro">
+      <code>run_tuning()</code> writes a backend-agnostic <code>deliverables/</code> folder plus a root
+      <code>trials.parquet</code>. An Optuna run exports the same parquet schema as the homegrown journal, so downstream
+      tooling never branches on the backend.
+    </p>
+
+    <div class="io-split">
+      <div class="io-col">
+        <h3>Output tree</h3>
+        <div class="card">
+          <div class="filetree">
+<span class="dir">out/</span><br>
+├─ <span class="file">trials.parquet</span> <span class="note"># every trial, full schema</span><br>
+├─ <span class="dir">.pht-tune-cache/</span><br>
+│&nbsp;&nbsp;├─ <span class="file">run.json</span> <span class="note"># GUI-discovery marker</span><br>
+│&nbsp;&nbsp;├─ <span class="file">study.db</span> <span class="note"># local Optuna SQLite</span><br>
+│&nbsp;&nbsp;└─ <span class="file">split.json</span> <span class="note"># held-out assignment</span><br>
+└─ <span class="dir">deliverables/</span><br>
+&nbsp;&nbsp;├─ <span class="file">tuning_spec.json</span> <span class="note"># resolved, re-runnable</span><br>
+&nbsp;&nbsp;├─ <span class="file">best_pipeline.json</span> <span class="note"># the winner</span><br>
+&nbsp;&nbsp;├─ <span class="file">best_params.json</span> <span class="note"># Monitor sidecar</span><br>
+&nbsp;&nbsp;├─ <span class="file">param_importance.json</span><br>
+&nbsp;&nbsp;├─ <span class="file">generalization.json</span> <span class="note"># overfit verdict</span><br>
+&nbsp;&nbsp;└─ <span class="dir">pareto/</span> <span class="note"># multi-obj only</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;├─ <span class="file">pareto_front.parquet</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;├─ <span class="file">best_&lt;objective&gt;.json</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;└─ <span class="file">&lt;objective&gt;_importance.json</span>
+          </div>
+        </div>
+      </div>
+      <div class="io-col">
+        <h3>What each artifact answers</h3>
+        <div class="grid" style="gap:12px; margin-top:0;">
+          <div class="card accent-green"><h4><span class="dot t-green"></span>best_pipeline.json</h4><p>The tuned <code>ImagePipeline</code>, ready to feed the forward CLI. The knee point for a multi-objective run.</p></div>
+          <div class="card accent-teal"><h4><span class="dot t-teal"></span>trials.parquet</h4><p>The full study journal — score, terms, objectives, gap, suspicious, failed/pruned flags per trial. The audit trail.</p></div>
+          <div class="card accent-gold"><h4><span class="dot t-gold"></span>param_importance.json</h4><p>Which knobs moved the objective — fANOVA (with interactions) or RF-permutation (main effects).</p></div>
+          <div class="card accent-rose"><h4><span class="dot t-rose"></span>generalization.json</h4><p>Held-out re-eval of the winner: train vs test cost, the gap, and the overfit flag (report-only).</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout teal">
+      <strong>Returned in-process too.</strong> <code>run_tuning()</code> returns the best <code>Trial</code> (or the knee),
+      and <code>engine.best_pipeline()</code> rebuilds the winning pipeline directly from the best trial's params. A
+      fire-and-forget SLURM submission returns <code>None</code> — the fleet drains the shared study and a later finalize
+      exports the parquet.
+    </div>
+  </div>
+</section>
+
+<!-- ================= 11. A RUN ================= -->
+<section class="block" id="run">
+  <div class="container">
+    <div class="sec-num">11 — START TO FINISH</div>
+    <h2>What a tuning run entails</h2>
+    <p class="sec-intro">One concrete walkthrough, from the command line to the tuned pipeline.</p>
+
+    <div class="steps">
+      <div class="step"><div class="step__num">1</div><div class="step__body">
+        <h4>Load &amp; resolve</h4>
+        <p>The spec is loaded and validated (every knob target cross-checked against the live pipeline). CLI flags override
+        the strategy / budget / held-out policy. Plates load from <code>-i</code> as <code>GridImage</code>s.</p>
+        <div class="meta">__main__ → run_tuning → _resolve_run_config</div>
+      </div></div>
+      <div class="step"><div class="step__num">2</div><div class="step__body">
+        <h4>Reserve held-out &amp; mark the run</h4>
+        <p>A deterministic content-hashed split reserves the generalization slice; calibration is everything else. A
+        <code>run.json</code> marker is written at start so the GUI can discover the live run.</p>
+        <div class="meta">resolve_split · _write_run_marker</div>
+      </div></div>
+      <div class="step"><div class="step__num">3</div><div class="step__body">
+        <h4>Open the right backend</h4>
+        <p>An Optuna strategy opens a resumable <code>OptunaStudyStore</code> on a shared <code>study.db</code> (or Postgres);
+        grid/random use the homegrown <code>JournalStudyStore</code>, resumed from <code>trials.parquet</code> if present.</p>
+        <div class="meta">_open_store</div>
+      </div></div>
+      <div class="step"><div class="step__num">4</div><div class="step__body">
+        <h4>Optimize (the loop)</h4>
+        <p>For each trial: suggest params → build → score on the rung ladder → robust-aggregate → finalize → maybe prune →
+        journal → tell the strategy. With <code>--screen</code>, an explore round freezes the unimportant knobs before a
+        focused round. With <code>--slurm</code>, a worker fleet drains one shared study in parallel.</p>
+        <div class="meta">TuningEngine.optimize · ScreeningController · SlurmExecutor</div>
+      </div></div>
+      <div class="step"><div class="step__num">5</div><div class="step__body">
+        <h4>Select the winner</h4>
+        <p>Single-objective → <code>store.best()</code> (lowest cost). Multi-objective → the Pareto front's <strong>knee
+        point</strong>, plus per-axis bests under <code>pareto/</code>.</p>
+        <div class="meta">_headline_winner · knee_point</div>
+      </div></div>
+      <div class="step"><div class="step__num">6</div><div class="step__body">
+        <h4>Finalize the deliverables</h4>
+        <p>Export <code>trials.parquet</code>, compute parameter importance, write <code>best_pipeline.json</code>, run the
+        report-only held-out generalization pass, and (multi-obj) publish <code>pareto/</code>.</p>
+        <div class="meta">_finalize_outputs · _finalize_pareto_outputs · _finalize_generalization</div>
+      </div></div>
+    </div>
+
+    <h3>Key files</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>_engine.py</code></td><td>ask-and-tell orchestrator (<code>optimize</code>)</td></tr>
+          <tr><td><code>_search_space/_infer.py</code></td><td>pipeline → knobs (the two-tier inference)</td></tr>
+          <tr><td><code>strategy/_optuna.py</code></td><td>sampler selection, suggest, pruning channel, tell</td></tr>
+          <tr><td><code>_evaluation/_evaluator.py</code></td><td>rung ladder + robust aggregate + finalize</td></tr>
+          <tr><td><code>score/_orient.py</code></td><td><code>Sense</code>, <code>to_cost</code>, <code>clamp01</code> — the orientation boundary</td></tr>
+          <tr><td><code>score/_supervised.py · _reference_free_scorer.py · _qc_scorer.py · _composite.py</code></td><td>the four objectives</td></tr>
+          <tr><td><code>score/_matching.py</code></td><td>greedy-IoU / grid object matching</td></tr>
+          <tr><td><code>_screening.py</code></td><td>parameter importance (fANOVA vs RF-permutation)</td></tr>
+          <tr><td><code>_multi_objective.py · _study/_pareto.py</code></td><td>Pareto dominance + knee point</td></tr>
+          <tr><td><code>_evaluation/_split.py · _generalization.py</code></td><td>held-out split + overfit gate</td></tr>
+          <tr><td><code>_tune_cli/_run.py</code></td><td>orchestration + deliverables writes + SLURM fleet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Source of truth: <code>src/phenotypic/tune/</code> and <code>docs/superpowers/explain/tune-with-optuna.md</code>.
+    Composite &amp; generalization math after Steuer &amp; Choo (1983), Miettinen (1998), Carrell et&nbsp;al. (2022),
+    Schneider, Bischl &amp; Feurer (2025).</p>
+    <p style="margin-top:8px;">Generated 2026-06-30 · phenotypic.tune visual explainer</p>
+  </div>
+</footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const config = { fitPadding:28, minHeight:380, maxHeightPx:1100, maxHeightVh:0.86, maxInitialZoom:1.8, minZoom:0.08, maxZoom:6.5, zoomStep:0.14, readabilityFloor:0.52 };
+  const clamp = (n,lo,hi) => Math.max(lo, Math.min(hi,n));
+  let activeDrag = null;
+  addEventListener('mousemove', e => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  mermaid.initialize({
+    startOnLoad:false, theme:'base', look:'classic',
+    flowchart:{ htmlLabels:true, curve:'basis' },
+    themeVariables:{
+      fontFamily:"'IBM Plex Sans', system-ui, sans-serif", fontSize:'15px',
+      primaryColor:'#122334', primaryBorderColor:'#5aa6e8', primaryTextColor:'#e8f0f8',
+      lineColor:'#647a90', tertiaryColor:'#16293c',
+      clusterBkg:'rgba(18,35,52,0.45)', clusterBorder:'rgba(180,210,240,0.22)',
+      titleColor:'#93a8bd', edgeLabelBackground:'#0e1c2b',
+    }
+  });
+
+  function initDiagram(shell){
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if(!wrap||!viewport||!canvas||!source||!label) return;
+
+    let zoom=1, fitMode='contain', panX=0, panY=0, svgW=0, svgH=0;
+    let sx=0, sy=0, spx=0, spy=0, touchDist=0, touchCx=0, touchCy=0;
+
+    function constrainPan(){
+      const vpW=viewport.clientWidth, vpH=viewport.clientHeight, rW=svgW*zoom, rH=svgH*zoom, pad=config.fitPadding;
+      panX = (rW+pad*2<=vpW) ? (vpW-rW)/2 : clamp(panX, vpW-rW-pad, pad);
+      panY = (rH+pad*2<=vpH) ? (vpH-rH)/2 : clamp(panY, vpH-rH-pad, pad);
+    }
+    function applyTransform(){
+      const svg = canvas.querySelector('svg'); if(!svg||!svgW) return;
+      constrainPan();
+      svg.style.width=(svgW*zoom)+'px'; svg.style.height=(svgH*zoom)+'px';
+      canvas.style.transform=`translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom*100)+'% — '+fitMode;
+    }
+    function canPan(){
+      const rW=svgW*zoom, rH=svgH*zoom;
+      return rW+config.fitPadding*2>viewport.clientWidth || rH+config.fitPadding*2>viewport.clientHeight;
+    }
+    function computeSmartFit(){
+      const vpW=viewport.clientWidth, vpH=viewport.clientHeight;
+      const aW=Math.max(80,vpW-config.fitPadding*2), aH=Math.max(80,vpH-config.fitPadding*2);
+      const contain=Math.min(aW/svgW, aH/svgH);
+      let z=contain, mode='contain';
+      if(contain<config.readabilityFloor){
+        const chartR=svgH/svgW, vpR=vpH/Math.max(vpW,1);
+        if(chartR>=vpR){ z=aW/svgW; mode='width-priority'; } else { z=aH/svgH; mode='height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram(){
+      if(!svgW) return;
+      const fit=computeSmartFit(); zoom=fit.zoom; fitMode=fit.mode;
+      panX=(viewport.clientWidth-svgW*zoom)/2; panY=(viewport.clientHeight-svgH*zoom)/2;
+      applyTransform();
+    }
+    function setOneToOne(){
+      zoom=clamp(1, config.minZoom, config.maxZoom); fitMode='1:1';
+      panX=(viewport.clientWidth-svgW*zoom)/2; panY=(viewport.clientHeight-svgH*zoom)/2; applyTransform();
+    }
+    function zoomAround(factor, cx, cy){
+      const next=clamp(zoom*factor, config.minZoom, config.maxZoom), ratio=next/zoom;
+      panX=cx-ratio*(cx-panX); panY=cy-ratio*(cy-panY); zoom=next; fitMode='custom'; applyTransform();
+    }
+    function readSvgNaturalSize(svg){
+      let w=0,h=0;
+      if(svg.viewBox?.baseVal?.width>0){ w=svg.viewBox.baseVal.width; h=svg.viewBox.baseVal.height; }
+      if(!w){ w=parseFloat(svg.getAttribute('width'))||0; h=parseFloat(svg.getAttribute('height'))||0; }
+      if(!w){ const b=svg.getBBox(); w=b.width; h=b.height; }
+      if(!w){ const r=svg.getBoundingClientRect(); w=r.width||1000; h=r.height||700; }
+      if(!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight(){
+      if(!svgW) return;
+      const usableW=Math.max(280, wrap.getBoundingClientRect().width-2);
+      const idealH=(svgH/svgW)*usableW+config.fitPadding*2;
+      const maxVp=Math.floor(innerHeight*config.maxHeightVh);
+      const hardMax=Math.min(config.maxHeightPx, Math.max(config.minHeight+40, maxVp));
+      wrap.style.height=Math.round(clamp(idealH, config.minHeight, hardMax))+'px';
+    }
+    function openInNewTab(){
+      const svg=canvas.querySelector('svg'); if(!svg) return;
+      const clone=svg.cloneNode(true); clone.style.width=''; clone.style.height='';
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Diagram</title>
+      <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1622;padding:40px;box-sizing:border-box}svg{max-width:100%;max-height:90vh;height:auto}</style>
+      </head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html],{type:'text/html'})), '_blank');
+    }
+    async function render(){
+      try{
+        const code=source.textContent.trim();
+        if(!code){ label.textContent='Error: empty'; return; }
+        const id='d-'+Math.random().toString(36).slice(2,9);
+        const { svg } = await mermaid.render(id, code);
+        const parsed=new DOMParser().parseFromString(svg,'text/html');
+        const psvg=parsed.body.querySelector('svg');
+        if(!psvg){ label.textContent='Error: no SVG'; return; }
+        canvas.replaceChildren(document.adoptNode(psvg));
+        const node=canvas.querySelector('svg');
+        const size=readSvgNaturalSize(node); svgW=size.w; svgH=size.h;
+        node.removeAttribute('width'); node.removeAttribute('height');
+        node.style.maxWidth='none'; node.style.display='block';
+        setAdaptiveHeight(); fitDiagram();
+      }catch(err){ console.error('Mermaid render failed:', err); label.textContent='Error: '+(err.message||'render'); }
+    }
+    const actions={
+      'zoom-in':()=>zoomAround(1+config.zoomStep, viewport.clientWidth/2, viewport.clientHeight/2),
+      'zoom-out':()=>zoomAround(1/(1+config.zoomStep), viewport.clientWidth/2, viewport.clientHeight/2),
+      'zoom-fit':fitDiagram, 'zoom-one':setOneToOne, 'zoom-expand':openInNewTab
+    };
+    Object.entries(actions).forEach(([a,h])=> wrap.querySelector(`[data-action="${a}"]`)?.addEventListener('click', h));
+    viewport.addEventListener('dblclick', fitDiagram);
+    viewport.addEventListener('wheel', e=>{
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); const rect=viewport.getBoundingClientRect();
+        zoomAround(e.deltaY<0?1+config.zoomStep:1/(1+config.zoomStep), e.clientX-rect.left, e.clientY-rect.top); return; }
+      if(canPan()){ e.preventDefault(); panX-=e.deltaX; panY-=e.deltaY; applyTransform(); }
+    }, { passive:false });
+    viewport.addEventListener('mousedown', e=>{
+      if(e.target.closest('.zoom-controls')||!canPan()) return;
+      wrap.classList.add('is-panning'); sx=e.clientX; sy=e.clientY; spx=panX; spy=panY; e.preventDefault();
+      activeDrag={ onMove:ev=>{ panX=spx+(ev.clientX-sx); panY=spy+(ev.clientY-sy); applyTransform(); }, onEnd:()=>wrap.classList.remove('is-panning') };
+    });
+    viewport.addEventListener('touchstart', e=>{
+      if(e.touches.length===1){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; spx=panX; spy=panY; }
+      else if(e.touches.length===2){ const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY;
+        touchDist=Math.sqrt(dx*dx+dy*dy); const r=viewport.getBoundingClientRect();
+        touchCx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left; touchCy=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top; }
+    }, { passive:true });
+    viewport.addEventListener('touchmove', e=>{
+      if(e.touches.length===1&&canPan()){
+        if(touchDist>0){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; spx=panX; spy=panY; touchDist=0; }
+        e.preventDefault(); panX=spx+(e.touches[0].clientX-sx); panY=spy+(e.touches[0].clientY-sy); applyTransform();
+      } else if(e.touches.length===2&&touchDist>0){ e.preventDefault();
+        const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY, d=Math.sqrt(dx*dx+dy*dy);
+        zoomAround(d/touchDist, touchCx, touchCy); touchDist=d; }
+    }, { passive:false });
+    new ResizeObserver(()=>{ if(svgW){ setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+    render();
+  }
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+
+</body>
+</html>

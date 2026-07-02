@@ -15,6 +15,7 @@ from phenotypic.analysis.qc import MaxModifiedZScore
 from phenotypic.sdk_ import BundleLayout
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
+from phenotypic.schema import METADATA
 
 
 class _Root:
@@ -43,7 +44,7 @@ def _seed_db(tmp_path):
     )
     df = pd.DataFrame(
         {
-            "Metadata_ImageFile": ["a.png"] * 4,
+            str(METADATA.IMAGE_NAME): ["a.png"] * 4,
             "Object_Label": [1, 2, 3, 4],
             "Plate": ["P1"] * 4,
             "Size_Area": [10.0, 11.0, 12.0, 99.0],

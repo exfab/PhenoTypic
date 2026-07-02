@@ -12,6 +12,7 @@ from phenotypic.gui._config import BROWSE_THUMB_URL_SEGMENT, VIEWER_THUMB_URL_SE
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer.timeline_view import _thumb_routes
 from tests._output_layout import write_master, write_measurements_mirror
+from phenotypic.schema import METADATA
 
 
 def test_viewer_and_browse_thumb_segments_are_distinct() -> None:
@@ -27,8 +28,8 @@ def _output_root(tmp_path: Path) -> OutputRoot:
     cli_out = tmp_path / "out"
     df = pl.DataFrame(
         {
-            "Metadata_Dataset": ["ds", "ds"],
-            "Metadata_ImageFile": ["a", "b"],
+            "MetadataExperiment_Dataset": ["ds", "ds"],
+            str(METADATA.IMAGE_NAME): ["a", "b"],
             "Metadata_ImageNumber": pl.Series([1, 2], dtype=pl.Int64),
             "Object_Label": [1, 2],
             "Size_Area": [1.0, 2.0],

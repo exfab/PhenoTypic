@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from phenotypic.schema import EXPERIMENT_METADATA
 from phenotypic.sdk_.register import register_analysis
 
 from ._base_plugin import BaseAnalysisPlugin
@@ -72,7 +73,17 @@ class ScatterPlotPlugin(BaseAnalysisPlugin):
 
     def js(self) -> str:
         """Return JS including an ``initAnalysis_scatter()`` function."""
-        return """\
+        import json
+
+        from phenotypic.sdk_ import metadata_category_prefixes
+
+        # Python is the single source of truth for the metadata namespace.
+        # json.dumps produces the JS-valid array literal (double quotes are fine in JS).
+        prefixes_js = json.dumps(
+            [*metadata_category_prefixes(), "Grid_", "Shape_", "Intensity_", "Color_"]
+        )
+        return (
+            """\
 var OKABE_ITO_SCATTER = ['#E69F00','#56B4E9','#009E73','#D55E00','#0072B2','#CC79A7'];
 var scatterIndices = null;
 
@@ -86,7 +97,9 @@ function initAnalysis_scatter() {
 }
 
 function selectScatterColumns(allNumericCols) {
-  var prefixes = ['Metadata_', 'Grid_', 'Shape_', 'Intensity_', 'Color_'];
+"""
+            + f"  var prefixes = {prefixes_js};\n"
+            + """\
   var selected = [];
   for (var pi = 0; pi < prefixes.length; pi++) {
     var prefix = prefixes[pi];
@@ -152,7 +165,11 @@ function renderScatterPlot() {
 
   var defaultX = numCols.find(function(c) { return c.indexOf('Area') >= 0; }) || numCols[0];
   var defaultY = numCols.find(function(c) { return c.indexOf('MeanIntensity') >= 0 || c.indexOf('Intensity') >= 0; }) || numCols[1];
-  var defaultColor = catCols.find(function(c) { return c === 'Metadata_Dataset'; }) || '';
+"""
+            + "  var defaultColor = catCols.find(function(c) { return c === '"
+            + str(EXPERIMENT_METADATA.DATASET)
+            + "'; }) || '';\n"
+            + """\
 
   var html = '';
   if (sampled) {
@@ -218,3 +235,4 @@ function updateScatter() {
   Plotly.newPlot('scatter-plot', traces, layout, { responsive: true, displayModeBar: true, modeBarButtonsToRemove: ['lasso2d','select2d'] });
 }
 """
+        )

@@ -4,7 +4,7 @@ import pandas as pd
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
-from ._utils import _ensure_prefix
+from ._utils import ensure_metadata_prefix
 
 
 class AppendString(PostMeasurement):
@@ -14,8 +14,10 @@ class AppendString(PostMeasurement):
     end. Useful for adding suffixes like units or experimental labels.
 
     Args:
-        column: Name of the metadata column to modify. ``Metadata_`` prefix
-            is added automatically if missing.
+        column: Name of the metadata column to modify. The schema category
+            prefix is added automatically if missing (e.g. ``Temperature`` ->
+            ``MetadataCulture_Temperature``; unknown labels get a generic
+            ``Metadata_`` prefix).
         value: The string to append to each cell value.
 
     Returns:
@@ -30,12 +32,12 @@ class AppendString(PostMeasurement):
         >>> import pandas as pd
         >>> from phenotypic.post import AppendString
         >>> df = pd.DataFrame({
-        ...     "Metadata_Temp": ["30", "37"],
+        ...     "MetadataCulture_Temperature": ["30", "37"],
         ...     "Object_Label": [1, 2],
         ... })
-        >>> op = AppendString(column="Temp", value="C")
+        >>> op = AppendString(column="Temperature", value="C")
         >>> result = op.apply(df)
-        >>> list(result["Metadata_Temp"])
+        >>> list(result["MetadataCulture_Temperature"])
         ['30C', '37C']
     """
 
@@ -45,8 +47,8 @@ class AppendString(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Prepend the ``Metadata_`` prefix to a non-empty column name."""
-        return _ensure_prefix(column) if column else ""
+        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
+        return ensure_metadata_prefix(column) if column else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Append the string value to each cell in the target column.

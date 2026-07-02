@@ -28,6 +28,7 @@ theoretical background for PhenoTypic's algorithms.
 
    measurement_classification_system
    measurement_metrics_biological_meaning
+   metadata_namespace
    edge_effects_in_plate_assays
    image_quality_noise_contrast_structure
    notebooks/linear_softplus_model

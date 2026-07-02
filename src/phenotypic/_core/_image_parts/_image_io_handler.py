@@ -76,11 +76,11 @@ def _decode_meta(s: Any) -> Any:
 
 
 # Legacy metadata-key shim.
-# Files written before the ``METADATA`` enum gained its ``Metadata_`` category
-# prefix stored framework metadata keys *bare* (e.g. ``ImageName``, ``BitDepth``,
-# ``UUID``). Map those legacy bare keys to their current prefixed form on load so
-# old HDF5 outputs stay readable. Built from the enum so it tracks any future
-# member additions: ``{"ImageName": "Metadata_ImageName", ...}``.
+# Files written before the ``METADATA`` enum gained its ``MetadataImage_``
+# category prefix stored framework metadata keys *bare* (e.g. ``ImageName``,
+# ``BitDepth``, ``UUID``). Map those legacy bare keys to their current prefixed
+# form on load so old HDF5 outputs stay readable. Built from the enum so it
+# tracks any future member additions: ``{"ImageName": "MetadataImage_ImageName", ...}``.
 _LEGACY_METADATA_KEY_MAP: dict[str, str] = {
     member.label: member.value for member in METADATA
 }
@@ -925,9 +925,9 @@ class ImageIOHandler(ImageColorSpace):
                 # so the same logic is a no-op for them but keeps behaviour
                 # uniform across sections.
                 for key in attrs:
-                    # Remap legacy bare keys (pre-Metadata_ prefix) before the
+                    # Remap legacy bare keys (pre-MetadataImage_ prefix) before the
                     # membership check, so an old file's "ImageName" matches the
-                    # constructor-populated "Metadata_ImageName" and is skipped
+                    # constructor-populated "MetadataImage_ImageName" and is skipped
                     # rather than added as a stale duplicate.
                     mapped = _remap_legacy_metadata_key(key)
                     if mapped in target:

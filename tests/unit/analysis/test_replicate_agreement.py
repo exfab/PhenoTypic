@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import pytest
 
 from phenotypic.analysis.qc import ReplicateAgreement
+from phenotypic.schema import METADATA
 
 
 # --------------------------------------------------------------------------- #
@@ -27,7 +28,7 @@ def known_three_replicates() -> pd.DataFrame:
     """Single ``(group, time)`` bin with values [1.0, 2.0, 3.0]."""
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
-        "Metadata_Time": [0, 0, 0],
+        "MetadataCulture_Time": [0, 0, 0],
         "Size_Area": [1.0, 2.0, 3.0],
     })
 
@@ -37,7 +38,7 @@ def tight_replicates() -> pd.DataFrame:
     """Replicates within ~1% of a mean of 100 — severity well below warn."""
     return pd.DataFrame({
         "Plate": ["P1"] * 6,
-        "Metadata_Time": [0, 0, 0, 1, 1, 1],
+        "MetadataCulture_Time": [0, 0, 0, 1, 1, 1],
         "Size_Area": [100.0, 100.5, 99.5, 200.0, 200.5, 199.5],
     })
 
@@ -47,7 +48,7 @@ def dispersed_replicates() -> pd.DataFrame:
     """Replicates with very high relative dispersion — metric above fail."""
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
-        "Metadata_Time": [0, 0, 0],
+        "MetadataCulture_Time": [0, 0, 0],
         "Size_Area": [1.0, 5.0, 9.0],
     })
 
@@ -63,7 +64,7 @@ def warn_band_replicates() -> pd.DataFrame:
     """
     return pd.DataFrame({
         "Plate": ["P1"] * 3,
-        "Metadata_Time": [0, 0, 0],
+        "MetadataCulture_Time": [0, 0, 0],
         "Size_Area": [8.0, 10.0, 12.0],
     })
 
@@ -86,7 +87,7 @@ class TestStatisticalCorrectness:
     def test_num_replicates_count_correct(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 9,
-            "Metadata_Time": [0, 0, 0, 1, 1, 1, 2, 2, 2],
+            "MetadataCulture_Time": [0, 0, 0, 1, 1, 1, 2, 2, 2],
             "Size_Area": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
@@ -103,7 +104,7 @@ class TestStatisticalCorrectness:
         # Mean falls below default eps=1e-9.
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [0.0, 1e-12, -1e-12],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
@@ -160,7 +161,7 @@ class TestNanGuardPaths:
         # One replicate per (group, time); default min_replicates=2.
         data = pd.DataFrame({
             "Plate": ["P1", "P1"],
-            "Metadata_Time": [0, 1],
+            "MetadataCulture_Time": [0, 1],
             "Size_Area": [10.0, 20.0],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
@@ -172,7 +173,7 @@ class TestNanGuardPaths:
     def test_eps_guard_for_near_zero_mean(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [0.0, 1e-12, -1e-12],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
@@ -182,7 +183,7 @@ class TestNanGuardPaths:
     def test_degenerate_bin_all_zeros(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [0.0, 0.0, 0.0],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])
@@ -193,7 +194,7 @@ class TestNanGuardPaths:
     def test_min_replicates_three_with_two_replicates_is_nan(self) -> None:
         data = pd.DataFrame({
             "Plate": ["P1"] * 2,
-            "Metadata_Time": [0, 0],
+            "MetadataCulture_Time": [0, 0],
             "Size_Area": [10.0, 12.0],
         })
         chk = ReplicateAgreement(
@@ -212,7 +213,7 @@ class TestBehavioralEdges:
     """Snapshot data, emitted columns, and ``_exposes_agg_func`` flag."""
 
     def test_missing_time_label_treats_all_as_one_bin(self) -> None:
-        # No "Metadata_Time" column → entire group is one bin.
+        # No "MetadataCulture_Time" column → entire group is one bin.
         data = pd.DataFrame({
             "Plate": ["P1"] * 3,
             "Size_Area": [1.0, 2.0, 3.0],
@@ -267,10 +268,10 @@ class TestBehavioralEdges:
     def test_flagged_keys_returns_image_file_object_label_pairs(self) -> None:
         # Build dispersed (failing) data carrying ImageFile + Object_Label.
         data = pd.DataFrame({
-            "Metadata_ImageFile": ["plate1.png"] * 3,
+            str(METADATA.IMAGE_NAME): ["plate1.png"] * 3,
             "Object_Label": [1, 2, 3],
             "Plate": ["P1"] * 3,
-            "Metadata_Time": [0, 0, 0],
+            "MetadataCulture_Time": [0, 0, 0],
             "Size_Area": [1.0, 5.0, 9.0],
         })
         chk = ReplicateAgreement(on="Size_Area", groupby=["Plate"])

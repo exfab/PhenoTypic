@@ -24,8 +24,10 @@ import pandas as pd
 
 from phenotypic.analysis._helper._qc_math import median_abs_deviation, modified_z_scores
 from phenotypic.analysis.abc_._quality_check import QualityCheck
-from phenotypic.schema import QUALITY_ZMAX
+from phenotypic.schema import CULTURE_METADATA, QUALITY_ZMAX
 from phenotypic.sdk_ import ColumnRef
+
+_TIME = str(CULTURE_METADATA.TIME)
 
 
 class MaxModifiedZScore(QualityCheck):
@@ -71,7 +73,7 @@ class MaxModifiedZScore(QualityCheck):
 
     Attributes:
         time_label: Column name carrying the timepoint within each
-            group. Defaults to ``"Metadata_Time"``.
+            group. Defaults to ``"MetadataCulture_Time"``.
         min_replicates: Minimum member count required before the modified
             Z-score is considered meaningful. Bins below this threshold
             receive ``metric = NaN``.
@@ -88,7 +90,7 @@ class MaxModifiedZScore(QualityCheck):
         >>> from phenotypic.analysis.qc import MaxModifiedZScore
         >>> data = pd.DataFrame({
         ...     "Plate": ["P1"] * 8,
-        ...     "Metadata_Time": [0, 0, 0, 0, 1, 1, 1, 1],
+        ...     "MetadataCulture_Time": [0, 0, 0, 0, 1, 1, 1, 1],
         ...     "Size_Area": [
         ...         10.0, 10.1, 9.9, 10.2,
         ...         20.0, 20.1, 19.9, 60.0,
@@ -97,7 +99,7 @@ class MaxModifiedZScore(QualityCheck):
         >>> chk = MaxModifiedZScore(
         ...     on="Size_Area",
         ...     groupby=["Plate"],
-        ...     time_label="Metadata_Time",
+        ...     time_label="MetadataCulture_Time",
         ... )
         >>> result = chk.analyze(data)
         >>> "QC_ZMax_Metric" in result.columns
@@ -108,7 +110,7 @@ class MaxModifiedZScore(QualityCheck):
 
         >>> singleton = pd.DataFrame({
         ...     "Plate": ["P1", "P1"],
-        ...     "Metadata_Time": [0, 1],
+        ...     "MetadataCulture_Time": [0, 1],
         ...     "Size_Area": [10.0, 20.0],
         ... })
         >>> chk = MaxModifiedZScore(
@@ -129,7 +131,7 @@ class MaxModifiedZScore(QualityCheck):
     warn_threshold: float = 3.5
     fail_threshold: float = 5.0
 
-    time_label: ColumnRef = "Metadata_Time"
+    time_label: ColumnRef = _TIME
     min_replicates: int = 2
 
     def _compute(self, group: pd.DataFrame) -> pd.DataFrame:
