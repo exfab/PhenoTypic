@@ -11,6 +11,7 @@ caller changes.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 
 import phenotypic.schema as _schema
@@ -94,6 +95,51 @@ def canonical_metadata_order() -> dict[str, int]:
         for i, member in enumerate(enum):
             out[member.value] = base + i
     return out
+
+
+def order_measurement_columns(columns: Sequence[str]) -> list[str]:
+    """Canonical measurement-frame column order.
+
+    ``[front metadata] -> [measurements] -> [MetadataImage_*] -> [info block]``.
+
+    Front (user/experimental) metadata is cluster/definition ordered via
+    :func:`canonical_metadata_order`; unknown/uncategorized ``Metadata_*`` tags fall
+    to the end of the front block alphabetically. The framework ``MetadataImage_*``
+    block is per-image provenance and trails the measurements. The per-object info
+    block (``Object_Label`` + ``Bbox_*`` / ``Grid_*``) is detected by name and moves
+    last. Measurements keep their incoming relative order.
+
+    Pure over column-name strings, so both the pandas (``df[...]``) and polars
+    (``df.select(...)``) paths reuse it.
+    """
+    from phenotypic.schema import METADATA, OBJECT
+
+    rank = canonical_metadata_order()
+    image_prefix = f"{METADATA.category()}_"
+    label = str(OBJECT.LABEL)
+
+    front: list[str] = []
+    image_meta: list[str] = []
+    info: list[str] = []
+    meas: list[str] = []
+    for c in columns:
+        if c.startswith(image_prefix):
+            image_meta.append(c)
+        elif is_metadata_header(c):
+            front.append(c)
+        elif c == label or c.startswith("Bbox_") or c.startswith("Grid_"):
+            info.append(c)
+        else:
+            meas.append(c)
+    # Unknown/uncategorized Metadata_* tags sort AFTER every known header. Ranks
+    # use a 1000-stride, so len(rank) (~72) is not a valid "after everything"
+    # sentinel — derive it from the actual max rank.
+    unknown_rank = max(rank.values(), default=0) + 1
+    front.sort(key=lambda c: (rank.get(c, unknown_rank), str(c)))
+    # Object_Label leads the info block; Bbox_*/Grid_* keep their incoming order
+    # (stable sort) so the trailing block matches #180's info-frame geometry order.
+    info.sort(key=lambda c: 0 if c == label else 1)
+    return front + meas + image_meta + info
 
 
 @lru_cache(maxsize=1)

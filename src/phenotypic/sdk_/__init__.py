@@ -212,6 +212,7 @@ from ._metadata_helpers import (
     is_metadata_header,
     metadata_category_for_label,
     metadata_category_prefixes,
+    order_measurement_columns,
 )
 from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
 from .typing_ import ProcessOnlyLayer
@@ -237,6 +238,7 @@ __all__ = [
     "is_metadata_header",
     "metadata_category_for_label",
     "metadata_category_prefixes",
+    "order_measurement_columns",
     "napari_",
     "register",
     "slurm",
