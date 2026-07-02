@@ -138,6 +138,13 @@
   .interest p{margin:0;font-size:12.5px;color:var(--text)}
   .interest p b{color:var(--ink);font-weight:600}
 
+  /* ---- biological framing (provisional; literature-drawn, pending human verification) ---- */
+  .biocontext{margin-top:12px;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:9px;padding:10px 12px}
+  .biocontext .bc-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .biocontext .bc-tag{font-family:var(--mono);font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);background:var(--inset);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-weight:400}
+  .biocontext p{margin:0;font-size:12.5px;color:var(--text)}
+  .biocontext p .bc-cite{font-style:italic;color:var(--text-dim)}
+
   /* ---- method options (additive) ---- */
   .methods{margin-top:12px;background:var(--inset);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
   .methods .m-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:7px}
@@ -232,9 +239,11 @@
   </section>
 
   <p class="section-sub" style="margin:18px 0 0">Every card: <b>what it is</b> (definition + diagram) → <b>why it's
-    of interest</b> (the structural distinction it resolves, kept purely morphological) → <b>output metric</b>
-    (variable, units, how it reads) → <b>method options</b> (ranked, with fit). Biological interpretation is left to
-    a human author.</p>
+    of interest</b> (the structural distinction it resolves) → <b>biological relevance</b> for filamentous fungi →
+    <b>output metric</b> (variable, units, how it reads) → <b>method options</b> (ranked, with fit). The
+    <span style="color:var(--purple)">biological-relevance</span> notes are drawn from the mycology literature and
+    tagged <b>provisional</b> — they are candidate interpretations for a domain author to verify, not settled claims,
+    and are deliberately kept out of the schema's <span class="term" style="font-family:var(--mono)">bio_desc</span>.</p>
 
   <!-- ============================ FAMILY A ============================ -->
   <section class="band" id="family-a">
@@ -279,6 +288,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Separates two masks with identical area and perimeter but different margin waviness: a smooth ellipse and a lobed outline can share a perimeter yet D climbs only for the crenellated border. It complements mass FD by describing the <em>edge</em> rather than the interior.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The fractal dimension of a colony margin tends to track how filamentous versus compact the growth front is, and is often read as a foraging/exploration signature — irregular high-dimension margins indicating a diffuse invasive front, smoother low-dimension margins a compact colony. <span class="bc-cite">— Obert et al. 2008 — 10.1002/jobm.200800017</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -337,6 +347,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Resolves interior space-filling that boundary FD misses: two masks with an equally ragged margin but different interior compactness (a solid disc vs a filigreed web) diverge here. Reporting mass and box-count FD together flags scaling bias when they disagree.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The mass (area-based) fractal dimension quantifies how densely hyphae fill space; in Aspergillus niger submerged culture it has been used to characterize the compactness of mycelial aggregates/pellets versus more open, dispersed growth. <span class="bc-cite">— Papagianni &amp; Mattey 2006 — 10.1186/1475-2859-5-5</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -393,6 +404,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Hull-based, so it stays stable where a ragged margin would bias moment axes: F_max/F_min gives a clean rotation-invariant aspect ratio, and Feret roundness distinguishes an elongated hull from a compact disc-like one independent of orientation.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Feret-based size and roundness are standard descriptors in automated filamentous-morphology image analysis, used to separate rounded pellet-like objects from elongated or dispersed mycelial forms. (family-level) <span class="bc-cite">— Barry &amp; Williams 2011 (AnaMorf) — 10.1002/btpr.2087</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -445,6 +457,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Where single scalars collapse shape to one number, EFD retains a spectrum: two masks with equal area, roundness and FD but different arrangements of lobes separate cleanly because low harmonics capture gross form and high harmonics capture fine margin structure.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>EFD encode closed-contour outline harmonics, so they would summarize the overall lobe/waviness pattern of a colony silhouette independent of size and rotation.</p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -503,6 +516,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Turns the opaque EFD spectrum into a countable protrusion tally, resolving the distinction between two masks with equal EFD energy but a different <em>number</em> of lobes — something neither convexity nor FD names directly.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>LOCO-EFA decomposes an outline into interpretable per-lobe modes, so it would quantify the number and prominence of marginal lobes/sectors in a colony boundary.</p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -556,6 +570,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Cheaply resolves how rectangular versus sparse a shape is: a filled rectangle and a plus-sign can share the same bounding box yet differ sharply in extent. The oriented variant removes the axis-aligned bias that inflates extent for a diagonally elongated mask.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Extent (object area relative to its bounding box) is a compactness descriptor of the colony footprint used in filamentous-morphology image analysis to separate compact rounded forms from sprawling irregular ones. (family-level) <span class="bc-cite">— Barry &amp; Williams 2011 (AnaMorf) — 10.1002/btpr.2087</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -609,6 +624,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>The only descriptor here directly sensitive to concave indentations: it separates a smooth convex blob from one bearing deep notches even when area, extent and FD match. Count plus max-depth distinguishes many shallow scallops from a single deep cleft.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Convexity/solidity-type measures capture indentations of the colony outline; a less-convex, more indented perimeter is generally associated with a branched/filamentous margin rather than a smooth compact colony. (family-level) <span class="bc-cite">— Barry &amp; Williams 2011 (AnaMorf) — 10.1002/btpr.2087</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -668,6 +684,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Gives a pose-free fingerprint for matching or clustering masks that boundary metrics describe only piecewise: shapes that look identical after any rotation or rescale collapse to the same φ vector, so it complements orientation-dependent descriptors by canceling pose entirely.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Hu moments give invariant summaries of the silhouette's mass distribution, useful for classifying gross colony shape.</p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -721,6 +738,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Isolates margin waviness from scale: two masks of very different size but the same fraction of wiggle per unit boundary score alike, whereas raw perimeter would not. It complements FD by weighting sharp local kinks quadratically rather than counting box occupancy.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Contour bending energy measures the total curvature of the boundary, so higher values would indicate a more crenulated/wavy colony margin.</p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -780,6 +798,7 @@
     <span class="in-title">Why it's of interest</span>
     <p>Resolves directional stretch and pose that isotropic descriptors ignore: two masks with equal area and roundness but different aspect ratios separate on elongation, and orientation captures alignment that Hu moments deliberately cancel. Being area-weighted, it is more stable than hull calipers on ragged margins.</p>
   </div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Principal-axis elongation and orientation describe departures from circular symmetry of the footprint; asymmetric/elongated colonies are generally read as anisotropic growth rather than symmetric radial expansion. (family-level) <span class="bc-cite">— Barry &amp; Williams 2011 (AnaMorf) — 10.1002/btpr.2087</span></p></div>
   <div class="outmetric">
     <span class="om-title">Output metric</span>
     <dl>
@@ -833,6 +852,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> mask is invaded edge-inward and each occupied cell contributes in proportion to how deep the front reached it.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Supplies the missing THIRD fractal descriptor: it separates two fills with identical fractal dimension (mass) and lacunarity (gaps) but different through-connectivity, and is the only descriptor here encoding DIRECTIONAL penetrability of the occupied phase.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Succolarity indexes directional percolation/connectivity of open space, so for a mycelium it would describe how freely a given direction of the void network is traversed.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>σ</b> — succolarity per direction (↓↑←→), plus <b>A</b>=max−min</dd><dt>Units</dt><dd>σ ∈ [0,1] dimensionless; A dimensionless</dd><dt>Reads as</dt><dd>higher σ ⇒ more percolable along that axis; A&gt;0 ⇒ direction-dependent occupied structure</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -862,6 +882,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> area lost at each opening radius is binned into a spectrum whose peaks mark the mask's characteristic feature sizes.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Resolves the difference between fills of equal area fraction but different granularity: it exposes whether occupied mass sits in one dominant feature size or a broad mixture, a distinction single scalars like FD cannot encode.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>A granulometry/pattern spectrum summarizes the size distribution of hyphal-density features (branches, clumps, voids), a texture-scale fingerprint of density heterogeneity.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>PS(r)</b> — probability mass per size, plus mean size, spread, PS-entropy</dd><dt>Units</dt><dd>r in px; PS(r) dimensionless (sums to 1); entropy in bits</dd><dt>Reads as</dt><dd>sharp peak ⇒ one characteristic feature size; broad/multi-peak ⇒ mixed size structure</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -890,6 +911,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> as the filtration grows, births/deaths of components (β₀) and loops (β₁) are recorded, with persistence weighting suppressing transient boundary features.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Directly COUNTS enclosed loops/voids that lacunarity captures only statistically, and separates a fill riddled with holes from a solid one of identical mass — persistence filtering keeps only topologically stable structure.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Betti-0/Betti-1 curves count connected components and loops across scales, so for a mycelial network they would track fragmentation and enclosed voids/anastomosis loops.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>β₀(t), β₁(t)</b> curves + total persistence, persistence entropy</dd><dt>Units</dt><dd>β counts (dimensionless); persistence in filtration units; entropy dimensionless</dd><dt>Reads as</dt><dd>high sustained β₁ ⇒ many stable enclosed loops; β₀ decay rate ⇒ how components merge</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -917,6 +939,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> Rényi entropy of box occupancy is regressed against box size for each order q, and the D0→D2 drop measures multiscale density spread.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Distinguishes a monofractal fill (uniform density scaling, D0≈D1≈D2) from a multifractal one where occupied mass concentrates unevenly across scales — a heterogeneity axis that a single box-dimension collapses away.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Multifractal/Rényi generalized dimensions extend single fractal-dimension analysis of fungal mycelia by capturing how hyphal-density scaling varies across the colony; the spread among the dimensions is interpreted as heterogeneity of mycelial packing. (family-level) <span class="bc-cite">— Papagianni &amp; Mattey 2006 — 10.1186/1475-2859-5-5</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>D1, D2</b> Rényi dimensions + <b>Δ</b> = D0 − D2</dd><dt>Units</dt><dd>all dimensionless</dd><dt>Reads as</dt><dd>Δ&gt;0 ⇒ multiscale density heterogeneity; Δ≈0 (D0≈D1≈D2) ⇒ monofractal uniformity</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -947,6 +970,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> lengths of uninterrupted solid and void runs along each scan direction are histogrammed into chord and gap distributions.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates two fills of equal porosity but different characteristic gap size, and comparing chord statistics across scan axes yields a cheap DIRECTIONAL anisotropy readout complementary to isotropic gap measures.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>The distribution of inter-hyphal gap/chord lengths characterizes inter-branch spacing and void size, a proxy for how open versus densely packed the network is.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>⟨ℓ⟩</b> mean chord, <b>CV</b> variability, <b>ξ</b> correlation length</dd><dt>Units</dt><dd>⟨ℓ⟩ and ξ in px; CV dimensionless</dd><dt>Reads as</dt><dd>large ⟨ℓ⟩ ⇒ coarse runs; per-axis ⟨ℓ⟩ difference ⇒ directional structure</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -976,6 +1000,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> the mask is coarsened to an occupancy lattice and the log-count of compatible microstates gives entropy — maximal for checkerboard, minimal for a solid block.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>The clean "same composition, different arrangement" discriminator: it isolates spatial ORDER at constant area fraction, resolving clumped versus dispersed fills that mass-, gap-, and dimension-based metrics leave indistinguishable.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Configurational entropy scores the spatial disorder of the hyphal-density map, with higher entropy indicating a more heterogeneously distributed mycelium.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>H_config</b> — configurational (Boltzmann) entropy</dd><dt>Units</dt><dd>nats (or normalized 0–1)</dd><dt>Reads as</dt><dd>high H ⇒ dispersed/mixed occupancy; low H ⇒ clumped, ordered block</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1005,6 +1030,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> each window yields a local box-dimension; the spread of those values across the field is the reported texture-variability signal.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Flags spatially varying texture — a fill whose roughness changes across the field versus one that is statistically homogeneous — a distinction global FD averages away. FRAGILE: small windows span &lt;1 decade, so treat only field variability as signal and cross-check that the field mean matches the global FD.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>A spatially resolved local fractal-dimension map exposes zonation in hyphal-density scaling — a denser inner colony versus a sparser exploratory margin — extending the single whole-colony fractal measures used for fungal mycelia. (family-level) <span class="bc-cite">— Papagianni &amp; Mattey 2006 — 10.1186/1475-2859-5-5</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>FD_local std</b> — dispersion of the local-FD field (with mean, entropy)</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>high dispersion ⇒ spatially varying texture; low ⇒ homogeneous roughness</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1033,6 +1059,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> log-cumulants of the wavelet-leader coefficients are fit linearly across scales, giving regularity (c1) and multifractality (c2).</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates a monofractal grayscale texture (single Hölder exponent, c2≈0) from a multifractal one with a spectrum of local regularities — more stable than histogram box-multifractal because leaders suppress grid-alignment artifacts.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>Wavelet-leader multifractal analysis quantifies scale-dependent roughness/heterogeneity of the mycelial density field.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>c1, c2, c3</b> — log-cumulants</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>c1 ≈ dominant regularity; c2≤0 = multifractality strength (c2≈0 ⇒ monofractal); c3 = spectrum asymmetry</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1065,6 +1092,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> lacunarity is recomputed with boxes elongated along each orientation, so a gap pattern aligned with one axis yields a different curve there.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Resolves whether gaps are directionally structured versus isotropic — two fills with identical isotropic lacunarity can differ sharply once the gap pattern's orientation is probed, which the catalogued scalar lacunarity cannot see.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Lacunarity quantifies gappiness/heterogeneity of mycelial density and is an established descriptor for filamentous fungi; the directional variant additionally reports whether that void structure differs by orientation, provisionally indexing anisotropic/directional growth. (family-level) <span class="bc-cite">— Papagianni &amp; Mattey 2006 — 10.1186/1475-2859-5-5</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Λθ(r)</b> per orientation + anisotropy ratio (max/min)</dd><dt>Units</dt><dd>dimensionless; ratio ≥ 1</dd><dt>Reads as</dt><dd>ratio&gt;1 ⇒ gaps directionally structured; ratio≈1 ⇒ isotropic gappiness</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1100,6 +1128,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> partition the plane into radial annuli and total the foreground pixels in each to build a mass-versus-radius profile.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Because it integrates area rather than counting crossings, M(r) is provably invariant to the strand overlap and touching that corrupt intersection counts — two strands that merge still contribute their full area, so the profile does not under-count where structure is dense.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>In filamentous fungi the amount of biomass in successive radial annuli tends to reflect the balance between tip extension at the advancing margin and infilling/branching behind it, so M(r) is often interpreted as a spatial readout of core-vs-margin density differentiation, with a sparse leading front and a denser interior. (family-level) <span class="bc-cite">— Prosser &amp; Trinci 1979 — 10.1099/00221287-81-2-517</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>M(r)</b> — per-annulus foreground mass; the anchor object from which AUC, moments and decay all derive</dd><dt>Units</dt><dd>px²/annulus (µm²/annulus with scale)</dd><dt>Reads as</dt><dd>the radial distribution of occupied area; where along the radius the structure carries its bulk</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1124,6 +1153,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> warp the mask into (radius, angle) coordinates and record each cell's foreground fraction as a 2-D occupancy field.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves whether occupied area is spread uniformly around the origin or concentrated into angular sectors — a distinction that a purely radial profile collapses away. Because each cell measures area fraction, it inherits the same overlap-robustness as the ring-mass profile.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Resolving biomass by both radius and angle tends to expose departures from radial symmetry — locally faster sectors or gaps — which in filamentous fungi are often read as directional foraging or uneven resource capture across the colony front rather than uniform outgrowth. (family-level) <span class="bc-cite">— Fricker/Boddy 2023 — 10.3389/fcell.2023.1244673</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>S(r,θ)</b> — foreground fraction per (radius, angle) cell</dd><dt>Units</dt><dd>fraction ∈ [0,1], dimensionless</dd><dt>Reads as</dt><dd>a map of where the mask sits in polar space; bright sectors mark directional concentration of structure</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1150,6 +1180,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> sum the angular occupancy as unit vectors; the resultant's length gives concentration and its argument the preferred direction.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It reduces the full angular field to a single scalar that separates isotropic spread from one-sided occupancy. The magnitude is rotation-invariant while the argument rotates with the mask, cleanly separating "how directional" from "which direction".</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Unequal occupancy of angular sectors is often interpreted as anisotropic/directional growth of the mycelium, a hallmark of foraging networks that redistribute biomass toward resources or away from depleted regions rather than expanding as a symmetric disc. (family-level) <span class="bc-cite">— Boddy et al. 1998 — 10.1016/s0168-6496(98)00025-7</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>ADC</b> — resultant length ∈ [0,1] plus a preferred direction; 0 = isotropic, →1 = one-sided</dd><dt>Units</dt><dd>dimensionless (direction in degrees)</dd><dt>Reads as</dt><dd>how concentrated the structure is into one angular region versus evenly wrapped around the origin</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1175,6 +1206,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> slide a box within each annulus and take the variance-to-mean ratio of its foreground counts, yielding lacunarity per radial band.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Two masks can share an identical M(r) yet differ in within-ring clumping; Λ(r) separates them by resolving evenly filled rings from ones broken into gappy clusters at the same radius. Because it works on area statistics it is unaffected by strand touching.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Lacunarity captures the gappiness/heterogeneity of the mycelial mat, and reading it as a function of radius tends to distinguish a lace-like exploratory margin (high lacunarity) from a filled-in core (low lacunarity). (family-level) <span class="bc-cite">— Papagianni 2006 — 10.1186/1475-2859-5-5</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Λ(r)</b> — per-annulus lacunarity ≥ 1, approaching 1 for a uniformly filled ring</dd><dt>Units</dt><dd>dimensionless ratio</dd><dt>Reads as</dt><dd>how gappy versus evenly filled the structure is at each radius</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1202,6 +1234,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> box-count each annular sub-mask across box sizes and take the slope of log N(ε) versus log(1/ε) as the band's dimension.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves how space-filling the structure is at the core versus the margin — a distinction invisible to mass alone. It is fragile at the sparse margin where too few pixels exist to fit a slope, so the profile is only trustworthy where per-band area exceeds a threshold.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The fractal dimension of a mycelium tends to increase with branching frequency and space-filling, so a D(r) that rises from margin toward core is often interpreted as the transition from a sparsely branched colonizing front to a densely branched interior. (family-level) <span class="bc-cite">— Barry et al. 2012 — 10.1002/bit.24709</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>D(r)</b> — per-band box-counting dimension ∈ [1,2]</dd><dt>Units</dt><dd>dimensionless</dd><dt>Reads as</dt><dd>how densely the structure fills the plane at each radius; 2 = fully filled, →1 = curve-like</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1226,6 +1259,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> normalize M(r) to a density over radius and compute weighted mean, median and central moments.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>The moments compress the whole radial profile into a few shape descriptors: the skew sign alone separates a core-heavy distribution (positive) from an annular or margin-heavy one (negative). Being area-weighted, they carry the overlap-robustness of M(r) into scalar form.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>NO_SPECIFIC_SOURCE. (general, unsourced) Summary moments (mean radius, spread, skew) of a radial density profile are generic descriptors of how biomass is distributed from inoculum to margin; treat any biological reading as derivative of the underlying M(r)/D(r) interpretations.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>r̄</b>, <b>MedianRadius</b> — location; <b>Skew</b>, <b>Kurt</b> — shape of the radial distribution</dd><dt>Units</dt><dd>r̄, median in px (µm with scale); skew, kurt dimensionless</dd><dt>Reads as</dt><dd>where the mass sits along the radius and whether it is core-heavy, symmetric, or margin-heavy</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1250,6 +1284,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> cumulatively sum M(r), normalize to its total, and interpolate the radii where the curve crosses 0.25, 0.50 and 0.75.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>The CDF is monotone, so it denoises the ring-to-ring fluctuation of M(r) and yields r50 as a robust characteristic radius. The quantile spread (r75 − r25) resolves a tightly concentrated distribution from a radially spread one without depending on any single noisy annulus.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The cumulative biomass curve and its quantile radii index how far the colony has filled outward from the inoculum; because filamentous colonies expand at a near-constant radial rate set by a peripheral growth zone, such radius measures are commonly used as proxies for colonization extent and effective growth rate. (family-level) <span class="bc-cite">— Trinci 1971 — 10.1099/00221287-67-3-325</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>C(r)</b> — cumulative mass fraction; <b>r25</b>, <b>r50</b>, <b>r75</b> — quantile-enclosing radii</dd><dt>Units</dt><dd>C(r) fraction ∈ [0,1]; radii in px (µm with scale)</dd><dt>Reads as</dt><dd>how radially concentrated the mass is; r50 is the median-mass characteristic radius</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1275,6 +1310,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> divide each ring's foreground mass by the number of connected arcs crossing it to estimate a mean strand width per radius.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It recovers a thickness estimate purely from the mask. The numerator (mass) is robust, but the denominator (arc count) miscounts where strands touch or merge, collapsing several strands into one component and biasing thickness high — so the metric carries a flag wherever ring density is high enough for touching to be likely.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>NO_SPECIFIC_SOURCE. (general, unsourced) A radial trend in apparent strand/hyphal-bundle thickness is plausibly linked to cord/aggregate formation versus fine exploratory hyphae, but the specific proxy is not directly validated; interpret cautiously.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>t(r)</b> = M(r)/N(r) — mean strand width per radius</dd><dt>Units</dt><dd>px (µm with scale)</dd><dt>Reads as</dt><dd>how thick the strands crossing each shell are; upward bias signals strands merging in that ring</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1299,6 +1335,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> fit a line to M(r) across the outer fraction of the support and report its slope.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves a sharp annular edge from a diffuse one: a steep negative slope marks structure that terminates abruptly, a gentle slope marks a gradually fading margin. Being a slope of area, it is unaffected by strand overlap within the outer rings.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The steepness of the density drop-off at the colony edge tends to reflect the width and packing of the peripheral growth zone — the annulus of actively extending, sparsely branched leading hyphae that sets radial growth rate. (metric-specific) <span class="bc-cite">— Trinci 1971 — 10.1099/00221287-67-3-325</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>dM/dr</b> — marginal density slope (negative = falloff)</dd><dt>Units</dt><dd>px⁻¹ (mass per unit radius, scale-normalized)</dd><dt>Reads as</dt><dd>edge sharpness; steep ⇒ crisp annular boundary, gentle ⇒ diffuse fading margin</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1322,6 +1359,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> take the outer foreground radius per angular column from the polar warp and report its standard deviation over angle.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves a smooth circular boundary from a rough, jagged one: W approaches zero for a clean circle and grows as the leading edge roughens toward an Eden-like front. It depends only on the outermost radius per column, so interior strand overlap does not affect it.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The physical width of the actively advancing margin corresponds closely to Trinci's peripheral growth zone, whose width is mechanistically tied to the colony's radial extension rate, so W is often read as a growth-kinetics parameter rather than mere edge blur. (metric-specific) <span class="bc-cite">— Trinci 1971 — 10.1099/00221287-67-3-325</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>W</b> — standard deviation of r_max(θ) across angle</dd><dt>Units</dt><dd>px (µm with scale)</dd><dt>Reads as</dt><dd>front roughness; W≈0 for a smooth circle, larger for a jagged perimeter</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1347,6 +1385,7 @@
   </svg>
     <figcaption><b>Mechanism:</b> partition angle into K sectors, take each sector's median-mass radius, and report the variance across sectors.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>It resolves isotropic falloff from one-sided growth by asking whether the characteristic radius is the same in every direction. Unlike an occupancy anisotropy, it varies the radial extent of the falloff per sector, distinguishing masks that fill evenly but reach farther in one direction. Built on per-sector r50, it inherits the overlap-robustness of the mass profile.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Variance across angular sectors in how density falls off toward the edge tends to indicate uneven or sectored growth — including heritable morphological sectors and asymmetric foraging fronts — rather than a uniformly advancing margin. (family-level) <span class="bc-cite">— Gerstein et al. 2017 — 10.1128/aac.00755-17</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>SectorDispersion</b> — variance across sectors of per-sector r50</dd><dt>Units</dt><dd>px² (µm² with scale)</dd><dt>Reads as</dt><dd>directional heterogeneity of extent; ~0 isotropic, large for one-sided growth</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1380,6 +1419,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> sum the absolute turn between consecutive tangents and divide by total arc length.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Uniquely registers fine, low-amplitude wiggle that inflection-based metrics wash out; complements the arc-chord distance metric, which sees only gross arcing.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Total accumulated turning along a hyphal path indexes how tortuous versus straight its growth trajectory is; strong directional (autotropic) persistence normally keeps fungal hyphae growing straight, so elevated cumulative turning is often interpreted as reorientation in response to obstacles, topography, or fields (thigmotropism/contact guidance). (metric-specific) <span class="bc-cite">— Brand &amp; Gow 2009 — 10.1016/j.mib.2009.05.007</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Turning_SOAM</b> — arc-length-normalized total turning</dd><dt>Units</dt><dd>rad/µm</dd><dt>Reads as</dt><dd>0 = straight; large = highly wiggly path</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1403,6 +1443,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> fit the osculating circle at each point; κ is one over its radius, and its peak marks the turn location.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>The argmax of |κ| is precisely where the strand turns hardest — a positional readout that scalar summaries like SOAM cannot give; smoothing scale is the dominant knob.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Point-wise curvature localizes where a hypha changed direction; because tip-growing fungal hyphae reorient at points of surface contact or ridge encounter (thigmotropism via stretch-activated channels), high-κ locations are often read as guidance/contact-response events rather than random wobble. (metric-specific) <span class="bc-cite">— Watts et al. 1998 — 10.1099/00221287-144-3-689</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Curvature_Mean, Curvature_Max</b> — plus argmax position</dd><dt>Units</dt><dd>rad/µm (position in µm)</dd><dt>Reads as</dt><dd>where and how sharply the strand bends</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1426,6 +1467,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> integrate κ² along arc length so localized kinks dominate the total.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Separates "one sharp kink" (high) from "many gentle turns" (low) — a distinction SOAM's absolute-turning sum collapses; note it is NOT length-normalized.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Bending energy (integrated squared curvature) summarizes how much a hyphal path deviates from straightness; since directional persistence is the default and curving reflects tropic reorientation, higher bending energy tends to indicate more topography- or obstacle-driven guidance. (family-level) <span class="bc-cite">— Brand &amp; Gow 2009 — 10.1016/j.mib.2009.05.007</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Turning_BendEnergy</b> = ∫κ²ds</dd><dt>Units</dt><dd>rad²/µm</dd><dt>Reads as</dt><dd>high = sharp concentrated kinks; low = smooth gentle path</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1449,6 +1491,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> divide traced arc length by the Euclidean distance between the two endpoints.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>A robust fallback when a strand is only partially traced; catches gross arcing that SOAM's normalization can wash out, but is insensitive to high-frequency coiling — so pair it with SOAM.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The arc-length-to-chord ratio quantifies path straightness versus meander, a direct proxy for the directional persistence of exploratory hyphal growth; near-straight paths indicate strong polarity maintenance while high tortuosity suggests frequent guidance/reorientation. (metric-specific) <span class="bc-cite">— Brand &amp; Gow 2009 — 10.1016/j.mib.2009.05.007</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Turning_DM</b> = L ÷ C</dd><dt>Units</dt><dd>dimensionless (≥1)</dd><dt>Reads as</dt><dd>straight = 1; semicircle = π/2; larger = more overall arcing</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1473,6 +1516,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> mark each point where signed κ crosses zero and count these reversals per unit length.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Higher density means more direction reversals — a distinct axis from magnitude-of-turning metrics like SOAM; needs κ smoothing or noise fabricates spurious inflections.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The frequency of curvature sign changes along a hypha indexes how often growth direction is renegotiated; contact-guided and thigmotropic hyphae following surface features tend to show serpentine reorientation, so inflection density is often read as a guidance-response signature. (family-level) <span class="bc-cite">— Held et al. 2007 — 10.1007/s10267-007-0352-x</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Curvature_InflDensity</b> (+ Turning_ICM = n_infl·DM)</dd><dt>Units</dt><dd>1/µm</dd><dt>Reads as</dt><dd>higher = more turning-direction reversals along the strand</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1497,6 +1541,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> bin tangent-angle correlations by separation and fit a single exponential decay constant.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Collapses turning behaviour into one rotation- and translation-invariant scalar, a compact complement to the positional κ(s) profile; needs many samples for a stable fit.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Persistence length measures the distance over which a hypha maintains its direction; in foraging mycelia longer persistence tends to reflect committed, straight-line exploration between resources, while short persistence indicates space-filling search. (family-level) <span class="bc-cite">— Fricker/Boddy 2023 — 10.3389/fcell.2023.1244673</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Turning_Lp</b> — fitted persistence length</dd><dt>Units</dt><dd>µm</dd><dt>Reads as</dt><dd>large Lp = nearly straight; small = frequently turning</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1522,6 +1567,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> follow each |κ| maximum from fine to coarse smoothing; only turns that persist are kept.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Turns that survive coarse scale are real; noise and crossing spikes die out — the best defense against the failure mode where a crossing looks like a single sharp turn and corrupts κ-based metrics.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · no fungal-specific source</span></span><p>NO_SPECIFIC_SOURCE. (general, unsourced) Detecting dominant turn events at multiple smoothing scales is a signal-processing refinement of curvature analysis; its biological reading inherits from hyphal-reorientation/guidance interpretations rather than being independently grounded.</p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Curvature_CSS_Peaks</b> — surviving turn positions (+ scale)</dd><dt>Units</dt><dd>position µm (scale σ in µm)</dd><dt>Reads as</dt><dd>persistent = genuine turn; transient = noise or crossing artefact</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1547,6 +1593,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> derive a local orientation per window from the structure tensor, then measure how fast that orientation changes across space.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>The tracing-free surrogate for how much the direction field turns per unit area — fills the geometric niche where SOAM/κ are unavailable because no strand was traced; report weighted by coherence.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>Spatial change in local hyphal orientation tends to mark zones where the mycelium bends or fans — e.g., around obstacles or along guiding topography — consistent with contact guidance reshaping the orientation field. (family-level) <span class="bc-cite">— Held et al. 2007 — 10.1007/s10267-007-0352-x</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Field_OrientGrad</b> — coherence-weighted |∇φ|</dd><dt>Units</dt><dd>rad/µm</dd><dt>Reads as</dt><dd>high = direction field turns rapidly across area; low = uniform direction</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1572,6 +1619,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> the contrast of the two structure-tensor eigenvalues measures how sharply one direction dominates the window.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>Coherence drops to zero exactly at crossings, turns, and isotropic texture — so it is the natural confidence mask for |∇φ|, guarding the orientation-gradient metric against the crossing artefact.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>High local alignment of hyphal directions is often interpreted as anisotropic, contact-guided or directionally-foraging growth, whereas low coherence indicates isotropic, exploratory space-filling. (family-level) <span class="bc-cite">— Fricker/Boddy 2023 — 10.3389/fcell.2023.1244673</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Field_Coherence</b> — eigenvalue contrast C</dd><dt>Units</dt><dd>dimensionless ∈[0,1]</dd><dt>Reads as</dt><dd>1 = locally parallel strands; →0 at crossings/turns/isotropic texture</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1601,6 +1649,7 @@
     </svg>
     <figcaption><b>Mechanism:</b> bin the windowed orientations into a histogram and take its Shannon entropy.</figcaption></figure>
   <div class="interest"><span class="in-title">Why it's of interest</span><p>A tracing-free readout of directional disorder that is bin-count driven rather than eigenvalue driven, complementing coherence with a distribution-shape view of the same orientation field.</p></div>
+        <div class="biocontext"><span class="bc-title">Biological relevance <span class="bc-tag">provisional · verify</span></span><p>The dispersion of local hyphal orientations indexes how ordered versus random the growth directions are; low entropy tends to reflect directional, guided or foraging-anisotropic growth and high entropy an isotropic exploratory mat. (family-level) <span class="bc-cite">— Boddy et al. 1998 — 10.1016/s0168-6496(98)00025-7</span></p></div>
   <div class="outmetric"><span class="om-title">Output metric</span>
     <dl><dt>Value</dt><dd><b>Field_OrientEntropy</b> — entropy of the orientation histogram</dd><dt>Units</dt><dd>bits (or nats)</dd><dt>Reads as</dt><dd>0 = single dominant direction; max = isotropic directions</dd></dl></div>
   <div class="methods"><span class="m-title">Method options</span>
@@ -1745,8 +1794,10 @@
   </div>
   <p class="note">A phenotype↔method view over the “Branch Phenotypes for Filamentous Fungi” catalog. Candidate
     phenotypes, output metrics, and algorithm options were compiled from a literature research pass (scite / PubMed /
-    preprint sources); metric definitions are structural/geometric and biological interpretation is for human authoring.
-    A few citations are marked <em>unverified</em> in the source pass — confirm before external use.</p>
+    preprint sources); metric definitions are structural/geometric. The <b>biological-relevance</b> notes are
+    <b>provisional</b>, drawn from cited mycology literature and awaiting domain-author verification — they are
+    intentionally not written into the schema's <code>bio_desc</code>. A few citations are marked <em>unverified</em>
+    in the source pass — confirm all before external use.</p>
 </div></footer>
 
 </body>
