@@ -1013,7 +1013,7 @@
                 }
                 // Re-sync mutable data + classes on surviving elements so
                 // attribute-only updates (e.g. a dag-wire--main /
-                // aux-port--wired class flip) land without a remove/re-add
+                // dag-port--wired class flip) land without a remove/re-add
                 // that would reset positions.
                 pending.forEach(function (el) {
                     const live = cy.getElementById(el.data.id);

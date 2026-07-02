@@ -92,10 +92,10 @@ class GridAccessor:
             ValueError: If nrows is less than 1.
             TypeError: If nrows is not an integer type.
         """
+        if type(nrows) is not int:
+            raise TypeError("Number of nrows must be an integer")
         if nrows < 1:
             raise ValueError("Number of nrows must be greater than 0")
-        if type(nrows) != int:
-            raise TypeError("Number of nrows must be an integer")
 
         self._root_image.grid_finder.nrows = nrows
 
@@ -121,10 +121,10 @@ class GridAccessor:
             ValueError: If ncols is less than 1.
             TypeError: If ncols is not an integer type.
         """
+        if type(ncols) is not int:
+            raise TypeError("Number of columns must be an integer")
         if ncols < 1:
             raise ValueError("Number of columns must be greater than 0")
-        if type(ncols) != int:
-            raise TypeError("Number of columns must be an integer")
 
         self._root_image.grid_finder.ncols = ncols
 

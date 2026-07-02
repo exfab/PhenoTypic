@@ -45,6 +45,26 @@ optionally `__new__` for bare-label values) per the existing convention.
   coercion (e.g. `_GAMMA_COERCE`) just to satisfy generic `MyEnum(value)`
   normalization — it's intentional.
 
+## Measurement docstrings: `MeasureFeatures` vs `MeasurementInfo`
+
+When authoring a `measure/` operation, the documentation is **split** across the
+op and its schema enum — don't overlap them:
+
+- The **`MeasureFeatures` op docstring** explains **what its parameters mean** and
+  gives a **high-level overview** of the measurements it emits (what the op does,
+  when to use it). Stay at overview altitude; don't restate each output column.
+- The **`MeasurementInfo` enum members** carry the **detailed per-column
+  explanation of the measurements themselves** — what each value is, how it is
+  computed, and **how to read the output** (prefixed column header, units, range).
+  Each member's `desc` is the canonical per-column documentation.
+
+This split is load-bearing: the deliverables `README.md` generator
+(`_cli/_cli_readme_generator.py`) maps each configured `MeasureFeatures` op to its
+`MeasurementInfo` enum(s) and emits every member's `desc` verbatim as the public
+column reference — so the enum `desc` is what end users read. Author only `label`
+and `desc` on a member; **never** author `bio_desc` (human-only). Also kept in the
+root `CLAUDE.md` (Code Style + Gotchas) and the contributing guide.
+
 **For type-only enforcement** of a closed set with no documentation surface (CLI
 dispatch keys, internal mode flags), a `Literal[...]` `TypeAlias` in
 `phenotypic.sdk_.typing_` is sufficient — no Enum needed. Examples:

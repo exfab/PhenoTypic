@@ -27,7 +27,9 @@ Data accessed through accessors (not direct attributes) — ensures consistency,
 
 ### High-Level Accessors
 
-- `image.objects` — iterate detected objects (`image.num_objects` for the count); measure features via `image.objects.measure.<feat>()`
+- `image.objects` — iterate detected objects (`image.num_objects` for the count); per-object
+  bounds/labels via `image.objects.info()`. Measure features with a `MeasureFeatures`
+  operation, e.g. `MeasureSize().measure(image)` (not `image.objects.measure`)
 - `image.color` — color space conversions
 - `image.grid` — grid layout/alignment (**GridImage only**)
 - `image.metadata` — EXIF, file info

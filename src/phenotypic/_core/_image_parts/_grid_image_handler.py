@@ -14,7 +14,7 @@ import pandas as pd
 
 from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
-from phenotypic.grid import AutoGridFinder, CenteredAutoGridFinder
+from phenotypic.grid import CenteredAutoGridFinder
 from phenotypic.measure import MeasureBounds
 from phenotypic.schema import METADATA
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
@@ -208,9 +208,10 @@ class ImageGridHandler(Image):
             >>> grid_img.nrows = 16  # Switch to 384-well format
             >>> print(grid_img.nrows)  # Output: 16
         """
-        if not isinstance(nrows, int):
-            raise TypeError(f"Expected int, got {type(nrows)}")
-        self.grid_finder.nrows = nrows
+        # Delegate to the GridAccessor so validation lives in one place
+        # (see GridAccessor.nrows). Avoids the divergence where this path
+        # historically accepted nrows=0/bool while ``image.grid.nrows`` rejected them.
+        self.grid.nrows = nrows
 
     @property
     def ncols(self) -> int:
@@ -249,9 +250,10 @@ class ImageGridHandler(Image):
             >>> grid_img.ncols = 24  # Switch to 384-well format
             >>> print(grid_img.ncols)  # Output: 24
         """
-        if not isinstance(ncols, int):
-            raise TypeError(f"Expected int, got {type(ncols)}")
-        self.grid_finder.ncols = ncols
+        # Delegate to the GridAccessor so validation lives in one place
+        # (see GridAccessor.ncols). Avoids the divergence where this path
+        # historically accepted ncols=0/bool while ``image.grid.ncols`` rejected them.
+        self.grid.ncols = ncols
 
     def __getitem__(self, key) -> Image:
         """Returns a copy of the image at the slices specified as a regular Image object.
