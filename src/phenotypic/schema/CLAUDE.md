@@ -38,6 +38,11 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   A **recommended vocabulary, not a validator**: it standardizes `--metadata` CSV
   columns + `post/` ops but arbitrary columns are still accepted (unknown labels
   fall back to a generic `Metadata_<Label>` → REMBI `Uncategorized`).
+- **Front-block column order** is the bio-semantic cluster order
+  (Identity → Strain → Condition → Design; see `sdk_/_metadata_helpers.py`
+  `_METADATA_CLUSTER_ORDER` / `order_measurement_columns`). REMBI
+  (`rembi_module()` / `header_to_module`) is a *separate* provenance axis and does
+  not drive column order.
 
 ## Measurement classification (kind + tier)
 
