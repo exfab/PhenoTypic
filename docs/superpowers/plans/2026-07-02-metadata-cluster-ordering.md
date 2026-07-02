@@ -206,6 +206,11 @@ def canonical_metadata_order() -> dict[str, int]:
     cat_rank = {e.category(): i for i, e in enumerate(_cluster_ordered_enums())}
     out: dict[str, int] = {}
     for enum in _cluster_ordered_enums():
+        # Category stride (1000) must exceed the largest enum's member count
+        # (~12 today) so per-category definition ranks never bleed into the
+        # next category. Guard the invariant rather than let a silent collision
+        # corrupt ordering.
+        assert len(enum) < 1000, f"{enum.__name__} exceeds the category stride"
         base = cat_rank[enum.category()] * 1000
         for i, member in enumerate(enum):
             out[member.value] = base + i
@@ -256,9 +261,11 @@ git commit -m "feat(metadata): add canonical_metadata_order() rank map"
 
 - [ ] **Step 1: Update the pinned expectation test to cluster order**
 
-In `tests/unit/sdk_/test_metadata_helpers.py`, replace the `_expected_metadata_prefixes`
-helper and `test_prefixes_match_schema_derivation` with an explicit cluster-ordered
-expectation:
+In `tests/unit/sdk_/test_metadata_helpers.py`, **delete** the old
+`test_prefixes_match_schema_derivation` (lines 51-52) and **replace** the
+`_expected_metadata_prefixes` helper (lines 26-48) with an explicit cluster-ordered
+expectation plus a new pinning test (do not leave the old REMBI-derivation helper body —
+it would silently become a duplicate with a misleading name):
 
 ```python
 def _expected_metadata_prefixes() -> tuple[str, ...]:
@@ -592,17 +599,33 @@ Update the method docstring's Notes bullet that reads
 "Columns are inserted … so iteration order determines final order" to note the order is
 the bio-semantic cluster order (not REMBI).
 
-- [ ] **Step 4: Run the new test + the metadata-accessor suites**
+- [ ] **Step 4: Update the known REMBI-order assertion in `test_metadata_by_module.py`**
+
+`tests/unit/core/test_metadata_by_module.py::test_insert_metadata_orders_by_rembi_module`
+(line 51) pins the old REMBI front-block order and **will** fail. Under the cluster order
+the sequence is Strain (Genetic, cluster 2) → Media (Condition, 3) → Dataset (Experiment,
+4) → ImageName (Image, last). Update the assertion and its comment (lines 50-51):
+
+```python
+    # Canonical cluster order: Strain (Genetic) < Media (Condition)
+    # < Dataset (Experiment) < ImageName (framework Image, last).
+    assert _pos("Strain") < _pos("Media") < _pos("Dataset") < _pos("ImageName")
+```
+
+Also update the setup comment (lines 36-39) so it no longer describes REMBI ranks — note
+the cluster ranks instead. Rename the test function to
+`test_insert_metadata_orders_by_cluster` for accuracy.
+
+- [ ] **Step 5: Run the new test + the metadata-accessor suites**
 
 Run: `uv run pytest tests/unit/core/test_metadata_cluster_order.py::test_insert_metadata_front_block_cluster_order tests/unit/sdk_/test_metadata_io.py tests/unit/core/test_metadata_by_module.py -q`
-Expected: PASS. `by_module` is REMBI-based and unchanged; if any test in these files pins
-the **REMBI front-block order** (not `by_module` grouping), update its expected sequence to
-the cluster order using the same mapping as Task 3, then re-run.
+Expected: PASS. (`by_module()` grouping itself is REMBI-based and unchanged; only the
+insert-order assertion above moves.)
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/_core/_image_parts/accessors/_metadata_accessor.py tests/unit/core/test_metadata_cluster_order.py
+git add src/phenotypic/_core/_image_parts/accessors/_metadata_accessor.py tests/unit/core/test_metadata_cluster_order.py tests/unit/core/test_metadata_by_module.py
 git commit -m "feat(metadata): insert_metadata sorts by bio-semantic cluster order"
 ```
 
@@ -704,11 +727,19 @@ git commit -m "refactor(measure): delegate column order to shared canonical help
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_output_manager.py:661-662`
 - Test: `tests/unit/core/test_metadata_cluster_order.py`
+- Modify (regression): `tests/unit/cli/test_cli_output_manager.py:284,286` — the mirror
+  now legitimately diverges from the clean master in column *order*.
 
 **Interfaces:**
 - Consumes: `order_measurement_columns()` (Task 4), `finalize_post_master_outputs(...)`
   (existing, returns the post/mirror polars frame).
 - Produces: the mirror `measurements.*` + splits + analysis carry the canonical order.
+
+**Note:** this pass makes the mirror's column order differ from the clean master's. An
+existing test (`test_split_runs_via_state_file_fallback`) asserts the two are byte-identical
+in column order — that invariant is intentionally broken here and its assertions must be
+relaxed to *set*-equality + data-equality (Step 4 below). This is the whole point of the
+feature: master stays clean/stable, mirror gets the human ordering.
 
 - [ ] **Step 1: Write the failing integration test**
 
@@ -788,15 +819,44 @@ and change to:
     _seed_measurements(output_dir, post_df)
 ```
 
-- [ ] **Step 4: Run the integration test + the output-manager suite**
+- [ ] **Step 4: Relax the seed-vs-master assertions that pinned identical column order**
+
+In `tests/unit/cli/test_cli_output_manager.py::TestAggregateMeasurementsAutoResolve::test_split_runs_via_state_file_fallback`,
+two assertions assume the seeded mirror equals the master byte-for-byte, which the reorder
+pass now intentionally breaks (the mirror is cluster-ordered; the master archive is not).
+
+Change line 284:
+```python
+        assert seed_df.columns == master_df.columns
+```
+to a set-equality check plus a pin on the mirror's new placement (framework `MetadataImage_`
+trails the measurements):
+```python
+        assert set(seed_df.columns) == set(master_df.columns)
+        assert seed_df.columns.index(str(METADATA.IMAGE_NAME)) > seed_df.columns.index(
+            "Shape_Area"
+        )
+```
+
+Change line 286 — polars `.equals()` is column-order sensitive, so align the seed to the
+master's column order before comparing data:
+```python
+        assert seed_pq_df.select(master_pq.columns).equals(master_pq)
+```
+
+`METADATA` is already imported in this test module (used by the fixture at line 250); no
+new import is needed.
+
+- [ ] **Step 5: Run the integration test + the full output-manager suite**
 
 Run: `uv run pytest tests/unit/core/test_metadata_cluster_order.py::test_finalize_mirror_applies_cluster_order tests/unit/cli/test_cli_output_manager.py -q`
-Expected: PASS.
+Expected: PASS (the new integration test + all 19 output-manager tests, including the two
+relaxed assertions).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/_cli/_cli_output_manager.py tests/unit/core/test_metadata_cluster_order.py
+git add src/phenotypic/_cli/_cli_output_manager.py tests/unit/core/test_metadata_cluster_order.py tests/unit/cli/test_cli_output_manager.py
 git commit -m "feat(cli): apply canonical cluster order to the measurements mirror"
 ```
 
@@ -926,3 +986,18 @@ concrete transform defined in Task 3.
 `order_measurement_columns(Sequence[str]) -> list[str]` are used with matching signatures
 in Tasks 5 (`rank.get(header, len(rank))`), 6 (`df[order_measurement_columns(list(df.columns))]`),
 and 7 (`post_df.select(order_measurement_columns(post_df.columns))`).
+
+**Independent plan review incorporated (2026-07-02):**
+- **Blocker** — Task 7's reorder pass breaks
+  `test_cli_output_manager.py::test_split_runs_via_state_file_fallback` (it pinned
+  seed==master column order). Task 7 Step 4 now relaxes line 284 to set-equality + a mirror
+  placement pin, and **also line 286** (`seed_pq_df.equals(master_pq)` — polars `.equals()`
+  is order-sensitive, so it's aligned via `.select(master_pq.columns)` before comparing).
+  The cli test file is added to Task 7's Files.
+- **Should-fix** — Task 5 now names the guaranteed break at
+  `test_metadata_by_module.py:51` with the corrected cluster-order assertion (Strain < Media
+  < Dataset < ImageName) instead of a vague "if any test pins REMBI order" caveat.
+- **Should-fix** — Task 3 now explicitly deletes the stale
+  `test_prefixes_match_schema_derivation` (avoids a silent misnamed duplicate).
+- **Should-fix** — Task 2's `canonical_metadata_order()` now asserts the ×1000 category
+  stride exceeds any enum's member count.
