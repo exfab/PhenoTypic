@@ -1127,17 +1127,14 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        # The info frame is appended last and is metadata-free, so its columns
-        # (``Object_Label`` + ``Bbox_*`` / ``Grid_*``) form the trailing info block.
-        info_cols = list(measurements[-1].columns)
-
         df = self._merge_on_object_labels(measurements)
 
         # Metadata (and, downstream, external-joined metadata) belongs at the
-        # front, ahead of the measurements; the info block stays last.
+        # front, ahead of the measurements; the info block stays last. Ordering
+        # is delegated to the shared canonical helper.
         if include_metadata:
             df = image.metadata.insert_metadata(df)
-        df = self._order_measurement_columns(df, info_cols)
+        df = self._order_measurement_columns(df)
 
         # Apply post-measurement transforms
         if apply_post:
@@ -1154,48 +1151,23 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
                 else image.objects.info(include_metadata=include_metadata))
 
     @staticmethod
-    def _order_measurement_columns(
-            df: pd.DataFrame, info_cols: List[str]
-    ) -> pd.DataFrame:
-        """Order columns as ``[metadata] -> [measurements] -> [MetadataImage_] -> [info block]``.
+    def _order_measurement_columns(df: pd.DataFrame) -> pd.DataFrame:
+        """Order columns as ``[metadata] -> [measurements] -> [MetadataImage_] -> [info]``.
 
-        User/experimental metadata columns (identified by
-        :func:`is_metadata_header`, e.g. ``MetadataGenetic_*``,
-        ``MetadataCondition_*``) move to the front in their existing (canonical
-        REMBI) order. The framework ``MetadataImage_*`` bookkeeping block
-        (``UUID``, ``ImageName``, ``BitDepth``, …) is *per-image* provenance —
-        constant across every row of one image — so it is pulled out of the front
-        block and placed **after** the measurements, immediately before the
-        per-object image-info block (``Object_Label`` plus the ``Bbox_*`` /
-        ``Grid_*`` geometry, given by *info_cols*). Every remaining column — the
-        measurements — keeps its relative order in the middle.
+        Delegates to the single source of truth
+        :func:`phenotypic.sdk_.order_measurement_columns`, shared with the polars
+        mirror path, so both surfaces agree on the cluster/definition ordering and
+        the ``MetadataImage_``-after-measurements placement.
 
         Args:
             df: The merged measurement DataFrame.
-            info_cols: Columns belonging to the trailing image-info block.
 
         Returns:
-            pd.DataFrame: *df* with columns reordered (a view/copy via column
-            selection); row data and index are unchanged.
+            pd.DataFrame: *df* with columns reordered; rows/index unchanged.
         """
-        from phenotypic.schema import METADATA
-        from phenotypic.sdk_ import is_metadata_header
+        from phenotypic.sdk_ import order_measurement_columns
 
-        image_prefix = f"{METADATA.category()}_"  # "MetadataImage_"
-        info_set = set(info_cols)
-
-        all_metadata = [c for c in df.columns if is_metadata_header(c)]
-        front_metadata = [c for c in all_metadata
-                          if not c.startswith(image_prefix)]
-        image_metadata = [c for c in all_metadata
-                          if c.startswith(image_prefix)]
-        metadata_set = set(all_metadata)
-        info_present = [c for c in info_cols if c in df.columns]
-        measurement_cols = [
-                c for c in df.columns
-                if c not in metadata_set and c not in info_set
-        ]
-        return df[front_metadata + measurement_cols + image_metadata + info_present]
+        return df[order_measurement_columns(list(df.columns))]
 
     def _build_measurement_run_order(self) -> Dict[str, MeasureFeatures]:
         """Return the measurements to execute for this ``measure()`` call.
