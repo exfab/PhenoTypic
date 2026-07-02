@@ -1,0 +1,5 @@
+MetadataImage_ImageName,MetadataGenetic_Strain,MetadataGenetic_MatingType,MetadataCondition_Media,MetadataCulture_Temperature,MetadataCulture_Time,MetadataCulture_TimeUnit,MetadataPlate_PlateID,MetadataSample_BioReplicate
+plate_001_t24.tif,BY4741,a,YPD,30,24,h,P1,1
+plate_001_t48.tif,BY4741,a,YPD,30,48,h,P1,1
+plate_002_t24.tif,BY4742,alpha,YPD,30,24,h,P2,1
+plate_002_t48.tif,BY4742,alpha,YPD,30,48,h,P2,1

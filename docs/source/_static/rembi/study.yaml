@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# REMBI Study-level metadata profile  (pass with:  --study study.yaml)
+#
+# One set of values per run. These "static" fields describe the STUDY as a
+# whole -- they do not vary from image to image -- and are folded into the
+# `study:` section of `deliverables/rembi.yaml`.
+#
+# Keys are the *bare* STUDY_METADATA / EXPERIMENT_METADATA labels (no
+# `MetadataStudy_` / `MetadataExperiment_` prefix). Any key given here
+# OVERRIDES a same-named constant `Metadata*` column coming from --metadata.
+# Every field is optional; delete the lines you do not need. This is a
+# recommended vocabulary, not a validator -- unknown keys are still emitted.
+# See the STUDY_METADATA / EXPERIMENT_METADATA schema pages for the full list.
+# ---------------------------------------------------------------------------
+
+# --- REMBI Study fields (STUDY_METADATA) ---
+Title: "Yeast deletion-collection colony-size time course"
+Description: >
+  SGA-arrayed S. cerevisiae deletion library imaged on YPD at 30 C,
+  endpoint colony size captured at 24 h and 48 h.
+Keywords: "colony size; yeast; deletion collection; time course"
+Author: "Nguyen, A.; Example Lab"        # delimited string for multiple authors
+License: "CC-BY-4.0"
+Funding: "NIH R01-XXXXXXX"
+Publications: "https://doi.org/10.1000/example"
+Links: "https://example.org/datasets/yeast-sga-timecourse"
+Acknowledgements: "Imaging performed at the Example Screening Core."
+# PrivateUntilDate: "2027-01-01"          # embargo date, if the study is private
+
+# --- Experiment-level bookkeeping (EXPERIMENT_METADATA, also REMBI Study) ---
+Project: "SGA-Phenomics"
+Dataset: "sga-timecourse-2026"
+Protocol: "https://example.org/protocols/sga-pinning-v3"

@@ -29,6 +29,13 @@ This is a **recommended vocabulary, not a validator**: arbitrary metadata column
 are always accepted. A user-supplied label that is not in the vocabulary keeps a
 generic `Metadata_<Label>` header and routes to the REMBI `Uncategorized` module.
 
+```{seealso}
+To attach metadata to a run and emit the `deliverables/rembi.yaml` manifest, see
+the how-to guide {doc}`/how_to/pages/rembi_metadata` — it covers the `--metadata`
+sample CSV, the `--study` profile, and how columns fold into REMBI modules, with
+downloadable example files.
+```
+
 ## Migration note (namespace rename)
 
 Metadata columns are now per-REMBI-module prefixed (`MetadataGenetic_Strain`
