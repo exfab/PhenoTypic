@@ -2,7 +2,7 @@
 
 ## Agentic AI File Rules
 
-- **Design Specifications** go in @docs/superpowers/docs/ under their own dated folder
+- **Design Specifications** go in @docs/superpowers/specs/ under their own dated folder
   with the topic name
 - **Mult-doc design plans** go in @docs/superpowers/plans/ under their own dated folder
   with the topic name
@@ -138,6 +138,18 @@ operations copy data; avoid unnecessary intermediate allocations.
 
 - **Google-style docstrings** everywhere. Order and ImageOperation conventions live
   in [abc_/CLAUDE.md](src/phenotypic/abc_/CLAUDE.md).
+- **Measurement docstring split (`MeasureFeatures` vs `MeasurementInfo`):** the two
+  carry different documentation. A `MeasureFeatures` op's docstring explains **what
+  its parameters mean** and gives a **high-level overview** of the measurements it
+  emits (what the operation does, when to use it). The `MeasurementInfo` enum members
+  carry the **detailed, per-column explanation** of the measurements themselves —
+  what each value is, how it is computed, and **how to read the measurement output**
+  (units, range, column header). Don't duplicate the per-column detail onto the
+  measurer or the operation overview onto the enum. The deliverables `README.md`
+  generator reads the measurer→`MeasurementInfo` mapping and emits each member's
+  `desc` as the public column documentation, so the enum `desc` is what users see.
+  (Authoring rule for enum members — author `label`/`desc` only, never `bio_desc` —
+  is in **Gotchas** below.)
 - All doctest examples must be **runnable** using `load_synth_yeast_plate()`; use
   microbiology context (colony visibility, edge sharpness, mask quality).
 - **Never create** separate example files/notebooks — examples go in docstrings.

@@ -77,12 +77,19 @@ def _decode_meta(s: Any) -> Any:
 
 # Legacy metadata-key shim.
 # Files written before the ``METADATA`` enum gained its ``MetadataImage_``
-# category prefix stored framework metadata keys *bare* (e.g. ``ImageName``,
-# ``BitDepth``, ``UUID``). Map those legacy bare keys to their current prefixed
-# form on load so old HDF5 outputs stay readable. Built from the enum so it
-# tracks any future member additions: ``{"ImageName": "MetadataImage_ImageName", ...}``.
+# category prefix stored framework metadata keys in two now-obsolete forms:
+#   * *bare* labels (oldest):            ``ImageName``, ``BitDepth``, ``UUID``
+#   * *generic-prefixed* (intermediate): ``Metadata_ImageName``, ``Metadata_BitDepth``
+# Map both legacy forms to the current per-topic prefixed value
+# (``MetadataImage_ImageName``, ...) on load so old HDF5 outputs stay readable and
+# the dedup in ``_load_from_hdf`` collapses them onto the constructor-populated
+# canonical key instead of re-adding a stale duplicate. Built from the enum so it
+# tracks any future member additions. Strictly scoped to framework ``METADATA``
+# labels: arbitrary user-supplied ``Metadata_<Unknown>`` keys have no per-topic
+# home and must pass through unchanged.
 _LEGACY_METADATA_KEY_MAP: dict[str, str] = {
-    member.label: member.value for member in METADATA
+    **{member.label: member.value for member in METADATA},
+    **{f"Metadata_{member.label}": member.value for member in METADATA},
 }
 
 
