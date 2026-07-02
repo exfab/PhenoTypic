@@ -713,16 +713,38 @@ class TestLegacyMetadataKeyShim:
         assert _remap_legacy_metadata_key("BitDepth") == METADATA.BIT_DEPTH.value
         assert _remap_legacy_metadata_key("FileSuffix") == METADATA.SUFFIX.value
 
-    def test_remap_helper_is_idempotent_and_passes_through_user_keys(self):
-        """Already-prefixed keys and arbitrary user keys pass through unchanged."""
+    def test_remap_helper_maps_generic_prefix_to_per_topic(self):
+        """The helper folds the intermediate ``Metadata_<label>`` form onto per-topic.
+
+        Files written after bare labels but before the per-topic
+        ``MetadataImage_`` prefix stored framework keys generic-prefixed
+        (``Metadata_BitDepth``); those must map onto the canonical per-topic
+        value so the loader dedup collapses them instead of adding a duplicate.
+        """
         from phenotypic._core._image_parts._image_io_handler import (
             _remap_legacy_metadata_key,
         )
 
-        # Already prefixed (a new file's key) -> unchanged.
-        assert _remap_legacy_metadata_key("Metadata_ImageName") == "Metadata_ImageName"
-        # Arbitrary biological tag a user supplied -> unchanged.
+        assert _remap_legacy_metadata_key("Metadata_ImageName") == METADATA.IMAGE_NAME.value
+        assert _remap_legacy_metadata_key("Metadata_BitDepth") == METADATA.BIT_DEPTH.value
+        assert _remap_legacy_metadata_key("Metadata_ImageType") == METADATA.IMAGE_TYPE.value
+
+    def test_remap_helper_is_idempotent_and_passes_through_user_keys(self):
+        """Already-per-topic keys and arbitrary user keys pass through unchanged."""
+        from phenotypic._core._image_parts._image_io_handler import (
+            _remap_legacy_metadata_key,
+        )
+
+        # Already per-topic prefixed (a current file's key) -> unchanged.
+        assert (
+            _remap_legacy_metadata_key(METADATA.IMAGE_NAME.value)
+            == METADATA.IMAGE_NAME.value
+        )
+        # Arbitrary biological tag a user supplied (bare) -> unchanged.
         assert _remap_legacy_metadata_key("Strain") == "Strain"
+        # A genuinely unknown generic-prefixed key has no per-topic home and must
+        # NOT be remapped (only framework METADATA labels are folded).
+        assert _remap_legacy_metadata_key("Metadata_Foo") == "Metadata_Foo"
 
     def test_legacy_flat_hdf5_bare_keys_remapped_on_load(self, temp_image_dir):
         """Legacy flat HDF5 with bare keys loads under prefixed METADATA keys.
@@ -791,6 +813,48 @@ class TestLegacyMetadataKeyShim:
         assert all(str(k).startswith("MetadataImage_") for k in prot)
         assert "ImageName" not in prot and "BitDepth" not in prot
         assert loaded.bit_depth == 8
+
+    def test_legacy_v2_hdf5_generic_prefix_keys_deduped_on_load(self, temp_image_dir):
+        """A v2 file whose protected keys use the ``Metadata_`` prefix loads deduped.
+
+        Reproduces the reported bug: files written after bare labels but before the
+        per-topic ``MetadataImage_`` prefix stored framework keys generic-prefixed
+        (``Metadata_BitDepth``, ``Metadata_ImageName``, ``Metadata_ImageType``).
+        Before the fix these bypassed the loader dedup and were re-added alongside
+        the constructor-populated per-topic keys, duplicating the info block. The
+        shim must now fold them onto the canonical per-topic key.
+        """
+        img = phenotypic.Image(
+            arr=np.zeros((16, 24, 3), dtype=np.uint8), name="v2_generic", bit_depth=16
+        )
+        path = temp_image_dir / "v2_generic.h5"
+        img.save2hdf5(path)
+
+        # Rewrite prefixed protected attr names -> the intermediate generic prefix,
+        # in place, and add an unknown generic-prefixed user key that must survive.
+        with h5py.File(path, "r+") as f:
+            prot_attrs = f["metadata"]["protected"].attrs
+            for member in METADATA:
+                if member.value in prot_attrs:
+                    val = prot_attrs[member.value]
+                    del prot_attrs[member.value]
+                    prot_attrs[f"Metadata_{member.label}"] = val
+            prot_attrs["Metadata_Foo"] = "bar"  # unknown -> must pass through
+
+        loaded = phenotypic.Image.load_hdf5(path)
+        prot = loaded._metadata.protected
+
+        # No generic-prefixed framework keys survive as duplicates ...
+        for stale in ("Metadata_BitDepth", "Metadata_ImageName", "Metadata_ImageType"):
+            assert stale not in prot
+        # ... they collapsed onto the canonical per-topic keys, values preserved.
+        assert prot[METADATA.IMAGE_TYPE] == "Image"
+        assert loaded.bit_depth == 16
+        # Every framework protected key is per-topic prefixed; the only non-per-topic
+        # protected key is the genuinely-unknown user key, passed through verbatim.
+        non_per_topic = [k for k in prot if not str(k).startswith("MetadataImage_")]
+        assert non_per_topic == ["Metadata_Foo"]
+        assert prot["Metadata_Foo"] == "bar"
 
     def test_legacy_png_bare_metadata_keys_remapped_on_imread(self, temp_image_dir):
         """Old PNG/JPEG ``_phenotypic_data`` with bare keys remaps on imread.
