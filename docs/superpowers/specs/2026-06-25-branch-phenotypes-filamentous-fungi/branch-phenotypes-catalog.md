@@ -86,6 +86,12 @@ Deduped across all seven sources. `Prov.` = provenance fields that use the metri
 (**My**=mycology, **Ne**=neuroscience, **Ro**=roots/RSA, **Va**=vascular, **Ge**=geomorph/physics).
 Definitions are condensed; see §6 References for sources keyed `Author Year`.
 
+> **2026-07-02 expansion.** Rows tagged **⊕** were folded in from a second literature
+> research pass (Size&nbsp;&amp;&nbsp;Shape, Space-filling, Radial/Sholl, and along-strand
+> turning), surfaced in the companion `phenotype-method-index.html` dual-index view. They
+> extend — not replace — the original rows; a handful of them are variants/estimators of an
+> existing entry and say so.
+
 ### Family A — Whole-silhouette size & shape (Regime B) — *largely already in PhenoTypic*
 
 | Phenotype | Definition | Min input | Robustness | Prov. | Fit | Key source |
@@ -103,6 +109,14 @@ Definitions are condensed; see §6 References for sources keyed `Author Year`.
 | Centroid / radius of gyration | Mass center; √(Σr²/N) spread about it | mask | high | My,Ro,Ge | 🟢 | Cox & Thomas (in Paul & Thomas 1998) |
 | Zernike shape moments | Orthogonal rotation-invariant shape signature | mask | high | My | 🟢 | CellProfiler |
 | Number of enclosed holes / mean hole size | Count/area of background regions fully enclosed | mask | med (small holes lost at low res) | Ro,Ge | 🟢 | Seethepalli 2021 |
+| ⊕ Feret diameters (max/min) & Feret roundness | Widest/narrowest caliper span of the hull; roundness 4A/(π·F_max²); F_max/F_min = rotation-invariant aspect ratio | mask | high (hull-based) | My,Ge | 🟢 | Merkus 2009 |
+| ⊕ Extent / rectangularity | Area ÷ bounding-box (or min-area-rect) area | mask | high | Ro | 🟢 | Kumar 2014 |
+| ⊕ Convexity (perimeter) & concavity-depth spectrum | Hull-perimeter ÷ perimeter; depth & count of hull indentations | mask | med (depths noisy at low res) | Ro,Ge | 🟢 | Bagheri 2015 |
+| ⊕ Elliptic Fourier descriptors (EFD) | Normalized harmonic expansion of the closed contour (rot/scale/start-invariant) | mask (contour) | med (low harmonics stable) | Ro,Ge | 🟡 | Kuhl & Giardina 1982 |
+| ⊕ LOCO-EFA lobe descriptors | Lobe count & cumulative lobe amplitude from EFD modes | mask (contour) | med | Ne | 🟡 | Sánchez-Corrales 2018 |
+| ⊕ Hu moment invariants (φ1–φ7) | Seven translation/rotation/scale-invariant algebraic moments | mask | med–high (φ1–φ4) | My | 🟢 | Hu 1962 |
+| ⊕ Contour bending energy | Mean squared boundary curvature — margin waviness independent of size | mask (contour) | med | Ge | 🟡 | Mokhtarian & Mackworth 1992 |
+| ⊕ PCA elongation & orientation | Axis ratio √(λ₂/λ₁) + principal angle from coordinate covariance (variant of eccentricity) | mask | high | Ro | 🟢 | (moment-based) |
 
 ### Family B — Space-filling & heterogeneity (Regime B) — *the highest-value new additions*
 
@@ -120,6 +134,15 @@ Definitions are condensed; see §6 References for sources keyed `Author Year`.
 | Two-point density correlation C(r) | r^−(d−D) decay → characteristic branch spacing / mesh correlation length | mask/gray | med | Ge | 🟢 | Witten & Sander 1981 |
 | DLA/DBM regime fit (effective η, D_f) | Place D on the Laplacian-growth family: η≈1/D≈1.71 → diffusion-limited foraging; D→2 → compact | mask | high | Ge | 🟢 | Niemeyer 1984; Ben-Jacob & Garik 1990 |
 | Dense-branching-morphology signature | Branch-width ≈ inter-branch gap + exponential branch-length dist → random tip-splitting morphotype | mask | high | Ge | 🟢 | Ben-Jacob & Garik 1990 |
+| ⊕ Succolarity (directional) | Edge flood-fill box-count → directional percolability σ (↓↑←→) + anisotropy A; the missing 3rd fractal descriptor (mass=FD, gaps=lacunarity, flow=succolarity) | mask | high (no scale-decade needed) | Ge | 🟢 | de Melo & Conci 2013 |
+| ⊕ Granulometry / pattern spectrum | Opening-sweep size distribution PS(r); mean size, spread, PS-entropy | mask | high | Ge | 🟢 | Maragos 1989 |
+| ⊕ Persistent-homology Betti curves (β₀,β₁) | Cubical-complex components & loops vs filtration; total persistence, persistence entropy | mask | high (persistence-stable) | Ge,Va | 🟢 | Edelsbrunner 2002 |
+| ⊕ Rényi generalized dimensions D₁, D₂ (Δ=D₀−D₂) | Information & correlation dims broken out; Δ = compact heterogeneity index | mask | med (≥1 decade) | Ge | 🟡 | Hentschel & Procaccia 1983 |
+| ⊕ Chord-length / gap-size distribution + correlation length ξ | Run-length histograms of solid/void; ⟨ℓ⟩, CV, ξ, per-axis anisotropy | mask | high | Ge,Va | 🟢 | Torquato 2002 |
+| ⊕ Configurational (Boltzmann) entropy | Occupancy-microstate entropy — clumped vs dispersed at FIXED area fraction | mask | high | Ge | 🟢 | Cushman 2021 |
+| ⊕ Local (per-pixel) fractal-dimension map | Sliding-window FD field; report dispersion (mean/std/entropy) only, not per-pixel truth | mask/gray | low (windows < 1 decade) | Ge | 🔴 | Sarkar & Chaudhuri 1994 |
+| ⊕ Wavelet-leader multifractal (c₁,c₂,c₃) | 2-D wavelet-leader log-cumulants (grayscale); more stable than histogram multifractal | gray | med (needs octaves) | Ge,Va | 🟡 | Wendt 2009 |
+| ⊕ Anisotropic / directional lacunarity | Oriented gliding-box lacunarity Λθ(r) + anisotropy ratio | mask | med | Ge | 🟡 | Plotnick 1996 (ext.) |
 
 ### Family C — Radial / Sholl-type density profiles (Regime B, soma = inoculum/centroid)
 
@@ -136,6 +159,17 @@ Definitions are condensed; see §6 References for sources keyed `Author Year`.
 | Core/annulus split & relative annular diameter (RAD) | (d_total−d_core)/d_total — fraction of radius that is loose outer zone | mask/gray | med | My | 🟢 | Veiter 2018 |
 | Width function W(x) | Tip/segment count vs topological distance from origin (growth-front shells) | skeleton (rooted) | high cost | Ge,Ne | 🔴 | Rodríguez-Iturbe & Rinaldo 1997 |
 | Bushiness | max ÷ median strand-crossing count over scan lines | mask | med | Ro | 🟢 | Galkovskyi 2012 |
+| ⊕ Ring-mass profile M(r) (area-based Sholl) | Foreground AREA per annulus — overlap-robust reformulation of N(r); the anchor object for AUC/moments/decay | mask | high | Ne,Ge | 🟢 | Bird & Cuntz 2019 |
+| ⊕ 2-D angular–radial Sholl heatmap S(r,θ) ⟳ | Occupancy per (radius,angle) cell from a polar warp | mask | high (mass form) | Ne | 🟢 | SNT Angular Sholl |
+| ⊕ Angular occupancy anisotropy (ADC) ⟳ | Circular resultant of p(θ) → isotropy 0–1 + preferred direction (magnitude rotation-invariant) | mask | high | Ne | 🟢 | SNT Angular Sholl |
+| ⊕ Radial lacunarity profile Λ(r) | Gliding-box lacunarity per annulus — within-ring clumping at each radius | mask | med (box > strand spacing) | Ge,Va | 🟡 | Dougherty & Henebry 2001 |
+| ⊕ Radial fractal-dimension profile D(r) | Local box-count dimension per annular band (core→margin filling) | mask | med (sparse margin) | Ge | 🟡 | Obert 1990 |
+| ⊕ Radial profile moments (r̄, skew, kurt) | Weighted moments of M(r); skew sign = core-heavy (+) vs margin-heavy (−) | mask | high | Ne | 🟢 | Bird & Cuntz 2019 |
+| ⊕ Cumulative mass C(r) & quantile radii (r₂₅/r₅₀/r₇₅) | CDF of M(r); monotone characteristic radii (denoises ring fluctuation) | mask | high | Ne | 🟢 | Bird & Cuntz 2019 |
+| ⊕ Strand-thickness proxy t(r)=M(r)/N(r) | Ring mass ÷ ring arc-count — skeleton-free mean width per shell | mask | med (arc-count biases high where strands touch) | My | 🟡 | (derived) |
+| ⊕ Radial margin-density gradient dM/dr | Slope of M(r) over outer support — edge sharpness (crisp annulus vs diffuse) | mask | high | Ge | 🟢 | Vicsek 1992 (front) |
+| ⊕ Growth-front width W | Std of outermost radius over angle — leading-edge roughness | mask | med | Ge | 🟡 | Family-Vicsek 1985 |
+| ⊕ Sector-wise falloff dispersion ⟳ | Variance across sectors of per-sector r₅₀ — directional heterogeneity of the falloff | mask | high | Ne | 🟢 | SNT Angular Sholl |
 
 ### Family D — Texture & anisotropy (Regime B, grayscale — no segmentation needed)
 
@@ -148,6 +182,9 @@ Definitions are condensed; see §6 References for sources keyed `Author Year`.
 | Local-orientation angle histogram | Dominant orientation per window → shallow/medium/steep angle frequencies | mask/gray | high | Ro,Ge | 🟢 | Seethepalli 2021 |
 | Growth-direction order parameter / anisotropy | Variance/concentration of local growth directions (structure tensor) | mask/gray | high | Ge | 🟢 | Ben-Jacob 1997 |
 | Angular power spectrum of boundary | FFT of branch-orientation distribution → n-fold symmetry / preferred angle | mask (boundary) | high | Ge | 🟢 | Ben-Jacob & Garik 1990 |
+| ⊕ Orientation-field coherence | Structure-tensor eigenvalue contrast (λ₁−λ₂)/(λ₁+λ₂); local alignment, drops at crossings/turns — doubles as a confidence weight | mask/gray | high | Ge,Va | 🟢 | Rezakhaniha 2012 |
+| ⊕ Orientation-angle spatial gradient \|∇φ\| | Rate of structure-tensor re-orientation per area — tracing-free surrogate for how much the direction field turns (Regime-B "turning") | mask/gray | med–high | Ge,Va | 🟢 | Püspöki 2016 |
+| ⊕ Orientation entropy | Shannon entropy of the windowed orientation histogram — directional disorder | mask/gray | high | Ge | 🟢 | Püspöki 2016 |
 
 ### Family E — Margin / boundary complexity & macromorphotype (Regime B)
 
@@ -197,6 +234,10 @@ Definitions are condensed; see §6 References for sources keyed `Author Year`.
 | Caulescence / tree asymmetry | Degree of a dominant main path | graph (tree) | low | Ne | 🔴 | Torben-Nielsen 2014 |
 | Tortuosity / contraction | Path length ÷ Euclidean (≥1) per branch | graph | med (per-branch robust once traced) | My,Ne,Ro,Va | 🟡 | Nunez-Iglesias 2018 |
 | Tortuosity variants (DM/ICM/SOAM/∫κ²) | Distance-metric / inflection-count / sum-of-angles / curvature-integral | graph | med–high | Va | 🟡 | Bullitt 2003; Hart 1999 |
+| ⊕ Along-strand curvature κ(s) — mean/max & turn location | Tangent-angle derivative along the ordered path; argmax\|κ\| = *where* the strand turns hardest (SOAM above = the length-normalized total) | graph (ordered path) | med (smoothing-scale dependent; crossings inflate) | Va,Ne | 🟡 | Bullitt 2003; Faas 2021 |
+| ⊕ Curvature-scale-space turn peaks | Scale-persistent \|κ\| maxima → robust turn *localization* under noise/crossings (survives coarse scale = real) | graph (ordered path) | med–high (localization) | Va | 🟡 | Mokhtarian & Mackworth 1992 |
+| ⊕ Directional persistence length L_p | Tangent-angle autocorrelation decay ⟨cosΔθ(s)⟩=exp(−s/2L_p) — compact "how straight on average" | graph (ordered path) | med (needs many samples) | Va | 🟡 | Faas 2021 |
+| ⊕ Inflection density (signed-κ reversals / length) | Localizes turning-*direction* reversals; = ICM's density form (pair with CSS to reject noise) | graph (ordered path) | med (needs κ smoothing) | Va | 🟡 | Bullitt 2003 |
 | Hyphal width / diameter | Distance-transform radius along skeleton | mask/gray | low (few-px width) | My,Ro,Va | 🔴 | Nunez-Iglesias 2018 |
 | Diameter classes (fine vs cords/rhizomorphs) | Length/area binned by width thresholds | mask + DT | med | Ro | 🟡 | Seethepalli 2021 |
 | Taper rate | Diameter gradient tip→base | mask/gray | low | My,Ne | 🔴 | Barry 2015 |
