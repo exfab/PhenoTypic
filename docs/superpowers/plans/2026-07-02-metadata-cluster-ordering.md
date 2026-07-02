@@ -530,7 +530,16 @@ def order_measurement_columns(columns: Sequence[str]) -> list[str]:
             info.append(c)
         else:
             meas.append(c)
-    front.sort(key=lambda c: (rank.get(c, len(rank)), str(c)))
+    # Unknown/uncategorized Metadata_* tags sort AFTER every known header. Ranks
+    # use a 1000-stride (Task 2), so `len(rank)` (~72) is NOT a valid "after
+    # everything" sentinel — it would land unknown tags mid-front-block. Derive
+    # the sentinel from the actual max rank.
+    unknown_rank = max(rank.values(), default=0) + 1
+    front.sort(key=lambda c: (rank.get(c, unknown_rank), str(c)))
+    # Object_Label leads the info block; the Bbox_*/Grid_* geometry keeps its
+    # incoming order (stable sort) so the trailing block matches the info-frame
+    # geometry order that #180 produced.
+    info.sort(key=lambda c: 0 if c == label else 1)
     return front + meas + image_meta + info
 ```
 
@@ -619,10 +628,16 @@ building `idx`/`order`/`_rank`) with:
         )
 
         rank = canonical_metadata_order()
+        # Unknown/uncategorized tags sort after every known header (1000-stride
+        # ranks, so len(rank) is not a valid sentinel — mirrors
+        # order_measurement_columns). reverse=True + insert(loc=0) lands the
+        # lowest-rank category (Identity) leftmost and unknown tags at the tail
+        # of the front block.
+        unknown_rank = max(rank.values(), default=0) + 1
 
         def _rank(item):
             header = ensure_metadata_prefix(item[0])
-            return (rank.get(header, len(rank)), str(item[0]))
+            return (rank.get(header, unknown_rank), str(item[0]))
 
         items = sorted(
             self._public_protected_metadata.items(), key=_rank, reverse=True
