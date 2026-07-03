@@ -154,3 +154,41 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
         "Object_Label",
         "Grid_RowNum",
     ]
+
+
+def test_join_metadata_prefixes_bare_columns(tmp_path):
+    """join_metadata prefixes bare CSV attribute columns (not join keys) so the
+    mirror orderer treats them as front metadata, matching the pandas path."""
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+
+    df = pl.DataFrame({"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0]})
+    csv = tmp_path / "m.csv"
+    # Join key already prefixed; attribute columns are BARE (Strain known, Foo unknown).
+    csv.write_text("MetadataImage_ImageName,Strain,Foo\na,BY4741,bar\n")
+
+    out = join_metadata(df, csv)
+
+    assert "MetadataGenetic_Strain" in out.columns  # bare known label -> per-topic
+    assert "Metadata_Foo" in out.columns            # bare unknown label -> generic
+    assert "Strain" not in out.columns and "Foo" not in out.columns
+    assert "MetadataImage_ImageName" in out.columns  # join key kept its raw name
+
+
+def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
+    """A bare CSV attribute column, once prefixed, orders into the front block."""
+    import polars as pl
+    from phenotypic.sdk_ import order_measurement_columns
+    from phenotypic._cli._cli_output_manager import join_metadata
+
+    df = pl.DataFrame(
+        {"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0], "Object_Label": [1]}
+    )
+    csv = tmp_path / "m.csv"
+    csv.write_text("MetadataImage_ImageName,Strain\na,BY4741\n")
+
+    joined = join_metadata(df, csv)
+    ordered = order_measurement_columns(joined.columns)
+
+    # Strain (now MetadataGenetic_Strain) leads, ahead of the measurements.
+    assert ordered.index("MetadataGenetic_Strain") < ordered.index("Shape_Area")

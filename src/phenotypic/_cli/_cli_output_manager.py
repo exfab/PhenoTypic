@@ -98,6 +98,12 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     survive.  Warns if the row count increases (duplicate metadata keys)
     or decreases (measurement rows with no matching metadata).
 
+    Bare (un-prefixed) metadata *attribute* columns are prefixed via
+    :func:`~phenotypic.sdk_.ensure_metadata_prefix` (``Strain`` ->
+    ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``) so the
+    downstream column orderer recognizes them as front metadata, matching the
+    pandas ``insert_metadata`` path. Join-key columns keep their raw names.
+
     Args:
         df: Measurements DataFrame (must have columns to join on).
         metadata_csv: Path to the metadata CSV file.
@@ -114,6 +120,27 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
         return df
 
     logger.info("Joining metadata on columns: %s", common)
+    # Prefix bare metadata attribute columns (non-join-key) so the mirror's
+    # column orderer recognizes them as front metadata (``Strain`` ->
+    # ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``), matching
+    # the pandas ``insert_metadata`` path. Join keys keep their raw names so the
+    # join still matches ``df``; already-prefixed columns pass through unchanged;
+    # a prefix that would collide with an existing column is left as-is.
+    from phenotypic.sdk_ import ensure_metadata_prefix
+
+    taken = set(df.columns) | set(metadata_df.columns)
+    rename_map: dict[str, str] = {}
+    for col in metadata_df.columns:
+        if col in common:
+            continue
+        prefixed = ensure_metadata_prefix(col)
+        if prefixed != col and prefixed not in taken:
+            rename_map[col] = prefixed
+            taken.add(prefixed)
+    if rename_map:
+        logger.info("Prefixing bare metadata columns: %s", rename_map)
+        metadata_df = metadata_df.rename(rename_map)
+
     df = df.with_columns(pl.col(col).cast(pl.String) for col in common)
     metadata_df = metadata_df.with_columns(
         pl.col(col).cast(pl.String) for col in common
