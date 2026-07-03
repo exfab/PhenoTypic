@@ -19,7 +19,7 @@ from phenotypic.schema import MeasurementInfo
 
 
 @lru_cache(maxsize=1)
-def _metadata_enums() -> tuple[type, ...]:
+def _metadata_enums() -> tuple[type[MeasurementInfo], ...]:
     """Every exported ``MeasurementInfo`` enum in the metadata namespace.
 
     A metadata-namespace enum is one whose ``category()`` starts with
@@ -63,7 +63,7 @@ _METADATA_CLUSTER_ORDER: tuple[str, ...] = (
 
 
 @lru_cache(maxsize=1)
-def _cluster_ordered_enums() -> tuple[type, ...]:
+def _cluster_ordered_enums() -> tuple[type[MeasurementInfo], ...]:
     """The metadata enums sorted by ``_METADATA_CLUSTER_ORDER`` (then stable).
 
     An enum whose category is absent from the cluster order sorts last; the
