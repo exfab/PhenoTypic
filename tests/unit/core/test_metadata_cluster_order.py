@@ -175,6 +175,24 @@ def test_join_metadata_prefixes_bare_columns(tmp_path):
     assert "MetadataImage_ImageName" in out.columns  # join key kept its raw name
 
 
+def test_join_metadata_leaves_schema_header_columns_unprefixed(tmp_path):
+    """A supplied column that is already a schema header (e.g. Grid_RowNum) must
+    NOT get a Metadata_ prefix appended — only genuinely bare labels are prefixed."""
+    import polars as pl
+    from phenotypic._cli._cli_output_manager import join_metadata
+
+    df = pl.DataFrame({"MetadataImage_ImageName": ["a"], "Shape_Area": [1.0]})
+    csv = tmp_path / "m.csv"
+    # Grid_RowNum is a real info-block header; Strain is a bare metadata label.
+    csv.write_text("MetadataImage_ImageName,Grid_RowNum,Strain\na,3,BY4741\n")
+
+    out = join_metadata(df, csv)
+
+    assert "Grid_RowNum" in out.columns              # supplied header left as-is
+    assert "Metadata_Grid_RowNum" not in out.columns  # NOT prefixed
+    assert "MetadataGenetic_Strain" in out.columns   # bare label still prefixed
+
+
 def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
     """A bare CSV attribute column, once prefixed, orders into the front block."""
     import polars as pl

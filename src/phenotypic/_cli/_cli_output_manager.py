@@ -102,7 +102,10 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     :func:`~phenotypic.sdk_.ensure_metadata_prefix` (``Strain`` ->
     ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``) so the
     downstream column orderer recognizes them as front metadata, matching the
-    pandas ``insert_metadata`` path. Join-key columns keep their raw names.
+    pandas ``insert_metadata`` path. Join-key columns, and any supplied column
+    that is already a canonical schema header (a measurement/info column such as
+    ``Grid_RowNum`` / ``Shape_Area``, or an already-prefixed ``Metadata*`` header),
+    keep their raw names — no ``Metadata_`` prefix is appended to them.
 
     Args:
         df: Measurements DataFrame (must have columns to join on).
@@ -123,15 +126,21 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     # Prefix bare metadata attribute columns (non-join-key) so the mirror's
     # column orderer recognizes them as front metadata (``Strain`` ->
     # ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``), matching
-    # the pandas ``insert_metadata`` path. Join keys keep their raw names so the
-    # join still matches ``df``; already-prefixed columns pass through unchanged;
-    # a prefix that would collide with an existing column is left as-is.
+    # the pandas ``insert_metadata`` path. Deliberately left alone:
+    #   - join keys (they must keep their raw names so the join still matches);
+    #   - any supplied column that already has a canonical schema identity — a
+    #     measurement/info header (``Grid_RowNum``, ``Shape_Area``, ...) or an
+    #     already-prefixed ``Metadata*`` header — which must NOT get a
+    #     ``Metadata_`` prefix appended;
+    #   - a prefix that would collide with an existing column.
+    from phenotypic.schema import header_to_module
     from phenotypic.sdk_ import ensure_metadata_prefix
 
+    known_headers = header_to_module()
     taken = set(df.columns) | set(metadata_df.columns)
     rename_map: dict[str, str] = {}
     for col in metadata_df.columns:
-        if col in common:
+        if col in common or col in known_headers:
             continue
         prefixed = ensure_metadata_prefix(col)
         if prefixed != col and prefixed not in taken:
