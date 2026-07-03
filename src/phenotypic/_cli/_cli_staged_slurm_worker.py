@@ -37,6 +37,7 @@ from ._cli_staged_workers import (
     stage3_merge_measure_core,
     stage_event,
 )
+from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
 # A manifest entry is [dataset, image_stem, image_path]; Stage 1 needs the path,
 # Stages 2/3 only the (dataset, stem).
@@ -106,7 +107,7 @@ def run_stage1_step(
     log = event_log_path(output_dir)
     # stage_event re-raises on failure: the task fails (visible in sacct) and
     # afterany lets the chain proceed.
-    with stage_event(log, dataset, stem, "stage1"):
+    with stage_event(log, dataset, stem, STAGE_PREPROCESS):
         stage1_preprocess_core(
             plan, Path(image_path), dataset, stem, output_dir, om, image_type
         )
@@ -142,10 +143,12 @@ def run_stage2_shard(
         attempted.add((dataset, stem))
         hdf = dataset_hdf_dir(output_dir, dataset) / f"{stem}.h5"
         if not hdf.is_file():
-            emit_missing_prereq(log, dataset, stem, "stage2", "staged HDF")
+            emit_missing_prereq(
+                log, dataset, stem, STAGE_GPU_DETECT, "staged HDF"
+            )
             continue
         try:
-            with stage_event(log, dataset, stem, "stage2"):
+            with stage_event(log, dataset, stem, STAGE_GPU_DETECT):
                 stage2_detect_core(
                     plan.gpu_detector, output_dir, dataset, stem, image_type
                 )
@@ -185,9 +188,11 @@ def run_stage3_step(
     if not sidecar_exists(output_dir, dataset, stem):
         # S6: Stage 2 failed/absent for this image — record + fail the task
         # (rather than letting load_sidecar raise an opaque FileNotFoundError).
-        emit_missing_prereq(log, dataset, stem, "stage3", "objmap sidecar")
+        emit_missing_prereq(
+            log, dataset, stem, STAGE_MEASURE, "objmap sidecar"
+        )
         raise SystemExit(1)
-    with stage_event(log, dataset, stem, "stage3"):
+    with stage_event(log, dataset, stem, STAGE_MEASURE):
         stage3_merge_measure_core(
             plan, output_dir, dataset, stem, om, image_type
         )

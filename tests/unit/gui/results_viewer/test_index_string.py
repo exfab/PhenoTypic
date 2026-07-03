@@ -1,4 +1,4 @@
-"""Unit tests for ``_index_string_with_prefix`` JS-string escaping.
+"""Unit tests for Dash index-string JS-string escaping.
 
 The factory injects ``window.__phenotypicAppPrefix = "<prefix>";`` into
 ``app.index_string`` so ``results_viewer.js`` can build hub-aware URLs.
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from phenotypic.gui.results_viewer._app import _index_string_with_prefix
+from phenotypic.gui._url_prefix import dash_index_string_with_app_prefix
 
 
 def _extract_prefix_literal(index_string: str) -> str:
@@ -24,17 +24,17 @@ def _extract_prefix_literal(index_string: str) -> str:
 
 
 def test_default_prefix_is_root() -> None:
-    template = _index_string_with_prefix("/")
+    template = dash_index_string_with_app_prefix("/")
     assert _extract_prefix_literal(template) == "/"
 
 
 def test_hub_prefix_is_results_slash() -> None:
-    template = _index_string_with_prefix("/results/")
+    template = dash_index_string_with_app_prefix("/results/")
     assert _extract_prefix_literal(template) == "/results/"
 
 
 def test_escapes_double_quote() -> None:
-    template = _index_string_with_prefix('/weird"prefix/')
+    template = dash_index_string_with_app_prefix('/weird"prefix/')
     literal = _extract_prefix_literal(template)
     # Confirm the ``\"`` survived; the regex's capture group includes
     # backslash escapes verbatim.
@@ -42,7 +42,7 @@ def test_escapes_double_quote() -> None:
 
 
 def test_escapes_backslash() -> None:
-    template = _index_string_with_prefix(r"/back\slash/")
+    template = dash_index_string_with_app_prefix(r"/back\slash/")
     literal = _extract_prefix_literal(template)
     assert "\\\\" in literal
 
@@ -55,7 +55,7 @@ def test_escapes_closing_script_tag() -> None:
     as raw HTML. The escape pass replaces ``</`` with the JS-legal
     ``<\\/`` so the script body stays intact.
     """
-    template = _index_string_with_prefix("/</script><img>/")
+    template = dash_index_string_with_app_prefix("/</script><img>/")
     # The literal ``</`` digraph must be absent from the entire injected
     # template body — otherwise the browser ends the <script> tag early.
     body = template[template.index("__phenotypicAppPrefix"):]

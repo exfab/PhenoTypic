@@ -32,7 +32,7 @@
     "use strict";
 
     // ``window.__phenotypicAppPrefix`` is injected by the Dash factory
-    // (see results_viewer/_app.py::_index_string_with_prefix). It carries
+    // (see gui/_url_prefix.py::dash_index_string_with_app_prefix). It carries
     // the mount-point prefix when the app is hosted under the unified
     // GUI hub (``/results/``); falls back to ``/`` for standalone.
     const appPrefix = (typeof window.__phenotypicAppPrefix === "string"

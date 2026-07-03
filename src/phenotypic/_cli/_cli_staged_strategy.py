@@ -29,6 +29,7 @@ from ._cli_staged_workers import (
     stage3_merge_measure_core,
     stage_event,
 )
+from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 from ._cli_types import Dataset, DatasetResults, ExecutionResults
 
 
@@ -75,7 +76,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             if cfg.resume and hdf.is_file():
                 return
             try:  # isolate one bad image from the batch (failed event logged)
-                with stage_event(event_log, ds.name, img.name, "stage1"):
+                with stage_event(event_log, ds.name, img.name, STAGE_PREPROCESS):
                     stage1_preprocess_core(
                         plan, img, ds.name, img.stem, output_dir,
                         self.output_manager, cfg.image_type, read_kwargs,
@@ -103,11 +104,11 @@ class StagedGpuStrategy(ExecutionStrategy):
                 # view shows where each image is blocked; overall totals still
                 # count the image exactly once (via Stage 3's return value).
                 emit_missing_prereq(
-                    event_log, ds.name, img.name, "stage2", "staged HDF"
+                    event_log, ds.name, img.name, STAGE_GPU_DETECT, "staged HDF"
                 )
                 continue
             try:
-                with stage_event(event_log, ds.name, img.name, "stage2"):
+                with stage_event(event_log, ds.name, img.name, STAGE_GPU_DETECT):
                     stage2_detect_core(
                         plan.gpu_detector, output_dir, ds.name, img.stem,
                         cfg.image_type,
@@ -128,11 +129,11 @@ class StagedGpuStrategy(ExecutionStrategy):
             if not sidecar_exists(output_dir, ds.name, img.stem):
                 # Stage 2 failed/absent for this image (S6): skip + record.
                 emit_missing_prereq(
-                    event_log, ds.name, img.name, "stage3", "objmap sidecar"
+                    event_log, ds.name, img.name, STAGE_MEASURE, "objmap sidecar"
                 )
                 return ds.name, False
             try:
-                with stage_event(event_log, ds.name, img.name, "stage3"):
+                with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     stage3_merge_measure_core(
                         plan, output_dir, ds.name, img.stem, self.output_manager,
                         cfg.image_type,
@@ -196,12 +197,12 @@ class StagedGpuStrategy(ExecutionStrategy):
                 continue
             if not sidecar_exists(output_dir, ds.name, img.stem):
                 emit_missing_prereq(
-                    event_log, ds.name, img.name, "stage3", "objmap sidecar"
+                    event_log, ds.name, img.name, STAGE_MEASURE, "objmap sidecar"
                 )
                 results[ds.name]["failed"] += 1
                 continue
             try:
-                with stage_event(event_log, ds.name, img.name, "stage3"):
+                with stage_event(event_log, ds.name, img.name, STAGE_MEASURE):
                     hdf = dataset_hdf_dir(output_dir, ds.name) / f"{img.stem}.h5"
                     image = image_cls.load_hdf5(hdf)
                     plan.gpu_detector._write_object_output(

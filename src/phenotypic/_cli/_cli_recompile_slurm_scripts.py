@@ -8,13 +8,12 @@ import shlex
 from pathlib import Path
 from typing import Any, Final
 
+from ._measurement_sources import discover_measurement_sources
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
-    DATASET_AGGREGATED_PARQUET,
     DIR_HDF,
     DIR_LOGS,
-    DIR_MEASUREMENTS,
     DIR_RESULTS,
     dataset_overlays_dir,
     DIR_SLURM_SCRIPTS,
@@ -57,9 +56,12 @@ def build_recompile_tasks(
     shard_id = 0
 
     for dataset_name in dataset_names:
-        source_files = _measurement_sources_for_dataset(
-            output_dir, dataset_name
-        )
+        source_files = [
+            source.path
+            for source in discover_measurement_sources(
+                output_dir, [dataset_name]
+            )
+        ]
         for source_shard in _chunk_paths(source_files, shard_size):
             tasks.append(
                 {
@@ -152,25 +154,6 @@ def generate_recompile_slurm_scripts(
         scripts.append(script_path)
 
     return scripts
-
-
-def _measurement_sources_for_dataset(
-    output_dir: Path, dataset_name: str
-) -> list[Path]:
-    """Return deterministic measurement sources for one dataset."""
-    meas_dir = output_dir / DIR_RESULTS / dataset_name / DIR_MEASUREMENTS
-    if not meas_dir.is_dir():
-        return []
-
-    aggregated = meas_dir / DATASET_AGGREGATED_PARQUET
-    if aggregated.exists():
-        return [aggregated]
-
-    return sorted(
-        path
-        for path in meas_dir.glob("*.parquet")
-        if not path.name.startswith("_")
-    )
 
 
 def _overlay_tasks_for_dataset(

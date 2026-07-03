@@ -108,8 +108,49 @@ def configure_url_prefix_routing(app: dash.Dash, url_prefix: str) -> dash.Dash:
     return app
 
 
+def dash_index_string_with_app_prefix(url_prefix: str) -> str:
+    """Return a Dash ``index_string`` that exposes the app URL prefix.
+
+    The injected ``<script>`` defines ``window.__phenotypicAppPrefix`` so
+    client-side assets can build hub-aware URLs. The prefix is escaped before
+    embedding it in the JavaScript string literal.
+
+    Args:
+        url_prefix: Browser-visible path prefix.
+
+    Returns:
+        Dash HTML template containing the standard Dash placeholders.
+    """
+    safe_prefix = (
+        url_prefix.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("</", "<\\/")
+    )
+    return (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "    <head>\n"
+        "        {%metas%}\n"
+        "        <title>{%title%}</title>\n"
+        "        {%favicon%}\n"
+        "        {%css%}\n"
+        f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
+        "    </head>\n"
+        "    <body>\n"
+        "        {%app_entry%}\n"
+        "        <footer>\n"
+        "            {%config%}\n"
+        "            {%scripts%}\n"
+        "            {%renderer%}\n"
+        "        </footer>\n"
+        "    </body>\n"
+        "</html>"
+    )
+
+
 __all__ = [
     "URLPrefixStripMiddleware",
     "configure_url_prefix_routing",
+    "dash_index_string_with_app_prefix",
     "install_url_prefix_strip_middleware",
 ]

@@ -25,6 +25,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
 from ._cli_sidecar import delete_sidecar, load_sidecar, write_sidecar
+from ._stages import StageTag
 from ._cli_update_state import append_completion_event, append_event
 
 
@@ -34,7 +35,7 @@ def _image_class(image_type: ImageTypeName):
 
 @contextmanager
 def stage_event(
-    event_log: Path, dataset: str, image: str, stage: str
+    event_log: Path, dataset: str, image: str, stage: StageTag
 ) -> Iterator[None]:
     """Emit ``started`` -> ``completed`` around a stage body; on exception emit a
     stage-tagged ``failed`` event (``"<ExcType>: <msg>"``) and re-raise.
@@ -56,7 +57,7 @@ def stage_event(
 
 
 def emit_missing_prereq(
-    event_log: Path, dataset: str, image: str, stage: str, what: str
+    event_log: Path, dataset: str, image: str, stage: StageTag, what: str
 ) -> None:
     """Record an S6 skip: a stage's input artifact is absent.
 

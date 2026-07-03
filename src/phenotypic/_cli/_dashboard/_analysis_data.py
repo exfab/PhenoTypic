@@ -8,17 +8,18 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import polars as pl
 
+from .._measurement_sources import (
+    add_metadata_image_name_from_filename,
+    discover_measurement_sources,
+    measurement_sources_by_path,
+)
 from .._cli_output_manager import join_metadata
 from .._cli_parquet_agg import aggregate_parquet_files
-from phenotypic.schema import METADATA
 from phenotypic.sdk_ import (
-    DIR_RESULTS,
-    DIR_MEASUREMENTS,
-    DATASET_AGGREGATED_PARQUET,
     progress_dir,
 )
 
@@ -104,32 +105,9 @@ def _load_and_merge(
     Returns:
         Merged DataFrame, or ``None`` if no measurements were found.
     """
-    results_dir = output_dir / DIR_RESULTS
-    if not results_dir.is_dir():
-        return None
-
-    # Discover dataset names from subdirectories.
-    dataset_names = sorted(
-        d.name for d in results_dir.iterdir() if d.is_dir()
+    path_to_dataset = measurement_sources_by_path(
+        discover_measurement_sources(output_dir)
     )
-    if not dataset_names:
-        return None
-
-    # -- File discovery ------------------------------------------------
-    # Prefer _dataset_aggregated.parquet when available (mirrors
-    # aggregate_measurements logic), skip _-prefixed internal files.
-    path_to_dataset: Dict[Path, str] = {}
-    for dataset_name in dataset_names:
-        dataset_meas_dir = results_dir / dataset_name / DIR_MEASUREMENTS
-        if not dataset_meas_dir.is_dir():
-            continue
-        agg = dataset_meas_dir / DATASET_AGGREGATED_PARQUET
-        if agg.exists():
-            path_to_dataset[agg] = dataset_name
-        else:
-            for pq in sorted(dataset_meas_dir.glob("*.parquet")):
-                if not pq.name.startswith("_"):
-                    path_to_dataset[pq] = dataset_name
 
     if not path_to_dataset:
         return None
@@ -145,13 +123,7 @@ def _load_and_merge(
     if master_df is None:
         return None
 
-    # Derive Metadata_ImageName from the source-path filename column, then drop it.
-    if str(METADATA.IMAGE_NAME) not in master_df.columns and "filename" in master_df.columns:
-        master_df = master_df.with_columns(
-            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias(str(METADATA.IMAGE_NAME))
-        )
-    if "filename" in master_df.columns:
-        master_df = master_df.drop("filename")
+    master_df = add_metadata_image_name_from_filename(master_df)
 
     # -- Join external metadata if provided ----------------------------
     if metadata_csv is not None:

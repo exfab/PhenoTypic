@@ -27,6 +27,7 @@ from dataclasses import dataclass
 
 from ._cli_types import DatasetState
 from ._cli_file_locking import atomic_read, atomic_append, FileLockTimeout
+from ._stages import STAGED_TERMINAL_STAGE, StageTag, validate_stage_tag
 from phenotypic.sdk_.typing_ import ProcessingStatus
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class ProcessingEvent:
     error_msg: str = ""
     slurm_job_id: str = ""
     slurm_array_task_id: str = ""
-    stage: str | None = None
+    stage: StageTag | None = None
 
 
 def append_event(
@@ -79,6 +80,8 @@ def append_event(
         slurm_job_id: SLURM job ID (from ``$SLURM_JOB_ID``).
         slurm_array_task_id: SLURM array task ID (from ``$SLURM_ARRAY_TASK_ID``).
     """
+    validated_stage = validate_stage_tag(stage)
+
     event_log.parent.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().isoformat(timespec='milliseconds')
@@ -91,11 +94,11 @@ def append_event(
     # placeholder fields 6-7 present). Old 4-5 field lines and 7-field SLURM
     # lines still parse.
     parts = [timestamp, dataset, image, status, error_msg_safe]
-    if slurm_job_id or slurm_array_task_id or stage is not None:
+    if slurm_job_id or slurm_array_task_id or validated_stage is not None:
         parts.append(slurm_job_id)
         parts.append(slurm_array_task_id)
-    if stage is not None:
-        parts.append(stage)
+    if validated_stage is not None:
+        parts.append(validated_stage)
     event_line = "|".join(parts) + "\n"
 
     try:
@@ -167,7 +170,7 @@ def parse_event_line(line: str) -> ProcessingEvent:
     error_msg = parts[4] if len(parts) > 4 else ""
     slurm_job_id = parts[5] if len(parts) > 5 else ""
     slurm_array_task_id = parts[6] if len(parts) > 6 else ""
-    stage = parts[7] if len(parts) > 7 and parts[7] else None
+    stage = validate_stage_tag(parts[7] if len(parts) > 7 and parts[7] else None)
 
     # Validate + narrow to ProcessingStatus literal
     if status_raw not in ("started", "completed", "failed"):
@@ -244,7 +247,8 @@ def aggregate_state_from_events(event_log: Path) -> Dict[str, DatasetState]:
             # ``failed`` on a retry-success). Legacy events (stage is None)
             # keep the original semantics exactly.
             intermediate_stage = (
-                event.stage is not None and event.stage != "stage3"
+                event.stage is not None
+                and event.stage != STAGED_TERMINAL_STAGE
             )
 
             # Update state based on event

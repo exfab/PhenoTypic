@@ -58,7 +58,10 @@ from phenotypic.gui._schema_cache import MeasurementSchema
 from phenotypic.gui._design import COLOR_BLUE, COLOR_SURFACE, inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
 from phenotypic.gui._shared.tiles import register_crop_route
-from phenotypic.gui._url_prefix import configure_url_prefix_routing
+from phenotypic.gui._url_prefix import (
+    configure_url_prefix_routing,
+    dash_index_string_with_app_prefix,
+)
 from phenotypic.gui.results_viewer import _ids as ids, _tile_routes
 from phenotypic.gui.results_viewer._callbacks import register_callbacks
 from phenotypic.gui.results_viewer.timeline_view import (
@@ -75,53 +78,6 @@ from phenotypic.gui.shell._ids import SHELL_SIDEBAR_SELECTION_STORE
 from phenotypic.sdk_._qc_recipe import QcRecipe
 
 logger = logging.getLogger(__name__)
-
-
-def _index_string_with_prefix(url_prefix: str) -> str:
-    """Return a Dash ``index_string`` template that injects the URL prefix.
-
-    The injected ``<script>`` defines ``window.__phenotypicAppPrefix`` so
-    ``results_viewer.js`` can build hub-aware URLs for DZI tiles and the
-    vendored OpenSeadragon assets.
-
-    ``url_prefix`` is escaped before embedding inside the JS string
-    literal:
-
-        * ``\\`` -> ``\\\\`` and ``"`` -> ``\\"`` keep the JS string
-          well-formed.
-        * ``</`` -> ``<\\/`` prevents a stray ``</script>`` from
-          terminating the inline script tag (forward-slash escapes are
-          legal in JS string literals).
-
-    In practice only the hub composer sets the prefix and the values are
-    static literals (``"/"``, ``"/results/"``); the escaping is defence
-    in depth against future callers passing user-controlled values.
-    """
-    safe_prefix = (
-        url_prefix.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("</", "<\\/")
-    )
-    return (
-        "<!DOCTYPE html>\n"
-        "<html>\n"
-        "    <head>\n"
-        "        {%metas%}\n"
-        "        <title>{%title%}</title>\n"
-        "        {%favicon%}\n"
-        "        {%css%}\n"
-        f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
-        "    </head>\n"
-        "    <body>\n"
-        "        {%app_entry%}\n"
-        "        <footer>\n"
-        "            {%config%}\n"
-        "            {%scripts%}\n"
-        "            {%renderer%}\n"
-        "        </footer>\n"
-        "    </body>\n"
-        "</html>"
-    )
 
 
 def create_app(
@@ -170,7 +126,7 @@ def create_app(
 
     # Inject window.__phenotypicAppPrefix so results_viewer.js can build
     # mount-aware URLs for DZI tiles and OSD assets.
-    app.index_string = _index_string_with_prefix(url_prefix)
+    app.index_string = dash_index_string_with_app_prefix(url_prefix)
 
     inject_design_tokens(app)
     register_shared_static(app.server)
