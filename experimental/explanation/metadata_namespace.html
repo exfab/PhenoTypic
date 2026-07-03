@@ -699,6 +699,13 @@ time straddler <code class="docutils literal notranslate"><span class="pre">Meta
 <p>This is a <strong>recommended vocabulary, not a validator</strong>: arbitrary metadata columns
 are always accepted. A user-supplied label that is not in the vocabulary keeps a
 generic <code class="docutils literal notranslate"><span class="pre">Metadata_&lt;Label&gt;</span></code> header and routes to the REMBI <code class="docutils literal notranslate"><span class="pre">Uncategorized</span></code> module.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>To attach metadata to a run and emit the <code class="docutils literal notranslate"><span class="pre">deliverables/rembi.yaml</span></code> manifest, see
+the how-to guide <a class="reference internal" href="../how_to/pages/rembi_metadata.html"><span class="doc">Describe a run’s metadata with REMBI</span></a> — it covers the <code class="docutils literal notranslate"><span class="pre">--metadata</span></code>
+sample CSV, the <code class="docutils literal notranslate"><span class="pre">--study</span></code> profile, and how columns fold into REMBI modules, with
+downloadable example files.</p>
+</div>
 <section id="migration-note-namespace-rename">
 <h2>Migration note (namespace rename)<a class="headerlink" href="#migration-note-namespace-rename" title="Link to this heading">#</a></h2>
 <p>Metadata columns are now per-REMBI-module prefixed (<code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>

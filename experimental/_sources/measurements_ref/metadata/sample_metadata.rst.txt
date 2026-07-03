@@ -40,7 +40,7 @@ accepted.
      - Identifier of the source plate the sample was pinned from.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``MetadataSample_SourceWell``
-     - Well position on the source plate (e.g. A1).
+     - Well position on the source plate (e.g. A1). This can potentially be distinct from `Grid` values when using irregular or sparse grid parameters.
      - :bdg-ref-muted:`Identity / design <measurement-classification>`
    * - ``MetadataSample_Barcode``
      - Molecular or sample barcode.
