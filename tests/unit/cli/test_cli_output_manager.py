@@ -281,9 +281,17 @@ class TestAggregateMeasurementsAutoResolve:
         # CSV round-trip: shapes + columns match (CSV always re-encodes
         # numerics; full equals on the polars CSV reader can be lossy).
         assert seed_df.shape == master_df.shape
-        assert seed_df.columns == master_df.columns
-        # Parquet round-trip: full row-by-row equality with the master.
-        assert seed_pq_df.equals(master_pq)
+        # The mirror is cluster-ordered (framework MetadataImage_ trails the
+        # measurements); the master archive keeps its raw order. Same columns,
+        # different order.
+        assert set(seed_df.columns) == set(master_df.columns)
+        assert seed_df.columns.index(str(METADATA.IMAGE_NAME)) > seed_df.columns.index(
+            "Shape_Area"
+        )
+        # Parquet round-trip: full row-by-row equality with the master after
+        # aligning to the master's column order (polars .equals() is
+        # column-order sensitive).
+        assert seed_pq_df.select(master_pq.columns).equals(master_pq)
 
         split_dir = measurements_by_feature_dir(output_dir)
         assert split_dir.is_dir()

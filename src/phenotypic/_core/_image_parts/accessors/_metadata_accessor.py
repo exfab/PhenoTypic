@@ -300,7 +300,10 @@ class MetadataAccessor:
         Notes:
             - Only public and protected metadata are included (private metadata is excluded)
             - IMAGE_NAME metadata is populated from parent_image.name instead of the metadata dict
-            - Columns are inserted from right to left at position 0, so iteration order determines final order
+            - Columns are inserted from right to left at position 0, so iteration order
+              determines final order; iteration follows the bio-semantic cluster order
+              (Identity -> Strain -> Condition -> Design, via ``canonical_metadata_order``),
+              not REMBI module order
             - Metadata columns without a ``Metadata<Topic>_`` prefix are automatically prefixed
               via the schema (e.g. ``Strain`` -> ``MetadataGenetic_Strain``; unknown labels
               fall back to a generic ``Metadata_`` prefix)
@@ -316,23 +319,27 @@ class MetadataAccessor:
             >>> # result_df now has MetadataImage_ImageName and Metadata_resolution columns at position 0
         """
         working_df = df if inplace else df.copy()
-        # Insert metadata columns in canonical REMBI-module order (then alpha).
-        # insert() places each column at loc=0, so iterate in reverse rank to
-        # land the lowest-rank module (Study) at the leftmost position.
-        from phenotypic.schema import REMBI_MODULE, header_to_module
-        from phenotypic.sdk_ import ensure_metadata_prefix, is_metadata_header
+        # Insert metadata columns in canonical bio-semantic cluster order (then
+        # definition order, then alpha for unknown tags). insert() places each
+        # column at loc=0, so iterate in reverse rank to land the lowest-rank
+        # category (Identity) at the leftmost position.
+        from phenotypic.sdk_ import (
+            canonical_metadata_order,
+            ensure_metadata_prefix,
+            is_metadata_header,
+        )
 
-        idx = header_to_module()
-        order = {m: i for i, m in enumerate(REMBI_MODULE)}
+        rank = canonical_metadata_order()
+        # Unknown/uncategorized tags sort after every known header (1000-stride
+        # ranks, so len(rank) is not a valid sentinel — mirrors
+        # order_measurement_columns). reverse=True + insert(loc=0) lands the
+        # lowest-rank category (Identity) leftmost and unknown tags at the tail
+        # of the front block.
+        unknown_rank = max(rank.values(), default=0) + 1
 
         def _rank(item):
-            k = item[0]
-            # Resolve the full schema header (e.g. bare "Strain" ->
-            # "MetadataGenetic_Strain") so the reverse index — keyed on the
-            # per-topic Scheme-B headers post-flip — resolves the REMBI module.
-            header = ensure_metadata_prefix(k)
-            mod = idx.get(header, REMBI_MODULE.UNCATEGORIZED)
-            return (order[mod], str(k))
+            header = ensure_metadata_prefix(item[0])
+            return (rank.get(header, unknown_rank), str(item[0]))
 
         items = sorted(
             self._public_protected_metadata.items(), key=_rank, reverse=True

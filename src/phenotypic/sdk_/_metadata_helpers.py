@@ -11,14 +11,15 @@ caller changes.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
 
 import phenotypic.schema as _schema
-from phenotypic.schema import MeasurementInfo, REMBI_MODULE
+from phenotypic.schema import MeasurementInfo
 
 
 @lru_cache(maxsize=1)
-def _metadata_enums() -> tuple[type, ...]:
+def _metadata_enums() -> tuple[type[MeasurementInfo], ...]:
     """Every exported ``MeasurementInfo`` enum in the metadata namespace.
 
     A metadata-namespace enum is one whose ``category()`` starts with
@@ -39,22 +40,130 @@ def _metadata_enums() -> tuple[type, ...]:
     return tuple(out)
 
 
+#: Bio-semantic cluster order for the metadata front-block (category granularity).
+#: The human-facing column axis. REMBI (header_to_module / by_module / manifest)
+#: remains a SEPARATE provenance axis and is not affected by this ordering.
+_METADATA_CLUSTER_ORDER: tuple[str, ...] = (
+    # (1) Identity — who / where is this colony
+    "MetadataSample",
+    "MetadataPlate",
+    # (2) Strain — genetic identity
+    "MetadataGenetic",
+    # (3) Condition — chemical then temporal/physical environment
+    "MetadataCondition",
+    "MetadataCulture",
+    # (4) Design & provenance
+    "MetadataExperiment",
+    "MetadataStudy",
+    "MetadataAcquisition",
+    # Framework per-image bookkeeping — last (relocated to the trailing region
+    # of the measurement frame by order_measurement_columns()).
+    "MetadataImage",
+)
+
+
+@lru_cache(maxsize=1)
+def _cluster_ordered_enums() -> tuple[type[MeasurementInfo], ...]:
+    """The metadata enums sorted by ``_METADATA_CLUSTER_ORDER`` (then stable).
+
+    An enum whose category is absent from the cluster order sorts last; the
+    coverage-gate test forbids that state, so it is a defensive fallback only.
+    """
+    rank = {cat: i for i, cat in enumerate(_METADATA_CLUSTER_ORDER)}
+    return tuple(
+        sorted(_metadata_enums(), key=lambda e: rank.get(e.category(), len(rank)))
+    )
+
+
+#: Stride between metadata categories in ``canonical_metadata_order``. Must exceed
+#: the largest metadata enum's member count so per-category definition ranks never
+#: bleed into the next category.
+_CATEGORY_STRIDE = 1000
+
+
+@lru_cache(maxsize=1)
+def canonical_metadata_order() -> dict[str, int]:
+    """Global rank for every known metadata header (cluster then definition order).
+
+    Cluster-order major, enum definition-order minor. A header absent from this
+    map is an unknown/uncategorized user tag; callers rank those last. The map is
+    derived entirely from the import-time schema enums, so it is cached. The
+    returned dict is read-only by contract; callers must not mutate it (mirrors
+    :func:`~phenotypic.schema.header_to_module`).
+    """
+    enums = _cluster_ordered_enums()
+    cat_rank = {e.category(): i for i, e in enumerate(enums)}
+    out: dict[str, int] = {}
+    for enum in enums:
+        # A hard raise (not an ``assert``, which ``python -O`` strips) — a stride
+        # overflow would silently corrupt ordering, so it must fail loudly.
+        if len(enum) >= _CATEGORY_STRIDE:
+            raise ValueError(
+                f"{enum.__name__} has {len(enum)} members, exceeding the "
+                f"canonical-order category stride ({_CATEGORY_STRIDE})"
+            )
+        base = cat_rank[enum.category()] * _CATEGORY_STRIDE
+        for i, member in enumerate(enum):
+            out[member.value] = base + i
+    return out
+
+
+def order_measurement_columns(columns: Sequence[str]) -> list[str]:
+    """Canonical measurement-frame column order.
+
+    ``[front metadata] -> [measurements] -> [MetadataImage_*] -> [info block]``.
+
+    Front (user/experimental) metadata is cluster/definition ordered via
+    :func:`canonical_metadata_order`; unknown/uncategorized ``Metadata_*`` tags fall
+    to the end of the front block alphabetically. The framework ``MetadataImage_*``
+    block is per-image provenance and trails the measurements. The per-object info
+    block (``Object_Label`` + ``Bbox_*`` / ``Grid_*``) is detected by name and moves
+    last. Measurements keep their incoming relative order.
+
+    Pure over column-name strings, so both the pandas (``df[...]``) and polars
+    (``df.select(...)``) paths reuse it.
+    """
+    from phenotypic.schema import METADATA, OBJECT
+
+    rank = canonical_metadata_order()
+    image_prefix = f"{METADATA.category()}_"
+    label = str(OBJECT.LABEL)
+
+    front: list[str] = []
+    image_meta: list[str] = []
+    info: list[str] = []
+    meas: list[str] = []
+    for c in columns:
+        if c.startswith(image_prefix):
+            image_meta.append(c)
+        elif is_metadata_header(c):
+            front.append(c)
+        elif c == label or c.startswith("Bbox_") or c.startswith("Grid_"):
+            info.append(c)
+        else:
+            meas.append(c)
+    # Unknown/uncategorized Metadata_* tags sort AFTER every known header. Ranks
+    # use a 1000-stride, so len(rank) (~72) is not a valid "after everything"
+    # sentinel — derive it from the actual max rank.
+    unknown_rank = max(rank.values(), default=0) + 1
+    front.sort(key=lambda c: (rank.get(c, unknown_rank), str(c)))
+    # Object_Label leads the info block; Bbox_*/Grid_* keep their incoming order
+    # (stable sort) so the trailing block matches #180's info-frame geometry order.
+    info.sort(key=lambda c: 0 if c == label else 1)
+    return front + meas + image_meta + info
+
+
 @lru_cache(maxsize=1)
 def metadata_category_prefixes() -> tuple[str, ...]:
-    """All metadata category prefixes (e.g. ``'MetadataGenetic_'``) in REMBI order.
+    """All metadata category prefixes (e.g. ``'MetadataGenetic_'``) in cluster order.
 
-    Ordered by each enum's REMBI module then its category string, then
-    deduplicated, so callers building bucket-priority lists get a stable,
-    canonical ordering.
+    Ordered by the bio-semantic cluster order (``_METADATA_CLUSTER_ORDER``), then
+    deduplicated, so callers building bucket-priority lists get a stable, canonical
+    ordering. REMBI is a separate axis (see ``by_module`` / ``header_to_module``).
     """
-    order = {m: i for i, m in enumerate(REMBI_MODULE)}
-    enums = sorted(
-        _metadata_enums(),
-        key=lambda e: (order.get(next(iter(e)).resolved_rembi_module, 99), e.category()),
-    )
     seen: set[str] = set()
     prefixes: list[str] = []
-    for e in enums:
+    for e in _cluster_ordered_enums():
         p = f"{e.category()}_"
         if p not in seen:
             seen.add(p)

@@ -29,14 +29,15 @@ def test_by_module_accepts_str_module():
     assert any("ImageName" in k for k in image_data)
 
 
-def test_insert_metadata_orders_by_rembi_module():
+def test_insert_metadata_orders_by_cluster():
     import pandas as pd
 
     img = Image(np.zeros((8, 8, 3), dtype=np.uint8), name="sample")
-    # Insertion order deliberately scrambles the canonical REMBI order so the
-    # test discriminates the REMBI sort from the raw ChainMap iteration order:
-    #   Dataset -> STUDY (0), Strain -> BIOSAMPLE (1), Media -> SPECIMEN_PREP (2),
-    #   framework ImageName/... -> IMAGE_DATA (4).
+    # Insertion order deliberately scrambles the canonical cluster order so the
+    # test discriminates the cluster sort from the raw ChainMap iteration order:
+    #   Strain -> MetadataGenetic (cluster 2), Media -> MetadataCondition (3),
+    #   Dataset -> MetadataExperiment (4), framework ImageName/... ->
+    #   MetadataImage (last).
     img.metadata["Strain"] = "BY4741"
     img.metadata["Media"] = "YPD"
     img.metadata["Dataset"] = "plateA"
@@ -47,5 +48,6 @@ def test_insert_metadata_orders_by_rembi_module():
     def _pos(needle: str) -> int:
         return next(i for i, c in enumerate(meta_cols) if needle in c)
 
-    # Canonical REMBI order: Study < Biosample < SpecimenPreparation < ImageData.
-    assert _pos("Dataset") < _pos("Strain") < _pos("Media") < _pos("ImageName")
+    # Canonical cluster order: Strain (Genetic) < Media (Condition)
+    # < Dataset (Experiment) < ImageName (framework Image, last).
+    assert _pos("Strain") < _pos("Media") < _pos("Dataset") < _pos("ImageName")

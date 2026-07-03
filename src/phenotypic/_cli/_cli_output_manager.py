@@ -98,6 +98,15 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
     survive.  Warns if the row count increases (duplicate metadata keys)
     or decreases (measurement rows with no matching metadata).
 
+    Bare (un-prefixed) metadata *attribute* columns are prefixed via
+    :func:`~phenotypic.sdk_.ensure_metadata_prefix` (``Strain`` ->
+    ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``) so the
+    downstream column orderer recognizes them as front metadata, matching the
+    pandas ``insert_metadata`` path. Join-key columns, and any supplied column
+    that is already a canonical schema header (a measurement/info column such as
+    ``Grid_RowNum`` / ``Shape_Area``, or an already-prefixed ``Metadata*`` header),
+    keep their raw names — no ``Metadata_`` prefix is appended to them.
+
     Args:
         df: Measurements DataFrame (must have columns to join on).
         metadata_csv: Path to the metadata CSV file.
@@ -114,6 +123,33 @@ def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
         return df
 
     logger.info("Joining metadata on columns: %s", common)
+    # Prefix bare metadata attribute columns (non-join-key) so the mirror's
+    # column orderer recognizes them as front metadata (``Strain`` ->
+    # ``MetadataGenetic_Strain``; unknown ``Foo`` -> ``Metadata_Foo``), matching
+    # the pandas ``insert_metadata`` path. Deliberately left alone:
+    #   - join keys (they must keep their raw names so the join still matches);
+    #   - any supplied column that already has a canonical schema identity — a
+    #     measurement/info header (``Grid_RowNum``, ``Shape_Area``, ...) or an
+    #     already-prefixed ``Metadata*`` header — which must NOT get a
+    #     ``Metadata_`` prefix appended;
+    #   - a prefix that would collide with an existing column.
+    from phenotypic.schema import header_to_module
+    from phenotypic.sdk_ import ensure_metadata_prefix
+
+    known_headers = header_to_module()
+    taken = set(df.columns) | set(metadata_df.columns)
+    rename_map: dict[str, str] = {}
+    for col in metadata_df.columns:
+        if col in common or col in known_headers:
+            continue
+        prefixed = ensure_metadata_prefix(col)
+        if prefixed != col and prefixed not in taken:
+            rename_map[col] = prefixed
+            taken.add(prefixed)
+    if rename_map:
+        logger.info("Prefixing bare metadata columns: %s", rename_map)
+        metadata_df = metadata_df.rename(rename_map)
+
     df = df.with_columns(pl.col(col).cast(pl.String) for col in common)
     metadata_df = metadata_df.with_columns(
         pl.col(col).cast(pl.String) for col in common
@@ -659,6 +695,13 @@ def finalize_post_master_outputs(
                 "Failed to join metadata CSV: %s: %s", type(e).__name__, e
             )
     post_df = _apply_post_to_master(working_df, pipeline)
+    # Reorder the mirror/splits/analysis frame to the canonical cluster contract
+    # ([front metadata] -> [measurements] -> [MetadataImage_] -> [info block]),
+    # the same helper the pandas per-image path uses. The clean master on disk is
+    # untouched — only this in-memory working frame is reordered.
+    from phenotypic.sdk_ import order_measurement_columns
+
+    post_df = post_df.select(order_measurement_columns(post_df.columns))
     _seed_measurements(output_dir, post_df)
 
     # Best-effort copy of the --metadata source CSV → deliverables/metadata.csv,
