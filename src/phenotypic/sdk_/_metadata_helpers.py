@@ -91,9 +91,10 @@ def canonical_metadata_order() -> dict[str, int]:
     returned dict is read-only by contract; callers must not mutate it (mirrors
     :func:`~phenotypic.schema.header_to_module`).
     """
-    cat_rank = {e.category(): i for i, e in enumerate(_cluster_ordered_enums())}
+    enums = _cluster_ordered_enums()
+    cat_rank = {e.category(): i for i, e in enumerate(enums)}
     out: dict[str, int] = {}
-    for enum in _cluster_ordered_enums():
+    for enum in enums:
         # A hard raise (not an ``assert``, which ``python -O`` strips) — a stride
         # overflow would silently corrupt ordering, so it must fail loudly.
         if len(enum) >= _CATEGORY_STRIDE:
