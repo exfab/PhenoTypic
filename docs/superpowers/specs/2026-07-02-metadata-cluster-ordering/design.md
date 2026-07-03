@@ -289,6 +289,25 @@ relocation step.
    after post, before `_seed_measurements`, sharing the same ordering helper as the pandas
    path. The clean master on disk is untouched.
 
+## Known limitations (deferred; surfaced by the implementation review)
+
+`order_measurement_columns` classifies columns by name. Two edge cases involving
+**external `--metadata` CSV** input (unusual, and mitigated by the recommended
+`Metadata<Topic>_`-prefixed vocabulary) are intentionally out of this reorder-only scope:
+
+1. **Non-metadata columns literally named `Grid_*` / `Bbox_*`** are detected as info-block
+   columns and moved to the trailing geometry block. Only the `GRID`/`BBOX` schema enums
+   emit those prefixes (guarded by `test_info_block_prefix_is_collision_free`), so this can
+   only occur if a `post/` op or a `--metadata` CSV introduces such a name.
+2. **Bare (un-prefixed) `--metadata` CSV columns** (e.g. `Replicate`) are joined raw by the
+   polars `join_metadata` (no `ensure_metadata_prefix`), so they are not recognized as
+   metadata and land in the measurements block rather than the front metadata block — unlike
+   the pandas `insert_metadata` path, which prefixes bare labels. Fixing this belongs to
+   `join_metadata` (prefix bare joined columns), a separate change.
+
+Both are follow-ups; neither affects the recommended-vocabulary (prefixed) path, which is
+fully ordered and tested on both surfaces.
+
 ## Verification
 
 1. **Empirical column dump** — a plate with tags spanning all four clusters plus an

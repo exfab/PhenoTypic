@@ -36,6 +36,27 @@ def test_order_measurement_columns_full_contract():
     ]
 
 
+def test_order_measurement_columns_multiple_uncategorized_sort_last_alpha():
+    """Several unknown Metadata_* tags all trail known metadata, alpha among themselves."""
+    from phenotypic.sdk_ import order_measurement_columns
+
+    cols = [
+        "Metadata_Zebra",           # uncategorized
+        "MetadataGenetic_Strain",   # known front metadata
+        "Metadata_Apple",           # uncategorized
+        "Shape_Area",               # measurement
+        "Object_Label",             # info
+    ]
+    ordered = order_measurement_columns(cols)
+    assert ordered == [
+        "MetadataGenetic_Strain",   # known metadata leads the front block
+        "Metadata_Apple",           # unknowns trail known, alpha-sorted
+        "Metadata_Zebra",
+        "Shape_Area",
+        "Object_Label",
+    ]
+
+
 def test_order_measurement_columns_no_metadata():
     from phenotypic.sdk_ import order_measurement_columns
 

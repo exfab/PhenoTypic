@@ -75,23 +75,33 @@ def _cluster_ordered_enums() -> tuple[type, ...]:
     )
 
 
+#: Stride between metadata categories in ``canonical_metadata_order``. Must exceed
+#: the largest metadata enum's member count so per-category definition ranks never
+#: bleed into the next category.
+_CATEGORY_STRIDE = 1000
+
+
 @lru_cache(maxsize=1)
 def canonical_metadata_order() -> dict[str, int]:
     """Global rank for every known metadata header (cluster then definition order).
 
     Cluster-order major, enum definition-order minor. A header absent from this
     map is an unknown/uncategorized user tag; callers rank those last. The map is
-    derived entirely from the import-time schema enums, so it is cached.
+    derived entirely from the import-time schema enums, so it is cached. The
+    returned dict is read-only by contract; callers must not mutate it (mirrors
+    :func:`~phenotypic.schema.header_to_module`).
     """
     cat_rank = {e.category(): i for i, e in enumerate(_cluster_ordered_enums())}
     out: dict[str, int] = {}
     for enum in _cluster_ordered_enums():
-        # Category stride (1000) must exceed the largest enum's member count
-        # (~12 today) so per-category definition ranks never bleed into the
-        # next category. Guard the invariant rather than let a silent collision
-        # corrupt ordering.
-        assert len(enum) < 1000, f"{enum.__name__} exceeds the category stride"
-        base = cat_rank[enum.category()] * 1000
+        # A hard raise (not an ``assert``, which ``python -O`` strips) — a stride
+        # overflow would silently corrupt ordering, so it must fail loudly.
+        if len(enum) >= _CATEGORY_STRIDE:
+            raise ValueError(
+                f"{enum.__name__} has {len(enum)} members, exceeding the "
+                f"canonical-order category stride ({_CATEGORY_STRIDE})"
+            )
+        base = cat_rank[enum.category()] * _CATEGORY_STRIDE
         for i, member in enumerate(enum):
             out[member.value] = base + i
     return out
