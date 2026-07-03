@@ -809,11 +809,13 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/phenotypic.sdk_.html">phenotypic.sdk_</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.order_measurement_columns.html">phenotypic.sdk_.order_measurement_columns</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -8199,7 +8201,10 @@ Defaults to False.</p></li>
 <ul class="simple">
 <li><p>Only public and protected metadata are included (private metadata is excluded)</p></li>
 <li><p>IMAGE_NAME metadata is populated from parent_image.name instead of the metadata dict</p></li>
-<li><p>Columns are inserted from right to left at position 0, so iteration order determines final order</p></li>
+<li><p>Columns are inserted from right to left at position 0, so iteration order
+determines final order; iteration follows the bio-semantic cluster order
+(Identity -&gt; Strain -&gt; Condition -&gt; Design, via <code class="docutils literal notranslate"><span class="pre">canonical_metadata_order</span></code>),
+not REMBI module order</p></li>
 <li><p>Metadata columns without a <code class="docutils literal notranslate"><span class="pre">Metadata&lt;Topic&gt;_</span></code> prefix are automatically prefixed
 via the schema (e.g. <code class="docutils literal notranslate"><span class="pre">Strain</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>; unknown labels
 fall back to a generic <code class="docutils literal notranslate"><span class="pre">Metadata_</span></code> prefix)</p></li>

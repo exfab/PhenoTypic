@@ -706,6 +706,22 @@ the how-to guide <a class="reference internal" href="../how_to/pages/rembi_metad
 sample CSV, the <code class="docutils literal notranslate"><span class="pre">--study</span></code> profile, and how columns fold into REMBI modules, with
 downloadable example files.</p>
 </div>
+<section id="column-order-bio-semantic-clusters">
+<h2>Column order (bio-semantic clusters)<a class="headerlink" href="#column-order-bio-semantic-clusters" title="Link to this heading">#</a></h2>
+<p>Measurement sheets order the metadata front-block by a bench-scientist narrative,
+<strong>not</strong> by REMBI module:</p>
+<ol class="arabic simple">
+<li><p><strong>Identity</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataSample_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataPlate_*</span></code></p></li>
+<li><p><strong>Strain</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataGenetic_*</span></code></p></li>
+<li><p><strong>Condition</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataCondition_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataCulture_*</span></code></p></li>
+<li><p><strong>Design &amp; provenance</strong> — <code class="docutils literal notranslate"><span class="pre">MetadataExperiment_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataStudy_*</span></code>, <code class="docutils literal notranslate"><span class="pre">MetadataAcquisition_*</span></code></p></li>
+</ol>
+<p>Unknown/uncategorized <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags trail the four clusters. Within a category,
+columns follow the enum’s declaration order. The framework <code class="docutils literal notranslate"><span class="pre">MetadataImage_*</span></code> block is
+per-image provenance and is placed <strong>after</strong> the measurements, before the per-object
+<code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> / <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> / <code class="docutils literal notranslate"><span class="pre">Grid_*</span></code> info block. REMBI (<code class="docutils literal notranslate"><span class="pre">by_module</span></code>, the run manifest)
+remains a separate provenance axis and is unaffected by this ordering.</p>
+</section>
 <section id="migration-note-namespace-rename">
 <h2>Migration note (namespace rename)<a class="headerlink" href="#migration-note-namespace-rename" title="Link to this heading">#</a></h2>
 <p>Metadata columns are now per-REMBI-module prefixed (<code class="docutils literal notranslate"><span class="pre">MetadataGenetic_Strain</span></code>
@@ -747,6 +763,7 @@ new namespace, re-run with <code class="docutils literal notranslate"><span clas
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#column-order-bio-semantic-clusters">Column order (bio-semantic clusters)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-note-namespace-rename">Migration note (namespace rename)</a></li>
 </ul>
   </nav></div>

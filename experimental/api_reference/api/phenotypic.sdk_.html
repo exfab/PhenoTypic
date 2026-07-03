@@ -809,11 +809,13 @@
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">phenotypic.sdk_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html">phenotypic.sdk_.metadata_category_prefixes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.order_measurement_columns.html">phenotypic.sdk_.order_measurement_columns</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -1175,20 +1177,26 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html#phenotypic.sdk_.atomic_write_text" title="phenotypic.sdk_.atomic_write_text"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_write_text</span></code></a></p></td>
 <td><p>Atomically write <code class="docutils literal notranslate"><span class="pre">text</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html#phenotypic.sdk_.ensure_metadata_prefix" title="phenotypic.sdk_.ensure_metadata_prefix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_metadata_prefix</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html#phenotypic.sdk_.canonical_metadata_order" title="phenotypic.sdk_.canonical_metadata_order"><code class="xref py py-obj docutils literal notranslate"><span class="pre">canonical_metadata_order</span></code></a></p></td>
+<td><p>Global rank for every known metadata header (cluster then definition order).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html#phenotypic.sdk_.ensure_metadata_prefix" title="phenotypic.sdk_.ensure_metadata_prefix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensure_metadata_prefix</span></code></a></p></td>
 <td><p>Prefix a bare metadata label with its schema category, else generic.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask" title="phenotypic.sdk_.is_binary_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_binary_mask</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html#phenotypic.sdk_.is_binary_mask" title="phenotypic.sdk_.is_binary_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_binary_mask</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header" title="phenotypic.sdk_.is_metadata_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_metadata_header</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html#phenotypic.sdk_.is_metadata_header" title="phenotypic.sdk_.is_metadata_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_metadata_header</span></code></a></p></td>
 <td><p>True if <code class="docutils literal notranslate"><span class="pre">col</span></code> is a metadata-family column.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label" title="phenotypic.sdk_.metadata_category_for_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_for_label</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label" title="phenotypic.sdk_.metadata_category_for_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_for_label</span></code></a></p></td>
 <td><p>Category that owns a bare label (<code class="docutils literal notranslate"><span class="pre">'Strain'</span> <span class="pre">-&gt;</span> <span class="pre">'MetadataGenetic'</span></code>), or None.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html#phenotypic.sdk_.metadata_category_prefixes" title="phenotypic.sdk_.metadata_category_prefixes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_prefixes</span></code></a></p></td>
-<td><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in REMBI order.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.metadata_category_prefixes.html#phenotypic.sdk_.metadata_category_prefixes" title="phenotypic.sdk_.metadata_category_prefixes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metadata_category_prefixes</span></code></a></p></td>
+<td><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in cluster order.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.order_measurement_columns.html#phenotypic.sdk_.order_measurement_columns" title="phenotypic.sdk_.order_measurement_columns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">order_measurement_columns</span></code></a></p></td>
+<td><p>Canonical measurement-frame column order.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.timed_execution.html#phenotypic.sdk_.timed_execution" title="phenotypic.sdk_.timed_execution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timed_execution</span></code></a></p></td>
 <td><p>Decorator to measure and print the execution time of a function.</p></td>
@@ -3386,6 +3394,22 @@ intact with no <code class="docutils literal notranslate"><span class="pre">.tmp
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">canonical_metadata_order</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#canonical_metadata_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Global rank for every known metadata header (cluster then definition order).</p>
+<p>Cluster-order major, enum definition-order minor. A header absent from this
+map is an unknown/uncategorized user tag; callers rank those last. The map is
+derived entirely from the import-time schema enums, so it is cached. The
+returned dict is read-only by contract; callers must not mutate it (mirrors
+<code class="xref py py-func docutils literal notranslate"><span class="pre">header_to_module()</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">checkpoint_lock_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">checkpoint_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'manifest'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'finalize'</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#checkpoint_lock_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Filename of the SLURM-sentinel exclusive lock for a checkpoint task.</p>
 <dl class="field-list simple">
@@ -4084,10 +4108,10 @@ string is that the dispatch falls through to <code class="xref py py-class docut
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">metadata_category_prefixes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#metadata_category_prefixes"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in REMBI order.</p>
-<p>Ordered by each enum’s REMBI module then its category string, then
-deduplicated, so callers building bucket-priority lists get a stable,
-canonical ordering.</p>
+<dd><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in cluster order.</p>
+<p>Ordered by the bio-semantic cluster order (<code class="docutils literal notranslate"><span class="pre">_METADATA_CLUSTER_ORDER</span></code>), then
+deduplicated, so callers building bucket-priority lists get a stable, canonical
+ordering. REMBI is a separate axis (see <code class="docutils literal notranslate"><span class="pre">by_module</span></code> / <code class="docutils literal notranslate"><span class="pre">header_to_module</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
@@ -4154,6 +4178,29 @@ whole-directory; we never merge a half-written canonical with legacy).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">order_measurement_columns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><span class="pre">Sequence</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#order_measurement_columns"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Canonical measurement-frame column order.</p>
+<p><code class="docutils literal notranslate"><span class="pre">[front</span> <span class="pre">metadata]</span> <span class="pre">-&gt;</span> <span class="pre">[measurements]</span> <span class="pre">-&gt;</span> <span class="pre">[MetadataImage_*]</span> <span class="pre">-&gt;</span> <span class="pre">[info</span> <span class="pre">block]</span></code>.</p>
+<p>Front (user/experimental) metadata is cluster/definition ordered via
+<a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html#phenotypic.sdk_.canonical_metadata_order" title="phenotypic.sdk_.canonical_metadata_order"><code class="xref py py-func docutils literal notranslate"><span class="pre">canonical_metadata_order()</span></code></a>; unknown/uncategorized <code class="docutils literal notranslate"><span class="pre">Metadata_*</span></code> tags fall
+to the end of the front block alphabetically. The framework <code class="docutils literal notranslate"><span class="pre">MetadataImage_*</span></code>
+block is per-image provenance and trails the measurements. The per-object info
+block (<code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> + <code class="docutils literal notranslate"><span class="pre">Bbox_*</span></code> / <code class="docutils literal notranslate"><span class="pre">Grid_*</span></code>) is detected by name and moves
+last. Measurements keep their incoming relative order.</p>
+<p>Pure over column-name strings, so both the pandas (<code class="docutils literal notranslate"><span class="pre">df[...]</span></code>) and polars
+(<code class="docutils literal notranslate"><span class="pre">df.select(...)</span></code>) paths reuse it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>

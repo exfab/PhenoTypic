@@ -62,7 +62,7 @@
     <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/api_reference/api/phenotypic.sdk_.metadata_category_prefixes.html" />
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="phenotypic.sdk_.timed_execution" href="phenotypic.sdk_.timed_execution.html" />
+    <link rel="next" title="phenotypic.sdk_.order_measurement_columns" href="phenotypic.sdk_.order_measurement_columns.html" />
     <link rel="prev" title="phenotypic.sdk_.metadata_category_for_label" href="phenotypic.sdk_.metadata_category_for_label.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -809,11 +809,13 @@
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.sdk_.html">phenotypic.sdk_</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_bytes.html">phenotypic.sdk_.atomic_write_bytes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.atomic_write_text.html">phenotypic.sdk_.atomic_write_text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.canonical_metadata_order.html">phenotypic.sdk_.canonical_metadata_order</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.ensure_metadata_prefix.html">phenotypic.sdk_.ensure_metadata_prefix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_binary_mask.html">phenotypic.sdk_.is_binary_mask</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.is_metadata_header.html">phenotypic.sdk_.is_metadata_header</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.metadata_category_for_label.html">phenotypic.sdk_.metadata_category_for_label</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.sdk_.metadata_category_prefixes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.order_measurement_columns.html">phenotypic.sdk_.order_measurement_columns</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.timed_execution.html">phenotypic.sdk_.timed_execution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_csv_path.html">phenotypic.sdk_.analysis_csv_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.analysis_full_parquet_path.html">phenotypic.sdk_.analysis_full_parquet_path</a></li>
@@ -1160,10 +1162,10 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.metadata_category_prefixes">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">metadata_category_prefixes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_metadata_helpers.html#metadata_category_prefixes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.metadata_category_prefixes" title="Link to this definition">#</a></dt>
-<dd><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in REMBI order.</p>
-<p>Ordered by each enum’s REMBI module then its category string, then
-deduplicated, so callers building bucket-priority lists get a stable,
-canonical ordering.</p>
+<dd><p>All metadata category prefixes (e.g. <code class="docutils literal notranslate"><span class="pre">'MetadataGenetic_'</span></code>) in cluster order.</p>
+<p>Ordered by the bio-semantic cluster order (<code class="docutils literal notranslate"><span class="pre">_METADATA_CLUSTER_ORDER</span></code>), then
+deduplicated, so callers building bucket-priority lists get a stable, canonical
+ordering. REMBI is a separate axis (see <code class="docutils literal notranslate"><span class="pre">by_module</span></code> / <code class="docutils literal notranslate"><span class="pre">header_to_module</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>

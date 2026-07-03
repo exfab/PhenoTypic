@@ -36,6 +36,22 @@ sample CSV, the `--study` profile, and how columns fold into REMBI modules, with
 downloadable example files.
 ```
 
+## Column order (bio-semantic clusters)
+
+Measurement sheets order the metadata front-block by a bench-scientist narrative,
+**not** by REMBI module:
+
+1. **Identity** — `MetadataSample_*`, `MetadataPlate_*`
+2. **Strain** — `MetadataGenetic_*`
+3. **Condition** — `MetadataCondition_*`, `MetadataCulture_*`
+4. **Design & provenance** — `MetadataExperiment_*`, `MetadataStudy_*`, `MetadataAcquisition_*`
+
+Unknown/uncategorized `Metadata_*` tags trail the four clusters. Within a category,
+columns follow the enum's declaration order. The framework `MetadataImage_*` block is
+per-image provenance and is placed **after** the measurements, before the per-object
+`Object_Label` / `Bbox_*` / `Grid_*` info block. REMBI (`by_module`, the run manifest)
+remains a separate provenance axis and is unaffected by this ordering.
+
 ## Migration note (namespace rename)
 
 Metadata columns are now per-REMBI-module prefixed (`MetadataGenetic_Strain`

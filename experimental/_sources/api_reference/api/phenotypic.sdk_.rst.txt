@@ -18,11 +18,13 @@
    
       atomic_write_bytes
       atomic_write_text
+      canonical_metadata_order
       ensure_metadata_prefix
       is_binary_mask
       is_metadata_header
       metadata_category_for_label
       metadata_category_prefixes
+      order_measurement_columns
       timed_execution
       analysis_csv_path
       analysis_full_parquet_path
