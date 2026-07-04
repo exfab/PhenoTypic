@@ -29,9 +29,8 @@ variant is emitted alongside the radial one purely so the mask's distortion can 
 
 ## 2. Output schema
 
-New header enum **`RADIAL_ORIENT_ZONES`** in
-`src/phenotypic/schema/_radial_orient_zones.py`, category prefix
-**`RadialOrientZones`**, mirroring `SYMMETRIC_ZONES`. Per object:
+New header enum **`ORIENTATION_ZONES`** in `src/phenotypic/schema/_orientation_zones.py`,
+category prefix **`OrientZones`**, mirroring `SYMMETRIC_ZONES`. Per object:
 
 **Regions** `{Overall, Dense, Sparse}` × **variants** `{Radial, Mask}` × **metrics**
 `{Concentration, Turning, Coherence}`.
@@ -42,21 +41,23 @@ New header enum **`RADIAL_ORIENT_ZONES`** in
 | `Turning` | coherence-weighted mean `⟨|∇φ|⟩` | rad/px (rad/µm with scale) |
 | `Coherence` | mean coherence `⟨C⟩` over the selector — confidence/QC readout | dimensionless [0,1] |
 
-Column headers (18 + label), pattern `RadialOrientZones_<value>-<ZoneName>` where
-`<value> = <Metric>_<Variant>` and `<ZoneName> ∈ {Overall, Dense, Sparse}` (the zone comes
-last, hyphen-separated):
+Column headers (18 + label), pattern `OrientZones_<Metric>-<Variant>-<Zone>` — a **single
+underscore** after the category, then the metric-specific fields (`Metric`, `Variant`,
+`Zone`) **hyphen-joined** so parsing is trivial: `header.split("_", 1)` peels off the
+category and `.split("-")` on the remainder yields `[Metric, Variant, Zone]`.
+`Variant ∈ {Radial, Mask}`, `Zone ∈ {Overall, Dense, Sparse}`.
 
 ```
 Object_Label
-RadialOrientZones_Concentration_Radial-Overall   RadialOrientZones_Concentration_Mask-Overall
-RadialOrientZones_Concentration_Radial-Dense      RadialOrientZones_Concentration_Mask-Dense
-RadialOrientZones_Concentration_Radial-Sparse     RadialOrientZones_Concentration_Mask-Sparse
-RadialOrientZones_Turning_Radial-Overall          RadialOrientZones_Turning_Mask-Overall
-RadialOrientZones_Turning_Radial-Dense            RadialOrientZones_Turning_Mask-Dense
-RadialOrientZones_Turning_Radial-Sparse           RadialOrientZones_Turning_Mask-Sparse
-RadialOrientZones_Coherence_Radial-Overall        RadialOrientZones_Coherence_Mask-Overall
-RadialOrientZones_Coherence_Radial-Dense          RadialOrientZones_Coherence_Mask-Dense
-RadialOrientZones_Coherence_Radial-Sparse         RadialOrientZones_Coherence_Mask-Sparse
+OrientZones_Concentration-Radial-Overall   OrientZones_Concentration-Mask-Overall
+OrientZones_Concentration-Radial-Dense     OrientZones_Concentration-Mask-Dense
+OrientZones_Concentration-Radial-Sparse    OrientZones_Concentration-Mask-Sparse
+OrientZones_Turning-Radial-Overall         OrientZones_Turning-Mask-Overall
+OrientZones_Turning-Radial-Dense           OrientZones_Turning-Mask-Dense
+OrientZones_Turning-Radial-Sparse          OrientZones_Turning-Mask-Sparse
+OrientZones_Coherence-Radial-Overall       OrientZones_Coherence-Mask-Overall
+OrientZones_Coherence-Radial-Dense         OrientZones_Coherence-Mask-Dense
+OrientZones_Coherence-Radial-Sparse        OrientZones_Coherence-Mask-Sparse
 ```
 
 **Regions are radial** (centred on the inoculum centre, using the zone radii from §3):
@@ -245,7 +246,7 @@ conventions (`adding-an-operation`).
 ## 9. File inventory
 
 **New**
-- `src/phenotypic/schema/_radial_orient_zones.py` — `RADIAL_ORIENT_ZONES` enum.
+- `src/phenotypic/schema/_orientation_zones.py` — `ORIENTATION_ZONES` enum.
 - `src/phenotypic/measure/_zone_segmentation.py` — `ZoneSegmentation` +
   `compute_zone_segmentation`.
 - `src/phenotypic/measure/_measure_orientation_zones.py` — the operator + `inspect()` +
