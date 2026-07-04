@@ -143,8 +143,8 @@ failure tests, and HDF lock-recovery tests.
 
 Files to add:
 
-- `src/phenotypic/sdk_/_atomic_writes.py`
-- `src/phenotypic/sdk_/slurm/_script_rendering.py`
+- `src/phenotypic/sdk_/_helpers/_atomic_writes.py`
+- `src/phenotypic/sdk_/slurm/_helpers/_script_rendering.py`
 - `tests/unit/sdk_/test_atomic_writes.py`
 - `tests/unit/sdk_/test_slurm_script_rendering.py`
 - `tests/unit/sdk_/test_hdf_open_recovery.py`
@@ -210,8 +210,8 @@ the completed URL-prefix helper from the high-priority cleanup.
 
 Files to add:
 
-- `src/phenotypic/gui/_dash_app.py`
-- `src/phenotypic/gui/_shared/_openseadragon.py`
+- `src/phenotypic/gui/_helpers/_dash_app.py`
+- `src/phenotypic/gui/_shared/_helpers/_openseadragon.py`
 - `src/phenotypic/gui/_shared/assets/openseadragon/`
 - `src/phenotypic/gui/_assets/tokens.json`
 - `src/phenotypic/gui/_assets/tokens.css`
@@ -290,12 +290,12 @@ commits with characterization tests before each extraction.
 
 Files to add:
 
-- `src/phenotypic/detect/_sine_grid_inference.py`
-- `src/phenotypic/sdk_/mixin/_wavelet_denoise_mixin.py`
-- `src/phenotypic/analysis/qc/_status.py`
-- `src/phenotypic/analysis/abc_/_linear_softplus_helpers.py`
-- `src/phenotypic/correction/_color_correction/_defaults.py`
-- `src/phenotypic/measure/_symmetric_zone_common.py`
+- `src/phenotypic/detect/_helpers/_sine_grid_inference.py`
+- `src/phenotypic/sdk_/mixin/_helpers/_wavelet_denoise_mixin.py`
+- `src/phenotypic/analysis/qc/_helpers/_status.py`
+- `src/phenotypic/analysis/abc_/_helpers/_linear_softplus_helpers.py`
+- `src/phenotypic/correction/_color_correction/_helpers/_defaults.py`
+- `src/phenotypic/measure/_helpers/_symmetric_zone_common.py`
 - `tests/unit/detect/test_sine_grid_inference.py`
 - `tests/unit/sdk_/test_wavelet_denoise_mixin.py`
 - `tests/unit/analysis/test_qc_status.py`
@@ -353,7 +353,8 @@ Design:
   value object shared by profile fields and helper signatures. Validators stay
   on `ColorCheckerProfile`.
 - Symmetric zones: extract shared radial-density, PELT core-radius,
-  angular-profile, and symmetric-radius helpers into `_symmetric_zone_common`.
+  angular-profile, and symmetric-radius helpers into
+  `phenotypic.measure._helpers._symmetric_zone_common`.
   Keep `MeasureSymmetricZones` as the richer measurer and `TrimAsymmetry` as a
   refiner. Name intentional default differences explicitly.
 
@@ -368,6 +369,10 @@ Verification:
 ## Implementation Rules
 
 - Keep helpers private unless a public API already exists at that layer.
+- Place new private helper modules for existing subpackages under `_helpers/`
+  subfolders, for example
+  `src/phenotypic/detect/_helpers/_sine_grid_inference.py`, rather than adding
+  more sibling helper files directly in the subpackage root.
 - Prefer characterization tests before extraction in Phases 2 through 4.
 - Preserve serialized operation fields and JSON round-trips.
 - Preserve output file names, dashboard static paths, SLURM script purpose, and
