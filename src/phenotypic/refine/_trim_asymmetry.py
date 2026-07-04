@@ -15,7 +15,13 @@ from scipy.ndimage import distance_transform_edt, label as ndi_label
 from skimage.measure import euler_number, regionprops
 
 from ..abc_ import ObjectRefiner
-from ..measure._measure_symmetric_zones import MeasureSymmetricZones
+from ..measure._zone_segmentation import (
+    compute_radial_density_profile,
+    compute_sholl_angular_profile,
+    distance_from_point,
+    find_core_radius,
+    find_symmetric_radius,
+)
 from ..sdk_.typing_ import TuneSpec
 
 _log = logging.getLogger(__name__)
@@ -268,7 +274,7 @@ class TrimAsymmetry(ObjectRefiner):
                 centroid_rc = (float(cw[0]), float(cw[1]))
 
         # 2. Distance map from centroid.
-        dist_map = MeasureSymmetricZones._distance_from_point(
+        dist_map = distance_from_point(
                 obj_mask.shape, centroid_rc
         )
 
@@ -283,7 +289,7 @@ class TrimAsymmetry(ObjectRefiner):
 
         # 3. R_sym pipeline.
         density_profile, annulus_radii = (
-            MeasureSymmetricZones._compute_radial_density_profile(
+            compute_radial_density_profile(
                     obj_mask, dist_map, effective_annuli,
             )
         )
@@ -291,7 +297,7 @@ class TrimAsymmetry(ObjectRefiner):
             return None
 
         try:
-            core_radius = MeasureSymmetricZones._find_core_radius(
+            core_radius = find_core_radius(
                     density_profile, annulus_radii, self.pelt_penalty,
             )
         except Exception:  # pragma: no cover — ruptures failure is rare
@@ -303,12 +309,12 @@ class TrimAsymmetry(ObjectRefiner):
             core_radius = 0.0
 
         _, _, angular_coverage = (
-            MeasureSymmetricZones._compute_sholl_angular_profile(
+            compute_sholl_angular_profile(
                     obj_mask, dist_map, centroid_rc, annulus_radii,
                     self.n_angular_bins,
             )
         )
-        r_sym = MeasureSymmetricZones._find_symmetric_radius(
+        r_sym = find_symmetric_radius(
                 annulus_radii,
                 angular_coverage,
                 core_radius,
