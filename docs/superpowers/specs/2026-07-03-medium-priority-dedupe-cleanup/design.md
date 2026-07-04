@@ -143,8 +143,8 @@ failure tests, and HDF lock-recovery tests.
 
 Files to add:
 
-- `src/phenotypic/sdk_/_helpers/_atomic_writes.py`
-- `src/phenotypic/sdk_/slurm/_helpers/_script_rendering.py`
+- `src/phenotypic/sdk_/_atomic_writes.py`
+- `src/phenotypic/sdk_/slurm/_script_rendering.py`
 - `tests/unit/sdk_/test_atomic_writes.py`
 - `tests/unit/sdk_/test_slurm_script_rendering.py`
 - `tests/unit/sdk_/test_hdf_open_recovery.py`
@@ -210,8 +210,8 @@ the completed URL-prefix helper from the high-priority cleanup.
 
 Files to add:
 
-- `src/phenotypic/gui/_helpers/_dash_app.py`
-- `src/phenotypic/gui/_shared/_helpers/_openseadragon.py`
+- `src/phenotypic/gui/_dash_app.py`
+- `src/phenotypic/gui/_shared/_openseadragon.py`
 - `src/phenotypic/gui/_shared/assets/openseadragon/`
 - `src/phenotypic/gui/_assets/tokens.json`
 - `src/phenotypic/gui/_assets/tokens.css`
@@ -290,19 +290,19 @@ commits with characterization tests before each extraction.
 
 Files to add:
 
-- `src/phenotypic/detect/_helpers/_sine_grid_inference.py`
-- `src/phenotypic/sdk_/mixin/_helpers/_wavelet_denoise_mixin.py`
-- `src/phenotypic/analysis/qc/_helpers/_status.py`
+- `src/phenotypic/sdk_/mixin/_sine_grid_inference.py`
+- `src/phenotypic/sdk_/mixin/_wavelet_denoise_mixin.py`
+- `src/phenotypic/sdk_/_qc_status.py`
 - `src/phenotypic/analysis/abc_/_helpers/_linear_softplus_helpers.py`
 - `src/phenotypic/correction/_color_correction/_helpers/_defaults.py`
-- `src/phenotypic/measure/_helpers/_symmetric_zone_common.py`
-- `tests/unit/detect/test_sine_grid_inference.py`
+- `src/phenotypic/sdk_/_symmetric_zone_common.py`
+- `tests/unit/sdk_/test_sine_grid_inference.py`
 - `tests/unit/sdk_/test_wavelet_denoise_mixin.py`
-- `tests/unit/analysis/test_qc_status.py`
+- `tests/unit/sdk_/test_qc_status.py`
 - `tests/unit/analysis/test_linear_softplus_helpers.py`
 - `tests/unit/refine/test_mask_footprint_resolution.py`
 - `tests/unit/correction/test_color_checker_defaults.py`
-- `tests/unit/measure/test_symmetric_zone_common.py`
+- `tests/unit/sdk_/test_symmetric_zone_common.py`
 
 Files to modify:
 
@@ -333,16 +333,21 @@ Files to modify:
 Design:
 
 - Sine grid inference: extract normalized cross-correlation, rank-template
-  construction, peak filtering, fallback peak generation, and edge derivation.
-  Both `SinePeakDetector` and `RefineBySineFit` pass their existing fields into
-  the helper. Keep object assignment and refinement local.
+  construction, peak filtering, fallback peak generation, and edge derivation
+  into `phenotypic.sdk_.mixin._sine_grid_inference`, because the helper is
+  shared by both detection and refinement packages. Both `SinePeakDetector` and
+  `RefineBySineFit` pass their existing fields into the helper. Keep object
+  assignment and refinement local.
 - Wavelet denoise: extract common denoise kwargs and layer-application helpers,
   but leave public operation fields and docstrings on each operation class.
   Enhancement ops still write only `detect_mat`; correction ops still write
   RGB, gray, and detect_mat.
 - QC status: define private constants for pass/warn/fail labels, ranks, and
-  plot colors. Add `worst_qc_status(statuses)` and `qc_status_color(status)`.
-  Keep status column names and DataFrame values as strings.
+  plot colors in `phenotypic.sdk_._qc_status`, because the base QC class and
+  concrete QC analyzers live in different analysis subpackages but consume the
+  same status contract. Add `worst_qc_status(statuses)` and
+  `qc_status_color(status)`. Keep status column names and DataFrame values as
+  strings.
 - Linear growth: move common initial guess and bounds helpers into the existing
   linear softplus base layer. Cap-and-lag appends beta-specific guess/bounds;
   lag-only remains four-parameter.
@@ -354,7 +359,8 @@ Design:
   on `ColorCheckerProfile`.
 - Symmetric zones: extract shared radial-density, PELT core-radius,
   angular-profile, and symmetric-radius helpers into
-  `phenotypic.measure._helpers._symmetric_zone_common`.
+  `phenotypic.sdk_._symmetric_zone_common`, because the helper is shared by the
+  measure and refine packages.
   Keep `MeasureSymmetricZones` as the richer measurer and `TrimAsymmetry` as a
   refiner. Name intentional default differences explicitly.
 
@@ -369,10 +375,17 @@ Verification:
 ## Implementation Rules
 
 - Keep helpers private unless a public API already exists at that layer.
-- Place new private helper modules for existing subpackages under `_helpers/`
-  subfolders, for example
-  `src/phenotypic/detect/_helpers/_sine_grid_inference.py`, rather than adding
-  more sibling helper files directly in the subpackage root.
+- Do not add `_helpers/` under `src/phenotypic/sdk_`; the `sdk_` package is
+  already the shared helper layer.
+- Place new `_helpers/` modules only when the helper is private to one
+  package folder and all non-test importers live in that folder. For example,
+  a helper used only by detection operations can live under
+  `src/phenotypic/detect/_helpers/`, while a helper shared by `detect` and
+  `refine` belongs in an existing shared layer such as `sdk_`.
+- Cross-subpackage non-GUI helpers belong in `src/phenotypic/sdk_`. GUI-only
+  shared helpers stay under `src/phenotypic/gui/` or
+  `src/phenotypic/gui/_shared/` so `sdk_` does not gain Dash, Flask, or static
+  asset dependencies.
 - Prefer characterization tests before extraction in Phases 2 through 4.
 - Preserve serialized operation fields and JSON round-trips.
 - Preserve output file names, dashboard static paths, SLURM script purpose, and
