@@ -34,4 +34,3 @@ def test_dash_index_string_preserves_dash_placeholders() -> None:
         "{%renderer%}",
     ):
         assert placeholder in template
-

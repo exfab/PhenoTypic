@@ -95,4 +95,3 @@ def add_metadata_image_name_from_filename(frame: pl.DataFrame) -> pl.DataFrame:
     if "filename" in frame.columns:
         frame = frame.drop("filename")
     return frame
-

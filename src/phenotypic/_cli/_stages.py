@@ -35,4 +35,3 @@ def validate_stage_tag(stage: str | None) -> StageTag | None:
         f"Invalid stage tag: '{stage}' "
         f"(expected one of {sorted(VALID_STAGE_TAGS)})"
     )
-

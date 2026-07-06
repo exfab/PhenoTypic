@@ -109,4 +109,3 @@ def test_add_metadata_image_name_from_filename_preserves_existing_column() -> No
 
     assert "filename" not in out.columns
     assert out[str(METADATA.IMAGE_NAME)].to_list() == ["kept"]
-
