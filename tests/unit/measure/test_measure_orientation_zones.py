@@ -162,3 +162,51 @@ def test_dashboard_builds_composed_figure():
     assert any(getattr(tr, "type", None) == "table" for tr in fig.data)
     # coherence heatmap present too
     assert any(getattr(tr, "type", None) == "heatmap" for tr in fig.data)
+
+
+def test_non_grid_image_uses_expanded_crop_fallback():
+    # A grid section extracted via image.grid[idx] is a plain Image with no
+    # .grid accessor — the ONLY way to exercise _resolve_tile's expanded-crop
+    # fallback (all repo fixtures are GridImages). Spec §5: non-grid → no error.
+    image = load_synth_filamentous_plate()
+    section = image.grid[18]
+    assert not hasattr(section, "grid"), "grid section should be a plain Image"
+    df = MeasureOrientationZones().measure(section)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == section.num_objects
+    assert set(ORIENTATION_ZONES.get_headers()).issubset(df.columns)
+    # the object is a real colony → the fallback path still yields a finite R
+    r = df["OrientZones_Concentration-Radial-Overall"].to_numpy(float)
+    assert np.isfinite(r).any()
+
+
+def test_collapsed_zones_yield_all_nan():
+    # zones_computed==False (collapsed symmetric envelope) → all 18 metrics NaN,
+    # including Overall once symmetric_radius==0 (empty selector). Spec §5. This
+    # branch is never hit by the fixtures, so drive _fill_metrics directly using
+    # real per-object arrays with a mutated (collapsed) segmentation.
+    image = load_synth_filamentous_plate()
+    op = MeasureOrientationZones()
+    props, label2section = op._prep(image)
+    _prop, seg, obj_mask, phi, coh, grad, dist_map, _centre = next(
+        op._iter_object_fields(image, props, label2section)
+    )
+    seg.zones_computed = False
+    seg.symmetric_radius = 0.0
+    row: dict = {}
+    op._fill_metrics(row, seg, obj_mask, phi, coh, grad, dist_map)
+    assert len(row) == 18
+    assert all(np.isnan(v) for v in row.values())
+
+
+def test_radial_and_mask_variants_diverge_on_real_plate():
+    # The Mask variant exists so the imperfect mask's distortion can be *seen*
+    # (spec §1/§2). In the sparse ring the mask carves holes the Radial variant
+    # keeps, so the two concentration reads must differ for at least some objects.
+    image = load_synth_filamentous_plate()
+    df = MeasureOrientationZones().measure(image)
+    rad = df["OrientZones_Concentration-Radial-Sparse"].to_numpy(float)
+    msk = df["OrientZones_Concentration-Mask-Sparse"].to_numpy(float)
+    both = np.isfinite(rad) & np.isfinite(msk)
+    assert both.any(), "need objects with a finite sparse ring in both variants"
+    assert np.nanmax(np.abs(rad[both] - msk[both])) > 1e-6

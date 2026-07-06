@@ -356,9 +356,10 @@ def structure_tensor_metrics(I, sigma_d, sigma_i, eps=1e-12):
     phi = 0.5 * np.arctan2(2 * Jxy, Jxx - Jyy)   # local orientation (mod π)
 
     # ③ orientation gradient via the doubled angle (π-periodicity-safe)
+    # np.gradient returns axis order (rows=y, cols=x), so unpack y first.
     c2, s2 = np.cos(2 * phi), np.sin(2 * phi)
-    gcx, gcy = np.gradient(c2)
-    gsx, gsy = np.gradient(s2)
+    gcy, gcx = np.gradient(c2)
+    gsy, gsx = np.gradient(s2)
     grad_phi = 0.5 * np.sqrt(gcx**2 + gcy**2 + gsx**2 + gsy**2)   # |∇φ|, rad/px
 
     # ④ compact metrics
