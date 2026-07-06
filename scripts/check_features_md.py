@@ -22,6 +22,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts._markdown_table import split_markdown_row_cells
+except ModuleNotFoundError:  # pragma: no cover - path-script execution
+    from _markdown_table import split_markdown_row_cells
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FEATURES_MD = REPO_ROOT / "src" / "phenotypic" / "gui" / "FEATURES.md"
 
@@ -34,21 +39,6 @@ MANUAL_REF = "n/a (manual)"
 # newline + optional whitespace before EOL is matched by ``\s*$``.
 ROW_RE = re.compile(r"^\|(.+)\|\s*$")
 SEPARATOR_RE = re.compile(r"^\|[\s:|-]+\|\s*$")
-# GitHub-flavored Markdown allows literal ``|`` inside a cell by escaping
-# it as ``\|``. The pre-split temporarily replaces escapes with a sentinel
-# so a naive ``split("|")`` doesn't break cells that legitimately mention
-# union types (e.g. ``ColumnRef \| None``) or CSS var fallbacks (e.g.
-# ``var(--font-display | --font-body | --font-mono)``).
-_PIPE_ESCAPE = "\\|"
-_PIPE_SENTINEL = "\x00"
-
-
-def _split_row_cells(row: str) -> list[str]:
-    """Split a markdown table row honoring ``\\|`` escapes."""
-    return [
-        c.strip().replace(_PIPE_SENTINEL, "|")
-        for c in row.replace(_PIPE_ESCAPE, _PIPE_SENTINEL).split("|")
-    ]
 
 
 def parse_tables(text: str) -> tuple[list[dict[str, str]], list[str]]:
@@ -74,14 +64,14 @@ def parse_tables(text: str) -> tuple[list[dict[str, str]], list[str]]:
         if i + 1 >= len(lines) or not SEPARATOR_RE.match(lines[i + 1]):
             i += 1
             continue
-        headers = _split_row_cells(m.group(1))
+        headers = split_markdown_row_cells(m.group(1))
         is_feature_table = "Status" in headers and "Test ref" in headers
         i += 2
         while i < len(lines):
             m2 = ROW_RE.match(lines[i])
             if not m2:
                 break
-            cells = _split_row_cells(m2.group(1))
+            cells = split_markdown_row_cells(m2.group(1))
             if len(cells) != len(headers):
                 if is_feature_table:
                     warnings.append(

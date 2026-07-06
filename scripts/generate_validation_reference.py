@@ -21,6 +21,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, get_args
 
+try:
+    from scripts._reference_generator import write_or_check_generated_file
+except ModuleNotFoundError:  # pragma: no cover - path-script execution
+    from _reference_generator import write_or_check_generated_file
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_RST = (
     REPO_ROOT
@@ -354,28 +359,12 @@ def main(argv: List[str] | None = None) -> int:
     _check_coverage(_RULES)
     rendered = _render_rst(_RULES)
 
-    if args.check:
-        if not OUTPUT_RST.exists():
-            print(
-                f"{OUTPUT_RST} does not exist; run "
-                "scripts/generate_validation_reference.py without --check.",
-                file=sys.stderr,
-            )
-            return 1
-        existing = OUTPUT_RST.read_text(encoding="utf-8")
-        if existing != rendered:
-            print(
-                f"{OUTPUT_RST} is out of date; regenerate with "
-                "`uv run python scripts/generate_validation_reference.py`.",
-                file=sys.stderr,
-            )
-            return 1
-        return 0
-
-    OUTPUT_RST.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_RST.write_text(rendered, encoding="utf-8")
-    print(f"Wrote {OUTPUT_RST}")
-    return 0
+    return write_or_check_generated_file(
+        output_path=OUTPUT_RST,
+        rendered=rendered,
+        check=args.check,
+        regenerate_command="uv run python scripts/generate_validation_reference.py",
+    )
 
 
 if __name__ == "__main__":
