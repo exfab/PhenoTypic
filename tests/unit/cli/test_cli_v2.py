@@ -63,8 +63,16 @@ from phenotypic.sdk_ import (
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
+    order_measurement_columns,
     pipeline_json_path,
 )
+from phenotypic.schema import CONDITION_METADATA, EXPERIMENT_METADATA, METADATA
+
+
+DATASET_HEADER = str(EXPERIMENT_METADATA.DATASET)
+IMAGE_NAME_HEADER = str(METADATA.IMAGE_NAME)
+TREATMENT_LABEL = CONDITION_METADATA.TREATMENT.label
+TREATMENT_HEADER = str(CONDITION_METADATA.TREATMENT)
 
 
 @pytest.fixture
@@ -1740,8 +1748,8 @@ class TestAggregateMeasurements:
         assert result.name == "master_measurements.csv"
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert "MetadataExperiment_Dataset" in master.columns
-        assert list(master["MetadataExperiment_Dataset"].unique()) == ["ds1"]
+        assert DATASET_HEADER in master.columns
+        assert list(master[DATASET_HEADER].unique()) == ["ds1"]
 
         # Verify master Parquet is also written
         master_parquet = master_measurements_parquet_path(temp_output_dir)
@@ -1770,8 +1778,8 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert set(master["MetadataExperiment_Dataset"]) == {"plate_A", "plate_B"}
-        assert master.loc[master["MetadataExperiment_Dataset"] == "plate_A", "area"].iloc[0] == 10
+        assert set(master[DATASET_HEADER]) == {"plate_A", "plate_B"}
+        assert master.loc[master[DATASET_HEADER] == "plate_A", "area"].iloc[0] == 10
 
     def test_aggregate_measurements_no_dataset_column(self, temp_output_dir):
         """include_dataset_column=False: no Metadata_Dataset column added."""
@@ -1791,7 +1799,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         master = pd.read_csv(result)
-        assert "MetadataExperiment_Dataset" not in master.columns
+        assert DATASET_HEADER not in master.columns
 
     def test_aggregate_measurements_empty(self, temp_output_dir):
         """No CSVs found returns None."""
@@ -1824,7 +1832,7 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 2
-        assert "MetadataExperiment_Dataset" in master.columns
+        assert DATASET_HEADER in master.columns
 
     def test_aggregate_measurements_with_metadata(self, temp_output_dir):
         """Metadata CSV with shared column joins correctly, new columns appear."""
@@ -1837,11 +1845,11 @@ class TestAggregateMeasurements:
             ],
         })
 
-        # Create metadata CSV with shared 'plate' column and new 'treatment' column
+        # Create metadata CSV with shared 'plate' column and schema-backed Treatment column.
         metadata_path = temp_output_dir / "metadata.csv"
         pd.DataFrame({
             "plate": ["A", "B"],
-            "treatment": ["control", "drug_X"],
+            TREATMENT_LABEL: ["control", "drug_X"],
         }).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
@@ -1854,14 +1862,14 @@ class TestAggregateMeasurements:
         assert result is not None
         # Master archive stays clean: no external metadata columns join here.
         master = pd.read_csv(result)
-        assert "treatment" not in master.columns
+        assert TREATMENT_HEADER not in master.columns
         assert len(master) == 3
         # Mirror carries the joined external metadata.
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
-        assert "treatment" in mirror.columns
+        assert TREATMENT_HEADER in mirror.columns
         assert len(mirror) == 3
-        assert list(mirror.loc[mirror["plate"] == "A", "treatment"].unique()) == ["control"]
-        assert list(mirror.loc[mirror["plate"] == "B", "treatment"].unique()) == ["drug_X"]
+        assert list(mirror.loc[mirror["plate"] == "A", TREATMENT_HEADER].unique()) == ["control"]
+        assert list(mirror.loc[mirror["plate"] == "B", TREATMENT_HEADER].unique()) == ["drug_X"]
 
     def test_aggregate_measurements_metadata_no_common_columns(self, temp_output_dir):
         """No shared columns produces warning, master CSV unchanged."""
@@ -1907,7 +1915,7 @@ class TestAggregateMeasurements:
         metadata_path = temp_output_dir / "metadata.csv"
         pd.DataFrame({
             "plate": ["A", "B"],
-            "treatment": ["control", "drug_X"],
+            TREATMENT_LABEL: ["control", "drug_X"],
         }).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
@@ -1920,14 +1928,14 @@ class TestAggregateMeasurements:
         assert result is not None
         # Master archive is unfiltered: all source rows preserved, no metadata.
         master = pd.read_csv(result)
-        assert "treatment" not in master.columns
+        assert TREATMENT_HEADER not in master.columns
         assert set(master["plate"].tolist()) == {"A", "B", "C"}
         # Mirror reflects the inner join: plate C dropped, treatment present.
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
-        assert "treatment" in mirror.columns
+        assert TREATMENT_HEADER in mirror.columns
         assert set(mirror["plate"].tolist()) == {"A", "B"}
-        assert mirror["treatment"].notna().all()
+        assert mirror[TREATMENT_HEADER].notna().all()
 
     def test_aggregate_measurements_metadata_duplicate_keys_warns(self, temp_output_dir, caplog):
         """Duplicate keys in metadata CSV inflate rows and produce a warning."""
@@ -1943,7 +1951,7 @@ class TestAggregateMeasurements:
         metadata_path = temp_output_dir / "metadata.csv"
         pd.DataFrame({
             "plate": ["A", "A"],
-            "treatment": ["control", "drug_X"],
+            TREATMENT_LABEL: ["control", "drug_X"],
         }).to_csv(metadata_path, index=False)
 
         with caplog.at_level(logging.WARNING):
@@ -1958,7 +1966,7 @@ class TestAggregateMeasurements:
         # Master archive stays at the original row count (no join applied).
         master = pd.read_csv(result)
         assert len(master) == 1
-        assert "treatment" not in master.columns
+        assert TREATMENT_HEADER not in master.columns
         # Mirror reflects the duplicate-key inflation.
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
@@ -1979,7 +1987,7 @@ class TestAggregateMeasurements:
         metadata_path = temp_output_dir / "metadata.csv"
         pd.DataFrame({
             "plate": ["1", "2"],
-            "treatment": ["control", "drug_X"],
+            TREATMENT_LABEL: ["control", "drug_X"],
         }).to_csv(metadata_path, index=False)
 
         result = aggregate_measurements(
@@ -1993,12 +2001,12 @@ class TestAggregateMeasurements:
         # Master archive stays clean — no metadata-join side effects.
         master = pd.read_csv(result)
         assert len(master) == 2
-        assert "treatment" not in master.columns
+        assert TREATMENT_HEADER not in master.columns
         # Mirror carries the join even across int/str dtype mismatch on the key.
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert len(mirror) == 2
-        assert "treatment" in mirror.columns
-        assert mirror["treatment"].notna().all()
+        assert TREATMENT_HEADER in mirror.columns
+        assert mirror[TREATMENT_HEADER].notna().all()
 
     def test_aggregate_measurements_parquet_with_duckdb(self, temp_output_dir):
         """Standard .parquet files aggregate correctly via DuckDB."""
@@ -2027,7 +2035,7 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(result)
         assert len(master) == 3
-        assert "MetadataExperiment_Dataset" in master.columns
+        assert DATASET_HEADER in master.columns
 
     def test_aggregate_measurements_post_seeds_post_applied_mirror(self, temp_output_dir):
         """Pipeline post ops are applied to measurements.{csv,parquet} only.
@@ -2181,7 +2189,7 @@ class TestAggregateMeasurements:
     def test_aggregate_measurements_no_post_master_and_mirror_identical(
         self, temp_output_dir
     ):
-        """With no post ops, measurements.* mirrors master_measurements.* exactly."""
+        """With no post ops, measurements.* mirrors master data in canonical order."""
         import pandas as pd
 
         from phenotypic import ImagePipeline
@@ -2202,7 +2210,9 @@ class TestAggregateMeasurements:
         assert result is not None
         master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
-        pd.testing.assert_frame_equal(master, mirror)
+        expected = master[order_measurement_columns(master.columns)]
+        pd.testing.assert_frame_equal(expected, mirror)
+        assert mirror.columns.tolist() == [DATASET_HEADER, "area", IMAGE_NAME_HEADER]
 
 
 # ---------------------------------------------------------------------------

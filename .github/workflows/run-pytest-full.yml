@@ -12,9 +12,10 @@ name: run-pytest-full
 #   * Windows-latest x Python 3.12
 #
 # Run command override:
-#   ``-o "addopts=--verbose --capture=no"`` overrides the
+#   ``-o "addopts=-q --tb=long -r 'Efw' --no-header"`` overrides the
 #   ``addopts = "--verbose --capture=no -m 'not slow'"`` default in
-#   pyproject.toml so slow tests are collected and run.
+#   pyproject.toml so slow tests are collected and run while CI logs stay
+#   focused on failures/errors/warnings instead of every passing test item.
 #
 # No --testmon: the nightly lane is a clean full run; testmon's "skip
 # unchanged" semantics are useless when we want to run everything.
@@ -87,7 +88,7 @@ jobs:
       - name: Run tests (full, slow included)
         run: |
           source .venv/bin/activate
-          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
 
   tests-macos-full:
     if: github.event.repository.visibility == 'public'
@@ -123,7 +124,7 @@ jobs:
       - name: Run tests (full, slow included)
         run: |
           source .venv/bin/activate
-          pytest -n auto -o "addopts=--verbose --capture=no" --durations=20
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
 
   tests-windows-full:
     strategy:
