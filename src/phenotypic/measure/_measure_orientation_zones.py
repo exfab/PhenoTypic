@@ -22,7 +22,6 @@ from phenotypic.measure._zone_segmentation import (
 
 _VARIANTS = ("Radial", "Mask")
 _ZONES = ("Overall", "Dense", "Sparse")
-_METRICS = ("Concentration", "Turning", "Coherence")
 _EPS = 1e-9
 
 # Okabe-Ito navy for figure text (matches MeasureSymmetricZones; family comes
