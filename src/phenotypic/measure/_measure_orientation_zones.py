@@ -9,7 +9,7 @@ from pydantic import PrivateAttr, field_validator
 
 # Control/FigureProvider/figure are re-exported from phenotypic.abc_ (this is
 # exactly what _measure_symmetric_zones.py imports).
-from phenotypic.abc_ import FigureProvider, MeasureFeatures
+from phenotypic.abc_ import Control, FigureProvider, MeasureFeatures, figure
 from phenotypic.schema import OBJECT, ORIENTATION_ZONES
 from phenotypic.util._orientation_field import orientation_field
 from phenotypic.measure._zone_segmentation import (
@@ -24,6 +24,39 @@ _VARIANTS = ("Radial", "Mask")
 _ZONES = ("Overall", "Dense", "Sparse")
 _METRICS = ("Concentration", "Turning", "Coherence")
 _EPS = 1e-9
+
+# Okabe-Ito navy for figure text (matches MeasureSymmetricZones; family comes
+# from the phenotypic plotly template applied by @figure).
+_OI_NAVY = "#003660"
+
+# Base-layer selector for inspect(); mirrors MeasureSymmetricZones.BASE_LAYER
+# but defaults to "detect_mat" (the tensor/segmentation source for this op).
+BASE_LAYER = Control(
+    label="Base layer",
+    kind="select",
+    default="detect_mat",
+    options=("rgb", "gray", "detect_mat"),
+    help="Image array rendered behind the orientation-field overlay.",
+)
+
+# 72-vertex unit circle for zone-ring polygons (replicated locally from the
+# nested helper in _measure_symmetric_zones._add_overlay_traces).
+_N_CIRCLE_PTS = 72
+_CIRCLE_THETA = np.linspace(0.0, 2.0 * np.pi, _N_CIRCLE_PTS, endpoint=True)
+
+
+def _circle_xy(cx: float, cy: float, r: float) -> tuple[np.ndarray, np.ndarray]:
+    """Return (xs, ys) for a ``_N_CIRCLE_PTS``-vertex circle of radius ``r``.
+
+    Args:
+        cx: Circle centre x (column) in plate coordinates.
+        cy: Circle centre y (row) in plate coordinates.
+        r: Circle radius in pixels.
+
+    Returns:
+        Tuple ``(xs, ys)`` of closed-polygon vertex coordinates.
+    """
+    return cx + r * np.cos(_CIRCLE_THETA), cy + r * np.sin(_CIRCLE_THETA)
 
 
 def zone_selector(dist_map, r_lo, r_hi, obj_mask, variant):
@@ -358,3 +391,239 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
             r1, c1 = min(r0 + h, canvas.shape[0]), min(c0 + w, canvas.shape[1])
             canvas[max(r0, 0):r1, max(c0, 0):c1] = coh[: r1 - max(r0, 0), : c1 - max(c0, 0)]
         return canvas[::downsample, ::downsample]
+
+    # ── figure surfaces ──────────────────────────────────────────────
+
+    def _require_cache_image(self):
+        """Return the cached image or raise if :meth:`measure` has not run."""
+        if self._cache_image is None:
+            raise RuntimeError(
+                "MeasureOrientationZones: diagnostic cache is empty. "
+                "Call .measure(image) before .inspect()/.dashboard()."
+            )
+        return self._cache_image
+
+    @figure(
+        title="Orientation-field overlay",
+        primary=True,
+        controls={"base_layer": BASE_LAYER},
+    )
+    def inspect(
+        self,
+        image=None,
+        base_layer: Literal["rgb", "gray", "detect_mat"] = "detect_mat",
+        *,
+        for_save: bool = False,
+    ):
+        """Plate overview with the coherence-modulated quiver, zone rings, and
+        per-zone resultant glyphs — the single saveable primary figure.
+
+        Renders entirely from the compact per-object cache populated by the most
+        recent :meth:`measure` call (no full-resolution recompute).
+
+        Args:
+            image: Detected Image with objmap. If *None*, the image cached by the
+                most recent :meth:`measure` call is reused.
+            base_layer: Which image array to render behind the overlay
+                (``"rgb"``, ``"gray"`` or ``"detect_mat"``).
+            for_save: When *True*, every legend-only overlay trace is force-shown
+                so the figure renders meaningfully as a static raster (the CLI's
+                ``--save-inspect`` flag passes this). Defaults to *False*.
+
+        Returns:
+            A ``plotly.graph_objects.Figure`` with toggleable overlay layers.
+
+        Examples:
+            >>> from phenotypic.data import load_synth_filamentous_plate
+            >>> from phenotypic.measure import MeasureOrientationZones
+            >>> op = MeasureOrientationZones()
+            >>> _ = op.measure(load_synth_filamentous_plate())
+            >>> fig = op.inspect()
+            >>> len(fig.data) > 0
+            True
+        """
+        from phenotypic.sdk_._plotly_helpers import (
+            _require_plotly,
+            add_plotly_obj_labels,
+            plotly_imshow,
+        )
+
+        _require_plotly()
+
+        valid_base_layers = BASE_LAYER.options or ()
+        if base_layer not in valid_base_layers:
+            allowed = ", ".join(repr(value) for value in valid_base_layers)
+            raise ValueError(
+                f"base_layer must be one of {allowed}; got {base_layer!r}"
+            )
+
+        if image is None:
+            image = self._require_cache_image()
+
+        base = getattr(image, base_layer)[:]
+        h, w = base.shape[:2]
+        display_w = 900
+        display_h = int(display_w * h / w)
+        fig = plotly_imshow(
+            base, title="Orientation-field overlay",
+            figsize=(display_w // 100, display_h // 100),
+        )
+        fig.update_coloraxes(showscale=False)
+        fig.update_layout(legend=dict(groupclick="togglegroup"))
+
+        self._add_quiver_trace(fig)
+        self._add_zone_ring_traces(fig)
+        self._add_resultant_glyph_traces(fig)
+        add_plotly_obj_labels(fig, image)
+
+        if for_save:
+            for trace in fig.data:
+                if getattr(trace, "visible", True) == "legendonly":
+                    trace.visible = True
+        return fig
+
+    @staticmethod
+    def _tile_origin(record) -> tuple[float, float]:
+        """Plate-frame (row, col) origin of a cached object's tile.
+
+        The tile pixel ``(r_tile, c_tile)`` sits at plate coordinates
+        ``(r_tile + origin_row, c_tile + origin_col)``; the inoculum centre lands
+        on ``centroid_global`` by construction (``origin = centroid_global -
+        centre``).
+        """
+        cg = record["centroid_global"]
+        ctr = record["centre"]
+        return (cg[0] - ctr[0], cg[1] - ctr[1])
+
+    def _add_quiver_trace(self, fig) -> None:
+        """Coherence-modulated orientation quiver as one NaN-separated trace.
+
+        Reads only the pre-downsampled block quiver ``(rows, cols, phi_block,
+        coh_block)`` from each cached record — no tile/full-res access. Segment
+        half-length and opacity scale with the per-block coherence; NaN blocks
+        (undefined orientation) are skipped. All objects share one ``Scattergl``
+        trace with ``None`` breaks between segments.
+        """
+        import plotly.graph_objects as go
+
+        xs: list[float | None] = []
+        ys: list[float | None] = []
+        half = 0.5 * max(1, int(self.quiver_block))
+        for record in self._cache.values():
+            rows, cols, phi_block, coh_block = record["quiver"]
+            origin_r, origin_c = self._tile_origin(record)
+            for i in range(phi_block.shape[0]):
+                for j in range(phi_block.shape[1]):
+                    phi = phi_block[i, j]
+                    coh = coh_block[i, j]
+                    if not np.isfinite(phi) or not np.isfinite(coh) or coh <= 0:
+                        continue
+                    # Block centre in plate coords (x=col, y=row).
+                    cx = cols[i, j] + origin_c
+                    cy = rows[i, j] + origin_r
+                    length = half * float(coh)
+                    dx = length * np.cos(phi)
+                    dy = length * np.sin(phi)
+                    xs.extend([cx - dx, cx + dx, None])
+                    ys.extend([cy - dy, cy + dy, None])
+        if not xs:
+            return
+        fig.add_trace(go.Scattergl(
+            x=xs, y=ys, mode="lines",
+            line=dict(color=_OI_NAVY, width=1.5),
+            opacity=0.7,
+            name="Orientation quiver",
+            legendgroup="quiver",
+            hoverinfo="skip",
+        ))
+
+    def _add_zone_ring_traces(self, fig) -> None:
+        """Concentric zone-boundary circles centred at each object's inoculum.
+
+        Draws the symmetric, core-end, dense-end and sparse-end radii (skipping
+        non-finite radii) as legend-toggleable circle polygons read from the
+        cached ``radii`` + ``centroid_global`` scalars.
+        """
+        import plotly.graph_objects as go
+
+        ring_styles = (
+            ("symmetric", "Symmetric radius", "#785EF0", "solid"),
+            ("core_end", "Core-end radius", "#DC267F", "dot"),
+            ("dense_end", "Dense-end radius", _OI_NAVY, "dash"),
+            ("sparse_end", "Sparse-end radius", "#56B4E9", "dash"),
+        )
+        for key, name, color, dash in ring_styles:
+            xs: list[float | None] = []
+            ys: list[float | None] = []
+            for record in self._cache.values():
+                r = record["radii"].get(key, np.nan)
+                if r is None or not np.isfinite(r) or r <= 0:
+                    continue
+                cy, cx = record["centroid_global"]
+                cxs, cys = _circle_xy(cx, cy, float(r))
+                xs.extend([*cxs.tolist(), None])
+                ys.extend([*cys.tolist(), None])
+            if not xs:
+                continue
+            fig.add_trace(go.Scatter(
+                x=xs, y=ys, mode="lines",
+                line=dict(color=color, width=1.5, dash=dash),
+                name=name,
+                legendgroup="rings",
+                legendgrouptitle_text="Zone rings",
+                visible="legendonly",
+                hoverinfo="skip",
+            ))
+
+    def _add_resultant_glyph_traces(self, fig) -> None:
+        """Per-zone resultant-orientation arrows and R/turning text badges.
+
+        For each cached object and zone, reads the stored ``per_zone[(variant,
+        zone)] = (R, turning, coh, direction)`` scalars. Draws the resultant arrow
+        from the inoculum centre (angle ``direction``, half-length ∝ ``R``) for
+        every variant, plus a text badge of ``R``/turning for the ``Radial``
+        variant. NaN entries are skipped (no recompute — ``direction`` was stored
+        by ``_fill_metrics``).
+        """
+        import plotly.graph_objects as go
+
+        arrow_x: list[float | None] = []
+        arrow_y: list[float | None] = []
+        badge_x: list[float] = []
+        badge_y: list[float] = []
+        badge_text: list[str] = []
+        for record in self._cache.values():
+            cy, cx = record["centroid_global"]
+            sym = record["radii"].get("symmetric", np.nan)
+            scale = float(sym) if (sym is not None and np.isfinite(sym) and sym > 0) else 20.0
+            per_zone = record["per_zone"]
+            for (variant, zone), (R, turning, _coh, direction) in per_zone.items():
+                if not np.isfinite(R) or not np.isfinite(direction):
+                    continue
+                length = scale * float(R)
+                dx = length * np.cos(direction)
+                dy = length * np.sin(direction)
+                arrow_x.extend([cx, cx + dx, None])
+                arrow_y.extend([cy, cy + dy, None])
+                if variant == "Radial" and np.isfinite(turning):
+                    badge_x.append(cx + dx)
+                    badge_y.append(cy + dy)
+                    badge_text.append(f"{zone}: R={R:.2f}, ∇φ={turning:.3f}")
+        if arrow_x:
+            fig.add_trace(go.Scatter(
+                x=arrow_x, y=arrow_y, mode="lines",
+                line=dict(color="#D55E00", width=2.5),
+                name="Resultant orientation",
+                legendgroup="resultant",
+                hoverinfo="skip",
+            ))
+        if badge_x:
+            fig.add_trace(go.Scatter(
+                x=badge_x, y=badge_y, mode="text",
+                text=badge_text,
+                textfont=dict(color=_OI_NAVY, size=9),
+                name="R / turning",
+                legendgroup="resultant",
+                visible="legendonly",
+                hoverinfo="skip",
+            ))

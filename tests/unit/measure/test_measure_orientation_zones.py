@@ -135,3 +135,15 @@ def test_measure_cache_is_compact():
         # the block quiver must be far smaller than a full tile
         rows, cols, pb, cb = rec["quiver"]
         assert pb.shape == cb.shape and pb.size <= 4096
+
+
+def test_inspect_builds_figure():
+    import plotly.graph_objects as go
+    image = load_synth_filamentous_plate()
+    op = MeasureOrientationZones()
+    op.measure(image)
+    fig = op.inspect(image)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+    fig_save = op.inspect(image, for_save=True)
+    assert isinstance(fig_save, go.Figure)
