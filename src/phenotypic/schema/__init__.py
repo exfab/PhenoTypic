@@ -70,6 +70,7 @@ from ._quality_se import QUALITY_SE
 from ._quality_tukey import QUALITY_TUKEY
 from ._quality_zmax import QUALITY_ZMAX
 from ._radial_expansion import RADIAL_EXPANSION
+from ._orientation_zones import ORIENTATION_ZONES
 from ._shape import SHAPE
 from ._size import SIZE
 from ._symmetric_zones import SYMMETRIC_ZONES
@@ -121,6 +122,7 @@ __all__ = [
     "RADIAL_EXPANSION",
     "SHAPE",
     "SIZE",
+    "ORIENTATION_ZONES",
     "SYMMETRIC_ZONES",
     "TEXTURE",
 ]
