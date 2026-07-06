@@ -147,3 +147,18 @@ def test_inspect_builds_figure():
     assert len(fig.data) > 0
     fig_save = op.inspect(image, for_save=True)
     assert isinstance(fig_save, go.Figure)
+
+
+def test_dashboard_builds_composed_figure():
+    import plotly.graph_objects as go
+    image = load_synth_filamentous_plate()
+    op = MeasureOrientationZones()
+    op.measure(image)
+    fig = op.dashboard(image, show=False)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+    # the go.Table summary panel must survive composition (base composer can't
+    # host it — proves the custom dash() override with per-row specs works).
+    assert any(getattr(tr, "type", None) == "table" for tr in fig.data)
+    # coherence heatmap present too
+    assert any(getattr(tr, "type", None) == "heatmap" for tr in fig.data)

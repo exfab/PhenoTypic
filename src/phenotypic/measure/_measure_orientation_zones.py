@@ -627,3 +627,187 @@ class MeasureOrientationZones(MeasureFeatures, FigureProvider):
                 visible="legendonly",
                 hoverinfo="skip",
             ))
+
+    def dashboard(self, image=None, show: bool = True):
+        """Composed notebook diagnostic (returns a single ``go.Figure``).
+
+        Stacks three vertically-arranged panels: the :meth:`inspect` overview,
+        a recomputed coherence heatmap, and a per-zone concentration/turning
+        summary table. Calls :meth:`measure` first when the compact cache is
+        empty or was built for a different image.
+
+        Args:
+            image: Detected Image to render. If *None*, the image cached by the
+                most recent :meth:`measure` call is reused.
+            show: When *True*, call ``fig.show()`` before returning (best-effort;
+                swallowed outside a display context). Defaults to *True*.
+
+        Returns:
+            A single composed ``plotly.graph_objects.Figure`` stacking the three
+            panels vertically.
+
+        Examples:
+            >>> from phenotypic.data import load_synth_filamentous_plate
+            >>> from phenotypic.measure import MeasureOrientationZones
+            >>> op = MeasureOrientationZones()
+            >>> fig = op.dashboard(load_synth_filamentous_plate(), show=False)
+            >>> any(getattr(tr, "type", None) == "table" for tr in fig.data)
+            True
+        """
+        if image is None:
+            image = self._require_cache_image()
+        if not self._cache or self._cache_image is not image:
+            self.measure(image)
+        report = _OrientationZonesReport(self, image, self._cache)
+        fig = report.dash()
+        if show:
+            try:
+                fig.show()
+            except Exception:  # pragma: no cover - display-context dependent
+                pass
+        return fig
+
+
+class _OrientationZonesReport(FigureProvider):
+    """Transient control-free FigureProvider composing the orientation diagnostic.
+
+    Holds a reference to the owning :class:`MeasureOrientationZones`, the subject
+    image, and the operator's compact cache. Overrides :meth:`dash` (the
+    ``GridFitReport`` pattern) because the base composer builds a uniform ``xy``
+    subplot grid that cannot host the ``go.Table`` summary panel. Discard after
+    rendering.
+    """
+
+    def __init__(self, op: "MeasureOrientationZones", image, cache: dict) -> None:
+        self._op = op
+        self._image = image
+        self._cache = cache
+
+    @figure(title="Orientation-field overlay")
+    def _panel_overview(self):
+        """Panel A: the saveable inspect() overview (legend layers flattened)."""
+        return self._op.inspect(self._image, for_save=True)
+
+    @figure(title="Coherence map")
+    def _panel_coherence(self):
+        """Panel B: the coherence heatmap.
+
+        Recomputed on demand via ``_coherence_canvas`` (the lean cache holds no
+        full-resolution coherence) and discarded — costs compute, not memory.
+        """
+        import plotly.graph_objects as go
+
+        canvas = self._op._coherence_canvas(self._image)
+        fig = go.Figure(go.Heatmap(
+            z=canvas, colorscale="Viridis", zmin=0, zmax=1,
+            colorbar=dict(title="C"),
+        ))
+        fig.update_yaxes(autorange="reversed")
+        return fig
+
+    @figure(title="Per-zone concentration & turning")
+    def _panel_summary(self):
+        """Panel C: a ``go.Table`` of per-zone Concentration (R) and Turning.
+
+        One row per ``(Variant, Zone)``, aggregated across objects as
+        ``np.nanmean`` over the cached per-zone scalars. Requires the custom
+        :meth:`dash` override (the base composer cannot host a ``go.Table``).
+        """
+        import plotly.graph_objects as go
+
+        rows: list[tuple[str, str, str]] = []
+        for variant in _VARIANTS:
+            for zone in _ZONES:
+                if self._cache:
+                    conc_vals = [
+                        rec["per_zone"][(variant, zone)][0]
+                        for rec in self._cache.values()
+                    ]
+                    turn_vals = [
+                        rec["per_zone"][(variant, zone)][1]
+                        for rec in self._cache.values()
+                    ]
+                    conc = _safe_nanmean(conc_vals)
+                    turn = _safe_nanmean(turn_vals)
+                else:
+                    conc = turn = np.nan
+                rows.append((f"{variant} · {zone}", f"{conc:.3f}", f"{turn:.4f}"))
+        header = ["Variant · Zone", "Concentration (R)", "Turning (rad/px)"]
+        cols = list(zip(*rows)) if rows else [(), (), ()]
+        return go.Figure(go.Table(
+            header=dict(values=header),
+            cells=dict(values=[list(c) for c in cols]),
+        ))
+
+    def dash(self, subject=None):
+        """Compose the three panels into one stacked ``go.Figure``.
+
+        Mirrors :meth:`GridFitReport.dash`: render each ``@figure`` spec, detect
+        table vs xy panels, build ``make_subplots`` with matching per-row
+        ``specs``, transfer traces, carry the overview panel's shapes/annotations
+        (zone rings and R/turning badges are shapes/annotations the generic
+        trace-copy would drop), and apply the house theme.
+
+        Args:
+            subject: Unused (this helper holds its own state); accepted only to
+                match the :meth:`FigureProvider.dash` signature.
+
+        Returns:
+            A single themed ``plotly.graph_objects.Figure``.
+        """
+        from plotly.subplots import make_subplots
+
+        from phenotypic.sdk_.viz.figures._theme import apply_theme
+
+        specs = self.iter_figures()
+        rendered = [self._render_spec(spec) for spec in specs]
+        is_table = [
+            bool(fig.data) and fig.data[0].type == "table" for fig in rendered
+        ]
+        row_specs = [
+            [{"type": "table"}] if tbl else [{"type": "xy"}]
+            for tbl in is_table
+        ]
+        composed = make_subplots(
+            rows=len(specs),
+            cols=1,
+            subplot_titles=[s.title for s in specs],
+            specs=row_specs,
+            vertical_spacing=0.06,
+        )
+        # ``xy_row`` counts cartesian panels: a table cell creates no x/y axis,
+        # so the Nth xy panel owns axis number N (mirrors GridFitReport.dash).
+        xy_row = 0
+        for row, (sub, tbl) in enumerate(zip(rendered, is_table), start=1):
+            for trace in sub.data:
+                composed.add_trace(trace, row=row, col=1)
+            if tbl:
+                continue
+            xy_row += 1
+            # Carry the standalone panel's shapes (zone-ring circles) and
+            # annotations (R/turning badges, object labels) onto this subplot.
+            for shape in sub.layout.shapes:
+                composed.add_shape(shape.to_plotly_json(), row=row, col=1)
+            axis_suffix = "" if xy_row == 1 else str(xy_row)
+            for ann in sub.layout.annotations:
+                payload = ann.to_plotly_json()
+                for key, axis in (("xref", "x"), ("yref", "y")):
+                    ref = payload.get(key, "")
+                    if ref == "paper":
+                        payload[key] = f"{axis}{axis_suffix} domain"
+                    elif ref.startswith(axis):
+                        suffix = " domain" if ref.endswith(" domain") else ""
+                        payload[key] = f"{axis}{axis_suffix}{suffix}"
+                composed.add_annotation(payload)
+        composed.update_layout(
+            height=420 * len(specs),
+            title_text="Orientation-Field Diagnostics",
+        )
+        return apply_theme(composed)
+
+
+def _safe_nanmean(values) -> float:
+    """``np.nanmean`` that returns NaN (not a warning) for an all-NaN input."""
+    arr = np.asarray(values, dtype=float)
+    finite = arr[np.isfinite(arr)]
+    return float(finite.mean()) if finite.size else float("nan")
