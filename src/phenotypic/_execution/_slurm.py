@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence, TypeVar, cast
 
-from phenotypic.sdk_ import DIR_LOGS, DIR_SLURM_SCRIPTS
+from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm import (
     format_sbatch_directives,
     generate_dispatcher_chain,
@@ -61,7 +61,7 @@ def _sanitize_job_name(study_name: str) -> str:
 #: worker — a fresh body with no image-chunk sentinels).
 _WORKER_MODULE = "phenotypic.tune._tune_cli._worker"
 
-#: The array worker script filename written under ``slurm_scripts/``.
+#: The array worker script filename written under ``.phenotypic/slurm_scripts/``.
 _WORKER_SCRIPT_NAME = "tune_workers.sh"
 
 
@@ -74,8 +74,9 @@ class SlurmExecutor:
     the shared study, so there is no per-item fan-out).
 
     Args:
-        output_dir: The run directory (scripts under ``slurm_scripts/``, logs
-            under ``logs/slurm/``).
+        output_dir: The run directory (scripts under
+            ``.phenotypic/slurm_scripts/``, logs under
+            ``.phenotypic/logs/slurm/``).
         spec_path: Path to the ``tuning_spec.json`` each worker loads.
         images_dir: The calibration image directory each worker scans.
         split_path: Path to the persisted held-out split each worker applies.
@@ -161,9 +162,9 @@ class SlurmExecutor:
         Returns:
             The path to the generated, executable script.
         """
-        script_dir = self.output_dir / DIR_SLURM_SCRIPTS
+        script_dir = slurm_scripts_dir(self.output_dir)
         script_dir.mkdir(parents=True, exist_ok=True)
-        log_dir = self.output_dir / DIR_LOGS / "slurm"
+        log_dir = logs_dir(self.output_dir) / "slurm"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "tune_worker_%A_%a.log"
 
@@ -233,7 +234,7 @@ exit $EXIT_CODE
             The submitted SLURM job IDs (cast to the Protocol's ``list[R]``).
         """
         script = self.generate_worker_array_script()
-        log_dir = self.output_dir / DIR_LOGS / "slurm"
+        log_dir = logs_dir(self.output_dir) / "slurm"
         # A single array job → the chain is empty; submit_drip_feed_start still
         # submits the one array script (and no dispatcher).
         dispatchers = generate_dispatcher_chain(
@@ -274,7 +275,7 @@ exit $EXIT_CODE
         if worker_index in self._reenqueued:
             return None
         self._reenqueued.add(worker_index)
-        script_path = self.output_dir / DIR_SLURM_SCRIPTS / _WORKER_SCRIPT_NAME
+        script_path = slurm_scripts_dir(self.output_dir) / _WORKER_SCRIPT_NAME
         if not script_path.exists():
             script_path = self.generate_worker_array_script()
         return submit_script(script_path, array_index=worker_index)

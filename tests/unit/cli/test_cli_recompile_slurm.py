@@ -18,6 +18,7 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     progress_dir,
+    slurm_scripts_dir,
 )
 from phenotypic.schema import METADATA
 
@@ -46,8 +47,8 @@ def test_recompile_slurm_dispatcher_submits_and_writes_metadata(
         [1],
     )
     scripts = [
-        output_dir / "slurm_scripts" / "recompile" / "chunk0.sh",
-        output_dir / "slurm_scripts" / "recompile" / "chunk1.sh",
+        slurm_scripts_dir(output_dir) / "recompile" / "chunk0.sh",
+        slurm_scripts_dir(output_dir) / "recompile" / "chunk1.sh",
     ]
     generated_tasks: list[dict[str, object]] = []
 
@@ -137,7 +138,7 @@ def test_recompile_slurm_dispatcher_waits_for_finalizer(
         output_dir / "results" / "plate_a" / "measurements" / "img1.parquet",
         [1],
     )
-    script = output_dir / "slurm_scripts" / "recompile" / "chunk0.sh"
+    script = slurm_scripts_dir(output_dir) / "recompile" / "chunk0.sh"
     finalizer_indices: list[int] = []
 
     def _fake_generate(

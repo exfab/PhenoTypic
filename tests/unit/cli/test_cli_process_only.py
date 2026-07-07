@@ -14,11 +14,11 @@ def test_output_path_mirrors_one_level(tmp_path):
     img = root / "day1" / "plateA.tif"
     assert (
         process_only_output_path(out, img, root, "detect_mat")
-        == out / "day1" / "plateA_detect_mat.tiff"
+        == out / "day1" / "plateA.tiff"
     )
     assert (
         process_only_output_path(out, img, root, "objmap")
-        == out / "day1" / "plateA_objmap.png"
+        == out / "day1" / "plateA.png"
     )
 
 
@@ -27,13 +27,13 @@ def test_output_path_flat_and_single_file(tmp_path):
     root = tmp_path / "in"
     assert (
         process_only_output_path(out, root / "a.tif", root, "rgb")
-        == out / "a_rgb.tiff"
+        == out / "a.tiff"
     )
     # single-file input: input_root is the file's parent
     f = tmp_path / "solo.tif"
     assert (
         process_only_output_path(out, f, f.parent, "gray")
-        == tmp_path / "out" / "solo_gray.tiff"
+        == tmp_path / "out" / "solo.tiff"
     )
 
 

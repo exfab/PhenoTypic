@@ -13,6 +13,7 @@ Both pass ``--force-local`` so SLURM is never dispatched.
 """
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -73,6 +74,10 @@ def test_resume_of_legacy_layout_migrates_and_completes(
     events = cache / "processing_events.log"
     if events.exists():
         events.rename(out / "processing_events.log")
+    for generated_dir in ("logs", "slurm_scripts"):
+        leftover = cache / generated_dir
+        if leftover.exists():
+            shutil.rmtree(leftover)
     cache.rmdir()
     res = CliRunner().invoke(
         phenotypic_cli,

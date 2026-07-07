@@ -4,12 +4,13 @@ import sys
 
 import pytest
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
-
 from phenotypic.sdk_.slurm._dispatcher import (
     generate_dispatcher_chain,
     generate_dispatcher_script,
 )
+from phenotypic.sdk_ import slurm_scripts_dir
+
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="SLURM not available on Windows")
 
 
 @pytest.fixture
@@ -20,8 +21,8 @@ def slurm_args():
 @pytest.fixture
 def chunk_scripts(tmp_path):
     """Create dummy chunk script files."""
-    scripts_dir = tmp_path / "slurm_scripts"
-    scripts_dir.mkdir()
+    scripts_dir = slurm_scripts_dir(tmp_path)
+    scripts_dir.mkdir(parents=True)
     paths = []
     for i in range(4):
         p = scripts_dir / f"chunk{i}.sh"
@@ -182,7 +183,7 @@ class TestGenerateDispatcherChain:
 
     def test_single_chunk_no_dispatcher(self, tmp_path, slurm_args):
         """1 chunk should produce 0 dispatchers."""
-        chunk = tmp_path / "slurm_scripts" / "chunk0.sh"
+        chunk = slurm_scripts_dir(tmp_path) / "chunk0.sh"
         chunk.parent.mkdir(parents=True)
         chunk.write_text("#!/bin/bash\necho chunk")
 
@@ -196,8 +197,8 @@ class TestGenerateDispatcherChain:
 
     def test_two_chunks_one_dispatcher(self, tmp_path, slurm_args):
         """2 chunks should produce 1 dispatcher."""
-        scripts_dir = tmp_path / "slurm_scripts"
-        scripts_dir.mkdir()
+        scripts_dir = slurm_scripts_dir(tmp_path)
+        scripts_dir.mkdir(parents=True)
         chunks = []
         for i in range(2):
             p = scripts_dir / f"chunk{i}.sh"
@@ -226,6 +227,7 @@ class TestGenerateDispatcherChain:
         )
         for i, d in enumerate(dispatchers):
             assert d.name == f"dispatch_{i + 1}.sh"
+            assert d.parent == slurm_scripts_dir(tmp_path)
 
     def test_dispatcher_chain_wiring(self, chunk_scripts, tmp_path, slurm_args):
         """Each dispatcher should reference the correct next chunk and dispatcher."""

@@ -13,6 +13,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from .._io_constants import slurm_scripts_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -125,7 +127,7 @@ def generate_dispatcher_chain(
         return []
 
     log_dir.mkdir(parents=True, exist_ok=True)
-    script_dir = output_dir / "slurm_scripts"
+    script_dir = slurm_scripts_dir(output_dir)
     script_dir.mkdir(parents=True, exist_ok=True)
 
     num_dispatchers = len(chunk_scripts) - 1

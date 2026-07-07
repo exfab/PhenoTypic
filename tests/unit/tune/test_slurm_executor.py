@@ -21,6 +21,7 @@ pytestmark = [
 
 from phenotypic._execution import Executor  # noqa: E402
 from phenotypic._execution._slurm import SlurmExecutor  # noqa: E402
+from phenotypic.sdk_ import logs_dir, slurm_scripts_dir  # noqa: E402
 
 
 def _executor(tmp_path, *, n_workers=4, storage_url=None):
@@ -43,6 +44,7 @@ def test_worker_array_script_sizes_array_to_worker_count(tmp_path):
     ex = _executor(tmp_path, n_workers=5)
     script = ex.generate_worker_array_script()
     content = script.read_text()
+    assert script.parent == slurm_scripts_dir(tmp_path)
     # One array task = one worker; sized 0..n-1 (NOT image-chunk sized).
     assert "#SBATCH --array=0-4" in content
 
@@ -83,6 +85,7 @@ def test_worker_array_script_carries_sbatch_directives(tmp_path):
     assert content.startswith("#!/bin/bash")
     assert "--partition=short" in content
     assert "--mem=8G" in content
+    assert str(logs_dir(tmp_path) / "slurm" / "tune_worker_%A_%a.log") in content
 
 
 # --- Executor protocol --------------------------------------------------------

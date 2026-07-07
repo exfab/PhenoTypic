@@ -12,7 +12,7 @@ import shlex
 
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.sdk_ import DIR_LOGS, event_log_path
+from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
 from phenotypic.sdk_.slurm._sbatch import (
     format_sbatch_directives as _format_sbatch_directives,
 )
@@ -74,7 +74,7 @@ def generate_image_processing_script(
     job_name = f"pht-{dataset.name}-{image_stem}"
 
     # Generate log paths
-    log_dir = output_dir / DIR_LOGS / "slurm" / dataset.name
+    log_dir = logs_dir(output_dir) / "slurm" / dataset.name
     log_dir.mkdir(parents=True, exist_ok=True)
     output_log = log_dir / f"{image_stem}_%j.out"
     error_log = log_dir / f"{image_stem}_%j.err"
@@ -183,7 +183,7 @@ def generate_all_image_scripts(
     Returns:
         Dictionary mapping dataset names to lists of script paths
     """
-    script_dir = output_dir / "slurm_scripts"
+    script_dir = slurm_scripts_dir(output_dir)
     event_log = event_log_path(output_dir)
 
     all_scripts = {}

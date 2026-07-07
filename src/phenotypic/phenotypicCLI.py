@@ -1396,6 +1396,7 @@ def phenotypic_cli(
                     "slurm_args": config.slurm_args,
                     "ext": config.ext,
                     "save_overlays": config.save_overlays,
+                    "process_only_layer": config.process_only_layer,
                 }
             else:
                 state = create_initial_state(config, datasets, output_dir)
@@ -1829,9 +1830,9 @@ def _handle_recompile_slurm(
         click.echo("\nRecompile jobs submitted. Monitor progress with:")
         click.echo(f"  Open: {output_dir / 'dashboard.html'}")
         click.echo("  squeue -u $USER --array")
-        click.echo(
-            f"  tail -f {output_dir / 'logs' / 'slurm' / 'recompile'}/*.log"
-        )
+        from phenotypic.sdk_ import logs_dir
+
+        click.echo(f"  tail -f {logs_dir(output_dir) / 'slurm' / 'recompile'}/*.log")
 
 
 def _discover_recompile_dataset_names(

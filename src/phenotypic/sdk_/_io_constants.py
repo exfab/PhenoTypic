@@ -389,7 +389,7 @@ DIR_MEASUREMENTS: Final[str] = "measurements"
 #: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.
 DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
 
-#: SLURM stdout/stderr / sbatch-script subdirectory.
+#: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
 
 #: HDF5 image-state subdirectory: ``<output>/results/<ds>/hdf/``.
@@ -417,7 +417,7 @@ DIR_RECOMPILE_STATUS: Final[str] = "status"
 #: ``<progress>/recompile/measurement_shards/``.
 DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 
-#: Generated SLURM script subdirectory: ``<output>/slurm_scripts/``.
+#: Generated SLURM script subdirectory inside the hidden machine-state cache.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
 #: QC artifact subdirectory: ``<output>/deliverables/qc/``. Holds
@@ -779,9 +779,10 @@ def clear_machine_state(output_dir: Path) -> bool:
     """Remove **all** of a run's machine-state for a clean ``--restart``.
 
     Deletes the ``.phenotypic/`` cache (``progress/``, ``processing_state.json``,
-    ``processing_events.log``) and any pre-migration root-level machine-state,
-    while leaving user-facing output artifacts (``deliverables/``, ``results/``,
-    ``qc/``, ``logs/``, …) untouched. This is the difference between ``--restart``
+    ``processing_events.log``, logs, and generated SLURM scripts) and any
+    pre-migration root-level machine-state, while leaving user-facing output
+    artifacts (``deliverables/``, ``results/``, ``qc/``, …) untouched. This is
+    the difference between ``--restart``
     (re-run the orchestration against clean state, keep outputs) and
     ``--overwrite`` (delete the whole output dir). Clearing the event log here is
     what stops a restart from appending to — and rebuilding its manifest/failure
@@ -1135,7 +1136,7 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
-    """Return ``<output>/.phenotypic/pipeline.json`` — the process-only run's
+    """Return ``<output>/.phenotypic/pipeline.json.pht-pipe`` — the process-only run's
     reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots
     under ``deliverables/`` (process-only writes no deliverables)."""
     return phenotypic_cache_dir(output_dir) / PIPELINE_JSON
@@ -1187,8 +1188,8 @@ def measurements_by_feature_dir(output_dir: Path) -> Path:
 
 
 def logs_dir(output_dir: Path) -> Path:
-    """Return ``<output>/logs/`` (SLURM stdout/stderr + sbatch scripts)."""
-    return output_dir / DIR_LOGS
+    """Return ``<output>/.phenotypic/logs/``."""
+    return phenotypic_cache_dir(output_dir) / DIR_LOGS
 
 
 def chunks_dir(progress_dir_: Path) -> Path:
@@ -1292,8 +1293,8 @@ def chunk_lock_path(progress_dir_: Path) -> Path:
 
 
 def slurm_scripts_dir(output_dir: Path) -> Path:
-    """Return ``<output>/slurm_scripts/``."""
-    return output_dir / DIR_SLURM_SCRIPTS
+    """Return ``<output>/.phenotypic/slurm_scripts/``."""
+    return phenotypic_cache_dir(output_dir) / DIR_SLURM_SCRIPTS
 
 
 def qc_dir(output_dir: Path) -> Path:
