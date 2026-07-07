@@ -117,11 +117,12 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     if len(datasets) > 2:
         click.echo("    ├── ... (more datasets)")
 
-    click.echo("    ├── logs/")
-    click.echo("    │   └── slurm/ (if using SLURM execution)")
-    click.echo("    ├── slurm_scripts/ (if using SLURM execution)")
-    click.echo("    ├── processing_state.json")
-    click.echo("    ├── processing_events.log")
+    click.echo("    ├── .phenotypic/")
+    click.echo("    │   ├── logs/")
+    click.echo("    │   │   └── slurm/ (if using SLURM execution)")
+    click.echo("    │   ├── slurm_scripts/ (if using SLURM execution)")
+    click.echo("    │   ├── processing_state.json")
+    click.echo("    │   └── processing_events.log")
     click.echo("    ├── processing_report.html")
     click.echo("    ├── master_measurements.csv")
     click.echo("    ├── measurements.csv  (editable copy for GUI; refreshed on every run)")

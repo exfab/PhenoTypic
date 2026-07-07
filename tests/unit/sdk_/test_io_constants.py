@@ -483,8 +483,8 @@ class TestPathHelpers:
         )
 
         prog = output / ".phenotypic" / "progress"
-        assert logs_dir(output) == output / "logs"
-        assert slurm_scripts_dir(output) == output / "slurm_scripts"
+        assert logs_dir(output) == output / ".phenotypic" / "logs"
+        assert slurm_scripts_dir(output) == output / ".phenotypic" / "slurm_scripts"
         assert analysis_html_path(output) == output / "deliverables" / "analysis.html"
         assert processing_report_html_path(output) == (
             output / "deliverables" / "processing_report.html"
@@ -910,8 +910,8 @@ class TestPhenotypicCacheLayout:
         assert deliverables_dir(out) == out / "deliverables"
         assert results_dir(out) == out / "results"
         assert qc_dir(out) == out / "deliverables" / "qc"
-        assert logs_dir(out) == out / "logs"
-        assert slurm_scripts_dir(out) == out / "slurm_scripts"
+        assert logs_dir(out) == out / ".phenotypic" / "logs"
+        assert slurm_scripts_dir(out) == out / ".phenotypic" / "slurm_scripts"
 
 
 class TestBackCompatResolvers:
@@ -1019,10 +1019,12 @@ class TestClearMachineState:
             clear_machine_state,
             deliverables_dir,
             event_log_path,
+            logs_dir,
             phenotypic_cache_dir,
             processing_state_path,
             progress_dir,
             results_dir,
+            slurm_scripts_dir,
         )
 
         out = tmp_path
@@ -1030,6 +1032,10 @@ class TestClearMachineState:
         (progress_dir(out) / "manifest.json").write_text("{}", encoding="utf-8")
         processing_state_path(out).write_text("{}", encoding="utf-8")
         event_log_path(out).write_text("x\n", encoding="utf-8")
+        logs_dir(out).mkdir(parents=True)
+        (logs_dir(out) / "run.log").write_text("log\n", encoding="utf-8")
+        slurm_scripts_dir(out).mkdir(parents=True)
+        (slurm_scripts_dir(out) / "array.sh").write_text("#!/bin/bash\n", encoding="utf-8")
         deliverables_dir(out).mkdir(parents=True)
         (deliverables_dir(out) / "master_measurements.parquet").write_bytes(b"x")
         results_dir(out).mkdir(parents=True)

@@ -109,9 +109,12 @@ output_folder/
 {dataset_list}
 |       +-- hdf/                      # Processed images as single .h5 per input (layers + metadata + grid state)
 |       +-- measurements/             # Per-image Parquet measurement files
-+-- processing_state.json             # Resume/state tracking
-+-- logs/                             # Execution logs
-|   +-- slurm/                        # SLURM job logs (if applicable)
++-- .phenotypic/                      # Hidden machine-state cache
+|   +-- processing_state.json         # Resume/state tracking
+|   +-- processing_events.log         # Append-only event log
+|   +-- logs/                         # Execution logs
+|   |   +-- slurm/                    # SLURM job logs (if applicable)
+|   +-- slurm_scripts/                # Generated SLURM scripts (if applicable)
 ```"""
 
     def _generate_layers_section(self) -> str:

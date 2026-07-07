@@ -13,14 +13,14 @@ from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
 from phenotypic.sdk_ import (
     DIR_HDF,
-    DIR_LOGS,
     DIR_RESULTS,
     dataset_overlays_dir,
-    DIR_SLURM_SCRIPTS,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
+    logs_dir,
     progress_dir,
     recompile_dir,
+    slurm_scripts_dir,
 )
 
 TASK_MEASUREMENTS: Final[str] = "measurements"
@@ -127,9 +127,9 @@ def generate_recompile_slurm_scripts(
     if not tasks:
         return []
 
-    script_dir = output_dir / DIR_SLURM_SCRIPTS / "recompile"
+    script_dir = slurm_scripts_dir(output_dir) / "recompile"
     script_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = output_dir / DIR_LOGS / "slurm" / "recompile"
+    log_dir = logs_dir(output_dir) / "slurm" / "recompile"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     scripts: list[Path] = []

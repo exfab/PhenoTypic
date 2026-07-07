@@ -24,7 +24,7 @@ def test_process_only_run_is_discoverable(tmp_path: Path) -> None:
     # Process-only run: mirrored layer + .phenotypic/progress/manifest.json,
     # no results/deliverables.
     (tmp_path / "day1").mkdir()
-    (tmp_path / "day1" / "plateA_detect_mat.tiff").write_bytes(b"II*\x00")
+    (tmp_path / "day1" / "plateA.tiff").write_bytes(b"II*\x00")
     mp = manifest_json_path(tmp_path)
     mp.parent.mkdir(parents=True, exist_ok=True)
     mp.write_text('{"is_complete": true}', encoding="utf-8")

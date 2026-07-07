@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from ._cli_slurm_scripts import generate_slurm_directives
 from ._cli_types import Dataset, ExecutionConfig
 from ._cli_utils import SLURM_THREAD_PIN_BASH, get_python_command
-from phenotypic.sdk_ import DIR_LOGS, DIR_SLURM_SCRIPTS, event_log_path
+from phenotypic.sdk_ import event_log_path, logs_dir, slurm_scripts_dir
 
 # Sentinel value inserted into the image list to trigger checkpoint aggregation
 _CHECKPOINT_SENTINEL = "__PHENOTYPIC_CHECKPOINT__"
@@ -193,7 +193,7 @@ def generate_array_job_script(
         entries = _build_entry_list(chunk_images, checkpoint_interval, is_last_chunk)
 
     # Create script directory
-    script_dir = output_dir / DIR_SLURM_SCRIPTS / dataset.name
+    script_dir = slurm_scripts_dir(output_dir) / dataset.name
     script_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate job name
@@ -207,7 +207,7 @@ def generate_array_job_script(
         script_name = f"array_job_chunk{chunk_id}.sh"
 
     # Generate log paths (using SLURM placeholders)
-    log_dir = output_dir / DIR_LOGS / "slurm" / dataset.name
+    log_dir = logs_dir(output_dir) / "slurm" / dataset.name
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{dataset.name}_%A_%a.log"
 

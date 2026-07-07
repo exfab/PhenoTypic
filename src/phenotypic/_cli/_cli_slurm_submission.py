@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from phenotypic.sdk_ import DIR_LOGS
+from phenotypic.sdk_ import logs_dir
 from phenotypic.sdk_.slurm import (
     generate_dispatcher_chain,
     submit_drip_feed_start,
@@ -59,7 +59,7 @@ def submit_slurm_script_chain(
             "Check that datasets contain images."
         )
 
-    log_dir = output_dir / DIR_LOGS / "slurm"
+    log_dir = logs_dir(output_dir) / "slurm"
     dispatcher_scripts = generate_dispatcher_chain(
         chunk_scripts=flat_scripts,
         output_dir=output_dir,

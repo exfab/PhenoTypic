@@ -44,7 +44,7 @@ from phenotypic._cli._dashboard._manifest_builder import (
 )
 from phenotypic._cli._dashboard import generate_dashboard
 from phenotypic._cli._cli_sentinel_scripts import generate_sentinel_script
-from phenotypic.sdk_ import analysis_html_path, dashboard_html_path
+from phenotypic.sdk_ import analysis_html_path, dashboard_html_path, logs_dir
 from phenotypic.sdk_ import progress_dir as _progress_dir
 
 
@@ -403,7 +403,6 @@ class TestManifestBuilder:
         assert manifest["datasets"]["plate2"]["total"] == 3
 
     def test_slurm_manifest_includes_slurm_info(self, tmp_dir):
-        event_log = tmp_dir / "processing_events.log"
         progress_dir = tmp_dir / "progress"
         progress_dir.mkdir()
 
@@ -644,6 +643,10 @@ class TestSentinelScript:
         assert "phenotypic._cli._cli_sentinel" in content
         # Uses the same Python path as array job scripts, not bare "python"
         assert "-m phenotypic._cli._cli_sentinel" in content
+        log_path = logs_dir(tmp_dir) / "slurm" / "sentinel_%j.log"
+        assert f"#SBATCH --output={log_path}" in content
+        assert f"#SBATCH --error={log_path}" in content
+        assert str(progress_dir / "sentinel_%j.log") not in content
 
     def test_time_derived_from_max_runtime(self, tmp_dir):
         script = generate_sentinel_script(

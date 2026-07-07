@@ -36,7 +36,6 @@ from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     DIR_RESULTS,
     DIR_MEASUREMENTS,
-    DIR_LOGS,
     DIR_HDF,
     DIR_INSPECT,
     ANALYSIS_CSV,
@@ -51,6 +50,7 @@ from phenotypic.sdk_ import (
     measurements_csv_path,
     measurements_parquet_path,
     metadata_csv_deliverable_path,
+    logs_dir,
     pipeline_json_path,
     resolve_pipeline_config_path,
     resolve_processing_state_path,
@@ -1091,8 +1091,8 @@ class OutputManager:
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
 
-        # Logs directory (always at root level)
-        self.logs_dir = self.base_dir / DIR_LOGS
+        # Logs directory in the hidden machine-state cache.
+        self.logs_dir = logs_dir(self.base_dir)
 
     @classmethod
     def from_config(
@@ -1155,9 +1155,9 @@ class OutputManager:
         # Create results directory for dataset outputs
         self.results_dir.mkdir(exist_ok=True)
 
-        # Create logs directory at root level
-        self.logs_dir.mkdir(exist_ok=True)
-        (self.logs_dir / "slurm").mkdir(exist_ok=True)
+        # Create logs directory in the hidden machine-state cache.
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        (self.logs_dir / "slurm").mkdir(parents=True, exist_ok=True)
 
         # Create dataset folders with subdirectories under results/
         for dataset in datasets:

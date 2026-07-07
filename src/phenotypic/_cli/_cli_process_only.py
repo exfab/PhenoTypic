@@ -23,15 +23,15 @@ def process_only_output_path(
 ) -> Path:
     """Mirror ``image_path`` (relative to ``input_root``) under ``output_dir``.
 
-    Names the file ``<stem>_<layer>.<ext>`` (``.png`` for objmap, else
-    ``.tiff``). Bounded by the 1-level dataset scanner (D12).
+    Names the file ``<stem>.<ext>`` (``.png`` for objmap, else ``.tiff``).
+    Bounded by the 1-level dataset scanner (D12).
     """
     ext = ".png" if layer == "objmap" else ".tiff"
     try:
         rel = image_path.relative_to(input_root)
     except ValueError:
         rel = Path(image_path.name)
-    return output_dir / rel.parent / f"{rel.stem}_{layer}{ext}"
+    return output_dir / rel.parent / f"{rel.stem}{ext}"
 
 
 def write_process_only_layer(

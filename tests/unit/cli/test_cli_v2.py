@@ -388,8 +388,10 @@ class TestOutputManager:
 
         manager.create_structure(datasets)
 
-        # Check logs directory at root level
-        assert (temp_output_dir / "logs").exists()
+        from phenotypic.sdk_ import logs_dir
+
+        # Check logs directory in the hidden machine-state cache
+        assert logs_dir(temp_output_dir).exists()
 
         # Check results/ directory exists
         assert (temp_output_dir / "results").exists()

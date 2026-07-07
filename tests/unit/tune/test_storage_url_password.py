@@ -125,3 +125,4 @@ def test_spec_password_url_fails_before_any_run_artifact_is_written(tmp_path):
     assert not io.tuning_spec_path(out).exists()
     assert not io.tune_cache_run_marker_path(out).exists()
     assert not (out / "slurm_scripts").exists()
+    assert not io.slurm_scripts_dir(out).exists()

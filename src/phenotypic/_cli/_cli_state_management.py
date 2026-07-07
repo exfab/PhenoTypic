@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import datetime
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
@@ -44,7 +44,8 @@ def save_processing_state(
     state_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert state to dictionary
-    state_dict = {
+    dataset_entries: dict[str, dict[str, Any]] = {}
+    state_dict: dict[str, Any] = {
         ProcessingStateKey.VERSION: state.version,
         ProcessingStateKey.PIPELINE_PATH: str(state.pipeline_path),
         ProcessingStateKey.INPUT_PATH: str(state.input_path),
@@ -52,13 +53,13 @@ def save_processing_state(
         ProcessingStateKey.TIMESTAMP: state.timestamp.isoformat(),
         ProcessingStateKey.EXECUTION_MODE: state.execution_mode,
         ProcessingStateKey.LAST_UPDATED: state.last_updated.isoformat(),
-        ProcessingStateKey.DATASETS: {},
+        ProcessingStateKey.DATASETS: dataset_entries,
         ProcessingStateKey.CONFIG: state.config
     }
 
     # Add dataset states
     for dataset_name, ds_state in state.datasets.items():
-        state_dict[ProcessingStateKey.DATASETS][dataset_name] = {
+        dataset_entries[dataset_name] = {
             ProcessingStateKey.COMPLETED: list(ds_state.completed),
             ProcessingStateKey.FAILED: list(ds_state.failed),
             ProcessingStateKey.ERRORS: ds_state.errors,
@@ -178,6 +179,7 @@ def create_initial_state(
             "n_jobs": config.n_jobs,
             "slurm_args": config.slurm_args,
             "ext": config.ext,
+            "process_only_layer": config.process_only_layer,
         }
     )
     
@@ -244,6 +246,16 @@ def validate_resume_compatibility(
             return False, f"Grid rows mismatch: saved={state.config.get('nrows')}, current={config.nrows}"
         if state.config.get("ncols") != config.ncols:
             return False, f"Grid cols mismatch: saved={state.config.get('ncols')}, current={config.ncols}"
+
+    # Check process-only layer. Process mode writes one layer to the mirrored
+    # image path, so changing layers during resume would mix file semantics.
+    saved_process_only_layer = state.config.get("process_only_layer")
+    if saved_process_only_layer != config.process_only_layer:
+        return (
+            False,
+            "Process-only layer mismatch: "
+            f"saved={saved_process_only_layer}, current={config.process_only_layer}",
+        )
 
     return True, None
 

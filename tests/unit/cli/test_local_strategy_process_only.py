@@ -31,8 +31,9 @@ def test_local_process_only_writes_layers_and_manifest_no_deliverables(
     strat.execute(datasets, out)
 
     # mirrored layer files exist
-    tiffs = list(out.rglob("*_detect_mat.tiff"))
+    tiffs = list(out.rglob("*.tiff"))
     assert tiffs, "no mirrored detect_mat tiffs written"
+    assert not list(out.rglob("*_detect_mat.tiff"))
     # progress manifest written (run console visibility), but no deliverables/dashboard
     assert manifest_json_path(out).is_file()
     assert not deliverables_dir(out).exists()

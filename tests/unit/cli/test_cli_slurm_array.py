@@ -487,14 +487,15 @@ class TestSLURMScriptChainSubmission:
     ):
         """Dispatcher generation and submission receive scripts in input order."""
         from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
+        from phenotypic.sdk_ import logs_dir, slurm_scripts_dir
 
         output_dir = tmp_path / "output"
         slurm_args = {"slurm_partition": "short", "mem_gb": 16}
         chunk_scripts = [
-            output_dir / "slurm_scripts" / "dataset_a_chunk0.sh",
-            output_dir / "slurm_scripts" / "dataset_b_chunk0.sh",
+            slurm_scripts_dir(output_dir) / "dataset_a_chunk0.sh",
+            slurm_scripts_dir(output_dir) / "dataset_b_chunk0.sh",
         ]
-        dispatcher_scripts = [output_dir / "slurm_scripts" / "dispatch_1.sh"]
+        dispatcher_scripts = [slurm_scripts_dir(output_dir) / "dispatch_1.sh"]
         console = MagicMock()
 
         with patch(
@@ -515,7 +516,7 @@ class TestSLURMScriptChainSubmission:
             chunk_scripts=chunk_scripts,
             output_dir=output_dir,
             slurm_args=slurm_args,
-            log_dir=output_dir / "logs" / "slurm",
+            log_dir=logs_dir(output_dir) / "slurm",
         )
         mock_submit_drip_feed_start.assert_called_once_with(
             chunk_scripts=chunk_scripts,
