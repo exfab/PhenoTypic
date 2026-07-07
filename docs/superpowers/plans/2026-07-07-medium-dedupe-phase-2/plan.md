@@ -365,7 +365,7 @@ git commit -m "refactor: share slurm array script rendering"
 - Modify: `src/phenotypic/sdk_/hdf_.py`
 - Test: `tests/unit/sdk_/test_hdf_open_recovery.py`
 
-- [ ] **Step 1: Write failing HDF recovery tests**
+- [x] **Step 1: Write failing HDF recovery tests**
 
 Add tests that monkeypatch `h5py.File`, `subprocess.run`, and `time.sleep` to verify:
 
@@ -375,7 +375,7 @@ Add tests that monkeypatch `h5py.File`, `subprocess.run`, and `time.sleep` to ve
 - non-lock `OSError` raises immediately;
 - final lock failure raises the existing helpful runtime error.
 
-- [ ] **Step 2: Extract private helper**
+- [x] **Step 2: Extract private helper**
 
 Add `_open_hdf_with_recovery(...)` in `hdf_.py` with arguments:
 
@@ -393,11 +393,11 @@ def _open_hdf_with_recovery(
 ) -> h5py.File:
 ```
 
-- [ ] **Step 3: Route `safe_writer()` and `swmr_writer()` through it**
+- [x] **Step 3: Route `safe_writer()` and `swmr_writer()` through it**
 
 `safe_writer()` passes status clearing only. `swmr_writer()` passes status and force clearing and keeps the SWMR-enable fallback local in its opener.
 
-- [ ] **Step 4: Verify HDF tests**
+- [x] **Step 4: Verify HDF tests**
 
 Run:
 
@@ -405,7 +405,16 @@ Run:
 uv run pytest tests/unit/sdk_/test_hdf_open_recovery.py tests/integration/cli/test_cli_hdf_output.py -q
 ```
 
-- [ ] **Step 5: Commit Task 3**
+Verified on 2026-07-07:
+
+```bash
+uv run pytest tests/unit/sdk_/test_hdf_open_recovery.py tests/integration/cli/test_cli_hdf_output.py -q
+# 16 passed
+uv run ruff check src/phenotypic/sdk_/hdf_.py tests/unit/sdk_/test_hdf_open_recovery.py
+# All checks passed
+```
+
+- [x] **Step 5: Commit Task 3**
 
 ```bash
 git add src/phenotypic/sdk_/hdf_.py tests/unit/sdk_/test_hdf_open_recovery.py
