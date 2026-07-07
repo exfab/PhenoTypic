@@ -37,43 +37,10 @@ from phenotypic.gui.builder._point_picker import (
 from phenotypic.gui.builder._preview_cache import init_cache as init_preview_cache
 from phenotypic.gui.builder._preview_tiles import register_node_preview_routes
 from phenotypic.gui.builder._state import BuilderState
-from phenotypic.gui._url_prefix import configure_url_prefix_routing
-
-
-def _index_string_with_prefix(url_prefix: str) -> str:
-    """Return a Dash ``index_string`` template that injects the URL prefix.
-
-    The injected ``<script>`` defines ``window.__phenotypicAppPrefix`` so
-    ``point_picker.js`` can build hub-aware URLs for the vendored
-    OpenSeadragon icon assets. Mirrors :func:`results_viewer._app.
-    _index_string_with_prefix`; the same escaping convention applies
-    (``\\`` -> ``\\\\``, ``"`` -> ``\\"``, ``</`` -> ``<\\/``).
-    """
-    safe_prefix = (
-        url_prefix.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("</", "<\\/")
-    )
-    return (
-        "<!DOCTYPE html>\n"
-        "<html>\n"
-        "    <head>\n"
-        "        {%metas%}\n"
-        "        <title>{%title%}</title>\n"
-        "        {%favicon%}\n"
-        "        {%css%}\n"
-        f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
-        "    </head>\n"
-        "    <body>\n"
-        "        {%app_entry%}\n"
-        "        <footer>\n"
-        "            {%config%}\n"
-        "            {%scripts%}\n"
-        "            {%renderer%}\n"
-        "        </footer>\n"
-        "    </body>\n"
-        "</html>"
-    )
+from phenotypic.gui._url_prefix import (
+    configure_url_prefix_routing,
+    dash_index_string_with_app_prefix,
+)
 
 
 def create_app(
@@ -133,7 +100,7 @@ def create_app(
     # (zoom in/out/home/fullpage). Without it the JS falls back to
     # ``/`` and the dispatcher serves the shell's catch-all instead of
     # the icons. Mirrors the results-viewer pattern.
-    app.index_string = _index_string_with_prefix(url_prefix)
+    app.index_string = dash_index_string_with_app_prefix(url_prefix)
 
     inject_design_tokens(app)
     register_shared_static(app.server)

@@ -17,8 +17,11 @@ from scipy.stats import rankdata
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.sdk_.typing_ import TuneSpec
 from phenotypic.sdk_.mixin import GridInferenceMixin
-import skimage.filters as filters
 import skimage.morphology as morphology
+from phenotypic.detect._grid_peak_common import (
+    _round_odd as _grid_peak_round_odd,
+    grid_peak_threshold_mask,
+)
 
 
 class SinePeakDetector(GridInferenceMixin, ObjectDetector):
@@ -139,8 +142,7 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
     @staticmethod
     def _round_odd(n: int) -> int:
         """Round to nearest odd integer (minimum 3)."""
-        n = max(n, 3)
-        return n if n % 2 == 1 else n + 1
+        return _grid_peak_round_odd(n)
 
     def _operate(self, image: Image) -> Image:
         """
@@ -266,45 +268,15 @@ class SinePeakDetector(GridInferenceMixin, ObjectDetector):
         Raises:
             ValueError: If an invalid thresholding method is specified.
         """
-        # Adaptive kernel sizing: use grid spacing when available, fallback otherwise
-        if nrows is not None:
-            bg_h = self._round_odd(round((matrix.shape[0] / nrows) * 1.5))
-            bg_w = self._round_odd(round((matrix.shape[1] / (ncols or nrows)) * 1.5))
-            kernel = morphology.footprint_rectangle((bg_h, bg_w))
-        else:
-            dim = self._round_odd(self.footprint_width * 2)
-            kernel = morphology.footprint_rectangle((dim, dim))
-
-        enh_matrix = matrix.copy()  # Work on a copy to avoid modifying input
-
-        # Isolate bright foreground colonies via white tophat (image - opening)
-        if self.subtract_background:
-            enh_matrix = morphology.white_tophat(enh_matrix, kernel)
-
-        # Apply selected thresholding method
-        match self.thresh_method:
-            case "otsu":
-                thresh = filters.threshold_otsu(enh_matrix)
-            case "mean":
-                thresh = filters.threshold_mean(enh_matrix)
-            case "local":
-                block_size = max(
-                        self.footprint_width * 2 + 1, 3
-                )  # Ensure odd block size
-                thresh = filters.threshold_local(enh_matrix, block_size=block_size)
-            case "triangle":
-                thresh = filters.threshold_triangle(enh_matrix)
-            case "minimum":
-                thresh = filters.threshold_minimum(enh_matrix)
-            case "isodata":
-                thresh = filters.threshold_isodata(enh_matrix)
-            case "li":
-                thresh = filters.threshold_li(enh_matrix)
-            case _:
-                # Default to Otsu if method not recognized
-                thresh = filters.threshold_otsu(enh_matrix)
-
-        return enh_matrix >= thresh
+        return grid_peak_threshold_mask(
+            matrix,
+            thresh_method=self.thresh_method,
+            subtract_background=self.subtract_background,
+            footprint_width=self.footprint_width,
+            nrows=nrows,
+            ncols=ncols,
+            round_odd=self._round_odd,
+        )
 
     def _estimate_edges(self, binary_image: np.ndarray, axis: int, n_bins: int, **kwargs: object) -> np.ndarray:  # type: ignore[override]
         """Estimate grid edges using sinusoidal cross-correlation.

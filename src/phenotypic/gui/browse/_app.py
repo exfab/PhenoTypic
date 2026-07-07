@@ -16,7 +16,10 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 from phenotypic.gui._config import CFG_URL_PREFIX, MOUNT_HOME, TITLE_BROWSE
 from phenotypic.gui._design import inject_design_tokens
 from phenotypic.gui._shared import register_shared_static
-from phenotypic.gui._url_prefix import configure_url_prefix_routing
+from phenotypic.gui._url_prefix import (
+    configure_url_prefix_routing,
+    dash_index_string_with_app_prefix,
+)
 from phenotypic.gui.browse import _source_render, _thumb_routes, _tile_routes
 from phenotypic.gui.browse._callbacks import register_callbacks
 from phenotypic.gui.browse._layout import build_browse_layout
@@ -25,22 +28,6 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 logger = logging.getLogger(__name__)
 
 __all__ = ["create_app"]
-
-
-def _index_string_with_prefix(url_prefix: str) -> str:
-    """Dash ``index_string`` that exposes ``window.__phenotypicAppPrefix``."""
-    safe_prefix = (
-        url_prefix.replace("\\", "\\\\").replace('"', '\\"').replace("</", "<\\/")
-    )
-    return (
-        "<!DOCTYPE html>\n<html>\n    <head>\n"
-        "        {%metas%}\n        <title>{%title%}</title>\n"
-        "        {%favicon%}\n        {%css%}\n"
-        f'        <script>window.__phenotypicAppPrefix = "{safe_prefix}";</script>\n'
-        "    </head>\n    <body>\n        {%app_entry%}\n        <footer>\n"
-        "            {%config%}\n            {%scripts%}\n            {%renderer%}\n"
-        "        </footer>\n    </body>\n</html>"
-    )
 
 
 def create_app(sandbox: SandboxRoot, *, url_prefix: str = MOUNT_HOME) -> dash.Dash:
@@ -59,7 +46,7 @@ def create_app(sandbox: SandboxRoot, *, url_prefix: str = MOUNT_HOME) -> dash.Da
         requests_pathname_prefix=url_prefix,
         routes_pathname_prefix=MOUNT_HOME,
     )
-    app.index_string = _index_string_with_prefix(url_prefix)
+    app.index_string = dash_index_string_with_app_prefix(url_prefix)
     inject_design_tokens(app)
     register_shared_static(app.server)
     app.server.config[CFG_URL_PREFIX] = url_prefix

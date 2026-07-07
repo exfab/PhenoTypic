@@ -6,18 +6,10 @@ import numpy as np
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-from skimage.filters import (
-    apply_hysteresis_threshold,
-    threshold_otsu,
-    threshold_isodata,
-    threshold_li,
-    threshold_mean,
-    threshold_minimum,
-    threshold_triangle,
-    threshold_yen,
-)
+from skimage.filters import apply_hysteresis_threshold
 from skimage.segmentation import clear_border
 
+from phenotypic.detect._thresholding_registry import ThresholdingRegistry
 from ..abc_ import ThresholdDetector
 
 
@@ -189,41 +181,12 @@ class HysteresisDetector(ThresholdDetector):
         Raises:
             ValueError: If threshold_spec is a string but not a valid method name.
         """
-        if isinstance(threshold_spec, (int, float)):
-            # Manual threshold value
-            return float(threshold_spec)
-
-        # Map method names to scikit-image functions
-        method_map = {
-            "otsu": threshold_otsu,
-            "isodata": threshold_isodata,
-            "li": threshold_li,
-            "mean": threshold_mean,
-            "minimum": threshold_minimum,
-            "triangle": threshold_triangle,
-            "yen": threshold_yen,
-        }
-
-        # Methods that accept nbins parameter
-        # Note: li does NOT accept nbins despite being histogram-based
-        methods_with_nbins = {"otsu", "isodata", "triangle", "yen"}
-
-        method_name = threshold_spec.lower()
-        if method_name not in method_map:
-            raise ValueError(
-                f"Unknown threshold method '{threshold_spec}'. "
-                f"Valid methods: {list(method_map.keys())}"
-            )
-
-        threshold_func = method_map[method_name]
-
-        # Compute threshold with or without nbins depending on method
-        if method_name in methods_with_nbins:
-            nbins = 2 ** int(bit_depth)
-            return float(threshold_func(data, nbins=nbins))
-        else:
-            # Methods like 'mean' and 'minimum' don't accept nbins
-            return float(threshold_func(data))
+        return ThresholdingRegistry.threshold_value(
+            threshold_spec,
+            data,
+            bit_depth=bit_depth,
+            allowed_methods=ThresholdingRegistry.SCALAR_METHODS,
+        )
 
 
 # Set the docstring so that it appears in the sphinx documentation

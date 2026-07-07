@@ -25,6 +25,11 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
 
 from ._cli_types import Dataset
+from ._measurement_sources import (
+    add_metadata_image_name_from_filename,
+    discover_measurement_sources,
+    measurement_sources_by_path,
+)
 from ._cli_parquet_agg import aggregate_parquet_files
 from phenotypic.schema import EXPERIMENT_METADATA, METADATA
 from phenotypic.util import split_measurements
@@ -36,7 +41,6 @@ from phenotypic.sdk_ import (
     DIR_INSPECT,
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
-    DATASET_AGGREGATED_PARQUET,
     EnvVar,
     analysis_csv_path,
     analysis_parquet_path,
@@ -973,22 +977,9 @@ def aggregate_measurements(
         pipeline has any :class:`PostMeasurement` op configured. Split
         and analysis failures never change the return value.
     """
-    results_dir = output_dir / DIR_RESULTS
-
-    # -- File discovery ------------------------------------------------
-    path_to_dataset: Dict[Path, str] = {}
-    for dataset_name in dataset_names:
-        meas_dir = results_dir / dataset_name / DIR_MEASUREMENTS
-        if not meas_dir.is_dir():
-            continue
-        # Prefer pre-aggregated file
-        agg_parquet = meas_dir / DATASET_AGGREGATED_PARQUET
-        if agg_parquet.exists():
-            path_to_dataset[agg_parquet] = dataset_name
-        else:
-            for pq in sorted(meas_dir.glob("*.parquet")):
-                if not pq.name.startswith("_"):
-                    path_to_dataset[pq] = dataset_name
+    path_to_dataset = measurement_sources_by_path(
+        discover_measurement_sources(output_dir, dataset_names)
+    )
 
     # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
@@ -1012,13 +1003,7 @@ def aggregate_measurements(
         logger.warning("No valid measurements found for aggregation")
         return None
 
-    # Derive Metadata_ImageName for the dashboard image viewer, then drop filename.
-    if str(METADATA.IMAGE_NAME) not in master_df.columns and "filename" in master_df.columns:
-        master_df = master_df.with_columns(
-            pl.col("filename").str.extract(r"([^/\\]+)\.[^.]+$", 1).alias(str(METADATA.IMAGE_NAME))
-        )
-    if "filename" in master_df.columns:
-        master_df = master_df.drop("filename")
+    master_df = add_metadata_image_name_from_filename(master_df)
 
     # -- Write master CSV and Parquet ----------------------------------
     master_csv_path = master_measurements_csv_path(output_dir)
