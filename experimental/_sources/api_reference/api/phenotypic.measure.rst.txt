@@ -24,6 +24,7 @@
       MeasureBounds
       MeasureColor
       MeasureIntensity
+      MeasureOrientationZones
       MeasureShape
       MeasureSize
       MeasureSymmetricZones

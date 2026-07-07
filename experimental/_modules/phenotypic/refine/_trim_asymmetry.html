@@ -613,7 +613,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">euler_number</span><span class="p">,</span> <span class="n">regionprops</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectRefiner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..measure._measure_symmetric_zones</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSymmetricZones</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..measure._zone_segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">compute_radial_density_profile</span><span class="p">,</span>
+    <span class="n">compute_sholl_angular_profile</span><span class="p">,</span>
+    <span class="n">distance_from_point</span><span class="p">,</span>
+    <span class="n">find_core_radius</span><span class="p">,</span>
+    <span class="n">find_symmetric_radius</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 
 <span class="n">_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -868,7 +874,7 @@
                 <span class="n">centroid_rc</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">cw</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
 
         <span class="c1"># 2. Distance map from centroid.</span>
-        <span class="n">dist_map</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_distance_from_point</span><span class="p">(</span>
+        <span class="n">dist_map</span> <span class="o">=</span> <span class="n">distance_from_point</span><span class="p">(</span>
                 <span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">centroid_rc</span>
         <span class="p">)</span>
 
@@ -883,7 +889,7 @@
 
         <span class="c1"># 3. R_sym pipeline.</span>
         <span class="n">density_profile</span><span class="p">,</span> <span class="n">annulus_radii</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_compute_radial_density_profile</span><span class="p">(</span>
+            <span class="n">compute_radial_density_profile</span><span class="p">(</span>
                     <span class="n">obj_mask</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">effective_annuli</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -891,7 +897,7 @@
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">core_radius</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_find_core_radius</span><span class="p">(</span>
+            <span class="n">core_radius</span> <span class="o">=</span> <span class="n">find_core_radius</span><span class="p">(</span>
                     <span class="n">density_profile</span><span class="p">,</span> <span class="n">annulus_radii</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover — ruptures failure is rare</span>
@@ -903,12 +909,12 @@
             <span class="n">core_radius</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">angular_coverage</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_compute_sholl_angular_profile</span><span class="p">(</span>
+            <span class="n">compute_sholl_angular_profile</span><span class="p">(</span>
                     <span class="n">obj_mask</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">centroid_rc</span><span class="p">,</span> <span class="n">annulus_radii</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">)</span>
-        <span class="n">r_sym</span> <span class="o">=</span> <span class="n">MeasureSymmetricZones</span><span class="o">.</span><span class="n">_find_symmetric_radius</span><span class="p">(</span>
+        <span class="n">r_sym</span> <span class="o">=</span> <span class="n">find_symmetric_radius</span><span class="p">(</span>
                 <span class="n">annulus_radii</span><span class="p">,</span>
                 <span class="n">angular_coverage</span><span class="p">,</span>
                 <span class="n">core_radius</span><span class="p">,</span>

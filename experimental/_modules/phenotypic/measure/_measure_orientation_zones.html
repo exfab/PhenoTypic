@@ -1,0 +1,1487 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.measure._measure_orientation_zones &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=bbfb6319"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/measure/_measure_orientation_zones';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/measure/_measure_orientation_zones.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.17.3" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.measure._measure_orientation_zones</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.measure._measure_orientation_zones</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;MeasureOrientationZones: per-zone hyphal orientation concentration/turning.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span>
+
+<span class="c1"># Control/FigureProvider/figure are re-exported from phenotypic.abc_ (this is</span>
+<span class="c1"># exactly what _measure_symmetric_zones.py imports).</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">,</span> <span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span><span class="p">,</span> <span class="n">ORIENTATION_ZONES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._orientation_field</span><span class="w"> </span><span class="kn">import</span> <span class="n">orientation_field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._zone_segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ZoneSegmentation</span><span class="p">,</span>
+    <span class="n">ZoneSegmentationParams</span><span class="p">,</span>
+    <span class="n">compute_zone_segmentation</span><span class="p">,</span>
+    <span class="n">distance_from_point</span><span class="p">,</span>
+    <span class="n">expand_slice_around_center</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">_VARIANTS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Radial&quot;</span><span class="p">,</span> <span class="s2">&quot;Mask&quot;</span><span class="p">)</span>
+<span class="n">_ZONES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Overall&quot;</span><span class="p">,</span> <span class="s2">&quot;Dense&quot;</span><span class="p">,</span> <span class="s2">&quot;Sparse&quot;</span><span class="p">)</span>
+<span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-9</span>
+
+<span class="c1"># Okabe-Ito navy for figure text (matches MeasureSymmetricZones; family comes</span>
+<span class="c1"># from the phenotypic plotly template applied by @figure).</span>
+<span class="n">_OI_NAVY</span> <span class="o">=</span> <span class="s2">&quot;#003660&quot;</span>
+
+<span class="c1"># Base-layer selector for inspect(); mirrors MeasureSymmetricZones.BASE_LAYER</span>
+<span class="c1"># but defaults to &quot;detect_mat&quot; (the tensor/segmentation source for this op).</span>
+<span class="n">BASE_LAYER</span> <span class="o">=</span> <span class="n">Control</span><span class="p">(</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Base layer&quot;</span><span class="p">,</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;select&quot;</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span>
+    <span class="n">options</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">),</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Image array rendered behind the orientation-field overlay.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># 72-vertex unit circle for zone-ring polygons (replicated locally from the</span>
+<span class="c1"># nested helper in _measure_symmetric_zones._add_overlay_traces).</span>
+<span class="n">_N_CIRCLE_PTS</span> <span class="o">=</span> <span class="mi">72</span>
+<span class="n">_CIRCLE_THETA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">_N_CIRCLE_PTS</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_circle_xy</span><span class="p">(</span><span class="n">cx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">cy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return (xs, ys) for a ``_N_CIRCLE_PTS``-vertex circle of radius ``r``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cx: Circle centre x (column) in plate coordinates.</span>
+<span class="sd">        cy: Circle centre y (row) in plate coordinates.</span>
+<span class="sd">        r: Circle radius in pixels.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple ``(xs, ys)`` of closed-polygon vertex coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">_CIRCLE_THETA</span><span class="p">),</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">_CIRCLE_THETA</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">zone_selector</span><span class="p">(</span><span class="n">dist_map</span><span class="p">,</span> <span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">variant</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Boolean selector for a radial zone on a tile; ``Mask`` also ∩ obj_mask.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dist_map: Per-pixel distance-from-centre map (tile shape).</span>
+<span class="sd">        r_lo: Inner radius (inclusive) of the zone in pixels.</span>
+<span class="sd">        r_hi: Outer radius (exclusive) of the zone in pixels.</span>
+<span class="sd">        obj_mask: Boolean object mask (tile shape) used by the ``Mask`` variant.</span>
+<span class="sd">        variant: ``&quot;Radial&quot;`` (all tile pixels in the ring) or ``&quot;Mask&quot;``</span>
+<span class="sd">            (the ring intersected with ``obj_mask``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Boolean array (tile shape). All-False when the radius range is invalid</span>
+<span class="sd">        (non-finite or ``r_hi &lt;= r_lo``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">r_lo</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">r_hi</span><span class="p">)</span> <span class="ow">or</span> <span class="n">r_hi</span> <span class="o">&lt;=</span> <span class="n">r_lo</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist_map</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="n">radial</span> <span class="o">=</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">r_lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&lt;</span> <span class="n">r_hi</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">variant</span> <span class="o">==</span> <span class="s2">&quot;Mask&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">radial</span> <span class="o">&amp;</span> <span class="n">obj_mask</span>
+    <span class="k">return</span> <span class="n">radial</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">aggregate_orientation</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">grad_phi</span><span class="p">,</span> <span class="n">selector</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">_EPS</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coherence-weighted (R, turning, mean-coherence) over a selector.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        phi: Orientation field in radians (tile shape).</span>
+<span class="sd">        coherence: Structure-tensor coherence in [0, 1] (tile shape).</span>
+<span class="sd">        grad_phi: Orientation-gradient magnitude in rad/px (tile shape).</span>
+<span class="sd">        selector: Boolean pixel selector (tile shape).</span>
+<span class="sd">        eps: Numerical floor for the summed-coherence denominator.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(R, turning, mean_coherence)`` scalars. Returns ``(nan, nan, nan)``</span>
+<span class="sd">        when the selector is empty or ``sum(coherence) ~ 0``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">selector</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">coherence</span><span class="p">[</span><span class="n">selector</span><span class="p">]</span>
+    <span class="n">sumC</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">sumC</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">[</span><span class="n">selector</span><span class="p">])</span>
+    <span class="n">s2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">[</span><span class="n">selector</span><span class="p">])</span>
+    <span class="n">Rx</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">C</span> <span class="o">*</span> <span class="n">c2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">sumC</span>
+    <span class="n">Ry</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">C</span> <span class="o">*</span> <span class="n">s2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">sumC</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">Rx</span><span class="p">,</span> <span class="n">Ry</span><span class="p">))</span>
+    <span class="n">turning</span> <span class="o">=</span> <span class="nb">float</span><span class="p">((</span><span class="n">C</span> <span class="o">*</span> <span class="n">grad_phi</span><span class="p">[</span><span class="n">selector</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="n">sumC</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">turning</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">mean</span><span class="p">()))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_downsample_quiver</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">block</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Block-mean the doubled-angle field → (rows, cols, phi_block, coh_block).</span>
+
+<span class="sd">    Circular-averages cos2φ/sin2φ (coherence-weighted) and means coherence over</span>
+<span class="sd">    block×block cells. Returns block-centre coords in the TILE frame plus per-block</span>
+<span class="sd">    orientation and coherence — a few KB, the only array kept in the lean cache.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        phi: Orientation field in radians (tile shape).</span>
+<span class="sd">        coherence: Structure-tensor coherence in [0, 1] (tile shape).</span>
+<span class="sd">        block: Block edge length in pixels.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple ``(rows, cols, phi_block, coh_block)`` of ``(nr, nc)`` arrays:</span>
+<span class="sd">        block-centre row/col in tile coordinates, per-block orientation (NaN</span>
+<span class="sd">        where the block coherence is ~0), and per-block mean coherence.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">phi</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">block</span><span class="p">))</span>
+    <span class="n">nr</span><span class="p">,</span> <span class="n">nc</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">h</span> <span class="o">//</span> <span class="n">block</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">w</span> <span class="o">//</span> <span class="n">block</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">nr</span><span class="p">,</span> <span class="n">nc</span><span class="p">))</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">nr</span><span class="p">,</span> <span class="n">nc</span><span class="p">))</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">nr</span><span class="p">,</span> <span class="n">nc</span><span class="p">))</span>
+    <span class="n">cb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">nr</span><span class="p">,</span> <span class="n">nc</span><span class="p">))</span>
+    <span class="n">c2</span><span class="p">,</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nr</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nc</span><span class="p">):</span>
+            <span class="n">rsl</span><span class="p">,</span> <span class="n">csl</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">block</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">block</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="n">j</span> <span class="o">*</span> <span class="n">block</span><span class="p">,</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">block</span><span class="p">)</span>
+            <span class="n">cc</span> <span class="o">=</span> <span class="n">coherence</span><span class="p">[</span><span class="n">rsl</span><span class="p">,</span> <span class="n">csl</span><span class="p">]</span>
+            <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span> <span class="n">cols</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">block</span> <span class="o">+</span> <span class="n">block</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">j</span> <span class="o">*</span> <span class="n">block</span> <span class="o">+</span> <span class="n">block</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="n">cb</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cc</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">wsum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cc</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+            <span class="n">pb</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">((</span><span class="n">cc</span> <span class="o">*</span> <span class="n">s2</span><span class="p">[</span><span class="n">rsl</span><span class="p">,</span> <span class="n">csl</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="p">(</span><span class="n">cc</span> <span class="o">*</span> <span class="n">c2</span><span class="p">[</span><span class="n">rsl</span><span class="p">,</span> <span class="n">csl</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+                        <span class="k">if</span> <span class="n">wsum</span> <span class="o">&gt;</span> <span class="mf">1e-12</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">pb</span><span class="p">,</span> <span class="n">cb</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resultant_direction</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coherence-weighted mean orientation over a selector (for the inspect glyph).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        phi: Orientation field in radians (tile shape).</span>
+<span class="sd">        coherence: Structure-tensor coherence in [0, 1] (tile shape).</span>
+<span class="sd">        selector: Boolean pixel selector (tile shape).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Mean orientation in radians, or NaN when the selector is empty or the</span>
+<span class="sd">        summed coherence is ~0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">selector</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">coherence</span><span class="p">[</span><span class="n">selector</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">&lt;</span> <span class="n">_EPS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="nb">float</span><span class="p">((</span><span class="n">C</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">[</span><span class="n">selector</span><span class="p">]))</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+                            <span class="nb">float</span><span class="p">((</span><span class="n">C</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">phi</span><span class="p">[</span><span class="n">selector</span><span class="p">]))</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="MeasureOrientationZones">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureOrientationZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">FigureProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure per-zone hyphal orientation concentration, turning, and coherence.</span>
+
+<span class="sd">    Computes the structure-tensor orientation field over a mask-free tile (grid</span>
+<span class="sd">    section when the image is a GridImage, else an expanded crop) and aggregates</span>
+<span class="sd">    coherence-weighted metrics over radially-defined zones bounded by the</span>
+<span class="sd">    symmetric radius, in both a ``Radial`` and a raw ``Mask`` variant. Emits the</span>
+<span class="sd">    :class:`~phenotypic.schema.ORIENTATION_ZONES` columns.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        intensity_source: Image array for the structure tensor and zone</span>
+<span class="sd">            segmentation (``&quot;detect_mat&quot;`` default, ``&quot;gray&quot;`` alternative).</span>
+<span class="sd">        sigma_d: Gaussian-derivative (gradient) scale in pixels, ~ hypha width.</span>
+<span class="sd">        sigma_i: Structure-tensor integration scale in pixels.</span>
+<span class="sd">        quiver_block: inspect() quiver downsample block size in pixels.</span>
+<span class="sd">        n_annuli: Number of equal-area annuli in the shared zone segmentation.</span>
+<span class="sd">        pelt_penalty: PELT penalty controlling core-changepoint sensitivity.</span>
+<span class="sd">        symmetry_threshold: Minimum angular coverage for symmetric growth.</span>
+<span class="sd">        n_angular_bins: Number of angular bins for the coverage diagnostic.</span>
+<span class="sd">        smoothing_window: Moving-average window (annuli) for the coverage test.</span>
+<span class="sd">        method: Inoculum-centre estimator (``&quot;distance&quot;`` or ``&quot;intensity&quot;``).</span>
+<span class="sd">        extent_margin: Fractional expansion of the analysis tile past the mask.</span>
+<span class="sd">        min_samples_per_ring: Minimum pixel count per ring before interpolation.</span>
+<span class="sd">        tau_core: Colony-ness threshold for the core/dense boundary.</span>
+<span class="sd">        tau_dense: Colony-ness threshold for the dense/sparse boundary.</span>
+<span class="sd">        tau_sparse: Colony-ness threshold for the sparse/outside boundary.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.data import load_synth_filamentous_plate</span>
+<span class="sd">        &gt;&gt;&gt; from phenotypic.measure import MeasureOrientationZones</span>
+<span class="sd">        &gt;&gt;&gt; image = load_synth_filamentous_plate()</span>
+<span class="sd">        &gt;&gt;&gt; df = MeasureOrientationZones().measure(image)</span>
+<span class="sd">        &gt;&gt;&gt; &#39;OrientZones_Concentration-Radial-Overall&#39; in df.columns</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">ORIENTATION_ZONES</span>
+
+    <span class="n">intensity_source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;detect_mat&quot;</span>
+    <span class="n">sigma_d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
+    <span class="n">sigma_i</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
+    <span class="n">quiver_block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
+    <span class="c1"># --- zone passthrough (defaults identical to MeasureSymmetricZones) ---</span>
+    <span class="n">n_annuli</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">pelt_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
+    <span class="n">symmetry_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">/</span> <span class="mi">6</span>
+    <span class="n">n_angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">smoothing_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;distance&quot;</span>
+    <span class="n">extent_margin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">min_samples_per_ring</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">tau_core</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+    <span class="n">tau_dense</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">tau_sparse</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="c1"># Per-object figure intermediates, populated by _operate. PrivateAttr keeps</span>
+    <span class="c1"># it out of model_dump()/JSON (mirrors MeasureSymmetricZones&#39; cache pattern).</span>
+    <span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">_cache_image</span><span class="p">:</span> <span class="s2">&quot;object | None&quot;</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_d&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma_i&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_positive_sigma</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma_d and sigma_i must be &gt; 0&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">v</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_zone_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZoneSegmentationParams</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ZoneSegmentationParams</span><span class="p">(</span>
+            <span class="n">n_annuli</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_annuli</span><span class="p">,</span> <span class="n">pelt_penalty</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span><span class="p">,</span>
+            <span class="n">symmetry_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span><span class="p">,</span> <span class="n">n_angular_bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span><span class="p">,</span>
+            <span class="n">smoothing_window</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">extent_margin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extent_margin</span><span class="p">,</span> <span class="n">min_samples_per_ring</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_samples_per_ring</span><span class="p">,</span>
+            <span class="n">tau_core</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_core</span><span class="p">,</span> <span class="n">tau_dense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_dense</span><span class="p">,</span> <span class="n">tau_sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_sparse</span><span class="p">,</span>
+            <span class="n">intensity_source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity_source</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_tile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (tile_intensity, obj_mask_tile, centre_rc) for one object.</span>
+
+<span class="sd">        Preferred: the object&#39;s **grid section** via ``image.grid[idx]`` — an</span>
+<span class="sd">        object-aware cropped Image (only this object&#39;s label survives; the crop</span>
+<span class="sd">        preserves the complete object, so it is a superset of the object&#39;s</span>
+<span class="sd">        pixels). Verified API: ``image.grid[section_idx]`` returns a cropped</span>
+<span class="sd">        ``Image``; the crop origin is recovered by the public exact identity</span>
+<span class="sd">        ``origin = prop.centroid(full) - regionprops(section)[label].centroid``.</span>
+<span class="sd">        Falls back to the mask-free expanded crop when the image is not a</span>
+<span class="sd">        GridImage, the section lookup fails, or the section does not cover the</span>
+<span class="sd">        r_max disk around the centre (crowded/overgrown plate).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops</span>
+        <span class="n">r_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">extent_margin</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;grid&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">seg</span><span class="o">.</span><span class="n">label</span> <span class="ow">in</span> <span class="n">label2section</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">section</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">label2section</span><span class="p">[</span><span class="n">seg</span><span class="o">.</span><span class="n">label</span><span class="p">]]</span>
+                <span class="n">sec_props</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">label</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:])}</span>
+                <span class="n">sp</span> <span class="o">=</span> <span class="n">sec_props</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">origin</span> <span class="o">=</span> <span class="p">(</span><span class="n">prop</span><span class="o">.</span><span class="n">centroid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sp</span><span class="o">.</span><span class="n">centroid</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                              <span class="n">prop</span><span class="o">.</span><span class="n">centroid</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sp</span><span class="o">.</span><span class="n">centroid</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">centre</span> <span class="o">=</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">origin</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                              <span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">origin</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">section</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">r_max</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">r_max</span> <span class="o">&lt;=</span> <span class="n">H</span>
+                            <span class="ow">and</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">r_max</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">r_max</span> <span class="o">&lt;=</span> <span class="n">W</span><span class="p">):</span>
+                        <span class="n">tile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">intensity_source</span><span class="p">)[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="n">tile</span><span class="p">,</span> <span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span> <span class="o">==</span> <span class="n">seg</span><span class="o">.</span><span class="n">label</span><span class="p">),</span> <span class="n">centre</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+                <span class="k">pass</span>
+        <span class="c1"># Fallback: expanded crop on the full plate (non-grid / clipped section).</span>
+        <span class="n">hw</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>            <span class="c1"># 2-tuple; image.shape is (H,W,3) for RGB</span>
+        <span class="n">sl</span> <span class="o">=</span> <span class="n">expand_slice_around_center</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">,</span> <span class="n">r_max</span><span class="p">,</span> <span class="n">hw</span><span class="p">)</span>
+        <span class="n">tile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">intensity_source</span><span class="p">)[</span><span class="n">sl</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">obj_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:][</span><span class="n">sl</span><span class="p">]</span> <span class="o">==</span> <span class="n">seg</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+        <span class="n">centre</span> <span class="o">=</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tile</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">centre</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_zone_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
+            <span class="s2">&quot;Dense&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span>
+            <span class="s2">&quot;Sparse&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Regionprops + label→grid-section map, computed ONCE per image.</span>
+
+<span class="sd">        grid.info() is slow on filamentous plates, so never call it per object.</span>
+<span class="sd">        intensity_image is required so compute_zone_segmentation can read</span>
+<span class="sd">        prop.centroid_weighted when method=&quot;intensity&quot; (else AttributeError).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">regionprops</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span>
+                            <span class="n">intensity_image</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">label2section</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;grid&quot;</span><span class="p">):</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">()</span>
+            <span class="n">lab</span><span class="p">,</span> <span class="n">rmi</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">)</span>
+            <span class="n">label2section</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="n">lab</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">info</span><span class="p">[</span><span class="n">rmi</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_object_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield (prop, seg, obj_mask, phi, coh, grad, dist_map, centre) per object.</span>
+
+<span class="sd">        SINGLE source of truth for the heavy orientation compute — reused by</span>
+<span class="sd">        _operate() (which keeps only compact summaries) and by dashboard()&#39;s</span>
+<span class="sd">        coherence panel (which recomputes on demand). The full-resolution arrays</span>
+<span class="sd">        yielded here are consumed and discarded by each caller; nothing full-res</span>
+<span class="sd">        is retained on the instance. Tiny objects (area&lt;10) are skipped.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">compute_zone_segmentation</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_zone_params</span><span class="p">())</span>
+            <span class="n">tile</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">centre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_tile</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">label2section</span><span class="p">)</span>
+            <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">orientation_field</span><span class="p">(</span><span class="n">tile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_i</span><span class="p">)</span>
+            <span class="n">dist_map</span> <span class="o">=</span> <span class="n">distance_from_point</span><span class="p">(</span><span class="n">tile</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">centre</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">prop</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">centre</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
+        <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prep</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">ORIENTATION_ZONES</span><span class="o">.</span><span class="n">get_headers</span><span class="p">()</span>
+        <span class="c1"># pre-seed every object&#39;s row with NaN so skipped/failed objects still appear</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">:</span> <span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">}</span>
+            <span class="n">r</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">h</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">})</span>
+            <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>          <span class="c1"># compact per-object figure records only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="o">=</span> <span class="n">image</span>    <span class="c1"># single reference (not a copy) for no-arg figures</span>
+        <span class="k">for</span> <span class="n">prop</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">centre</span> <span class="ow">in</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">per_zone</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill_metrics</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">],</span> <span class="n">seg</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
+            <span class="c1"># LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/</span>
+            <span class="c1"># grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;centroid_global&quot;</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">),</span>
+                <span class="s2">&quot;centre&quot;</span><span class="p">:</span> <span class="n">centre</span><span class="p">,</span>
+                <span class="s2">&quot;radii&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;core&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">core_radius</span><span class="p">,</span> <span class="s2">&quot;symmetric&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">,</span>
+                          <span class="s2">&quot;core_end&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="s2">&quot;dense_end&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">,</span>
+                          <span class="s2">&quot;sparse_end&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">},</span>
+                <span class="s2">&quot;zones_computed&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">,</span>
+                <span class="s2">&quot;quiver&quot;</span><span class="p">:</span> <span class="n">_downsample_quiver</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quiver_block</span><span class="p">),</span>  <span class="c1"># block-res</span>
+                <span class="s2">&quot;per_zone&quot;</span><span class="p">:</span> <span class="n">per_zone</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">base</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">props</span><span class="p">],</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="o">*</span><span class="n">headers</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fill_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the 18 columns for one object; return the compact per_zone dict.&quot;&quot;&quot;</span>
+        <span class="n">per_zone</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">zone</span><span class="p">,</span> <span class="p">(</span><span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zone_bounds</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">zone_ok</span> <span class="o">=</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span> <span class="ow">or</span> <span class="n">zone</span> <span class="o">==</span> <span class="s2">&quot;Overall&quot;</span>
+            <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">zone_ok</span><span class="p">:</span>
+                    <span class="n">R</span> <span class="o">=</span> <span class="n">t</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">sel</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span><span class="n">dist_map</span><span class="p">,</span> <span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">variant</span><span class="p">)</span>
+                    <span class="n">R</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">cm</span> <span class="o">=</span> <span class="n">aggregate_orientation</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">sel</span><span class="p">)</span>
+                    <span class="n">direction</span> <span class="o">=</span> <span class="n">_resultant_direction</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">sel</span><span class="p">)</span>
+                <span class="n">per_zone</span><span class="p">[(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">cm</span><span class="p">,</span> <span class="n">direction</span><span class="p">)</span>   <span class="c1"># scalars only</span>
+                <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_Concentration-</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">R</span>
+                <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_Turning-</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
+                <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_Coherence-</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cm</span>
+        <span class="k">return</span> <span class="n">per_zone</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coherence_canvas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">downsample</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recompute per-object coherence and composite onto a plate canvas.</span>
+
+<span class="sd">        Used only by dashboard()&#39;s heatmap. Full-res fields are recomputed via</span>
+<span class="sd">        _iter_object_fields and discarded here — the heatmap costs compute, not</span>
+<span class="sd">        persistent memory. Returned canvas is downsampled for a light figure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prep</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">canvas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_prop</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">_mask</span><span class="p">,</span> <span class="n">_phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">_grad</span><span class="p">,</span> <span class="n">_dist</span><span class="p">,</span> <span class="n">centre</span> <span class="ow">in</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">r0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">c0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">coh</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">r1</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">r0</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">min</span><span class="p">(</span><span class="n">c0</span> <span class="o">+</span> <span class="n">w</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">canvas</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span><span class="n">r1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span><span class="n">c1</span><span class="p">]</span> <span class="o">=</span> <span class="n">coh</span><span class="p">[:</span> <span class="n">r1</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">:</span> <span class="n">c1</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">canvas</span><span class="p">[::</span><span class="n">downsample</span><span class="p">,</span> <span class="p">::</span><span class="n">downsample</span><span class="p">]</span>
+
+    <span class="c1"># ── figure surfaces ──────────────────────────────────────────────</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_require_cache_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the cached image or raise if :meth:`measure` has not run.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;MeasureOrientationZones: diagnostic cache is empty. &quot;</span>
+                <span class="s2">&quot;Call .measure(image) before .inspect()/.dashboard().&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span>
+
+<div class="viewcode-block" id="MeasureOrientationZones.inspect">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.inspect">[docs]</a>
+    <span class="nd">@figure</span><span class="p">(</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Orientation-field overlay&quot;</span><span class="p">,</span>
+        <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">controls</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;base_layer&quot;</span><span class="p">:</span> <span class="n">BASE_LAYER</span><span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">base_layer</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rgb&quot;</span><span class="p">,</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plate overview with the coherence-modulated quiver, zone rings, and</span>
+<span class="sd">        per-zone resultant glyphs — the single saveable primary figure.</span>
+
+<span class="sd">        Renders entirely from the compact per-object cache populated by the most</span>
+<span class="sd">        recent :meth:`measure` call (no full-resolution recompute).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Detected Image with objmap. If *None*, the image cached by the</span>
+<span class="sd">                most recent :meth:`measure` call is reused.</span>
+<span class="sd">            base_layer: Which image array to render behind the overlay</span>
+<span class="sd">                (``&quot;rgb&quot;``, ``&quot;gray&quot;`` or ``&quot;detect_mat&quot;``).</span>
+<span class="sd">            for_save: When *True*, every legend-only overlay trace is force-shown</span>
+<span class="sd">                so the figure renders meaningfully as a static raster (the CLI&#39;s</span>
+<span class="sd">                ``--save-inspect`` flag passes this). Defaults to *False*.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``plotly.graph_objects.Figure`` with toggleable overlay layers.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_filamentous_plate</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureOrientationZones</span>
+<span class="sd">            &gt;&gt;&gt; op = MeasureOrientationZones()</span>
+<span class="sd">            &gt;&gt;&gt; _ = op.measure(load_synth_filamentous_plate())</span>
+<span class="sd">            &gt;&gt;&gt; fig = op.inspect()</span>
+<span class="sd">            &gt;&gt;&gt; len(fig.data) &gt; 0</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._plotly_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">_require_plotly</span><span class="p">,</span>
+            <span class="n">add_plotly_obj_labels</span><span class="p">,</span>
+            <span class="n">plotly_imshow</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">_require_plotly</span><span class="p">()</span>
+
+        <span class="n">valid_base_layers</span> <span class="o">=</span> <span class="n">BASE_LAYER</span><span class="o">.</span><span class="n">options</span> <span class="ow">or</span> <span class="p">()</span>
+        <span class="k">if</span> <span class="n">base_layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_base_layers</span><span class="p">:</span>
+            <span class="n">allowed</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">valid_base_layers</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;base_layer must be one of </span><span class="si">{</span><span class="n">allowed</span><span class="si">}</span><span class="s2">; got </span><span class="si">{</span><span class="n">base_layer</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
+
+        <span class="n">base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">base_layer</span><span class="p">)[:]</span>
+        <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">display_w</span> <span class="o">=</span> <span class="mi">900</span>
+        <span class="n">display_h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">display_w</span> <span class="o">*</span> <span class="n">h</span> <span class="o">/</span> <span class="n">w</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plotly_imshow</span><span class="p">(</span>
+            <span class="n">base</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Orientation-field overlay&quot;</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">display_w</span> <span class="o">//</span> <span class="mi">100</span><span class="p">,</span> <span class="n">display_h</span> <span class="o">//</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_coloraxes</span><span class="p">(</span><span class="n">showscale</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">groupclick</span><span class="o">=</span><span class="s2">&quot;togglegroup&quot;</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_quiver_trace</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_zone_ring_traces</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_resultant_glyph_traces</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="n">add_plotly_obj_labels</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">for_save</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trace</span><span class="p">,</span> <span class="s2">&quot;visible&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;legendonly&quot;</span><span class="p">:</span>
+                    <span class="n">trace</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_tile_origin</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plate-frame (row, col) origin of a cached object&#39;s tile.</span>
+
+<span class="sd">        The tile pixel ``(r_tile, c_tile)`` sits at plate coordinates</span>
+<span class="sd">        ``(r_tile + origin_row, c_tile + origin_col)``; the inoculum centre lands</span>
+<span class="sd">        on ``centroid_global`` by construction (``origin = centroid_global -</span>
+<span class="sd">        centre``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cg</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centroid_global&quot;</span><span class="p">]</span>
+        <span class="n">ctr</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centre&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">cg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">ctr</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cg</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ctr</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_quiver_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coherence-modulated orientation quiver as one NaN-separated trace.</span>
+
+<span class="sd">        Reads only the pre-downsampled block quiver ``(rows, cols, phi_block,</span>
+<span class="sd">        coh_block)`` from each cached record — no tile/full-res access. Segment</span>
+<span class="sd">        half-length and opacity scale with the per-block coherence; NaN blocks</span>
+<span class="sd">        (undefined orientation) are skipped. All objects share one ``Scattergl``</span>
+<span class="sd">        trace with ``None`` breaks between segments.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">xs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">ys</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">half</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quiver_block</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">phi_block</span><span class="p">,</span> <span class="n">coh_block</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;quiver&quot;</span><span class="p">]</span>
+            <span class="n">origin_r</span><span class="p">,</span> <span class="n">origin_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tile_origin</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">phi_block</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">phi_block</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                    <span class="n">phi</span> <span class="o">=</span> <span class="n">phi_block</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                    <span class="n">coh</span> <span class="o">=</span> <span class="n">coh_block</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coh</span><span class="p">)</span> <span class="ow">or</span> <span class="n">coh</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="c1"># Block centre in plate coords (x=col, y=row).</span>
+                    <span class="n">cx</span> <span class="o">=</span> <span class="n">cols</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">origin_c</span>
+                    <span class="n">cy</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">origin_r</span>
+                    <span class="n">length</span> <span class="o">=</span> <span class="n">half</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">coh</span><span class="p">)</span>
+                    <span class="n">dx</span> <span class="o">=</span> <span class="n">length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+                    <span class="n">dy</span> <span class="o">=</span> <span class="n">length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span>
+                    <span class="n">xs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">cx</span> <span class="o">-</span> <span class="n">dx</span><span class="p">,</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+                    <span class="n">ys</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">cy</span> <span class="o">-</span> <span class="n">dy</span><span class="p">,</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">dy</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">xs</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scattergl</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">xs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">ys</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+            <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">),</span>
+            <span class="n">opacity</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Orientation quiver&quot;</span><span class="p">,</span>
+            <span class="n">legendgroup</span><span class="o">=</span><span class="s2">&quot;quiver&quot;</span><span class="p">,</span>
+            <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span>
+        <span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_zone_ring_traces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Concentric zone-boundary circles centred at each object&#39;s inoculum.</span>
+
+<span class="sd">        Draws the symmetric, core-end, dense-end and sparse-end radii (skipping</span>
+<span class="sd">        non-finite radii) as legend-toggleable circle polygons read from the</span>
+<span class="sd">        cached ``radii`` + ``centroid_global`` scalars.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">ring_styles</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="s2">&quot;Symmetric radius&quot;</span><span class="p">,</span> <span class="s2">&quot;#785EF0&quot;</span><span class="p">,</span> <span class="s2">&quot;solid&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;core_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Core-end radius&quot;</span><span class="p">,</span> <span class="s2">&quot;#DC267F&quot;</span><span class="p">,</span> <span class="s2">&quot;dot&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;dense_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Dense-end radius&quot;</span><span class="p">,</span> <span class="n">_OI_NAVY</span><span class="p">,</span> <span class="s2">&quot;dash&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;sparse_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Sparse-end radius&quot;</span><span class="p">,</span> <span class="s2">&quot;#56B4E9&quot;</span><span class="p">,</span> <span class="s2">&quot;dash&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">dash</span> <span class="ow">in</span> <span class="n">ring_styles</span><span class="p">:</span>
+            <span class="n">xs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">ys</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="ow">or</span> <span class="n">r</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centroid_global&quot;</span><span class="p">]</span>
+                <span class="n">cxs</span><span class="p">,</span> <span class="n">cys</span> <span class="o">=</span> <span class="n">_circle_xy</span><span class="p">(</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+                <span class="n">xs</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="o">*</span><span class="n">cxs</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="kc">None</span><span class="p">])</span>
+                <span class="n">ys</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="o">*</span><span class="n">cys</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="kc">None</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">xs</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">xs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">ys</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">dash</span><span class="o">=</span><span class="n">dash</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">legendgroup</span><span class="o">=</span><span class="s2">&quot;rings&quot;</span><span class="p">,</span>
+                <span class="n">legendgrouptitle_text</span><span class="o">=</span><span class="s2">&quot;Zone rings&quot;</span><span class="p">,</span>
+                <span class="n">visible</span><span class="o">=</span><span class="s2">&quot;legendonly&quot;</span><span class="p">,</span>
+                <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span>
+            <span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_resultant_glyph_traces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-zone resultant-orientation arrows and R/turning text badges.</span>
+
+<span class="sd">        For each cached object and zone, reads the stored ``per_zone[(variant,</span>
+<span class="sd">        zone)] = (R, turning, coh, direction)`` scalars. Draws the resultant arrow</span>
+<span class="sd">        from the inoculum centre (angle ``direction``, half-length ∝ ``R``) for</span>
+<span class="sd">        every variant, plus a text badge of ``R``/turning for the ``Radial``</span>
+<span class="sd">        variant. NaN entries are skipped (no recompute — ``direction`` was stored</span>
+<span class="sd">        by ``_fill_metrics``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">arrow_x</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">arrow_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">badge_x</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">badge_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">badge_text</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centroid_global&quot;</span><span class="p">]</span>
+            <span class="n">sym</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sym</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">sym</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sym</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sym</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="mf">20.0</span>
+            <span class="n">per_zone</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">),</span> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">turning</span><span class="p">,</span> <span class="n">_coh</span><span class="p">,</span> <span class="n">direction</span><span class="p">)</span> <span class="ow">in</span> <span class="n">per_zone</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">R</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">direction</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="n">length</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+                <span class="n">dx</span> <span class="o">=</span> <span class="n">length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+                <span class="n">dy</span> <span class="o">=</span> <span class="n">length</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+                <span class="n">arrow_x</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">cx</span><span class="p">,</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">dx</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+                <span class="n">arrow_y</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">cy</span><span class="p">,</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">dy</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">variant</span> <span class="o">==</span> <span class="s2">&quot;Radial&quot;</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">turning</span><span class="p">):</span>
+                    <span class="n">badge_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cx</span> <span class="o">+</span> <span class="n">dx</span><span class="p">)</span>
+                    <span class="n">badge_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cy</span> <span class="o">+</span> <span class="n">dy</span><span class="p">)</span>
+                    <span class="n">badge_text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">: R=</span><span class="si">{</span><span class="n">R</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, ∇φ=</span><span class="si">{</span><span class="n">turning</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">arrow_x</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">arrow_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">arrow_y</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;lines&quot;</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="s2">&quot;#D55E00&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mf">2.5</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Resultant orientation&quot;</span><span class="p">,</span>
+                <span class="n">legendgroup</span><span class="o">=</span><span class="s2">&quot;resultant&quot;</span><span class="p">,</span>
+                <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span>
+            <span class="p">))</span>
+        <span class="k">if</span> <span class="n">badge_x</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">badge_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">badge_y</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;text&quot;</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="n">badge_text</span><span class="p">,</span>
+                <span class="n">textfont</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">9</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;R / turning&quot;</span><span class="p">,</span>
+                <span class="n">legendgroup</span><span class="o">=</span><span class="s2">&quot;resultant&quot;</span><span class="p">,</span>
+                <span class="n">visible</span><span class="o">=</span><span class="s2">&quot;legendonly&quot;</span><span class="p">,</span>
+                <span class="n">hoverinfo</span><span class="o">=</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span>
+            <span class="p">))</span>
+
+<div class="viewcode-block" id="MeasureOrientationZones.dashboard">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones.dashboard">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dashboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Composed notebook diagnostic (returns a single ``go.Figure``).</span>
+
+<span class="sd">        Stacks three vertically-arranged panels: the :meth:`inspect` overview,</span>
+<span class="sd">        a recomputed coherence heatmap, and a per-zone concentration/turning</span>
+<span class="sd">        summary table. Calls :meth:`measure` first when the compact cache is</span>
+<span class="sd">        empty or was built for a different image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image: Detected Image to render. If *None*, the image cached by the</span>
+<span class="sd">                most recent :meth:`measure` call is reused.</span>
+<span class="sd">            show: When *True*, call ``fig.show()`` before returning (best-effort;</span>
+<span class="sd">                swallowed outside a display context). Defaults to *True*.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A single composed ``plotly.graph_objects.Figure`` stacking the three</span>
+<span class="sd">            panels vertically.</span>
+
+<span class="sd">        Examples:</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.data import load_synth_filamentous_plate</span>
+<span class="sd">            &gt;&gt;&gt; from phenotypic.measure import MeasureOrientationZones</span>
+<span class="sd">            &gt;&gt;&gt; op = MeasureOrientationZones()</span>
+<span class="sd">            &gt;&gt;&gt; fig = op.dashboard(load_synth_filamentous_plate(), show=False)</span>
+<span class="sd">            &gt;&gt;&gt; any(getattr(tr, &quot;type&quot;, None) == &quot;table&quot; for tr in fig.data)</span>
+<span class="sd">            True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_require_cache_image</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">image</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="n">_OrientationZonesReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">dash</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - display-context dependent</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_OrientationZonesReport</span><span class="p">(</span><span class="n">FigureProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transient control-free FigureProvider composing the orientation diagnostic.</span>
+
+<span class="sd">    Holds a reference to the owning :class:`MeasureOrientationZones`, the subject</span>
+<span class="sd">    image, and the operator&#39;s compact cache. Overrides :meth:`dash` (the</span>
+<span class="sd">    ``GridFitReport`` pattern) because the base composer builds a uniform ``xy``</span>
+<span class="sd">    subplot grid that cannot host the ``go.Table`` summary panel. Discard after</span>
+<span class="sd">    rendering.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">:</span> <span class="s2">&quot;MeasureOrientationZones&quot;</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op</span> <span class="o">=</span> <span class="n">op</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_image</span> <span class="o">=</span> <span class="n">image</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="n">cache</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Orientation-field overlay&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_overview</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel A: the saveable inspect() overview (legend layers flattened).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">,</span> <span class="n">for_save</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Coherence map&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_coherence</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel B: the coherence heatmap.</span>
+
+<span class="sd">        Recomputed on demand via ``_coherence_canvas`` (the lean cache holds no</span>
+<span class="sd">        full-resolution coherence) and discarded — costs compute, not memory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">canvas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_op</span><span class="o">.</span><span class="n">_coherence_canvas</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_image</span><span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Heatmap</span><span class="p">(</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;Viridis&quot;</span><span class="p">,</span> <span class="n">zmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">colorbar</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">),</span>
+        <span class="p">))</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="n">autorange</span><span class="o">=</span><span class="s2">&quot;reversed&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Per-zone concentration &amp; turning&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_panel_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Panel C: a ``go.Table`` of per-zone Concentration (R) and Turning.</span>
+
+<span class="sd">        One row per ``(Variant, Zone)``, aggregated across objects as</span>
+<span class="sd">        ``np.nanmean`` over the cached per-zone scalars. Requires the custom</span>
+<span class="sd">        :meth:`dash` override (the base composer cannot host a ``go.Table``).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+
+        <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">_ZONES</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+                    <span class="n">conc_vals</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)][</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                    <span class="p">]</span>
+                    <span class="n">turn_vals</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="n">rec</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][(</span><span class="n">variant</span><span class="p">,</span> <span class="n">zone</span><span class="p">)][</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                    <span class="p">]</span>
+                    <span class="n">conc</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span><span class="n">conc_vals</span><span class="p">)</span>
+                    <span class="n">turn</span> <span class="o">=</span> <span class="n">_safe_nanmean</span><span class="p">(</span><span class="n">turn_vals</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">conc</span> <span class="o">=</span> <span class="n">turn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">variant</span><span class="si">}</span><span class="s2"> · </span><span class="si">{</span><span class="n">zone</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">conc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">turn</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Variant · Zone&quot;</span><span class="p">,</span> <span class="s2">&quot;Concentration (R)&quot;</span><span class="p">,</span> <span class="s2">&quot;Turning (rad/px)&quot;</span><span class="p">]</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rows</span><span class="p">))</span> <span class="k">if</span> <span class="n">rows</span> <span class="k">else</span> <span class="p">[(),</span> <span class="p">(),</span> <span class="p">()]</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Table</span><span class="p">(</span>
+            <span class="n">header</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">values</span><span class="o">=</span><span class="n">header</span><span class="p">),</span>
+            <span class="n">cells</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">]),</span>
+        <span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">dash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compose the three panels into one stacked ``go.Figure``.</span>
+
+<span class="sd">        Mirrors :meth:`GridFitReport.dash`: render each ``@figure`` spec, detect</span>
+<span class="sd">        table vs xy panels, build ``make_subplots`` with matching per-row</span>
+<span class="sd">        ``specs``, transfer traces, carry the overview panel&#39;s shapes/annotations</span>
+<span class="sd">        (zone rings and R/turning badges are shapes/annotations the generic</span>
+<span class="sd">        trace-copy would drop), and apply the house theme.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subject: Unused (this helper holds its own state); accepted only to</span>
+<span class="sd">                match the :meth:`FigureProvider.dash` signature.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A single themed ``plotly.graph_objects.Figure``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">plotly.subplots</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_subplots</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.figures._theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_theme</span>
+
+        <span class="n">specs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">()</span>
+        <span class="n">rendered</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_render_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">]</span>
+        <span class="n">is_table</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">bool</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="ow">and</span> <span class="n">fig</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;table&quot;</span> <span class="k">for</span> <span class="n">fig</span> <span class="ow">in</span> <span class="n">rendered</span>
+        <span class="p">]</span>
+        <span class="n">row_specs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;table&quot;</span><span class="p">}]</span> <span class="k">if</span> <span class="n">tbl</span> <span class="k">else</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;xy&quot;</span><span class="p">}]</span>
+            <span class="k">for</span> <span class="n">tbl</span> <span class="ow">in</span> <span class="n">is_table</span>
+        <span class="p">]</span>
+        <span class="n">composed</span> <span class="o">=</span> <span class="n">make_subplots</span><span class="p">(</span>
+            <span class="n">rows</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">),</span>
+            <span class="n">cols</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">subplot_titles</span><span class="o">=</span><span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">title</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">],</span>
+            <span class="n">specs</span><span class="o">=</span><span class="n">row_specs</span><span class="p">,</span>
+            <span class="n">vertical_spacing</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># ``xy_row`` counts cartesian panels: a table cell creates no x/y axis,</span>
+        <span class="c1"># so the Nth xy panel owns axis number N (mirrors GridFitReport.dash).</span>
+        <span class="n">xy_row</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">tbl</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">rendered</span><span class="p">,</span> <span class="n">is_table</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="n">composed</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">trace</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tbl</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">xy_row</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># Carry the standalone panel&#39;s shapes (zone-ring circles) and</span>
+            <span class="c1"># annotations (R/turning badges, object labels) onto this subplot.</span>
+            <span class="k">for</span> <span class="n">shape</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">shapes</span><span class="p">:</span>
+                <span class="n">composed</span><span class="o">.</span><span class="n">add_shape</span><span class="p">(</span><span class="n">shape</span><span class="o">.</span><span class="n">to_plotly_json</span><span class="p">(),</span> <span class="n">row</span><span class="o">=</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">axis_suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">xy_row</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">xy_row</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">annotations</span><span class="p">:</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="n">ann</span><span class="o">.</span><span class="n">to_plotly_json</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">axis</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;xref&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;yref&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)):</span>
+                    <span class="n">ref</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">ref</span> <span class="o">==</span> <span class="s2">&quot;paper&quot;</span><span class="p">:</span>
+                        <span class="n">payload</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">axis</span><span class="si">}{</span><span class="n">axis_suffix</span><span class="si">}</span><span class="s2"> domain&quot;</span>
+                    <span class="k">elif</span> <span class="n">ref</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">axis</span><span class="p">):</span>
+                        <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot; domain&quot;</span> <span class="k">if</span> <span class="n">ref</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot; domain&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                        <span class="n">payload</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">axis</span><span class="si">}{</span><span class="n">axis_suffix</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">composed</span><span class="o">.</span><span class="n">add_annotation</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+        <span class="n">composed</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">420</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">),</span>
+            <span class="n">title_text</span><span class="o">=</span><span class="s2">&quot;Orientation-Field Diagnostics&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">apply_theme</span><span class="p">(</span><span class="n">composed</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_nanmean</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;``np.nanmean`` that returns NaN (not a warning) for an all-NaN input.&quot;&quot;&quot;</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">finite</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">arr</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">finite</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="k">if</span> <span class="n">finite</span><span class="o">.</span><span class="n">size</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

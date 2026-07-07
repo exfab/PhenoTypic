@@ -1,0 +1,81 @@
+phenotypic.measure.MeasureOrientationZones
+==========================================
+
+.. currentmodule:: phenotypic.measure
+
+.. autoclass:: MeasureOrientationZones
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MeasureOrientationZones.__init__
+      ~MeasureOrientationZones.construct
+      ~MeasureOrientationZones.copy
+      ~MeasureOrientationZones.dash
+      ~MeasureOrientationZones.dashboard
+      ~MeasureOrientationZones.dict
+      ~MeasureOrientationZones.figures
+      ~MeasureOrientationZones.from_json
+      ~MeasureOrientationZones.from_orm
+      ~MeasureOrientationZones.inspect
+      ~MeasureOrientationZones.iter_figures
+      ~MeasureOrientationZones.json
+      ~MeasureOrientationZones.measure
+      ~MeasureOrientationZones.model_construct
+      ~MeasureOrientationZones.model_copy
+      ~MeasureOrientationZones.model_dump
+      ~MeasureOrientationZones.model_dump_json
+      ~MeasureOrientationZones.model_json_schema
+      ~MeasureOrientationZones.model_parametrized_name
+      ~MeasureOrientationZones.model_post_init
+      ~MeasureOrientationZones.model_rebuild
+      ~MeasureOrientationZones.model_validate
+      ~MeasureOrientationZones.model_validate_json
+      ~MeasureOrientationZones.model_validate_strings
+      ~MeasureOrientationZones.parse_file
+      ~MeasureOrientationZones.parse_obj
+      ~MeasureOrientationZones.parse_raw
+      ~MeasureOrientationZones.schema
+      ~MeasureOrientationZones.schema_json
+      ~MeasureOrientationZones.to_json
+      ~MeasureOrientationZones.update_forward_refs
+      ~MeasureOrientationZones.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeasureOrientationZones.model_computed_fields
+      ~MeasureOrientationZones.model_config
+      ~MeasureOrientationZones.model_extra
+      ~MeasureOrientationZones.model_fields
+      ~MeasureOrientationZones.model_fields_set
+      ~MeasureOrientationZones.intensity_source
+      ~MeasureOrientationZones.sigma_d
+      ~MeasureOrientationZones.sigma_i
+      ~MeasureOrientationZones.quiver_block
+      ~MeasureOrientationZones.n_annuli
+      ~MeasureOrientationZones.pelt_penalty
+      ~MeasureOrientationZones.symmetry_threshold
+      ~MeasureOrientationZones.n_angular_bins
+      ~MeasureOrientationZones.smoothing_window
+      ~MeasureOrientationZones.method
+      ~MeasureOrientationZones.extent_margin
+      ~MeasureOrientationZones.min_samples_per_ring
+      ~MeasureOrientationZones.tau_core
+      ~MeasureOrientationZones.tau_dense
+      ~MeasureOrientationZones.tau_sparse
+   
+   
