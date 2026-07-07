@@ -9,15 +9,17 @@ concrete Phase-1 implementation of the ``StudyStore`` Protocol
 (``_study/_protocol.py``); ``StudyStore`` remains an exported back-compat alias
 for the concrete journal.
 """
+
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
+
+from phenotypic.sdk_ import atomic_write_parquet
 
 
 class Trial(BaseModel):
@@ -145,9 +147,16 @@ class JournalStudyStore:
     #: ``gap`` (nullable float) + ``suspicious`` (bool) are the 4.5p1 robust-eval
     #: signals, appended **last** so a legacy parquet without them still loads.
     _COLUMNS = [
-        "number", "score", "n_images", "failed", "pruned",
-        "params_json", "terms_json", "objectives_json",
-        "gap", "suspicious",
+        "number",
+        "score",
+        "n_images",
+        "failed",
+        "pruned",
+        "params_json",
+        "terms_json",
+        "objectives_json",
+        "gap",
+        "suspicious",
     ]
 
     def to_dataframe(self) -> pd.DataFrame:
@@ -187,18 +196,7 @@ class JournalStudyStore:
         lingers. The temp sibling shares ``path``'s directory so the rename stays
         on one filesystem (the atomicity precondition).
         """
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = path.with_suffix(path.suffix + ".tmp")
-        try:
-            self.to_dataframe().to_parquet(tmp_path, index=False)
-            os.replace(tmp_path, path)
-        except BaseException:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        atomic_write_parquet(path, self.to_dataframe())
 
     @classmethod
     def from_parquet(cls, path: Path) -> "JournalStudyStore":

@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import shutil
-import tempfile
 import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Final, List, Optional, TYPE_CHECKING
@@ -40,9 +39,11 @@ from phenotypic.sdk_ import (
     DIR_INSPECT,
     ANALYSIS_CSV,
     ANALYSIS_PARQUET,
+    PARQUET_WRITE_OPTIONS,
     EnvVar,
     analysis_csv_path,
     analysis_parquet_path,
+    atomic_write_with_writer,
     dataset_overlays_dir,
     master_measurements_csv_path,
     master_measurements_parquet_path,
@@ -57,40 +58,6 @@ from phenotypic.sdk_ import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _atomic_write(target: Path, write_func: Callable[[str], None]) -> None:
-    """Write to *target* atomically via a temp file and ``os.replace``.
-
-    Args:
-        target: Final destination path.
-        write_func: Callable that writes content to a given file path string.
-
-    Raises:
-        Any exception from *write_func* after cleaning up the temp file.
-    """
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path: Optional[str] = None
-    try:
-        fd = tempfile.NamedTemporaryFile(
-            dir=target.parent,
-            prefix=f".{target.stem}_",
-            suffix=".tmp",
-            delete=False,
-        )
-        tmp_path = fd.name
-        fd.close()
-        write_func(tmp_path)
-        with open(tmp_path, "r+b") as f:
-            os.fsync(f.fileno())
-        os.replace(tmp_path, target)
-    except BaseException:
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-        raise
 
 
 def join_metadata(df: "pl.DataFrame", metadata_csv: Path) -> "pl.DataFrame":
@@ -220,7 +187,9 @@ def _stage_to_scratch(parquet_files: List[Path]) -> Optional[Path]:
 
     job_id = os.environ.get(EnvVar.SLURM_JOB_ID, "")
     task_id = os.environ.get(EnvVar.SLURM_ARRAY_TASK_ID, "")
-    suffix = "_".join(part for part in (job_id, task_id, str(os.getpid())) if part)
+    suffix = "_".join(
+        part for part in (job_id, task_id, str(os.getpid())) if part
+    )
 
     staging_dir = scratch_path / f".phenotypic_stage_{suffix}"
     try:
@@ -252,7 +221,9 @@ def _remap_to_scratch(
     """
     remapped: Dict[Path, str] = {}
     for original_path, dataset_name in path_to_dataset.items():
-        remapped[scratch_dir / _scratch_dest_name(original_path)] = dataset_name
+        remapped[scratch_dir / _scratch_dest_name(original_path)] = (
+            dataset_name
+        )
     return remapped
 
 
@@ -394,7 +365,7 @@ def _persist_pipeline_to_output_dir(
         Path(p).write_text(pipeline.to_json() or "")
 
     try:
-        _atomic_write(target, _write)
+        atomic_write_with_writer(target, _write)
         return target
     except Exception:
         logger.warning(
@@ -469,17 +440,15 @@ def _emit_analysis_outputs(
         pq_path = analysis_parquet_path(output_dir)
 
     try:
-        _atomic_write(csv_path, fit_pl.write_csv)
+        atomic_write_with_writer(csv_path, fit_pl.write_csv)
     except Exception:
         logger.warning("Failed to write analysis.csv")
         return None
 
     try:
-        _atomic_write(
+        atomic_write_with_writer(
             pq_path,
-            lambda p: fit_pl.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: fit_pl.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
     except Exception:
         logger.warning(
@@ -522,7 +491,9 @@ def _apply_post_to_master(
     try:
         df_pd = master_df.to_pandas()
         for key, post_op in post_ops.items():
-            logger.debug("Running post-measurement transform on master: %s", key)
+            logger.debug(
+                "Running post-measurement transform on master: %s", key
+            )
             df_pd = post_op.apply(df_pd)
         return pl.from_pandas(df_pd)
     except Exception:
@@ -544,16 +515,16 @@ def _seed_measurements(output_dir: Path, master_df: "pl.DataFrame") -> None:
     — the master output is preserved as the authoritative source.
     """
     try:
-        _atomic_write(measurements_csv_path(output_dir), master_df.write_csv)
+        atomic_write_with_writer(
+            measurements_csv_path(output_dir), master_df.write_csv
+        )
     except Exception:
         logger.warning("Failed to seed measurements.csv (master was saved)")
 
     try:
-        _atomic_write(
+        atomic_write_with_writer(
             measurements_parquet_path(output_dir),
-            lambda p: master_df.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
     except Exception:
         logger.warning(
@@ -718,7 +689,9 @@ def finalize_post_master_outputs(
     # effects: a failure is logged and never raised (spec §8.3 / D6).
     if metadata_csv is not None:
         try:
-            shutil.copy(metadata_csv, metadata_csv_deliverable_path(output_dir))
+            shutil.copy(
+                metadata_csv, metadata_csv_deliverable_path(output_dir)
+            )
         except Exception:
             logger.warning(
                 "Failed to copy --metadata CSV to deliverables/metadata.csv "
@@ -796,7 +769,9 @@ def finalize_post_master_outputs(
     # CurationLabels loads, so headless == live). No-op without a durable
     # qc/curation_labels.parquet. (spec §9)
     try:
-        from phenotypic._cli._cli_error_outputs import reemit_error_deliverables
+        from phenotypic._cli._cli_error_outputs import (
+            reemit_error_deliverables,
+        )
 
         reemit_error_deliverables(output_dir, master_df)
     except Exception:  # defensive: a curation re-emit must never fail finalize
@@ -880,17 +855,21 @@ def split_master_by_feature(
         csv_path = split_dir / f"{key}.csv"
         pq_path = split_dir / f"{key}.parquet"
 
-        def _write_parquet(path: str, _subset: "pl.DataFrame" = subset) -> None:
-            _subset.write_parquet(path, compression="zstd", compression_level=3)
+        def _write_parquet(
+            path: str, _subset: "pl.DataFrame" = subset
+        ) -> None:
+            _subset.write_parquet(path, **PARQUET_WRITE_OPTIONS)
 
         try:
-            _atomic_write(csv_path, subset.write_csv)
+            atomic_write_with_writer(csv_path, subset.write_csv)
         except Exception:
-            logger.warning("Failed to write split CSV for %r", key, exc_info=True)
+            logger.warning(
+                "Failed to write split CSV for %r", key, exc_info=True
+            )
             continue
 
         try:
-            _atomic_write(pq_path, _write_parquet)
+            atomic_write_with_writer(pq_path, _write_parquet)
         except Exception:
             logger.warning(
                 "Failed to write split Parquet for %r (CSV was saved)",
@@ -1010,17 +989,15 @@ def aggregate_measurements(
     master_pq_path = master_measurements_parquet_path(output_dir)
 
     try:
-        _atomic_write(master_csv_path, master_df.write_csv)
+        atomic_write_with_writer(master_csv_path, master_df.write_csv)
     except Exception:
         logger.error("Failed to save master CSV")
         return None
 
     try:
-        _atomic_write(
+        atomic_write_with_writer(
             master_pq_path,
-            lambda p: master_df.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
     except Exception:
         logger.warning("Failed to save master Parquet (CSV was saved)")
@@ -1032,10 +1009,18 @@ def aggregate_measurements(
         master_csv_path.name,
     )
 
-    resolved_pipeline = pipeline if pipeline is not None else _load_pipeline_from_output_dir(output_dir)
+    resolved_pipeline = (
+        pipeline
+        if pipeline is not None
+        else _load_pipeline_from_output_dir(output_dir)
+    )
     finalize_post_master_outputs(
-        output_dir, master_df, resolved_pipeline,
-        metadata_csv=metadata_csv, no_qc=no_qc, study_config=study_config,
+        output_dir,
+        master_df,
+        resolved_pipeline,
+        metadata_csv=metadata_csv,
+        no_qc=no_qc,
+        study_config=study_config,
     )
 
     return master_csv_path
@@ -1178,10 +1163,7 @@ class OutputManager:
                 (dataset_dir / DIR_INSPECT).mkdir(exist_ok=True)
 
     def get_output_path(
-        self,
-        dataset_name: str,
-        layer: str,
-        image_stem: str
+        self, dataset_name: str, layer: str, image_stem: str
     ) -> Path:
         """
         Get the output path for a specific file.
@@ -1198,7 +1180,10 @@ class OutputManager:
         # Overlays are a user-facing deliverable, not a per-image result:
         # route them to <base>/deliverables/overlays/<ds>/<stem>.png.
         if layer == "overlays":
-            return dataset_overlays_dir(self.base_dir, dataset_name) / f"{image_stem}.png"
+            return (
+                dataset_overlays_dir(self.base_dir, dataset_name)
+                / f"{image_stem}.png"
+            )
 
         # Determine extension
         if layer == "measurements":
@@ -1214,10 +1199,7 @@ class OutputManager:
         return self.results_dir / dataset_name / layer / f"{image_stem}{ext}"
 
     def save_measurements(
-        self,
-        measurements: pd.DataFrame,
-        dataset_name: str,
-        image_stem: str
+        self, measurements: pd.DataFrame, dataset_name: str, image_stem: str
     ) -> Path:
         """
         Save measurements as a Parquet file for a single image.
@@ -1231,27 +1213,29 @@ class OutputManager:
             Path where measurements were saved
         """
         # Add dataset column if requested
-        if self.include_dataset_column and str(EXPERIMENT_METADATA.DATASET) not in measurements.columns:
+        if (
+            self.include_dataset_column
+            and str(EXPERIMENT_METADATA.DATASET) not in measurements.columns
+        ):
             measurements = measurements.copy()
-            measurements.insert(0, str(EXPERIMENT_METADATA.DATASET), dataset_name)
+            measurements.insert(
+                0, str(EXPERIMENT_METADATA.DATASET), dataset_name
+            )
 
-        output_path = self.get_output_path(dataset_name, "measurements", image_stem)
+        output_path = self.get_output_path(
+            dataset_name, "measurements", image_stem
+        )
         parquet_df = pl.from_pandas(measurements)
 
-        _atomic_write(
+        atomic_write_with_writer(
             output_path,
-            lambda p: parquet_df.write_parquet(
-                p, compression="zstd", compression_level=3
-            ),
+            lambda p: parquet_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
 
         return output_path
 
     def save_overlay(
-        self,
-        image: Image,
-        dataset_name: str,
-        image_stem: str
+        self, image: Image, dataset_name: str, image_stem: str
     ) -> Path:
         """
         Save overlay visualization for a single image.
@@ -1267,17 +1251,17 @@ class OutputManager:
         Returns:
             Path where overlay was saved
         """
-        output_path = self.get_output_path(dataset_name, "overlays", image_stem)
+        output_path = self.get_output_path(
+            dataset_name, "overlays", image_stem
+        )
 
         if not image.rgb.isempty():
             image.rgb.save_overlay(
-                filepath=output_path,
-                overlay_alpha=self.overlay_alpha
+                filepath=output_path, overlay_alpha=self.overlay_alpha
             )
         else:
             image.gray.save_overlay(
-                filepath=output_path,
-                overlay_alpha=self.overlay_alpha
+                filepath=output_path, overlay_alpha=self.overlay_alpha
             )
 
         return output_path
@@ -1321,14 +1305,20 @@ class OutputManager:
             call raised, returned an unsupported figure type, or the
             writer failed.
         """
-        inspect_dir = self.results_dir / dataset_name / DIR_INSPECT / measurer_key
+        inspect_dir = (
+            self.results_dir / dataset_name / DIR_INSPECT / measurer_key
+        )
         output_path = inspect_dir / f"{image_stem}.png"
         try:
             fig = measurer.inspect(image, for_save=True)
         except Exception as e:
             logger.warning(
                 "save_inspect: inspect() raised for %s/%s/%s: %s: %s",
-                dataset_name, image_stem, measurer_key, type(e).__name__, e,
+                dataset_name,
+                image_stem,
+                measurer_key,
+                type(e).__name__,
+                e,
             )
             return None
 
@@ -1337,23 +1327,31 @@ class OutputManager:
         except TypeError as e:
             logger.warning(
                 "save_inspect: unsupported figure type for %s/%s/%s: %s",
-                dataset_name, image_stem, measurer_key, e,
+                dataset_name,
+                image_stem,
+                measurer_key,
+                e,
             )
             return None
 
         try:
-            _atomic_write(output_path, writer)
+            atomic_write_with_writer(output_path, writer)
         except Exception as e:
             logger.warning(
                 "save_inspect: writer failed for %s/%s/%s: %s: %s",
-                dataset_name, image_stem, measurer_key, type(e).__name__, e,
+                dataset_name,
+                image_stem,
+                measurer_key,
+                type(e).__name__,
+                e,
             )
             return None
         return output_path
 
     @staticmethod
     def _build_inspect_writer(
-        fig: Any, image_stem: str,
+        fig: Any,
+        image_stem: str,
     ) -> Callable[[str], None]:
         """Return a writer callable that prepends ``image_stem`` to the
         figure title then writes a PNG at the given path.
@@ -1390,16 +1388,20 @@ class OutputManager:
             )
 
             def _write_mpl(path: str) -> None:
-                # ``_atomic_write`` uses a ``.tmp`` suffix, so force
+                # The atomic helper writes through a ``.tmp`` suffix, so force
                 # ``format="png"`` because matplotlib infers from the
                 # extension otherwise.
                 import matplotlib.pyplot as plt
+
                 fig.suptitle(
                     f"{image_stem} — {original_mpl_title}".rstrip(" —")
                 )
                 try:
                     fig.savefig(
-                        path, format="png", dpi=150, bbox_inches="tight",
+                        path,
+                        format="png",
+                        dpi=150,
+                        bbox_inches="tight",
                     )
                 finally:
                     fig.suptitle(original_mpl_title)
@@ -1417,8 +1419,8 @@ class OutputManager:
                 # Force ``format="png"`` for the same reason as the mpl
                 # branch: kaleido would otherwise infer from the ``.tmp``
                 # temp-file extension.
-                new_text = (
-                    f"{image_stem} — {original_plotly_title}".rstrip(" —")
+                new_text = f"{image_stem} — {original_plotly_title}".rstrip(
+                    " —"
                 )
                 fig.update_layout(title={"text": new_text})
                 try:
@@ -1478,8 +1480,8 @@ class OutputManager:
 
         Writes atomically: ``image.save2hdf5`` writes to a temp file in the
         same directory, then :func:`os.replace` promotes it to the final
-        path.  This mirrors :func:`_atomic_write`'s spirit, but h5py needs
-        to own the file handle so we cannot feed it a buffer.
+        path. This mirrors :func:`atomic_write_with_writer`'s spirit, but h5py
+        needs to own the file handle so we cannot feed it a buffer.
 
         Args:
             image: Image object with processing results.
@@ -1491,13 +1493,13 @@ class OutputManager:
         """
         final_path = self.get_output_path(dataset_name, "hdf", image_stem)
         final_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = final_path.with_name(f".{final_path.name}.{os.getpid()}.part")
+        tmp_path = final_path.with_name(
+            f".{final_path.name}.{os.getpid()}.part"
+        )
         try:
             image.save2hdf5(tmp_path)
             os.replace(tmp_path, final_path)
-            logger.info(
-                "Saved HDF5 for %s/%s", dataset_name, image_stem
-            )
+            logger.info("Saved HDF5 for %s/%s", dataset_name, image_stem)
             return final_path
         except Exception as e:
             if tmp_path.exists():

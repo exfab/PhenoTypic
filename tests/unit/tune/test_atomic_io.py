@@ -5,6 +5,7 @@
 succeeds, and an exception raised mid-serialize leaves any pre-existing file
 untouched and leaves no ``.tmp`` debris in the directory.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -42,7 +43,9 @@ def test_atomic_write_bytes_normal_write_succeeds(tmp_path):
     assert _no_tmp_debris(tmp_path)
 
 
-def test_atomic_write_text_failure_leaves_existing_file_intact(tmp_path, monkeypatch):
+def test_atomic_write_text_failure_leaves_existing_file_intact(
+    tmp_path, monkeypatch
+):
     target = tmp_path / "marker.json"
     target.write_text("ORIGINAL")
 
@@ -88,7 +91,9 @@ def test_atomic_write_text_failure_no_partial_file_when_target_absent(
 def _journal_with_one_trial() -> JournalStudyStore:
     store = JournalStudyStore()
     store.append(
-        Trial(number=0, params={"a": 1}, score=0.5, terms={"t": 0.5}, n_images=1)
+        Trial(
+            number=0, params={"a": 1}, score=0.5, terms={"t": 0.5}, n_images=1
+        )
     )
     return store
 
@@ -111,15 +116,17 @@ def test_to_parquet_failure_leaves_existing_file_intact(tmp_path, monkeypatch):
     # pre-existing single-trial parquet must survive untouched.
     bigger = _journal_with_one_trial()
     bigger.append(
-        Trial(number=1, params={"a": 2}, score=0.9, terms={"t": 0.9}, n_images=1)
+        Trial(
+            number=1, params={"a": 2}, score=0.9, terms={"t": 0.9}, n_images=1
+        )
     )
 
-    import phenotypic.tune._study_store as store_mod
+    import phenotypic.sdk_._atomic_io as atomic_io
 
     def _boom(src, dst):
         raise OSError("disk full")
 
-    monkeypatch.setattr(store_mod.os, "replace", _boom)
+    monkeypatch.setattr(atomic_io.os, "replace", _boom)
 
     with pytest.raises(OSError, match="disk full"):
         bigger.to_parquet(path)

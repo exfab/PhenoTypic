@@ -35,6 +35,7 @@ from phenotypic._core._pipeline_parts._serializable_pipeline import (
 )
 from phenotypic.sdk_ import (
     DIR_DELIVERABLES,
+    atomic_write_text,
     pipeline_json_path,
     resolve_pipeline_config_path,
 )
@@ -82,9 +83,7 @@ class RecipeState:
     #: standalone bundle (``root`` IS the deliverables folder) never
     #: double-joins ``deliverables/`` on a staleness refresh.
     layout: Optional["BundleLayout"] = None
-    _lock: threading.RLock = field(
-        default_factory=threading.RLock, repr=False
-    )
+    _lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     @classmethod
     def load(cls, output_dir: Path) -> "RecipeState":
@@ -246,8 +245,6 @@ class RecipeState:
             atomic rename failed. Failures other than staleness are
             logged at WARNING.
         """
-        from phenotypic._cli._cli_output_manager import _atomic_write
-
         with self._lock:
             if self.is_stale():
                 logger.warning(
@@ -260,11 +257,8 @@ class RecipeState:
 
             payload = self.pipeline.to_json() or ""
 
-            def _write(p: str) -> None:
-                Path(p).write_text(payload, encoding="utf-8")
-
             try:
-                _atomic_write(self.path, _write)
+                atomic_write_text(self.path, payload)
             except Exception:
                 logger.warning(
                     "Atomic write failed for %s", self.path, exc_info=True

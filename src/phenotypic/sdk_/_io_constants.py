@@ -66,6 +66,7 @@ See also
     Literal aliases for closed value sets used at public boundaries
     (``ExecutionMode``, ``ImageTypeName``, …).
 """
+
 from __future__ import annotations
 
 import json
@@ -280,7 +281,9 @@ _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE: Final[str] = (
 #: multi-objective sibling of :data:`PARAM_IMPORTANCE_JSON` — one RF-permutation
 #: importance report per objective axis. Rendered by :func:`pareto_importance_path`;
 #: kept private (a parameterized string is not an enumeration).
-_PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = "param_importance_{objective}.json"
+_PARETO_IMPORTANCE_FILENAME_TEMPLATE: Final[str] = (
+    "param_importance_{objective}.json"
+)
 
 # ---------------------------------------------------------------------------
 # QC artifact filenames (live inside DIR_QC)
@@ -560,7 +563,9 @@ def chunk_parquet_filename(chunk_id: int) -> str:
     return _CHUNK_PARQUET_FILENAME_TEMPLATE.format(chunk_id=chunk_id)
 
 
-_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE: Final[str] = "phenotypic_results_{timestamp}"
+_DEFAULT_OUTPUT_DIR_NAME_TEMPLATE: Final[str] = (
+    "phenotypic_results_{timestamp}"
+)
 _DEFAULT_OUTPUT_TIMESTAMP_FORMAT: Final[str] = "%Y%m%d_%H%M%S"
 
 
@@ -595,7 +600,9 @@ def checkpoint_lock_filename(checkpoint_type: CheckpointType) -> str:
     Returns:
         Filename relative to ``<progress>/`` (hidden file, leading ``.``).
     """
-    return _CHECKPOINT_LOCK_FILENAME_TEMPLATE.format(checkpoint_type=checkpoint_type)
+    return _CHECKPOINT_LOCK_FILENAME_TEMPLATE.format(
+        checkpoint_type=checkpoint_type
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -630,9 +637,9 @@ def deliverables_dir(output_dir: Path) -> Path:
 
     Pure path expression; callers are responsible for ``mkdir`` when they
     intend to write into it. Writers that go through
-    :func:`phenotypic._cli._cli_output_manager._atomic_write` get the
-    ``mkdir`` for free (it creates ``target.parent``); direct
-    ``write_text``/``write_bytes`` writers must ``mkdir`` explicitly.
+    :func:`phenotypic.sdk_.atomic_write_with_writer` get the ``mkdir`` for free
+    (it creates ``target.parent``); direct ``write_text``/``write_bytes``
+    writers must ``mkdir`` explicitly.
 
     Every artifact helper that previously rooted at ``<output>/`` (master /
     measurements / per-feature split / analysis / dashboard / report /
@@ -729,7 +736,11 @@ def migrate_legacy_machine_state(output_dir: Path) -> bool:
     legacy_progress = _legacy_progress_dir(output_dir)
     legacy_state = _legacy_processing_state_path(output_dir)
     legacy_events = output_dir / PROCESSING_EVENTS_LOG
-    if not (legacy_progress.exists() or legacy_state.exists() or legacy_events.exists()):
+    if not (
+        legacy_progress.exists()
+        or legacy_state.exists()
+        or legacy_events.exists()
+    ):
         return False
     cache.mkdir(parents=True, exist_ok=True)
     moved = False
@@ -1110,9 +1121,9 @@ def pareto_best_pipeline_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective best-pipeline path under :func:`pareto_dir`.
     """
-    return pareto_dir(output_dir) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(
-        objective=objective
-    )
+    return pareto_dir(
+        output_dir
+    ) / _PARETO_BEST_PIPELINE_FILENAME_TEMPLATE.format(objective=objective)
 
 
 def pareto_importance_path(output_dir: Path, objective: str) -> Path:
@@ -1130,9 +1141,9 @@ def pareto_importance_path(output_dir: Path, objective: str) -> Path:
     Returns:
         The per-objective importance-report path under :func:`pareto_dir`.
     """
-    return pareto_dir(output_dir) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(
-        objective=objective
-    )
+    return pareto_dir(
+        output_dir
+    ) / _PARETO_IMPORTANCE_FILENAME_TEMPLATE.format(objective=objective)
 
 
 def phenotypic_cache_pipeline_json_path(output_dir: Path) -> Path:
@@ -1209,7 +1220,9 @@ def recompile_status_dir(progress_dir_: Path) -> Path:
 
 def task_status_path(output_dir: Path, task_index: int) -> Path:
     """Return ``<progress>/recompile/status/task_<idx>.json``."""
-    return recompile_status_dir(progress_dir(output_dir)) / task_status_filename(task_index)
+    return recompile_status_dir(
+        progress_dir(output_dir)
+    ) / task_status_filename(task_index)
 
 
 def chunk_parquet_path(progress_dir_: Path, chunk_id: int) -> Path:
@@ -1217,7 +1230,9 @@ def chunk_parquet_path(progress_dir_: Path, chunk_id: int) -> Path:
     return chunks_dir(progress_dir_) / chunk_parquet_filename(chunk_id)
 
 
-def checkpoint_lock_path(progress_dir_: Path, checkpoint_type: CheckpointType) -> Path:
+def checkpoint_lock_path(
+    progress_dir_: Path, checkpoint_type: CheckpointType
+) -> Path:
     """Return ``<progress>/.{checkpoint_type}_lock``."""
     return progress_dir_ / checkpoint_lock_filename(checkpoint_type)
 
@@ -1409,7 +1424,9 @@ def read_run_manifest(output_dir: Path) -> Optional[dict]:
     try:
         return json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
-        logger.warning("Failed to parse %s; treating as missing", path, exc_info=True)
+        logger.warning(
+            "Failed to parse %s; treating as missing", path, exc_info=True
+        )
         return None
 
 
@@ -1652,7 +1669,10 @@ def load_image_from_hdf(
     """
     import h5py  # type: ignore[import-untyped]
 
-    from phenotypic import GridImage, Image  # lazy: avoids circular import at module load
+    from phenotypic import (
+        GridImage,
+        Image,
+    )  # lazy: avoids circular import at module load
     from phenotypic.sdk_.constants_ import IMAGE_TYPES
 
     with h5py.File(hdf_path, "r") as fh:
@@ -1717,11 +1737,16 @@ class BundleLayout:
         path = Path(path).resolve()
         if (path / MASTER_MEASUREMENTS_PARQUET).is_file():
             output_root: Optional[Path] = None
-            if path.name == DIR_DELIVERABLES and (path.parent / DIR_RESULTS).is_dir():
+            if (
+                path.name == DIR_DELIVERABLES
+                and (path.parent / DIR_RESULTS).is_dir()
+            ):
                 output_root = path.parent
             return cls(deliverables_base=path, output_root=output_root)
         if (path / DIR_DELIVERABLES / MASTER_MEASUREMENTS_PARQUET).is_file():
-            return cls(deliverables_base=path / DIR_DELIVERABLES, output_root=path)
+            return cls(
+                deliverables_base=path / DIR_DELIVERABLES, output_root=path
+            )
         raise FileNotFoundError(
             f"{path} is neither a deliverables bundle nor a run output directory "
             f"containing {DIR_DELIVERABLES}/{MASTER_MEASUREMENTS_PARQUET}. Point the "
@@ -1733,7 +1758,10 @@ class BundleLayout:
     @property
     def has_results(self) -> bool:
         """Return ``True`` when a ``results/`` directory exists under the output root."""
-        return self.output_root is not None and (self.output_root / DIR_RESULTS).is_dir()
+        return (
+            self.output_root is not None
+            and (self.output_root / DIR_RESULTS).is_dir()
+        )
 
     @property
     def results_dir(self) -> Optional[Path]:

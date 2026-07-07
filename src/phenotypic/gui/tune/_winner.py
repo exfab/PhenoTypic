@@ -16,10 +16,13 @@ Importing this module must never drag ``optuna`` into ``sys.modules``:
 ``build_pipeline`` lives in the optuna-free
 :mod:`phenotypic.tune._evaluation._builder`, and ``ImagePipeline`` is optuna-free.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from phenotypic.sdk_ import atomic_write_text
 
 if TYPE_CHECKING:  # pragma: no cover - type-only
     from phenotypic import ImagePipeline
@@ -81,7 +84,6 @@ def write_winner(
         >>> list(restored.get_ops().values())[0].sigma  # the override landed
         3.0
     """
-    from phenotypic._cli._cli_output_manager import _atomic_write
     from phenotypic.tune._evaluation._builder import build_pipeline
 
     # TODO(multi-obj): for a multi-objective (Pareto) run, "the winner" is
@@ -97,14 +99,11 @@ def write_winner(
 
     target = Path(root.best_pipeline_path)
 
-    def _write(tmp: str) -> None:
-        Path(tmp).write_text(payload, encoding="utf-8")
-
-    # Atomic write (shared CLI helper): temp file in the target's directory +
+    # Atomic write: temp file in the target's directory +
     # ``os.replace``, so a reader never sees a partial file and a crash mid-write
     # can't corrupt an existing winner. A read-only output dir (HPCC) raises
     # PermissionError, which the helper re-raises after cleaning up the temp file.
-    _atomic_write(target, _write)
+    atomic_write_text(target, payload)
     return target
 
 
