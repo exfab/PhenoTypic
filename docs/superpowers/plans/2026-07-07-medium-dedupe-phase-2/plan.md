@@ -292,13 +292,14 @@ git commit -m "refactor: centralize atomic parquet writes"
 
 **Files:**
 - Create: `src/phenotypic/sdk_/slurm/_script_rendering.py`
+- Modify: `src/phenotypic/sdk_/slurm/__init__.py`
 - Modify: `src/phenotypic/_cli/_cli_slurm_array_scripts.py`
 - Modify: `src/phenotypic/_cli/_cli_recompile_slurm_scripts.py`
 - Modify: `src/phenotypic/_cli/_cli_staged_slurm.py`
 - Modify: `src/phenotypic/_execution/_slurm.py`
 - Test: `tests/unit/sdk_/test_slurm_script_rendering.py`
 
-- [ ] **Step 1: Write failing script-rendering tests**
+- [x] **Step 1: Write failing script-rendering tests**
 
 Add tests for a `SlurmArrayScriptSpec` that renders:
 
@@ -323,15 +324,20 @@ TASK_INDICES=(
 
 The test must assert job body insertion, exit-code logging, executable chmod through a write helper, and optional signal/requeue directives.
 
-- [ ] **Step 2: Implement `SlurmArrayScriptSpec`**
+- [x] **Step 2: Implement `SlurmArrayScriptSpec`**
 
 The helper should accept job name, slurm args, log path, task indices, body, prelude, and optional signal/requeue settings. It should call existing `generate_slurm_directives` rather than replacing directive policy.
 
-- [ ] **Step 3: Migrate one call site at a time**
+Implementation note: because the helper lives in `phenotypic.sdk_.slurm`, it
+uses the underlying SDK directive policy,
+`phenotypic.sdk_.slurm.format_sbatch_directives`, instead of importing the CLI
+wrapper `generate_slurm_directives` back into the SDK.
+
+- [x] **Step 3: Migrate one call site at a time**
 
 Migrate recompile arrays first because they are the smallest. Then migrate forward image arrays, staged GPU arrays, and tune worker arrays.
 
-- [ ] **Step 4: Verify SLURM tests**
+- [x] **Step 4: Verify SLURM tests**
 
 Run:
 
@@ -339,10 +345,17 @@ Run:
 uv run pytest tests/unit/cli/test_cli_slurm_array.py tests/unit/cli/test_cli_recompile_slurm.py tests/unit/cli/test_staged_slurm_scripts.py tests/unit/tune/test_slurm_executor.py tests/unit/sdk_/test_slurm_dispatcher.py tests/unit/sdk_/test_slurm_script_rendering.py -q
 ```
 
-- [ ] **Step 5: Commit Task 2**
+Verified on 2026-07-07:
 
 ```bash
-git add src/phenotypic/sdk_/slurm/_script_rendering.py src/phenotypic/_cli/_cli_slurm_array_scripts.py src/phenotypic/_cli/_cli_recompile_slurm_scripts.py src/phenotypic/_cli/_cli_staged_slurm.py src/phenotypic/_execution/_slurm.py tests/unit/sdk_/test_slurm_script_rendering.py
+uv run pytest tests/unit/cli/test_cli_slurm_array.py tests/unit/cli/test_cli_recompile_slurm.py tests/unit/cli/test_staged_slurm_scripts.py tests/unit/tune/test_slurm_executor.py tests/unit/sdk_/test_slurm_dispatcher.py tests/unit/sdk_/test_slurm_script_rendering.py -q
+# 84 passed, 1 warning
+```
+
+- [x] **Step 5: Commit Task 2**
+
+```bash
+git add docs/superpowers/plans/2026-07-07-medium-dedupe-phase-2/plan.md src/phenotypic/sdk_/slurm/_script_rendering.py src/phenotypic/sdk_/slurm/__init__.py src/phenotypic/_cli/_cli_slurm_array_scripts.py src/phenotypic/_cli/_cli_recompile_slurm_scripts.py src/phenotypic/_cli/_cli_staged_slurm.py src/phenotypic/_execution/_slurm.py tests/unit/sdk_/test_slurm_script_rendering.py
 git commit -m "refactor: share slurm array script rendering"
 ```
 

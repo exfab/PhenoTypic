@@ -17,8 +17,10 @@ from ._dispatcher import (
     generate_dispatcher_script,
     submit_drip_feed_start,
 )
+from ._script_rendering import SlurmArrayScriptSpec, write_slurm_array_script
 
 __all__ = [
+    "SlurmArrayScriptSpec",
     "calculate_optimal_array_chunks",
     "estimate_concurrent_capacity",
     "format_sbatch_directives",
@@ -30,4 +32,5 @@ __all__ = [
     "submit_drip_feed_start",
     "submit_script",
     "validate_array_chunk",
+    "write_slurm_array_script",
 ]
