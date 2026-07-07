@@ -996,7 +996,7 @@
 <span class="c1">#: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.</span>
 <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements_by_feature&quot;</span>
 
-<span class="c1">#: SLURM stdout/stderr / sbatch-script subdirectory.</span>
+<span class="c1">#: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.</span>
 <span class="n">DIR_LOGS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;logs&quot;</span>
 
 <span class="c1">#: HDF5 image-state subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/hdf/``.</span>
@@ -1024,7 +1024,7 @@
 <span class="c1">#: ``&lt;progress&gt;/recompile/measurement_shards/``.</span>
 <span class="n">DIR_RECOMPILE_SHARDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurement_shards&quot;</span>
 
-<span class="c1">#: Generated SLURM script subdirectory: ``&lt;output&gt;/slurm_scripts/``.</span>
+<span class="c1">#: Generated SLURM script subdirectory inside the hidden machine-state cache.</span>
 <span class="n">DIR_SLURM_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_scripts&quot;</span>
 
 <span class="c1">#: QC artifact subdirectory: ``&lt;output&gt;/deliverables/qc/``. Holds</span>
@@ -1439,9 +1439,10 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove **all** of a run&#39;s machine-state for a clean ``--restart``.</span>
 
 <span class="sd">    Deletes the ``.phenotypic/`` cache (``progress/``, ``processing_state.json``,</span>
-<span class="sd">    ``processing_events.log``) and any pre-migration root-level machine-state,</span>
-<span class="sd">    while leaving user-facing output artifacts (``deliverables/``, ``results/``,</span>
-<span class="sd">    ``qc/``, ``logs/``, …) untouched. This is the difference between ``--restart``</span>
+<span class="sd">    ``processing_events.log``, logs, and generated SLURM scripts) and any</span>
+<span class="sd">    pre-migration root-level machine-state, while leaving user-facing output</span>
+<span class="sd">    artifacts (``deliverables/``, ``results/``, ``qc/``, …) untouched. This is</span>
+<span class="sd">    the difference between ``--restart``</span>
 <span class="sd">    (re-run the orchestration against clean state, keep outputs) and</span>
 <span class="sd">    ``--overwrite`` (delete the whole output dir). Clearing the event log here is</span>
 <span class="sd">    what stops a restart from appending to — and rebuilding its manifest/failure</span>
@@ -1879,7 +1880,7 @@
 <div class="viewcode-block" id="phenotypic_cache_pipeline_json_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.phenotypic_cache_pipeline_json_path.html#phenotypic.sdk_.phenotypic_cache_pipeline_json_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">phenotypic_cache_pipeline_json_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/pipeline.json`` — the process-only run&#39;s</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/pipeline.json.pht-pipe`` — the process-only run&#39;s</span>
 <span class="sd">    reproducibility copy. Distinct from :func:`pipeline_json_path`, which roots</span>
 <span class="sd">    under ``deliverables/`` (process-only writes no deliverables).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">PIPELINE_JSON</span></div>
@@ -1961,8 +1962,8 @@
 <div class="viewcode-block" id="logs_dir">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.logs_dir.html#phenotypic.sdk_.logs_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">logs_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/logs/`` (SLURM stdout/stderr + sbatch scripts).&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_LOGS</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/logs/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_LOGS</span></div>
 
 
 
@@ -2126,8 +2127,8 @@
 <div class="viewcode-block" id="slurm_scripts_dir">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.slurm_scripts_dir.html#phenotypic.sdk_.slurm_scripts_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">slurm_scripts_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/slurm_scripts/``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_SLURM_SCRIPTS</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/slurm_scripts/``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_SLURM_SCRIPTS</span></div>
 
 
 

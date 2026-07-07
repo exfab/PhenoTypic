@@ -1317,7 +1317,7 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <td><p>Read <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/master_measurements.csv</span></code> into a polars DataFrame.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.logs_dir.html#phenotypic.sdk_.logs_dir" title="phenotypic.sdk_.logs_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">logs_dir</span></code></a></p></td>
-<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/logs/</span></code> (SLURM stdout/stderr + sbatch scripts).</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/logs/</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.manifest_json_path.html#phenotypic.sdk_.manifest_json_path" title="phenotypic.sdk_.manifest_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">manifest_json_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/progress/manifest.json</span></code> (dashboard manifest).</p></td>
@@ -1374,7 +1374,7 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/</span></code> — the hidden machine-state root.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.phenotypic_cache_pipeline_json_path.html#phenotypic.sdk_.phenotypic_cache_pipeline_json_path" title="phenotypic.sdk_.phenotypic_cache_pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phenotypic_cache_pipeline_json_path</span></code></a></p></td>
-<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/pipeline.json</span></code> — the process-only run's reproducibility copy.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/pipeline.json.pht-pipe</span></code> — the process-only run's reproducibility copy.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.pipeline_json_path.html#phenotypic.sdk_.pipeline_json_path" title="phenotypic.sdk_.pipeline_json_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pipeline_json_path</span></code></a></p></td>
 <td><p>Return the canonical typed pipeline config path under <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>.</p></td>
@@ -1455,7 +1455,7 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 <td><p>Filename of a per-shard Parquet inside the recompile worker.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.slurm_scripts_dir.html#phenotypic.sdk_.slurm_scripts_dir" title="phenotypic.sdk_.slurm_scripts_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">slurm_scripts_dir</span></code></a></p></td>
-<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/slurm_scripts/</span></code>.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/slurm_scripts/</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.task_status_filename.html#phenotypic.sdk_.task_status_filename" title="phenotypic.sdk_.task_status_filename"><code class="xref py py-obj docutils literal notranslate"><span class="pre">task_status_filename</span></code></a></p></td>
 <td><p>Filename of a per-task SLURM-recompile status JSON.</p></td>
@@ -3540,9 +3540,10 @@ alias at type-check time.</p>
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">clear_machine_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#clear_machine_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Remove <strong>all</strong> of a run’s machine-state for a clean <code class="docutils literal notranslate"><span class="pre">--restart</span></code>.</p>
 <p>Deletes the <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> cache (<code class="docutils literal notranslate"><span class="pre">progress/</span></code>, <code class="docutils literal notranslate"><span class="pre">processing_state.json</span></code>,
-<code class="docutils literal notranslate"><span class="pre">processing_events.log</span></code>) and any pre-migration root-level machine-state,
-while leaving user-facing output artifacts (<code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>, <code class="docutils literal notranslate"><span class="pre">results/</span></code>,
-<code class="docutils literal notranslate"><span class="pre">qc/</span></code>, <code class="docutils literal notranslate"><span class="pre">logs/</span></code>, …) untouched. This is the difference between <code class="docutils literal notranslate"><span class="pre">--restart</span></code>
+<code class="docutils literal notranslate"><span class="pre">processing_events.log</span></code>, logs, and generated SLURM scripts) and any
+pre-migration root-level machine-state, while leaving user-facing output
+artifacts (<code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>, <code class="docutils literal notranslate"><span class="pre">results/</span></code>, <code class="docutils literal notranslate"><span class="pre">qc/</span></code>, …) untouched. This is
+the difference between <code class="docutils literal notranslate"><span class="pre">--restart</span></code>
 (re-run the orchestration against clean state, keep outputs) and
 <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> (delete the whole output dir). Clearing the event log here is
 what stops a restart from appending to — and rebuilding its manifest/failure
@@ -3980,7 +3981,7 @@ string is that the dispatch falls through to <code class="xref py py-class docut
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">logs_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#logs_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/logs/</span></code> (SLURM stdout/stderr + sbatch scripts).</p>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/logs/</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>
@@ -4343,7 +4344,7 @@ name as it appears in <code class="docutils literal notranslate"><span class="pr
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">phenotypic_cache_pipeline_json_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#phenotypic_cache_pipeline_json_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/pipeline.json</span></code> — the process-only run’s
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/pipeline.json.pht-pipe</span></code> — the process-only run’s
 reproducibility copy. Distinct from <a class="reference internal" href="phenotypic.sdk_.pipeline_json_path.html#phenotypic.sdk_.pipeline_json_path" title="phenotypic.sdk_.pipeline_json_path"><code class="xref py py-func docutils literal notranslate"><span class="pre">pipeline_json_path()</span></code></a>, which roots
 under <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code> (process-only writes no deliverables).</p>
 <dl class="field-list simple">
@@ -4779,7 +4780,7 @@ location when neither exists (so a cold sampler restart from a missing
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">slurm_scripts_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#slurm_scripts_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
-<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/slurm_scripts/</span></code>.</p>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/slurm_scripts/</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>)</p>

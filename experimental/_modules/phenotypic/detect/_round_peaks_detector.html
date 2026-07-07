@@ -612,8 +612,11 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridInferenceMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">filters</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">skimage.morphology</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">morphology</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._grid_peak_common</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_round_odd</span> <span class="k">as</span> <span class="n">_grid_peak_round_odd</span><span class="p">,</span>
+    <span class="n">grid_peak_threshold_mask</span><span class="p">,</span>
+<span class="p">)</span>
 
 
 <div class="viewcode-block" id="RoundPeaksDetector">
@@ -732,8 +735,7 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_round_odd</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Round to nearest odd integer (minimum 3).&quot;&quot;&quot;</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">n</span> <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">_grid_peak_round_odd</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -873,45 +875,15 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If an invalid thresholding method is specified.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Adaptive kernel sizing: use grid spacing when available, fallback otherwise</span>
-        <span class="k">if</span> <span class="n">nrows</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">bg_h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">nrows</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">))</span>
-            <span class="n">bg_w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="nb">round</span><span class="p">((</span><span class="n">matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">ncols</span> <span class="ow">or</span> <span class="n">nrows</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">))</span>
-            <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">bg_h</span><span class="p">,</span> <span class="n">bg_w</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_width</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
-            <span class="n">kernel</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">footprint_rectangle</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
-
-        <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># Work on a copy to avoid modifying input</span>
-
-        <span class="c1"># Isolate bright foreground colonies via white tophat (image - opening)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span><span class="p">:</span>
-            <span class="n">enh_matrix</span> <span class="o">=</span> <span class="n">morphology</span><span class="o">.</span><span class="n">white_tophat</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
-
-        <span class="c1"># Apply selected thresholding method</span>
-        <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span><span class="p">:</span>
-            <span class="k">case</span> <span class="s2">&quot;otsu&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_mean</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;local&quot;</span><span class="p">:</span>
-                <span class="n">block_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_width</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span>
-                <span class="p">)</span>  <span class="c1"># Ensure odd block size</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_local</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;triangle&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_triangle</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;minimum&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_minimum</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;isodata&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_isodata</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span> <span class="s2">&quot;li&quot;</span><span class="p">:</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_li</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-                <span class="c1"># Default to Otsu if method not recognized</span>
-                <span class="n">thresh</span> <span class="o">=</span> <span class="n">filters</span><span class="o">.</span><span class="n">threshold_otsu</span><span class="p">(</span><span class="n">enh_matrix</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">enh_matrix</span> <span class="o">&gt;=</span> <span class="n">thresh</span></div>
+        <span class="k">return</span> <span class="n">grid_peak_threshold_mask</span><span class="p">(</span>
+            <span class="n">matrix</span><span class="p">,</span>
+            <span class="n">thresh_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thresh_method</span><span class="p">,</span>
+            <span class="n">subtract_background</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subtract_background</span><span class="p">,</span>
+            <span class="n">footprint_width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">footprint_width</span><span class="p">,</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="n">nrows</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="n">ncols</span><span class="p">,</span>
+            <span class="n">round_odd</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_round_odd</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 </pre></div>
 

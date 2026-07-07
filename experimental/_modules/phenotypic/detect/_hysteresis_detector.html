@@ -604,18 +604,10 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">apply_hysteresis_threshold</span><span class="p">,</span>
-    <span class="n">threshold_otsu</span><span class="p">,</span>
-    <span class="n">threshold_isodata</span><span class="p">,</span>
-    <span class="n">threshold_li</span><span class="p">,</span>
-    <span class="n">threshold_mean</span><span class="p">,</span>
-    <span class="n">threshold_minimum</span><span class="p">,</span>
-    <span class="n">threshold_triangle</span><span class="p">,</span>
-    <span class="n">threshold_yen</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_hysteresis_threshold</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_border</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._thresholding_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdingRegistry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThresholdDetector</span>
 
 
@@ -789,41 +781,12 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            ValueError: If threshold_spec is a string but not a valid method name.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">threshold_spec</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
-            <span class="c1"># Manual threshold value</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold_spec</span><span class="p">)</span>
-
-        <span class="c1"># Map method names to scikit-image functions</span>
-        <span class="n">method_map</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;otsu&quot;</span><span class="p">:</span> <span class="n">threshold_otsu</span><span class="p">,</span>
-            <span class="s2">&quot;isodata&quot;</span><span class="p">:</span> <span class="n">threshold_isodata</span><span class="p">,</span>
-            <span class="s2">&quot;li&quot;</span><span class="p">:</span> <span class="n">threshold_li</span><span class="p">,</span>
-            <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="n">threshold_mean</span><span class="p">,</span>
-            <span class="s2">&quot;minimum&quot;</span><span class="p">:</span> <span class="n">threshold_minimum</span><span class="p">,</span>
-            <span class="s2">&quot;triangle&quot;</span><span class="p">:</span> <span class="n">threshold_triangle</span><span class="p">,</span>
-            <span class="s2">&quot;yen&quot;</span><span class="p">:</span> <span class="n">threshold_yen</span><span class="p">,</span>
-        <span class="p">}</span>
-
-        <span class="c1"># Methods that accept nbins parameter</span>
-        <span class="c1"># Note: li does NOT accept nbins despite being histogram-based</span>
-        <span class="n">methods_with_nbins</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;otsu&quot;</span><span class="p">,</span> <span class="s2">&quot;isodata&quot;</span><span class="p">,</span> <span class="s2">&quot;triangle&quot;</span><span class="p">,</span> <span class="s2">&quot;yen&quot;</span><span class="p">}</span>
-
-        <span class="n">method_name</span> <span class="o">=</span> <span class="n">threshold_spec</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">method_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">method_map</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Unknown threshold method &#39;</span><span class="si">{</span><span class="n">threshold_spec</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Valid methods: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">method_map</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
-
-        <span class="n">threshold_func</span> <span class="o">=</span> <span class="n">method_map</span><span class="p">[</span><span class="n">method_name</span><span class="p">]</span>
-
-        <span class="c1"># Compute threshold with or without nbins depending on method</span>
-        <span class="k">if</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">methods_with_nbins</span><span class="p">:</span>
-            <span class="n">nbins</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="nb">int</span><span class="p">(</span><span class="n">bit_depth</span><span class="p">)</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold_func</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="n">nbins</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Methods like &#39;mean&#39; and &#39;minimum&#39; don&#39;t accept nbins</span>
-            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold_func</span><span class="p">(</span><span class="n">data</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="n">ThresholdingRegistry</span><span class="o">.</span><span class="n">threshold_value</span><span class="p">(</span>
+            <span class="n">threshold_spec</span><span class="p">,</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="n">bit_depth</span><span class="o">=</span><span class="n">bit_depth</span><span class="p">,</span>
+            <span class="n">allowed_methods</span><span class="o">=</span><span class="n">ThresholdingRegistry</span><span class="o">.</span><span class="n">SCALAR_METHODS</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 
