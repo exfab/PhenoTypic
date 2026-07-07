@@ -144,6 +144,63 @@ _DISPATCH_KINDS: List[Dict[str, Any]] = [
         ),
     },
     # ----------------------------------------------------------------
+    # Legacy aux-port mutation kinds. These branches remain in
+    # _dispatch_state_update for compatibility with old inspector aux-wire
+    # payloads. The current fixed linear map does not emit them from
+    # STORE_EDGE_EVENT.
+    # ----------------------------------------------------------------
+    {
+        "kind": "wire_create",
+        "group": "Legacy aux-port mutation",
+        "payload": (
+            "``{target_node_id: str, param: str, slot: int, "
+            "class_name: str}``"
+        ),
+        "notes": (
+            "Embed a fresh aux ``StepNode`` under "
+            "``consumer.aux_ports[param][slot]``. The dispatcher "
+            "validates the target node, registry class, and operation-type "
+            "compatibility before writing, then sets ``inspector_focus_aux`` "
+            "to the filled slot. Retained for legacy inspector aux-wire "
+            "payloads; the fixed linear map routes side-value creation "
+            "through ``linear_palette_add``."
+        ),
+    },
+    {
+        "kind": "wire_delete",
+        "group": "Legacy aux-port mutation",
+        "payload": "``{target_node_id: str, param: str, slot: int}``",
+        "notes": (
+            "Clear one legacy aux slot by setting "
+            "``consumer.aux_ports[param][slot] = None``. If "
+            "``inspector_focus_aux`` points at the same slot, it is cleared "
+            "too."
+        ),
+    },
+    {
+        "kind": "drill_in_aux",
+        "group": "Legacy aux-port mutation",
+        "payload": "``{target_node_id: str, param: str, slot: int}``",
+        "notes": (
+            "Push an aux-slot breadcrumb segment for an occupied legacy aux "
+            "slot and clear ``inspector_focus_aux``. Empty slots and missing "
+            "target nodes are no-ops."
+        ),
+    },
+    {
+        "kind": "set_inspector_focus",
+        "group": "Legacy aux-port mutation",
+        "payload": (
+            "``{focus: \"aux\" | \"consumer\", target_node_id: str, "
+            "param: str, slot: int}``"
+        ),
+        "notes": (
+            "Set ``inspector_focus_aux`` to an occupied legacy aux slot when "
+            "``focus == \"aux\"``; any other focus clears it. Missing nodes "
+            "or empty slots are rejected without mutation."
+        ),
+    },
+    # ----------------------------------------------------------------
     # DAG palette drag-and-drop.
     # ----------------------------------------------------------------
     {
@@ -341,6 +398,121 @@ _DISPATCH_KINDS: List[Dict[str, Any]] = [
             "target is the block. Clears ``selected_block_id`` / "
             "``selected_edge_id`` / ``pending_delete_block_id`` when "
             "they pointed at the deleted block or one of its edges."
+        ),
+    },
+    # ----------------------------------------------------------------
+    # Fixed linear port-map dispatchers.
+    # ----------------------------------------------------------------
+    {
+        "kind": "target_select",
+        "group": "Fixed linear port map",
+        "payload": (
+            "``{target: LinearTarget, open_menu: bool}`` or a serialized "
+            "``LinearTarget`` payload directly"
+        ),
+        "notes": (
+            "Persist the selected insertion/fill target for the current "
+            "linear scope and optionally open the port menu. The fan-in "
+            "callback emits this from linear port clicks and parameter "
+            "replace actions."
+        ),
+    },
+    {
+        "kind": "target_menu_close",
+        "group": "Fixed linear port map",
+        "payload": "``{}``",
+        "notes": "Close the fixed linear target menu without changing selection.",
+    },
+    {
+        "kind": "linear_palette_add",
+        "group": "Fixed linear port map",
+        "payload": "``{class_name: str}``",
+        "notes": (
+            "Add ``class_name`` at the selected fixed-linear target. "
+            "Continuation/image-output/image-input targets insert on the "
+            "image spine; parameter targets fill scalar or list aux ports. "
+            "``InputImage`` is rejected because each scope owns exactly one "
+            "auto-seeded input. Unsupported linear shapes pause the edit and "
+            "queue a warning toast."
+        ),
+    },
+    {
+        "kind": "linear_delete_node_request",
+        "group": "Fixed linear port map",
+        "payload": "``{block_id: str}``",
+        "notes": (
+            "Stage deletion by setting a linear pending-delete token for "
+            "any string ``block_id``. Unsupported shapes are no-ops here; "
+            "existence and spine validation happen in "
+            "``linear_delete_node_confirm``."
+        ),
+    },
+    {
+        "kind": "linear_delete_node_confirm",
+        "group": "Fixed linear port map",
+        "payload": "``{block_id: str}``",
+        "notes": (
+            "Delete a fixed-linear spine block, reconnecting the image spine "
+            "and removing side values owned by that block. This branch "
+            "performs the existence and spine validation; missing or "
+            "non-spine ids leave the graph unchanged. Clears the pending "
+            "delete token afterward."
+        ),
+    },
+    {
+        "kind": "linear_node_move",
+        "group": "Fixed linear port map",
+        "payload": "``{block_id: str, direction: \"left\" | \"right\"}``",
+        "notes": (
+            "Move a fixed-linear spine block one position left or right. "
+            "Unsupported shapes, invalid block ids, and invalid directions "
+            "are no-ops."
+        ),
+    },
+    {
+        "kind": "linear_clear_param",
+        "group": "Fixed linear port map",
+        "payload": "``{target: LinearTarget}``",
+        "notes": (
+            "Clear one scalar side value or one list-slot side value at a "
+            "fixed-linear parameter target. If clearing would remove an "
+            "embedded ``ImagePipeline`` source, the dispatcher stages a "
+            "confirmation token instead of deleting immediately."
+        ),
+    },
+    {
+        "kind": "linear_clear_param_confirm",
+        "group": "Fixed linear port map",
+        "payload": "``{target: LinearTarget}``",
+        "notes": (
+            "Confirm a previously staged fixed-linear parameter clear, remove "
+            "the side-value edge(s), reset the scope target to continuation, "
+            "and clear the pending-delete token."
+        ),
+    },
+    {
+        "kind": "linear_drill_param_pipeline",
+        "group": "Fixed linear port map",
+        "payload": (
+            "``{target: LinearTarget, source_block_id: str | None}``"
+        ),
+        "notes": (
+            "Drill into an aux ``ImagePipeline`` source selected from a "
+            "fixed-linear parameter target. When ``source_block_id`` is "
+            "omitted, the dispatcher resolves the source from the target's "
+            "current aux edge."
+        ),
+    },
+    {
+        "kind": "linear_select_aux_value",
+        "group": "Fixed linear port map",
+        "payload": "``{source_block_id: str}``",
+        "notes": (
+            "Select an existing aux source block in the current fixed-linear "
+            "scope and clear edge selection. Missing source ids are no-ops. "
+            "This retained dispatcher branch is not emitted by the current "
+            "fixed-linear UI, whose side-value controls route through "
+            "replace, clear, and drill actions."
         ),
     },
 ]
