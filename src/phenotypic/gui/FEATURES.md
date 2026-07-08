@@ -28,6 +28,12 @@ See ``GUI_SPEC_V1.md`` for the canonical design.
 |-----------------------|--------------------------------|------------------------------------------------------------------------------------------------------------|------------|------------|-----------------------------------------------------------------------------------------|
 | GUI availability flag | `phenotypic.gui.GUI_AVAILABLE` | True when the Dash GUI stack (`dash`) is importable; no longer tied to the removed Panel/param dependencies | ✅ shipping | unit       | tests/unit/gui/test_optional_deps.py::TestOptionalDependencies::test_gui_available_flag |
 
+## Internal persistence helpers
+
+| Feature                         | Element                                      | Expected behaviour                                                                                                                            | Status      | Test layer  | Test ref                                                                  |
+|---------------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-------------|-------------|---------------------------------------------------------------------------|
+| Shared GUI atomic text writes   | `RecipeState.save` + `write_winner`          | GUI-authored pipeline recipes and tune winner pipelines use the shared SDK same-directory atomic text writer instead of importing CLI internals | 🧪 internal | integration | tests/integration/gui/test_tune_winner.py::test_write_winner_overwrites_atomically |
+
 ## Top bar (shell chrome)
 
 | Feature           | Element                                           | Expected behaviour                                                                                                                    | Status     | Test layer  | Test ref                                                                        |
