@@ -10,6 +10,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    TypeAlias,
 )
 
 import numpy as np
@@ -26,6 +27,19 @@ if TYPE_CHECKING:
 FootprintShape = Literal["disk", "square", "diamond"]
 
 DetectMode = Literal["gray", "red", "green", "blue", "MinRGB", "LabL", "LabA", "LabB", "HsvS", "HsvV", "InvS"]
+
+#: Source layer an ``InputLayerMixin`` operation reads from. ``"detect_mat"``
+#: is the 2-D detection matrix; ``"rgb"`` is the pristine 3-D colour layer,
+#: collapsed back to 2-D via the image's own ``detect_mode``. Literal-only —
+#: no Enum partner, mirroring ``DetectMode`` / ``ExecutionMode``.
+InputLayer: TypeAlias = Literal["detect_mat", "rgb"]
+
+#: Output-range policy for operations that guard ``detect_mat``'s [0, 1]
+#: contract. ``"clip"`` saturates, ``"rescale"`` normalizes the full
+#: histogram, ``None`` passes values through untouched (the escape hatch
+#: GAT regions and ``CompositeEnhance`` depend on). Replaces the former
+#: ``clip: bool`` field as of 0.18.0.
+NormOut: TypeAlias = Optional[Literal["clip", "rescale"]]
 
 #: Image layer a process-mode CLI run exports. A closed
 #: subset of the layers exposed as Image accessors; ``rgb``/``gray``/
