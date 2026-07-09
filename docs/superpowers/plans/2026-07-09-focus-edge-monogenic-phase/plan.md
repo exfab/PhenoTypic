@@ -2416,7 +2416,34 @@ The plan and the spec go in because F's charge is to find *shortcuts and unstate
 > to copy verbatim. Rewrite that single phrase to "does not import the host package" and leave every
 > other byte alone. Measured: exactly **1** hit, in prose, in a docstring. No code changes.
 
-**Location:** the session scratchpad, at `<scratchpad>/math-review/`. Deliberately **not** in the repo:
+> **The corpus is durable and additive. Do not rebuild it.**
+>
+> Its permanent home is `~/.claude/refs/phenotypic-alt-phase-detection/math-review/`, beside the
+> reference corpus and for the same reason: the session scratchpad lives under `/private/tmp`, which
+> is reaped, and that is exactly how two paper texts went missing once already. A working copy may
+> live in the scratchpad while a reviewer is using it; the durable copy is the one of record.
+>
+> Re-derive only the files that come from the repo, with the tested tool:
+>
+> ```
+> uv run python docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-monogenic-phase/math_review_corpus.py \
+>     refresh --sandbox <corpus> --repo .
+> uv run python .../math_review_corpus.py verify --sandbox <corpus> --repo .
+> ```
+>
+> `refresh` **cannot damage the corpus.** It renames identifiers, rewires imports, and applies the
+> recorded prose judgements; then, if any banned word survives, it writes a `.candidate` beside the
+> target, leaves the live file byte-for-byte untouched, prints the offending lines, and exits `1`.
+> A strip pass that silently guesses at prose is worse than one that stops — the leak would be
+> invisible until the reviewer read it. `verify` runs all seven gates and exits non-zero on any
+> failure, naming the gate rather than raising.
+>
+> Never touched by `refresh`: `refs/`, `refimpl/`, `papers/`, `tests/fixtures/`, and the two
+> hand-authored files that make the corpus standalone — `kernels/_standalone.py` (a minimal `Image`
+> and operation base) and `kernels/_data.py` (a deterministic synthetic-image generator). Those are
+> the whole reason the corpus is worth keeping rather than regenerating.
+
+**Working location:** `<scratchpad>/math-review/`, mirrored to the durable home above. Deliberately **not** in the repo:
 
 - it would be a second, drifting copy of shipped code;
 - it must never be importable, or someone will `from math_review import ...`;
