@@ -19,7 +19,9 @@
 - **`uv` is the sole runner.** Never bare `python`/`pip`. Tests: `uv run pytest`. Lint: `uv run ruff check --fix`. Types: `uv run mypy src/phenotypic`.
 - **This is a port, not a derivation.** Where this plan and Kovesi's `phasecongmono` disagree, the reference wins. Every deviation is already enumerated in `drift-register.md` rows M1–M5; do not add new ones without adding a row.
 - **`EPSILON_MONOGENIC = 1e-4`**, a module constant. It is **not** `FocusEdgePhase`'s `1e-5`. `1e-5` belongs to *Julia's* `phasecong3`; MATLAB's `phasecong3.m` uses `1e-4`; all three `phasecongmono` references use `1e-4`.
-- **`fft2`, not `perfft2`** (drift M4). Kovesi's MATLAB `phasecongmono.m:156` uses `perfft2`; his Julia `phasecongruency.jl:446` explicitly does not (`IMG = fft(img)   # Use fft rather than perfft2`). We ship the Julia branch. The kernel takes `periodic: bool = False`; **the operation does not expose it**. The golden fixture pins the `periodic=True` branch because that is what `phasepack` computes.
+- **`fft2`, not `perfft2`** (drift M4). Kovesi's MATLAB `phasecongmono.m:156` uses `perfft2`; his Julia `phasecongruency.jl:446` explicitly does not (`IMG = fft(img)   # Use fft rather than perfft2`). We ship the Julia branch. The kernel takes `periodic: bool = False`; **the operation does not expose it**. The golden fixture pins the `periodic=True` branch because that is what `phasepack` computes. This is the **only** genuine fork between Kovesi's two implementations.
+- **Every frequency axis is divided by `N`.** Both `frequencyfilt.jl:73` and `filtergrid.m:49` do this. `phasepack` divides an odd axis by `N−1` (in `filtergrid` *and* `lowpassfilter`) — a `phasepack` bug, not a Kovesi divergence. All three agree at even sizes; the fixture is 64×64 so it cannot inherit it.
+- **Cite a file and a line, never "the reference".** Three separate claims in this spec were generalised from `phasepack` — the only runnable implementation — and all three were wrong (`drift-register.md` S7). Runnability and authority are unrelated.
 - **`T` is floored at `EPSILON_MONOGENIC`** (drift M5). That floor is `phasepack`'s, not Kovesi's. It is inactive on every non-constant image (smallest measured `T` across the five fixture images is `3.7e-3`, 37× the floor). Keep it; the fixture encodes it.
 - **The `acos` argument is clipped to `[-1, 1]`** (drift M1). No reference clips. Count the clamps and assert the count is zero on all three shipped plates.
 - **Operations are keyword-only pydantic models.** `FocusEdgeMonogenicPhase(n_scale=4)`, never positional. No hand-written `__init__`. Bounds go in `Field(...)`, search hints in `TuneSpec(...)`, and every `TuneSpec` window must be a subset of its `Field` bounds (`tests/unit/tune/test_annotation_subset_invariant.py` enforces this automatically).
@@ -122,9 +124,11 @@ class TestConstructFilterGrids:
         assert freq.max() == pytest.approx(0.5)
 
     def test_odd_axis_divides_by_n_not_n_minus_one(self):
-        """Kovesi's Julia divides an odd axis by N; his MATLAB by N-1. We follow Julia."""
+        """Both of Kovesi's implementations divide an odd axis by N (frequencyfilt.jl:73,
+        filtergrid.m:49). phasepack divides by N-1, in filtergrid AND lowpassfilter -- a
+        phasepack bug. k/N is the true DFT bin frequency. All three agree at even sizes."""
         _, _, _, freq = construct_filter_grids(1, 5)
-        assert freq.max() == pytest.approx(2.0 / 5.0)
+        assert freq.max() == pytest.approx(2.0 / 5.0)  # not 0.5, which is k/(N-1)
 
     def test_sintheta_and_costheta_are_a_unit_vector_off_dc(self):
         _, sintheta, costheta, _ = construct_filter_grids(16, 16)
@@ -268,11 +272,15 @@ def construct_filter_grids(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Construct frequency domain grids for filter construction.
 
-    Grids are quadrant-shifted so the DC component is at ``[0, 0]``. Follows the
-    Julia ``filtergrids()`` odd/even handling: an odd axis is divided by ``N``, an
-    even axis by ``N``. (Kovesi's older MATLAB divides an *odd* axis by ``N - 1``;
-    ``k/N`` is the true DFT bin frequency, so the Julia form is used. The two agree
-    exactly at even sizes.)
+    Grids are quadrant-shifted so the DC component is at ``[0, 0]``. Every axis is
+    divided by ``N``, matching **both** of Kovesi's implementations
+    (``frequencyfilt.jl`` l.73, ``filtergrid.m`` l.49). ``k/N`` is the true DFT bin
+    frequency.
+
+    ``phasepack`` differs at odd sizes -- ``linspace(-0.5, 0.5, N, endpoint=True)`` in
+    its ``filtergrid``, and ``/(N - 1)`` in its ``lowpassfilter`` -- which is a
+    ``phasepack`` bug, not a Kovesi divergence. All three agree at even sizes, which is
+    why the golden fixture is 64x64.
 
     Args:
         rows: Number of rows in image.
@@ -1952,7 +1960,7 @@ The reviewer's *report* is what comes back into the repo, under `docs/superpower
 **Transform rules — what must survive verbatim:**
 
 - Every numeric constant, formula, tolerance, and threshold.
-- Every reference citation (Kovesi, Felsberg & Sommer, Fleischmann/Wietzke/Sommer, Shi et al.), every line-number reference into the reference implementations, and the whole `perfft2` / odd-grid divergence record.
+- Every reference citation (Kovesi, Felsberg & Sommer, Fleischmann/Wietzke/Sommer, Shi et al.), every line-number reference into the reference implementations, the `perfft2` fork record, and the `phasepack` odd-grid bug record. **The `refs/` directory is already assembled** at `<scratchpad>/math-review/refs/` — Kovesi's `phasecongruency.jl`, `frequencyfilt.jl`, `syntheticimages.jl`, `phasecongmono.m`, `phasecong3.m`, `perfft2.m`, `filtergrid.m`, `lowpassfilter.m`, and `phasepack`'s three modules. Every claim about "the references" must cite one of these by file and line.
 - The drift register rows M1–M5 and the C-series, with their evidence.
 - `verify_claims.py` in full — it is already domain-free; confirm, don't rewrite.
 - The MIT notice on Kovesi's generators.

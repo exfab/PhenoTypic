@@ -30,9 +30,13 @@ constant with its measured `1.048×` bias are all reproduced verbatim. **A port 
 it.** The golden fixture enforces this at `rtol=1e-6`.
 
 **Where the references disagree (M4), a port has no reference.** The deliverable is then a *recorded
-decision*, not a fix. Two such forks exist: the periodic FFT (M4) and, at odd sizes only, the
-frequency-grid normalisation (Julia `k/N` vs MATLAB `k/(N−1)`; we follow the Julia, and the fixture is
-generated at even sizes so it cannot silently arbitrate).
+decision*, not a fix. Exactly **one** such fork exists: the periodic FFT (M4).
+
+The odd-size frequency-grid difference is **not** a fork. Kovesi's Julia (`frequencyfilt.jl` l.73) and
+his MATLAB (`filtergrid.m` l.49) both divide an odd axis by `N`; `phasepack` divides by `N−1`, in both
+its `filtergrid` and its `lowpassfilter`. That is a **`phasepack` bug**. We match both Kovesi
+implementations — a stronger position than an earlier revision of this register claimed — and the
+fixture is generated at even sizes, so it cannot inherit the bug. `references.md` §10.3.
 
 ### Corrected before shipping
 
@@ -140,14 +144,25 @@ the difference, and it did so in one run. A second omission — `T = max(…, ε
 time. **A behavioural control and a golden fixture answer different questions; neither substitutes for
 the other.** `references.md` §10.3.
 
-**S7 — the fix for S6 immediately re-committed S4.** Having found that `phasepack` used `perfft2` and
-this spec did not, the correction was written as "every reference implementation bandpasses the
-periodic component" and pushed. Kovesi's Julia does not — it comments `perfft2` out on line 444 with
-`# Use fft rather than perfft2`. One `grep` of the source that had been sitting in the scratchpad the
-whole time would have caught it. The same commit misattributed `phasepack`'s `max(T, ε)` floor to
-Kovesi. **Both errors were generalisations from a single reference, made while writing the lesson
-about not generalising from a single reference.** When two implementations disagree, the deliverable
-is not a fix — it is a recorded decision. `references.md` §10.3.
+**S7 — three misattributions, one cause: `phasepack` was read as if it were Kovesi.**
+
+`phasepack` was the only reference that was *installed and runnable*. Every claim about "the
+references" got sourced from the file that was easiest to open, then generalised upward. Three times:
+
+| Claimed | Actual | Cost of checking |
+|---|---|---|
+| "Every reference bandpasses the periodic component." | Kovesi's Julia comments `perfft2` out, l.444. | one `grep` of a file already in the scratchpad |
+| "The `max(T, ε)` floor is Kovesi's." | It is `phasepack`'s. Neither `.m` nor `.jl` floors `T`. | one `grep` of `phasecongmono.m` |
+| "Kovesi's MATLAB divides an odd frequency axis by `N−1`." | `filtergrid.m` l.49 divides by `cols`. `phasepack` is the outlier, in two functions. | one `curl` of `filtergrid.m` |
+
+The first two were committed **in the same commit that recorded lesson S6**, about not generalising
+from one reference. The third was committed in the commit that *retracted* the first two.
+
+The failure is not carelessness; it is that **"the reference" is a category error when three exist.**
+A port must name *which* implementation each claim comes from, with a file and a line, before the
+claim is written down — and where they disagree, the deliverable is a recorded decision, not a fix.
+Note the asymmetry the third error exposes: `phasepack` is the only one with a bug here, and it is the
+only one this spec could execute. Runnability and authority are unrelated. `references.md` §10.3.
 
 **The lesson, in one line:** copying a reference's *constants* is not faithfulness. Copying its
 *principle*, correctly instantiated, is — and verifying the principle is part of copying it.
@@ -180,4 +195,5 @@ Kept visible so nobody re-derives them.
 | "Every reference implementation bandpasses the periodic component." | **Two of three.** MATLAB `phasecongmono.m` l.156 and `phasepack` do; Kovesi's Julia comments `perfft2` out (`IMG = fft(img)   # Use fft rather than perfft2`). Asserted after checking only `phasepack` — S4 repeating itself inside the commit that added S6. We ship the Julia branch and fixture the MATLAB one. §2.0. |
 | "The `max(…, ε)` floor is Kovesi's." | It is **`phasepack`'s**. Neither MATLAB nor Julia floors `T`. Inactive on every non-constant image (smallest fixture `T` = `3.7e-3`, 37× the floor). Kept as a free guard, correctly attributed. |
 | Implied: the shipped `FocusEdgePhase` might share the `fft2` defect. | It does not. `perfft2` is `phasecongmono`-specific; MATLAB `phasecong3.m` l.146 and Julia `phasecong3` both use plain `fft2`. §3.2's scope guard holds. |
-| "Kovesi's Julia, MATLAB and `phasepack` agree verbatim." | False twice over: the `perfft2` fork above, and — at **odd** sizes — the frequency grid (Julia divides by `N`, MATLAB by `N − 1`; `8.2e-3` on a 255² `starsine`, `0.0` at even sizes). We follow the Julia (`k/N` is the true DFT bin frequency) and generate the fixture at even sizes so it cannot silently arbitrate. |
+| "Kovesi's Julia, MATLAB and `phasepack` agree verbatim." | False, but not for the reason first given. **Kovesi's two implementations agree** on the frequency grid; `phasepack` is the odd one out, and it is a bug: `filtergrid.py` and `tools.lowpassfilter` both divide an odd axis by `N−1` where Kovesi divides by `N` (`8.2e-3` on a 255² `starsine`, `0.0` at even sizes). The one genuine Julia-vs-MATLAB fork is `perfft2`. |
+| "The two reference frequency grids diverge at odd sizes; Kovesi's MATLAB divides by `N−1`." | **Wrong.** `filtergrid.m` l.49 is `[-(cols-1)/2:(cols-1)/2]/cols` — `/cols`, identical to the Julia. `lowpassfilter.m` doesn't build a grid at all; it calls `filtergrid`. The `N−1` came from reading `phasepack`'s `linspace(..., endpoint=True)` and attributing it upstream. **Third misattribution of the same species, and the second inside the commit that recorded the lesson about the first two.** One `curl` of `filtergrid.m` would have caught it. |

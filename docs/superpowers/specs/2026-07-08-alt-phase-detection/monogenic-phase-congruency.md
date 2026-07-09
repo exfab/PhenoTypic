@@ -258,8 +258,10 @@ package continuing to install.
 The fixture holds `pc`, `ft` and `T` for five 64×64 images — a step edge plus all four of Kovesi's
 generators — at `nscale=4, minWaveLength=3, mult=2.1, sigmaOnf=0.55, k=3.0, cutOff=0.5, g=10.0,
 deviationGain=1.5`, and it pins the **`periodic=True` branch** (§2.0), since that is what `phasepack`
-computes. Sizes are **even** on purpose: the two reference frequency grids diverge at odd sizes
-(`verify_claims.py::check_18`), so an odd-sized fixture would silently pick a side.
+computes. Sizes are **even** on purpose: at odd sizes `phasepack`'s frequency grid disagrees with
+*both* of Kovesi's — it divides by `N−1` where they divide by `N`, in `filtergrid` and again in
+`lowpassfilter`. That is a `phasepack` bug, and an odd-sized fixture would bake it in.
+`verify_claims.py::check_18`.
 
 Current agreement, `verify_claims.py::check_19`: `max|Δpc| = 3.5e-14`, `max|Δft| = 6.7e-13`,
 `max|ΔT| = 4.4e-16`. Eight orders inside the `rtol = 1e-6` target.

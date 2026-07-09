@@ -259,10 +259,14 @@ def _centred_axis(sze: int) -> np.ndarray:
 def filter_grid(rows: int, cols: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Quadrant-shifted normalised frequency grid: ``(radius, fx, fy)``, DC at ``[0, 0]``.
 
-    Kovesi's two implementations disagree here, and only for ODD sizes. ``frequencyfilt.jl``
-    divides an odd axis by ``N``; his older MATLAB ``filtergrid.m`` -- which ``phasepack``
-    ports -- divides by ``N - 1``. ``k/N`` is the true DFT bin frequency, so the Julia form
-    is used. At even sizes the two are identical, which is why the golden fixture is
+    Kovesi's two implementations **agree**: ``frequencyfilt.jl`` line 73 and MATLAB
+    ``filtergrid.m`` line 49 both divide an odd axis by ``N``. ``phasepack`` does not --
+    its ``filtergrid`` uses ``linspace(-0.5, 0.5, N, endpoint=True)`` and its
+    ``lowpassfilter`` uses ``arange(...)/(N - 1)``; both give ``k/(N - 1)``. That is a
+    ``phasepack`` transcription bug, not a Kovesi divergence, and it bites only at odd sizes.
+
+    ``k/N`` is the true DFT bin frequency, so this form matches **both** Kovesi
+    implementations. At even sizes all three agree, which is why the golden fixture is
     generated at even sizes only (check_18).
     """
     fy = np.fft.ifftshift((np.arange(rows) - rows // 2) / rows)
@@ -406,7 +410,7 @@ def monogenic_phase_congruency(
     swap_axes: bool = False,
     flip_h2_sign: bool = False,
     periodic: bool = False,
-    matlab_odd_grid: bool = False,
+    phasepack_odd_grid: bool = False,
 ) -> Monogenic:
     """The operator specified in ``monogenic-phase-congruency.md`` §2, transcribed here.
 
@@ -423,11 +427,11 @@ def monogenic_phase_congruency(
       emit ``NaN``; ``n_clamped`` counts how often that would have happened. It never does.
     * The ``max(T, eps)`` floor is ``phasepack``'s, not Kovesi's -- neither MATLAB nor Julia
       floors ``T``. It is inactive on every non-constant image, so it is kept as a free guard.
-    * ``swap_axes`` and ``flip_h2_sign`` exist only so check_17 can inject the corresponding
-      bugs and show which tests catch them.
+    * ``swap_axes``, ``flip_h2_sign`` and ``phasepack_odd_grid`` exist only so checks 17 and
+      18 can inject the corresponding bugs and show which tests catch them.
     """
     rows, cols = img.shape
-    if matlab_odd_grid:
+    if phasepack_odd_grid:
         fy = np.fft.ifftshift(np.linspace(-0.5, 0.5, rows, endpoint=bool(rows % 2)))
         fx = np.fft.ifftshift(np.linspace(-0.5, 0.5, cols, endpoint=bool(cols % 2)))
         FX, FY = np.meshgrid(fx, fy)
@@ -1399,7 +1403,7 @@ def check_17_starsine_pins_the_orientation_convention() -> Result:
     )
 
 
-def check_18_the_two_references_disagree_on_the_periodic_fft() -> Result:
+def check_18_the_perfft2_fork_is_real_the_odd_grid_gap_is_a_phasepack_bug() -> Result:
     """``perfft2`` vs ``fft2``: the references genuinely disagree, and it matters.
 
     * MATLAB ``phasecongmono.m`` l.156 uses ``perfft2``; ``phasepack`` ports that.
@@ -1417,10 +1421,13 @@ def check_18_the_two_references_disagree_on_the_periodic_fft() -> Result:
     ``perfft2`` is specific to ``phasecongmono``. Both MATLAB (l.146) and Julia
     ``phasecong3`` use plain ``fft2``, so the shipped ``FocusEdgePhase`` is untouched by this.
 
-    Separately: for ODD sizes Kovesi's Julia divides the frequency axis by ``N`` while his
-    MATLAB (hence ``phasepack``) divides by ``N - 1``. ``k/N`` is the true DFT bin frequency,
-    so the Julia form is used. The two are bit-identical at even sizes, which is why the
-    golden fixture is generated at even sizes only and cannot silently arbitrate.
+    Separately, and NOT a Kovesi divergence: at ODD sizes ``phasepack`` disagrees with **both**
+    of Kovesi's implementations. ``frequencyfilt.jl`` l.73 and ``filtergrid.m`` l.49 both
+    divide an odd axis by ``N``; ``phasepack``'s ``filtergrid`` uses
+    ``linspace(-0.5, 0.5, N, endpoint=True)`` and its ``lowpassfilter`` divides by ``N - 1``.
+    ``k/N`` is the true DFT bin frequency, so ``phasepack`` is simply wrong here, in two
+    places. All three agree at even sizes, which is why the golden fixture is generated at
+    even sizes only and cannot inherit the bug.
     """
     n = 256
     step = np.zeros((n, n))
@@ -1440,14 +1447,14 @@ def check_18_the_two_references_disagree_on_the_periodic_fft() -> Result:
     even = float(
         np.abs(
             monogenic_phase_congruency(cases["starsine"]).pc
-            - monogenic_phase_congruency(cases["starsine"], matlab_odd_grid=True).pc
+            - monogenic_phase_congruency(cases["starsine"], phasepack_odd_grid=True).pc
         ).max()
     )
     odd_img = unit_variance(starsine(255, ncycles=8))
     odd = float(
         np.abs(
             monogenic_phase_congruency(odd_img).pc
-            - monogenic_phase_congruency(odd_img, matlab_odd_grid=True).pc
+            - monogenic_phase_congruency(odd_img, phasepack_odd_grid=True).pc
         ).max()
     )
 
@@ -1455,16 +1462,16 @@ def check_18_the_two_references_disagree_on_the_periodic_fft() -> Result:
         whole["step2line"] > 0.5  # the choice is material, not cosmetic
         and interior["step2line"] > 0.05  # and it is not confined to the border
         and interior["starsine"] > 0.05
-        and even < 1e-15  # the grids agree where the fixture lives
-        and odd > 1e-3  # and disagree where it does not
+        and even < 1e-15  # all three grids agree where the fixture lives
+        and odd > 1e-3  # phasepack's diverges where it does not
     )
     return Result(
-        "18 the two references disagree on the periodic FFT (and on odd-size grids)",
+        "18 the perfft2 fork is real; the odd-size grid gap is a phasepack bug",
         ok,
         "MATLAB perfft2 vs Julia fft2 shifts pc by "
         + ", ".join(f"{k} {whole[k]:.4f} (interior {interior[k]:.4f})" for k in cases)
-        + f"; Julia's k/N vs MATLAB's k/(N-1) grid: {even:.1e} at 256 (identical), {odd:.1e} at 255. "
-        f"We ship the Julia branch; check_19 fixtures the MATLAB one",
+        + f"; Kovesi's k/N (both .jl and .m) vs phasepack's k/(N-1): {even:.1e} at 256 (identical), "
+        f"{odd:.1e} at 255. We ship the Julia FFT branch; check_19 fixtures the MATLAB one",
     )
 
 
@@ -1548,7 +1555,7 @@ CHECKS: tuple[Callable[[], Result], ...] = (
     check_15_step2line_congruency_survives_the_feature_type_sweep,
     check_16_noiseonf_exercises_the_rayleigh_threshold,
     check_17_starsine_pins_the_orientation_convention,
-    check_18_the_two_references_disagree_on_the_periodic_fft,
+    check_18_the_perfft2_fork_is_real_the_odd_grid_gap_is_a_phasepack_bug,
     check_19_golden_fixture_agrees_with_phasepack,
 )
 

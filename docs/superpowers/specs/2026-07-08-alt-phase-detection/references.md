@@ -868,12 +868,29 @@ plain `fft2`, so the shipped `FocusEdgePhase` is unaffected.
 | "Every reference bandpasses the periodic component." | Two of three. Kovesi's own Julia opts out, explicitly. |
 | "`T = max(…, ε)` is Kovesi's floor." | It is **`phasepack`'s**. Neither MATLAB nor Julia floors `T`. It is inactive on every non-constant image — the smallest fixture `T` is `3.7e-3`, 37× the floor. Kept as a free guard, now attributed. |
 
-### And a genuine divergence, at odd sizes only
+### And, at odd sizes only, a `phasepack` bug — *not* a Kovesi divergence
 
-`frequencyfilt.jl` divides an odd frequency axis by `N`; his older MATLAB `filtergrid.m` — which
-`phasepack` ports — divides by `N − 1`. `k/N` is the true DFT bin frequency, so this spec follows the
-Julia. The two are bit-identical at even sizes (`0.0`) and differ by `8.2e-3` on a 255² `starsine`,
-which is why the fixture is generated at even sizes only and cannot arbitrate between them.
+An earlier revision of this section claimed Kovesi's two implementations disagree on the frequency
+grid. They do not. Both divide an odd axis by `N`:
+
+| Source | Odd axis |
+|---|---|
+| Julia `frequencyfilt.jl` l.73 | `(-(cols-1)/2:(cols-1)/2)/cols` |
+| MATLAB `filtergrid.m` l.49 | `[-(cols-1)/2:(cols-1)/2]/cols` |
+| **`phasepack` `filtergrid.py`** | `linspace(-0.5, 0.5, cols, endpoint=True)` ⇒ step `1/(cols−1)` |
+| **`phasepack` `tools.lowpassfilter`** | `arange(-(cols-1)/2, (cols-1)/2+1) / (cols-1)` |
+
+`k/N` is the true DFT bin frequency. `phasepack` is simply wrong here, in **two** places, and only at
+odd sizes; Kovesi's MATLAB `lowpassfilter.m` doesn't even build its own grid — it calls `filtergrid`.
+
+Consequence: our `construct_filter_grids` matches **both** Kovesi implementations, which is a stronger
+claim than the one this document previously made. All three agree at even sizes (`0.0`), and
+`phasepack` differs by `8.2e-3` on a 255² `starsine` — which is why the golden fixture is generated at
+even sizes only and cannot inherit the bug.
+
+> This was the **third** misattribution of the same species in this spec, and the second inside the
+> commit that recorded the lesson about the first two. See `drift-register.md` S7. It was found by
+> `curl`-ing `filtergrid.m` and reading line 49 — the file had been one fetch away the whole time.
 
 **The lesson.** Behavioural controls answer "does it behave like a phase-congruency operator?" A golden
 fixture answers "is it *this* operator?" `step2line`, `noiseonf` and `starsine` all said yes to the
