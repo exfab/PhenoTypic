@@ -1,7 +1,8 @@
 # Design: `ContrastGamma` / `ContrastLog` / `ContrastSigmoid` + the `input_layer` mixin
 
 - **Date:** 2026-07-09
-- **Status:** Design — awaiting approval for planning
+- **Status:** Design — all open questions resolved (§12); ready for planning
+- **Target release:** `0.18.0` (three breaking changes — see §11)
 - **Branch / worktree:** `contrast-enh`
 - **Scope:** three new `ContrastAdjustment` enhancers wrapping skimage's
   `adjust_gamma` / `adjust_log` / `adjust_sigmoid`; a reusable `InputLayerMixin`
@@ -41,7 +42,7 @@ by inheritance.
 | New op | `ContrastSigmoid` (`cutoff`, `gain`, `inv`) |
 | New mixin | `InputLayerMixin` → appends `input_layer: InputLayer` |
 | New mixin | `NormalizedOutputMixin` → appends `norm: NormOut` |
-| Retrofit | `ContrastStretching` gains `input_layer` + `per_channel` |
+| Retrofit | `ContrastStretching` gains `input_layer` + `keep_colors` |
 | Refactor | `clip: bool` → `norm: NormOut` across 8 classes; `ClipControlMixin` → `NormControlMixin`; `_GAT_DEFER_ATTRS` → `_GAT_DEFER_VALUES` |
 | New core API | `DetectionMode.compute_from_rgb(rgb, *, image)` on all 11 modes |
 | Extraction | `rgb_to_xyz(...)` free function, lifted out of `XYZAccessor` |
@@ -157,7 +158,7 @@ I initially assumed background subtraction was the negative-value source. It is 
 - **ImageJ** is an outlier: *"normalization of RGB images is not supported."*
 
 **Consequence:** per the "if both methods apply then use the flag" rule,
-`ContrastStretching` gets `per_channel: bool = False`. See §6.
+`ContrastStretching` gets `keep_colors: bool = True` (GIMP's name). See §6.1.
 
 ### 2.6 The field-append mixin works (verified against the real ABC)
 
@@ -460,23 +461,25 @@ def _operate(self, image: Image) -> Image:
 class ContrastStretching(InputLayerMixin, ContrastAdjustment):
     lower_percentile: Annotated[int, TuneSpec(1, 5)]   = 2
     upper_percentile: Annotated[int, TuneSpec(95, 99)] = 98
-    per_channel: bool = False
+    keep_colors: bool = True
     # input_layer appended by the mixin
 ```
 
 `ContrastStretching` keeps `rescale_intensity` and gains **no** `norm` field — rescaling
 between percentiles *is* its algorithm (§2.2), and its output is `[0,1]` by construction.
-A `norm` here would be a knob whose only non-default values are "do it twice" or "undo the
-op", which is why it is deliberately absent rather than accepted for symmetry.
+A `norm` here could only mean "do it twice" (`"clip"`, a no-op) or "undo the op" (`None`),
+so it is deliberately absent rather than accepted for family symmetry. The docstring states
+plainly that the output is always `[0,1]` and no `norm` field is offered.
 
-`per_channel` (§2.5) is meaningful only when `input_layer="rgb"`; it is documented as
-ignored for 2-D input.
+`keep_colors` (§2.5) is meaningful only when `input_layer="rgb"`; it is documented as
+ignored for 2-D input. The name is taken verbatim from GIMP's "Stretch Contrast" checkbox,
+and names the **invariant it protects** (channel balance / hue) rather than the mechanism.
 
-- `per_channel=False` *(default)*: one `(p_lo, p_hi)` from the flattened `H×W×3` array,
-  applied to all three channels. Preserves channel balance, so a hue-sensitive downstream
-  `detect_mode` (`MinRGB`, `HsvS`, `InvS`, `LabA`) sees the plate's true color. Matches
-  skimage and GIMP's "Keep colors".
-- `per_channel=True`: independent `(p_lo, p_hi)` per channel. Effectively a per-channel
+- `keep_colors=True` *(default)*: one `(p_lo, p_hi)` from the flattened `H×W×3` array,
+  applied to all three channels — GIMP's *"Impact each color channel with the same amount."*
+  Preserves channel balance, so a hue-sensitive downstream `detect_mode` (`MinRGB`, `HsvS`,
+  `InvS`, `LabA`) sees the plate's true color. Matches skimage's `rescale_intensity`.
+- `keep_colors=False`: independent `(p_lo, p_hi)` per channel. Effectively a per-channel
   white balance; removes color casts, shifts hue. Matches Photoshop's "Enhance Per Channel
   Contrast" and earthpy's per-band convention.
 
@@ -530,7 +533,7 @@ lint-grade message.
 - `_core/_image_parts/detection_modes/_detection_mode.py` — `+compute_from_rgb`
 - `detection_modes/{_gray,_color_channel,_min_rgb,_lab_channel,_hsv_channel,_inv_saturation}*.py`
 - `color_space_accessors/_xyz_accessor.py` — thin caller
-- `enhance/_contrast_streching.py` — `input_layer` + `per_channel`
+- `enhance/_contrast_streching.py` — `input_layer` + `keep_colors`
 - `enhance/_focus_edge_laplace.py` — invariant fix (§7)
 - `enhance/__init__.py` — three new exports
 
@@ -543,6 +546,7 @@ lint-grade message.
 - `correction/{_color_denoise,_visushrink_corrector,_bayesshrink_corrector}.py`
 - `prefab/_heavy_round_peaks_pipeline.py` — passes `clip=bm3d_clip`
 - `tests/fixtures/tune/back_compat_pipelines/*.json` — regenerate with `norm`
+- `src/phenotypic/__init__.py` — `__version__` → `"0.18.0"` (§11)
 
 **Modified — conventions**
 
@@ -563,7 +567,7 @@ lint-grade message.
   assert the GAT round-trip still holds with `norm=None` deferred
 - `tests/unit/core/test_detection_modes_from_rgb.py` — the §4.3 golden equivalence, ×11
 - `tests/unit/enhance/test_contrast_ops.py` — curve correctness, both input layers,
-  all three `norm` values, negative-input guard, `per_channel` joint-vs-split
+  all three `norm` values, negative-input guard, `keep_colors` joint-vs-split
 - `tests/unit/enhance/test_detect_mat_invariant.py` — the §7 gate
 
 Existing call sites passing `clip=` (`tests/unit/correction/test_color_denoise.py`,
@@ -590,15 +594,57 @@ automatically; no manual registration or API-doc edit is required.
 
 ---
 
-## 11. Open items for review
+## 11. Release: `0.18.0`
 
-1. `per_channel` on `ContrastStretching` was **derived** from the "if both methods apply
-   then use the flag" rule plus the §2.5 research, not chosen explicitly. Confirm the name
-   (`per_channel=False`) over GIMP's inverted `keep_colors=True`.
-2. §7's `FocusEdgeLaplace` normalization changes existing behavior. Confirm that is
-   acceptable on this branch rather than a separate one.
-3. The `clip` → `norm` migration is a **breaking change to public serialization** and to
-   the `phenotypic.sdk_` namespace (`ClipControlMixin`). It wants a version bump and a
-   changelog entry; confirm which release it targets.
-4. `ContrastStretching` deliberately has no `norm` field (§6.1). Confirm that asymmetry is
-   intended rather than a gap.
+The branch carries **three** breaking changes, all landing together:
+
+| Break | Surface |
+|---|---|
+| `clip: bool` → `norm: NormOut` | Pipeline JSON/YAML; `op(clip=...)` kwargs |
+| `ClipControlMixin` → `NormControlMixin` | `phenotypic.sdk_` public export |
+| `FocusEdgeLaplace` output normalized | `detect_mat` values for existing pipelines |
+
+Pre-1.0 SemVer permits these in a minor bump, so `src/phenotypic/__init__.py` moves
+`__version__` to `"0.18.0"`.
+
+**The repo has no CHANGELOG file** (verified: no `CHANGELOG*` at root, nothing matching
+`*changelog*` / `*release*` / `*whatsnew*` under `docs/`). So the user-facing signal is
+exactly two things, and both must work:
+
+1. `SerializablePipeline.from_json` **already** warns on any version mismatch
+   (`_serializable_pipeline.py:359`) — *"Pipeline was saved with phenotypic version
+   0.17.3 but current version is 0.18.0."* This fires first, for free.
+2. The §5.2 before-validator then raises an actionable error naming the rename, rather
+   than pydantic's opaque *"Extra inputs are not permitted."*
+
+The migration message must name `0.18.0` explicitly. Starting a `CHANGELOG.md` is worth
+doing but is **out of scope** for this branch — flagged, not silently adopted.
+
+---
+
+## 12. Resolved design questions
+
+Recorded so the plan does not relitigate them.
+
+| Question | Decision | Rationale |
+|---|---|---|
+| RGB → 2-D collapse | Project through the image's own `detect_mode` | Respects `SetDetectMode`; forces the §4.2 `rgb_to_xyz` extraction |
+| Output range | `norm: NormOut` (`"clip"` default) | `rescale` provably annihilates `gain` (§2.1); `clip` is house style (§2.2) |
+| `clip=False` reuse | Rejected — `norm=None` instead | `clip=False` means "leave alone" and is load-bearing for GAT (§2.3) |
+| Migration scope | All 8 `clip: bool` classes | One spelling repo-wide; `rescale_sigma` untouched |
+| Back-compat | Hard break + explicit migration error | `extra="forbid"` makes a bare rename opaque (§5.2) |
+| GAT defer | `_GAT_DEFER_VALUES` dict | Tuple cannot express `norm→None` alongside `rescale_sigma→False` |
+| Mixin home | `sdk_/mixin/`, reusable | Mirrors `FootprintMixin`; future ops inherit `input_layer` free |
+| Negative input | Defensive pre-rescale, skipped when `norm is None` | Curves raise `ValueError`; `FocusEdgeLaplace` emits negatives (§2.4) |
+| Stretch flag | `keep_colors: bool = True` | Both methods are established practice (§2.5); GIMP's name, names the invariant |
+| `norm` on `ContrastStretching` | Absent, deliberately | Percentile rescale *is* the algorithm; `norm` could only no-op or undo it |
+| `FocusEdgeLaplace` fix | This branch, with the CI gate | Keeps `detect_mat ∈ [0,1]` true and enforced in one change |
+| Release | `0.18.0` minor bump | Pre-1.0; existing version-mismatch warning already primes users |
+| `discard` semantics | Documented, not enforced | Matches `SetDetectMode`; a runtime check costs a full-array compare per `apply()` |
+
+### Still deferred
+
+- `.claude/skills/adding-an-operation/SKILL.md` gains the `norm` + append-mixin convention
+  **in the implementation commit**, not before — documenting `NormOut` while it does not
+  exist would send agents after an unimportable symbol.
+- `CHANGELOG.md` does not exist; creating one is a separate change.
