@@ -117,9 +117,17 @@ class FocusEdgeMonogenicPhase(FocusEdge):
     n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=2)
     min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
     mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
-    sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
-    # Lower search bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate
-    # anchor the optimizer should never spend trials on.
+    # Strictly below 1.0: log_gabor_scale's Gaussian width is log(sigma_onf), so
+    # sigma_onf == 1.0 divides by zero and returns an all-NaN detect_mat -- which is worse
+    # than an all-zero one, because NaN silently passes a `0 <= x <= 1` range check. The
+    # kernel raises (drift M10); this bound moves the failure to construction time.
+    # TuneSpec stops at 0.99 because FloatRange appends `high` exactly
+    # (tune/_search_space/_domains.py:86), so a grid run would otherwise evaluate 1.0.
+    sigma_onf: Annotated[float, TuneSpec(0.1, 0.99)] = Field(0.55, ge=0.1, lt=1.0)
+    # Lower search bound 0.5 (not 0.0). k=0 does NOT disable noise thresholding -- it drops
+    # the standard-deviation term, leaving T = total_tau*sqrt(pi/2), the noise MEAN.
+    # `noise_method=0.0` is what sets T = 0.0 exactly. k=0 remains a degenerate anchor, but
+    # not for the reason this comment used to give.
     k: Annotated[float, TuneSpec(0.5, 20.0)] = Field(3.0, ge=0.0)
     deviation_gain: Annotated[float, TuneSpec(1.0, 2.0)] = Field(1.5, gt=0.0)
     cutoff: Annotated[float, TuneSpec(0.3, 0.7)] = Field(0.5, gt=0.0, lt=1.0)

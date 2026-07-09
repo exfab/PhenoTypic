@@ -260,20 +260,31 @@ def rayleigh_mode(amplitude: np.ndarray, n_bins: int = 50) -> float:
     For filter responses to Gaussian noise, amplitudes follow a Rayleigh distribution
     whose mode equals sigma.
 
-    **Histogram bins are anchored at zero and zeros are retained**, matching Kovesi::
+    **Bins are anchored at ``data.min()`` and zeros are retained.** This is a fork: the
+    references do not agree, and we ship the Julia branch, as M4 does for ``perfft2``.
 
-        % phasecongmono.m:466-471
-        mx = max(data(:));
-        edges = 0:mx/nbins:mx;
-        n = histc(data(:),edges);
+    - Julia, ``phasecongruency.jl`` l.648-652: ``edges, counts = build_histogram(X, nbins)``
+      -- Images.jl, whose ``partition_interval(nbins, minval, maxval)`` is
+      ``range(minval, step=(maxval-minval)/nbins, length=nbins)`` with
+      ``minval = minimum_finite(img)``. **Min-anchored.**
+    - ``phasepack``, ``tools.py`` l.86: ``n, edges = np.histogram(data, nbins)``.
+      **Min-anchored**, and it generated our golden fixture.
+    - MATLAB, ``phasecongmono.m`` l.466-468: ``edges = 0:mx/nbins:mx``. **Zero-anchored.**
+      The lone outlier.
 
-    An earlier version of this port dropped zeros and let ``np.histogram`` place its
-    edges at ``data.min()``. That is an undeclared deviation from all three references
-    (``phasepack``'s ``tools.py`` l.86 does not drop zeros either), and it shifts ``T`` by
-    ``0.0130%`` on ``load_synth_yeast_plate``. Neither form is measurably more accurate on
-    synthetic Rayleigh samples -- the reason to prefer this one is faithfulness. See
-    ``drift-register.md`` M6; this changes shipped ``FocusEdgePhase`` output at
-    ``noise_method = -2``.
+    Settled by executing Kovesi's Julia ``rayleighmode`` against real ``Images.jl`` on the
+    exact amplitude array ``_phasecong3`` feeds it. Julia and ``phasepack`` return
+    ``0.0009652525656640632``; MATLAB returns ``0.0009652419842992787``. We return Julia's.
+
+    Note the two anchors **coincide whenever the data contain an exact zero**, because
+    Julia's ``minimum_finite`` sees it. They diverge only on strictly positive data --
+    which is the case for every amplitude array in practice.
+
+    An earlier version of this port dropped zeros before histogramming. *That* was the real
+    undeclared deviation: neither Julia nor ``phasepack`` drops them, and dropping them
+    moves the anchor off ``0`` exactly when the reference would have put it there. Zeros are
+    now retained. On the shipped plates the amplitude arrays contain no exact zeros, so this
+    correction is bit-identical there. ``drift-register.md`` M6.
 
     Args:
         amplitude: Array of amplitude values.
@@ -283,13 +294,13 @@ def rayleigh_mode(amplitude: np.ndarray, n_bins: int = 50) -> float:
         Estimated Rayleigh sigma, or ``0.0`` if the maximum is non-positive.
     """
     data = amplitude.flatten()
-    maximum = float(data.max()) if data.size else 0.0
-
-    if maximum <= 0.0:
+    if data.size == 0 or float(data.max()) <= 0.0:
         return 0.0
 
-    edges = np.arange(n_bins + 1) * (maximum / n_bins)
-    hist, _ = np.histogram(data, bins=edges)
+    # np.histogram(data, n_bins) is bit-for-bit what phasepack computes and what Julia's
+    # build_histogram computes. Do NOT hand it explicit zero-anchored edges: that is
+    # MATLAB's recipe, and it is the branch we do not ship.
+    hist, edges = np.histogram(data, n_bins)
 
     mode_idx = int(np.argmax(hist))
     return float((edges[mode_idx] + edges[mode_idx + 1]) / 2)
@@ -427,6 +438,25 @@ def monogenic_phase_congruency(
                 f"and n_scale=0 returns an all-zero pc silently."
         )
 
+    # Two more silent-NaN holes, same family as the n_scale guard. Drift M10.
+    #   sigma_onf == 1.0  =>  log(1.0) == 0  =>  log_gabor_scale divides by 2*0**2 == 0
+    #   mult      == 1.0  =>  every scale collapses onto min_wavelength, and the geometric
+    #                         noise sum divides by (1 - 1/mult) == 0
+    # Both return an all-NaN `pc`, which is strictly worse than an all-zero one: it survives
+    # `detect_mat in [0,1]` checks by never comparing true. Neither reference validates
+    # these; Kovesi divides unguarded.
+    if sigma_onf >= 1.0:
+        raise ValueError(
+                f"sigma_onf must be < 1.0; got {sigma_onf!r}. log(sigma_onf) is the "
+                f"log-Gabor's Gaussian width, so sigma_onf=1.0 divides by zero and returns "
+                f"an all-NaN pc."
+        )
+    if mult <= 1.0:
+        raise ValueError(
+                f"mult must be > 1.0; got {mult!r}. The geometric noise sum divides by "
+                f"(1 - 1/mult), so mult=1.0 returns an all-NaN threshold and pc."
+        )
+
     if noise_method < 0 and not (
             abs(noise_method + 1.0) < epsilon or abs(noise_method + 2.0) < epsilon
     ):
@@ -504,6 +534,13 @@ def monogenic_phase_congruency(
     orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
     orientation = np.where(orientation <= -np.pi / 2, orientation + np.pi, orientation)
 
-    feature_type = np.arctan2(sum_even, np.hypot(sum_h1, sum_h2))
+    # sqrt(h1^2 + h2^2), NOT np.hypot. `hypot` appears in no reference: all three write the
+    # plain form -- phasecongmono.m:297 `sqrt(sumh1.^2+sumh2.^2)`, phasecongruency.jl:583
+    # `sqrt(sumh1^2 + sumh2^2)`, phasepack:278 `np.sqrt(sumh1*sumh1 + sumh2*sumh2)`. hypot is
+    # the overflow-safe algorithm and rounds differently: measured, the two disagree on 4.5%
+    # of elements and `feature_type` on 2.6%. Same species as M8 -- a numpy convenience
+    # substituted beneath identical-looking source text. The fixture's rtol=1e-6 on `ft` has
+    # 6.7 orders of slack and cannot see it.
+    feature_type = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
 
     return MonogenicResult(pc, orientation, feature_type, threshold, n_clamped)

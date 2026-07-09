@@ -179,8 +179,12 @@ class FocusEdgePhase(FocusEdge):
     min_wavelength: Annotated[float, TuneSpec(2.0, 10.0)] = Field(3.0, ge=2.0)
     mult: Annotated[float, TuneSpec(1.5, 3.0)] = Field(2.1, gt=1.0)
     sigma_onf: Annotated[float, TuneSpec(0.1, 1.0)] = Field(0.55, ge=0.1, le=1.0)
-    # Lower bound 0.5 (not 0.0): k=0 disables noise thresholding, a degenerate
-    # search anchor that the optimizer should never spend trials on.
+    # Lower search bound 0.5 (not 0.0). k=0 does NOT disable noise thresholding -- it
+    # drops the standard-deviation term, leaving T = totalTau*sqrt(pi/2), the noise MEAN
+    # (measured on load_synth_yeast_plate: T = 4.19e-04 at k=0 versus 1.08e-03 at k=3).
+    # `noise_method=0.0` is what sets T = 0.0 exactly. k=0 is still a degenerate anchor --
+    # every response above the noise mean survives -- so the optimizer should not spend
+    # trials there, but the reason is not the one this comment used to give.
     k: Annotated[float, TuneSpec(0.5, 20.0)] = Field(2.0, ge=0.0)
     cutoff: Annotated[float, TuneSpec(0.3, 0.7)] = Field(0.5, gt=0.0, lt=1.0)
     g: Annotated[float, TuneSpec(2.0, 20.0)] = Field(10.0, gt=0.0)

@@ -115,6 +115,42 @@ class TestPhaseCongruencyEnhancerParameterValidation:
         assert enhancer.output == "pc_sum"
 
 
+class TestTheEpsilonSeamIsLocked:
+    """`_phasecong3` must hand `spread_weight` phasecong3's 1e-5, not the module's 1e-4.
+
+    Before the kernels refactor, `epsilon = 1e-5` was a local literal inside `_phasecong3`.
+    It is now an argument to a shared function whose module constant `EPSILON_MONOGENIC` is
+    `1e-4` -- `phasecongmono`'s value, not `phasecong3`'s. That is a seam, and nothing in
+    the repository locked it: substituting `1e-4` leaves `tests/unit/enhance` and the
+    filamentous detector's suite entirely green while shifting `pc_sum` by 7.48%
+    (`max|d| = 6.026e-02`, 469165 / 480000 pixels changed on `load_synth_yeast_plate`).
+    """
+
+    def test_phasecong3_passes_phasecong3s_epsilon_to_spread_weight(self, monkeypatch):
+        """Capture the value at the call boundary rather than inferring it from output."""
+        import phenotypic.enhance._focus_edge_phase as fep
+
+        seen: list[float] = []
+        real = fep.spread_weight
+
+        def spy(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon):
+            seen.append(epsilon)
+            return real(sum_amplitude, max_amplitude, n_scale, cutoff, g, epsilon)
+
+        monkeypatch.setattr(fep, "spread_weight", spy)
+        FocusEdgePhase(n_scale=2, n_orient=2)._phasecong3(np.zeros((32, 32)))
+
+        assert seen, "spread_weight was never called"
+        assert set(seen) == {1e-5}, f"expected phasecong3's 1e-5, got {sorted(set(seen))}"
+
+    def test_the_two_epsilons_are_actually_different(self):
+        """Guard the guard: if these ever unify, the test above becomes vacuous."""
+        from phenotypic.enhance._monogenic_kernels import EPSILON_MONOGENIC
+
+        assert EPSILON_MONOGENIC == 1e-4
+        assert EPSILON_MONOGENIC != 1e-5
+
+
 class TestPhaseCongruencyEnhancerOutputProperties:
     """Test FocusEdgePhase output properties."""
 

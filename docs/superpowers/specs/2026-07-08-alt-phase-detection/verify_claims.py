@@ -503,8 +503,18 @@ def monogenic_phase_congruency(
     )
     # Kovesi writes atan(-sumh2/sumh1); atan2 is equal mod pi and never divides by zero.
     h2_signed = sum_h2 if flip_h2_sign else -sum_h2
-    orientation = np.arctan2(h2_signed, sum_h1) % np.pi
-    feature_type = np.arctan2(sum_f, np.hypot(sum_h1, sum_h2))
+    # Fold into (-pi/2, pi/2], matching the shipped kernel. This prototype used to return
+    # `% np.pi` -> [0, pi), which is equal mod pi but is NOT the interval the operation's
+    # affine map (theta + pi/2)/pi assumes. Keeping the two conventions apart invited
+    # someone to "reconcile" the shipped fold toward this file and silently double the
+    # operation's output range. Equal mod pi is not equal.
+    orientation = np.arctan2(h2_signed, sum_h1)
+    orientation = np.where(orientation > np.pi / 2, orientation - np.pi, orientation)
+    orientation = np.where(orientation <= -np.pi / 2, orientation + np.pi, orientation)
+
+    # sqrt(h1**2 + h2**2), not np.hypot: `hypot` appears in no reference (phasecongmono.m:297,
+    # phasecongruency.jl:583, phasepack:278 all write the plain form) and rounds differently.
+    feature_type = np.arctan2(sum_f, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
     return Monogenic(pc, orientation, feature_type, threshold, n_clamped)
 
 
@@ -1553,12 +1563,14 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
         ok &= bool(np.allclose(golden[f"{name}__ft"], mono.feature_type, rtol=1e-6, atol=1e-9))
 
         # phasepack stores `ori` as np.fix((atan(-h2/h1) % pi)/pi*180): integer degrees in
-        # [0, 180). Ours is already mod pi, so the same quantisation applies. Without this,
-        # the fixture is blind to BOTH axis bugs -- an fx/fy swap and the -sumh2 sign flip
-        # leave pc, ft and T untouched (check_17).
+        # [0, 180). Ours is folded to (-pi/2, pi/2], so it can be NEGATIVE, and `np.fix`
+        # truncates toward zero -- omit the `% np.pi` and every pixel disagrees by 1 degree.
+        # Reduce to [0, pi) first, then quantise exactly as phasepack does. Without this
+        # comparison the fixture is blind to BOTH axis bugs: an fx/fy swap and the -sumh2
+        # sign flip leave pc, ft and T untouched (check_17).
         gold_or = golden[f"{name}__or"]
         finite = np.isfinite(gold_or)
-        ours_or = np.fix(mono.orientation / np.pi * 180.0)
+        ours_or = np.fix((mono.orientation % np.pi) / np.pi * 180.0)
         delta = np.abs(ours_or[finite] - gold_or[finite])
         delta = np.minimum(delta, 180.0 - delta)  # circular, mod 180
         worst_or = max(worst_or, float(delta.max()))

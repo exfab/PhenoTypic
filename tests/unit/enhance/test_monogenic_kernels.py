@@ -263,22 +263,51 @@ class TestRayleighMode:
     def test_all_zero_input_returns_zero(self):
         assert rayleigh_mode(np.zeros((4, 4))) == 0.0
 
-    def test_bins_are_anchored_at_zero_and_zeros_are_retained(self):
-        """Kovesi: `edges = 0:mx/nbins:mx; n = histc(data, edges)` (phasecongmono.m:467).
+    def test_zeros_are_retained(self):
+        """Neither Julia nor `phasepack` drops zeros; an earlier port of ours did.
 
-        A port that drops zeros and lets numpy place edges at `data.min()` gives a
-        different answer. This test pins the VALUE, not merely that it is positive --
-        the mutation audit showed a doubled `rayleigh_mode` is otherwise invisible to
-        every test in this suite, because the golden fixture is noiseMethod=-1 only.
+        On this input the anchor is 0 either way (`data.min() == 0.0`), so this pins
+        zero-RETENTION alone. The anchor is pinned separately below -- an earlier version
+        of this test asserted both in one place and could distinguish neither.
         """
-        # Zeros must count, and the bins must start at 0. mx = 10, n_bins = 10, so the
-        # first bin is [0, 1) and holds all 1000 zeros -> centre 0.5.
         data = np.concatenate([np.zeros(1000), np.full(10, 10.0)])
+        # 1000 zeros dominate the first bin. Dropping them leaves only the 10.0s -> 10.05.
         assert rayleigh_mode(data, n_bins=10) == pytest.approx(0.5)
-
-        # The rejected port -- drop zeros, let numpy place edges at data.min() -- returns
-        # 10.05 on the same input. This assertion is what distinguishes the two.
         assert rayleigh_mode(data, n_bins=10) < 1.0
+
+    def test_bins_are_anchored_at_the_minimum_not_at_zero(self):
+        """The references disagree, and we ship Julia's. Drift M6.
+
+        * Julia `phasecongruency.jl:648-652` -> `build_histogram(X, nbins)` -> Images.jl
+          `partition_interval(nbins, minval=minimum_finite(img), ...)`. MIN-anchored.
+        * `phasepack` `tools.py:86` -> `np.histogram(data, nbins)`. MIN-anchored. It also
+          generated our golden fixture.
+        * MATLAB `phasecongmono.m:466-468` -> `edges = 0:mx/nbins:mx`. ZERO-anchored, and
+          the lone outlier.
+
+        Verified by executing Kovesi's Julia `rayleighmode` against real Images.jl on the
+        exact amplitude `_phasecong3` feeds it: Julia and phasepack both return
+        0.0009652525656640632; MATLAB returns 0.0009652419842992787.
+
+        The two anchors COINCIDE whenever the data contain an exact zero, which is why the
+        previous test cannot see this and why this one uses strictly positive data.
+        """
+        # min = 1.0, max = 11.0, 10 bins -> min-anchored bins are [1,2), [2,3), ...
+        # The 1000 values at 1.0 land in the first bin -> centre 1.5.
+        # MATLAB's zero-anchored edges 0:1.1:11 would put them in [0, 1.1) -> centre 0.55.
+        data = np.concatenate([np.full(1000, 1.0), np.full(10, 11.0)])
+        assert data.min() > 0.0  # the discriminating condition
+        assert rayleigh_mode(data, n_bins=10) == pytest.approx(1.5)
+
+        # Pin the rejection of MATLAB's recipe explicitly, so a "fix" back to zero-anchored
+        # edges cannot pass. Computed here, not asserted from memory.
+        mx = data.max()
+        zero_edges = np.arange(11) * (mx / 10)
+        hist, _ = np.histogram(data, bins=zero_edges)
+        i = int(np.argmax(hist))
+        matlab = (zero_edges[i] + zero_edges[i + 1]) / 2
+        assert matlab == pytest.approx(0.55)
+        assert rayleigh_mode(data, n_bins=10) != pytest.approx(matlab)
 
     def test_the_rel_015_window_is_tight_enough_to_see_a_doubled_mode(self):
         """Guard the guard: prove `rel=0.15` above is narrow enough to catch a 2x error.
@@ -473,6 +502,33 @@ class TestNoiseThreshold:
         result = monogenic_phase_congruency(step, n_scale=2)
         assert result.pc.max() > 0.0  # not the degenerate all-zero output
 
+    @pytest.mark.parametrize("bad", [1.0, 1.5])
+    def test_sigma_onf_at_or_above_one_raises(self, bad):
+        """``log(1.0) == 0`` makes log_gabor_scale divide by zero -> an all-NaN pc.
+
+        An all-NaN detect_mat is strictly worse than an all-zero one: it passes a naive
+        ``0 <= x <= 1`` range check, because NaN compares false to everything. Drift M10.
+        """
+        step = np.zeros((32, 32))
+        step[:, 16:] = 1.0
+        with pytest.raises(ValueError, match="sigma_onf"):
+            monogenic_phase_congruency(step, sigma_onf=bad)
+
+    @pytest.mark.parametrize("bad", [1.0, 0.5])
+    def test_mult_at_or_below_one_raises(self, bad):
+        """The geometric noise sum divides by ``(1 - 1/mult)``. Drift M10."""
+        step = np.zeros((32, 32))
+        step[:, 16:] = 1.0
+        with pytest.raises(ValueError, match="mult"):
+            monogenic_phase_congruency(step, mult=bad)
+
+    def test_sigma_onf_just_below_one_is_accepted(self):
+        """The boundary is exclusive, so the guard cannot be off by one."""
+        step = np.zeros((32, 32))
+        step[:, 16:] = 1.0
+        result = monogenic_phase_congruency(step, sigma_onf=0.999)
+        assert not np.isnan(result.pc).any()
+
 
 class TestThePeriodicDefaultIsPinned:
     """Nothing else pins it, and flipping it changes what the operation computes.
@@ -537,6 +593,50 @@ class TestOrientationIsFoldedIntoTheHalfOpenHalfPlane:
         # ...and the fold is not a no-op: starsine drives sum_h1 negative on half the
         # image. Measured 50.0% of 4096 pixels move.
         assert (shift > 1e-12).mean() > 0.25
+
+
+class TestFeatureTypeUsesTheReferenceRadicand:
+    def test_it_is_sqrt_of_the_sum_of_squares_not_np_hypot(self):
+        """All three references write ``sqrt(h1**2 + h2**2)``. ``hypot`` appears in none.
+
+        ``grep -rn hypot`` over Kovesi's Julia, Kovesi's MATLAB and ``phasepack`` returns
+        nothing. They write ``sqrt(sumh1.^2+sumh2.^2)`` (phasecongmono.m:297),
+        ``sqrt(sumh1^2 + sumh2^2)`` (phasecongruency.jl:583) and
+        ``np.sqrt(sumh1*sumh1 + sumh2*sumh2)`` (phasepack:278).
+
+        ``np.hypot`` is the overflow-safe algorithm; it rounds differently. Substituting it
+        is the M8 species -- a numpy convenience beneath identical-looking source text. The
+        golden fixture cannot see it: its ``ft`` tolerance is ``rtol=1e-6`` against an
+        agreement of ``6.7e-13``, which is 6.7 orders of slack.
+
+        Pinned here by reconstructing ``feature_type`` from the primitives and requiring
+        bit-equality with the ``sqrt`` form and inequality with the ``hypot`` form.
+        """
+        rng = np.random.default_rng(11)
+        img = rng.normal(size=(64, 64))
+        result = monogenic_phase_congruency(img)
+
+        rows, cols = img.shape
+        radius, _, _, _, fx, fy = construct_filter_grids(rows, cols)
+        riesz = riesz_multiplier(fx, fy, radius)
+        lowpass = lowpass_filter(radius)
+        spectrum = fft2(img)
+        sum_even = np.zeros((rows, cols))
+        sum_h1 = np.zeros((rows, cols))
+        sum_h2 = np.zeros((rows, cols))
+        for s in range(4):
+            band = spectrum * log_gabor_scale(radius, lowpass, 3.0 * 2.1 ** s, 0.55)
+            sum_even += ifft2(band).real
+            odd = ifft2(band * riesz)
+            sum_h1 += odd.real
+            sum_h2 += odd.imag
+
+        faithful = np.arctan2(sum_even, np.sqrt(sum_h1 ** 2 + sum_h2 ** 2))
+        hypot_form = np.arctan2(sum_even, np.hypot(sum_h1, sum_h2))
+
+        assert np.array_equal(result.feature_type, faithful)
+        # And the two really are distinguishable, so the assertion above is not vacuous.
+        assert not np.array_equal(faithful, hypot_form)
 
 
 class TestAcosClampIsInert:

@@ -218,7 +218,14 @@ Enhancer: ['FocusEdgeFrangi','FocusEdgeHessian','FocusEdgeLaplace','FocusEdgeMei
 - The four extracted helpers are **bit-identical** to the methods they replace (`np.array_equal`, all outputs). The Task 2 refactor is bit-identical by substitution. Full `_phasecong3` substitution on `load_synth_yeast_plate`: `max|Δ| = 0.0` on all six outputs.
 - `ε = 1e-5` is genuinely what `_phasecong3:320` uses; no other epsilon crosses the `spread_weight` boundary. Passing `1e-4` instead shifts the weight by `max|Δ| = 0.094`.
 - `log_gabor_scale` zeroes DC *before* the lowpass multiply, matching the shipped code. MATLAB does the opposite (`phasecongmono.m:201-203`), which is inert because `0 × finite = 0`.
-- Ordering: **no hazards.** Each cluster leaves the repo green alone. Task 1's tests do not import `_kovesi_synthetic`. The relative import resolves (`tests/unit/enhance/__init__.py` exists; `tests/__init__.py` does not, so pytest anchors at `tests/`). The `.npz` is tracked; `git mv` works; `check_19`'s parent-walk resolves; `n_scale >= 2` breaks nothing (`n_scale=1` appears nowhere in `tests/` or `src/`).
+- Ordering: **no hazards.** Each cluster leaves the repo green alone. Task 1's tests do not import `_kovesi_synthetic`. The relative import resolves (`tests/unit/enhance/__init__.py` exists; `tests/__init__.py` does not, so pytest anchors at `tests/`). The `.npz` is tracked; `git mv` works; `check_19`'s parent-walk resolves; `n_scale >= 2` breaks nothing in `src/`.
+
+  > **Correction (2026-07-09, B+C review).** The parenthetical above originally read
+  > "`n_scale=1` appears nowhere in `tests/` or `src/`." It appears in `tests/`:
+  > `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json` serializes
+  > `"n_scale": 1`, and `test_annotation_back_compat.py` deserializes it. The `ge=2`
+  > narrowing gives `1 failed, 14 passed` on that file. This was caught before cluster B ran
+  > and is handled in the plan body; the claim here was simply false. Drift `M3`.
 - Repo conventions: keyword-only construction; every `TuneSpec` window is a subset of its `Field` bound; the coverage gate will not regress (`output` is a `Literal`, excluded); `detect_mat ∈ [0,1]`; `rgb`/`gray` unmutated; rotation equivariance exactly `0.0` through the real `Image` path.
 - Every attribution claim in the plan checks out against `refs/`, **including this morning's correction**: `filtergrid.m:49` and `frequencyfilt.jl:73` both divide odd axes by `N`; `phasepack` divides by `N−1` in *both* `filtergrid.py` and `tools.lowpassfilter`. Also confirmed: `T = max(…, ε)` appears **only** at `phasepack_phasecongmono.py:269`; Kovesi does not floor it in `phasecongmono` (he does in `phasesymmono`, a different function).
 

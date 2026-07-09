@@ -70,7 +70,10 @@ def _excluded(op, field_name: str):
             (FocusEdgePhase(), "k", FloatRange, (0.5, 20.0, False)),
             (FocusEdgeMonogenicPhase(), "n_scale", IntRange, (3, 6)),
             (FocusEdgeMonogenicPhase(), "min_wavelength", FloatRange, (2.0, 10.0, False)),
-            (FocusEdgeMonogenicPhase(), "sigma_onf", FloatRange, (0.1, 1.0, False)),
+            # High bound 0.99, not 1.0: sigma_onf == 1.0 divides by log(1.0) == 0 and
+            # returns an all-NaN detect_mat (drift M10). FloatRange appends `high` exactly
+            # (_domains.py:86), so a 1.0 bound would make a grid run evaluate the NaN.
+            (FocusEdgeMonogenicPhase(), "sigma_onf", FloatRange, (0.1, 0.99, False)),
             (FocusEdgeMonogenicPhase(), "k", FloatRange, (0.5, 20.0, False)),
             (FocusEdgeMonogenicPhase(), "deviation_gain", FloatRange, (1.0, 2.0, False)),
             (FlattenIllumination(), "sigma", FloatRange, (40.0, 300.0, True)),

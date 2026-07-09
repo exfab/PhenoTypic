@@ -111,8 +111,13 @@ class TestOperationContract:
 
         `_operate` never passes `periodic`, so the shipped branch is enforced solely by
         the kernel's signature default. Flipping that default changes what this operation
-        computes by up to 0.67 absolute, and every behavioural test in this suite is blind
-        to it. This is the only assertion standing between us and that regression.
+        computes by up to 0.67 absolute.
+
+        This is the assertion aimed at that regression. Two others catch it incidentally --
+        injecting `periodic=True` into `_operate` also reddens both
+        `test_operation_*_is_the_affine_map_of_*` tests, since they recompute the kernel
+        without it. Verified: 3 failed, 248 passed. An earlier version of this docstring
+        said "the only assertion", which was false.
         """
         from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
 
@@ -129,12 +134,28 @@ class TestOperationContract:
         assert np.abs(produced - wrong).max() > 0.05  # and the two branches really differ
 
     def test_pc_is_equivariant_under_90_degree_rotation(self):
-        """Measured: 6.7e-16. The filter bank is isotropic; nothing prefers an axis."""
+        """The filter bank is isotropic; nothing prefers an axis.
+
+        ``detect_mat`` is ``float32``, and at this size the two rotations agree **exactly**
+        -- ``max|d| = 0.0``, not ``6.7e-16``. That figure belongs to the ``float64`` kernel,
+        which this test never touches, and a ``1e-6`` tolerance sits four orders above the
+        ``float32`` quantum near 1.0 (``1.192e-07``), so it could not have failed. Assert
+        the exact equality the operation actually delivers, and pin the kernel's ``6.7e-16``
+        separately where it is real.
+        """
         arr = np.zeros((96, 96), dtype=np.float32)
         arr[:, 48:] = 1.0
         straight = FocusEdgeMonogenicPhase().apply(_image_from(arr)).detect_mat[:]
         rotated = FocusEdgeMonogenicPhase().apply(_image_from(np.rot90(arr))).detect_mat[:]
-        assert np.abs(np.rot90(straight) - rotated).max() < 1e-6
+        assert np.abs(np.rot90(straight) - rotated).max() == 0.0
+
+        # The float64 kernel, where the residual actually lives. Tolerance from a mechanism:
+        # a 96x96 FFT round-trip accumulates O(N log N) ~ 6e2 roundings at ~1.1e-16 each.
+        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
+
+        ks = monogenic_phase_congruency(arr.astype(np.float64)).pc
+        kr = monogenic_phase_congruency(np.rot90(arr).astype(np.float64)).pc
+        assert np.abs(np.rot90(ks) - kr).max() < 1e-14
 
 
 class TestAngleToUnitMap:
@@ -143,9 +164,18 @@ class TestAngleToUnitMap:
     This map is a bijection onto ``(0, 1]`` **only** because the kernel folds
     orientation into ``(-pi/2, pi/2]`` (``_monogenic_kernels.py`` lines 488-489). A
     ``(-pi, pi]`` input would need ``(theta + pi)/(2*pi)`` instead; feeding it to this
-    map would send half the range past 1.0, where the clip flattens it. These
-    assertions pin the interval/map pairing, and the operation-level test below ties the
-    map to the code that actually runs.
+    map would send half the range past 1.0, where the clip flattens it.
+
+    **The first three tests below cannot fail.** They exercise this class's own ``_map``
+    staticmethod, so no mutation of shipped code makes them red -- they are documentation
+    of the invariant, deliberately kept and deliberately labelled. The load-bearing guards
+    are the two ``test_operation_*_is_the_affine_map_of_*`` tests, which call the real
+    ``_operate`` and die when the constant in it changes.
+
+    Note ``orientation``'s true image is ``(0, 1]``, not ``[0, 1]``: the fold is half-open,
+    so ``-pi/2`` is unattainable and ``_map(-pi/2) == 0.0`` is an algebraic endpoint the
+    operation never emits. ``feature_type`` does attain both endpoints, since
+    ``arctan2(y, x >= 0)`` spans the closed ``[-pi/2, pi/2]``.
     """
 
     @staticmethod
@@ -189,6 +219,26 @@ class TestAngleToUnitMap:
         )
         np.testing.assert_allclose(produced, expected, rtol=1e-5, atol=1e-6)
 
+    def test_operation_feature_type_is_the_affine_map_of_kernel_feature_type(self):
+        """The same guard for ``output="feature_type"``, which nothing else covers.
+
+        Without this, mutating *both* branches of ``_operate`` to ``(theta + pi)/(2*pi)``
+        reddens only the orientation test above. ``test_every_output_mode_stays_in_unit_range``
+        stays green because ``(ft + pi)/(2*pi)`` lands in ``[0.25, 0.75] subset [0, 1]`` --
+        a range check cannot see a wrong-but-in-range map.
+        """
+        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
+
+        mat = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
+        kernel_ft = monogenic_phase_congruency(mat).feature_type
+        expected = np.clip((kernel_ft + np.pi / 2) / np.pi, 0.0, 1.0)
+
+        produced = np.asarray(
+            FocusEdgeMonogenicPhase(output="feature_type").apply(load_synth_yeast_plate()).detect_mat[:],
+            dtype=np.float64,
+        )
+        np.testing.assert_allclose(produced, expected, rtol=1e-5, atol=1e-6)
+
 
 class TestAxisConvention:
     """Spec test 7. Two axis bugs, and axis-aligned edges catch only one.
@@ -224,7 +274,18 @@ class TestAxisConvention:
         assert self._orientation_at_peak(arr) == pytest.approx(45.01, abs=0.1)
 
     def test_starsine_orientation_matches_the_generators_own_theta(self):
-        """The only test that catches the -sum_h2 sign flip. Measured: 0.98 deg median."""
+        """Catches the -sum_h2 sign flip. Measured: 0.98 deg median.
+
+        Not the *only* test that catches it -- that claim was false. Mutating
+        ``arctan2(-sum_h2, sum_h1)`` to ``arctan2(sum_h2, sum_h1)`` reddens **8** tests:
+        this one, ``test_diagonal_edge_reads_forty_five_degrees``, all five
+        ``TestGoldenFixture::test_orientation_matches_phasepack`` parametrisations (since
+        the fixture stores orientation), and ``test_the_fold_is_a_fold_not_a_clamp``.
+
+        What *is* true is the narrower S5 lesson: no **axis-aligned** test can see it,
+        because 0 and 90 degrees are their own mirror images mod pi. That is why this
+        generator exists. Stating the narrow truth beats overstating it.
+        """
         from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
         from ._kovesi_synthetic import centred_axis, starsine, unit_variance
 
