@@ -214,8 +214,14 @@ from ._metadata_helpers import (
     metadata_category_prefixes,
     order_measurement_columns,
 )
-from .mixin import ClipControlMixin, FootprintMixin, GridInferenceMixin, LazyWidgetMixin
-from .typing_ import ProcessOnlyLayer
+from .mixin import (
+    ClipControlMixin,
+    FootprintMixin,
+    GridInferenceMixin,
+    LazyWidgetMixin,
+    NormalizedOutputMixin,
+)
+from .typing_ import InputLayer, NormOut, ProcessOnlyLayer
 
 __all__ = [
     # Mixins / utilities (existing)
@@ -227,6 +233,7 @@ __all__ = [
     "GridInferenceMixin",
     "HDF",
     "LazyWidgetMixin",
+    "NormalizedOutputMixin",
     "atomic_write_bytes",
     "atomic_write_text",
     "canonical_metadata_order",
@@ -245,6 +252,8 @@ __all__ = [
     "slurm_",
     "timed_execution",
     # Typing aliases (closed value sets)
+    "InputLayer",
+    "NormOut",
     "ProcessOnlyLayer",
     # I/O constants module (also re-exported below)
     "_io_constants",
