@@ -708,7 +708,7 @@ Change the imports at the top:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, List, Literal  # keep List -- see the note below
 
 import numpy as np
 from numpy.fft import fft2, ifft2
@@ -815,7 +815,7 @@ print("noise_method=-1: BIT-IDENTICAL across all six outputs")
 r2 = FocusEdgePhase(noise_method=-2.0)._phasecong3(img)
 delta_t = abs(float(r2.T) - float(base["m2_T"])) / float(base["m2_T"])
 delta_pc = float(np.abs(r2.pc_sum - base["m2_pc_sum"]).max())
-assert 0.0 < delta_t < 1e-4, f"-2 T moved {delta_t:.2e}; expected ~9.2e-06 (drift M6)"
+assert 0.0 < delta_t < 1e-4, f"-2 T moved {delta_t:.2e}; expected 8.64e-06 RELATIVE (drift M6)"
 assert 0.0 < delta_pc < 1e-4, f"-2 pc_sum moved {delta_pc:.2e}; expected ~5.6e-06"
 print(f"noise_method=-2: changed as intended -- dT = {delta_t:.2e}, max|d pc_sum| = {delta_pc:.2e}")
 PY
@@ -828,6 +828,16 @@ noise_method=-2: changed as intended -- dT = 8.64e-06, max|d pc_sum| = 5.58e-06
 ```
 
 The `-1` assertion is a hard gate: anything else means the refactor changed the algorithm — fix it, do not adjust the check. The `-2` assertion is its mirror image — it *must* change, because drift `M6` corrects `rayleigh_mode` to Kovesi's zero-anchored bins. If `-2` comes out bit-identical, `rayleigh_mode` was not actually corrected.
+
+> **`dT = 8.64e-06` is a RELATIVE shift.** In absolute terms `|ΔT| = 3.39e-08` (`T` goes
+> `0.003926845611995472 → 0.003926811682811374`). Both clear `0 < · < 1e-4`, so the gate passes either
+> way — but a reader comparing an absolute `3.39e-08` against a bare "expect `8.64e-06`" will think the
+> gate failed. `max|Δpc_sum| = 5.578e-06` **is** absolute. Verified 2026-07-09.
+>
+> Why `8.64e-06` and not something else: `_phasecong3` calls `rayleigh_mode` once per orientation (6×
+> at `n_orient=6`), and the returned `T` is the **last** orientation's. That orientation's mode shifts
+> by exactly `8.6403e-06` relative, and `T ∝ tau`, so `T` inherits it. The other five orientations
+> shift by `1.10e-05 … 3.01e-05`.
 
 - [ ] **Step 5: Run the existing test file, the taxonomy test, and the filamentous detector's tests**
 
@@ -2335,7 +2345,7 @@ Isolated for its own gate even though it is ~40 lines. Risk ≠ size.
 **The back-compat lock will fire, and that is expected.** `tests/fixtures/tune/back_compat_pipelines/enhance_features_edges.json` serializes `"n_scale": 1`; `test_annotation_back_compat.py` loads it via `ImagePipeline.from_json`. Measured: the bound edit alone gives `1 failed, 14 passed`. Task 2 Step 6 requires the agent to *observe the failure first*, then move the fixture to the new tightest legal edge (`2`); Step 7 pins the old bound shut with `test_n_scale_one_is_rejected` and proves that test can fail. Do not let an agent "fix" the lock by editing the fixture before it has seen it fail — a guardrail nobody watched fire is not a guardrail.
 
 **Model:** Opus, high effort.
-**Gate:** the bit-identity check against the scratchpad `phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** at `noise_method=-1`, and a *bounded, non-zero* change at `-2` (`0 < dT < 1e-4`, `0 < dpc < 1e-4`; expect `dT = 8.64e-06`, `dpc = 5.58e-06`) — baseline captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, **`test_annotation_back_compat.py` (15 passed)**, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, `tests/unit/tune/test_annotation_coverage.py`, `test_annotation_subset_invariant.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
+**Gate:** the bit-identity check against the scratchpad `phasecong3_baseline.npz` must report **BIT-IDENTICAL across all six outputs** at `noise_method=-1`, and a *bounded, non-zero* change at `-2` (`0 < dT < 1e-4`, `0 < dpc < 1e-4`; expect `dT = 8.64e-06` **relative** — `3.39e-08` absolute — and `dpc = 5.58e-06` absolute) — baseline captured *before* the edit, in the same tree. Then `test_phase_congruency.py`, **`test_annotation_back_compat.py` (15 passed)**, `test_enhancer_taxonomy.py`, `test_enhance_annotations.py`, `tests/unit/tune/test_annotation_coverage.py`, `test_annotation_subset_invariant.py`, and `pytest tests/unit/detect -k filamentous`. If bit-identity fails, fix the refactor; **never relax the check**.
 
 ### C — Keystone + folded Leaves: the operation
 

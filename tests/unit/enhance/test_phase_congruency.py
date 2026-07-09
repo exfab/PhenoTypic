@@ -21,10 +21,20 @@ class TestPhaseCongruencyEnhancerParameterValidation:
     old hand-rolled messages — the rejection contract is unchanged.
     """
 
-    def test_n_scale_less_than_one_raises_error(self):
-        """Test that n_scale < 1 raises ValidationError."""
+    def test_n_scale_zero_is_rejected(self):
+        """Test that n_scale=0 raises ValidationError."""
         with pytest.raises(ValidationError):
             FocusEdgePhase(n_scale=0)
+
+    def test_n_scale_one_is_rejected(self):
+        """n_scale=1 divides by (n_scale - 1) and returns an all-zero detect_mat
+        (max=0 versus 0.971004 at n_scale=4). Rejected at construction rather
+        than producing garbage. See drift-register M3."""
+        with pytest.raises(ValidationError):
+            FocusEdgePhase(n_scale=1)
+
+    def test_n_scale_two_is_accepted(self):
+        assert FocusEdgePhase(n_scale=2).n_scale == 2
 
     def test_n_orient_less_than_one_raises_error(self):
         """Test that n_orient < 1 raises ValidationError."""
