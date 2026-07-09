@@ -25,11 +25,12 @@ construct and serialise without them.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Tuple
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 if TYPE_CHECKING:
     import numpy as np
 
+    from phenotypic.detect.nn._tiling import _Tile
     from phenotypic.sdk_.typing_ import DinoSize, DinoVersion
 
 
@@ -526,6 +527,53 @@ def pool_prototype(
     if fg.shape[0] == 0:
         return np.zeros(d, dtype=np.float32)
     return fg.mean(axis=0).astype(np.float32)
+
+
+def pool_prototype_tiled(
+    dense_by_tile: List["np.ndarray"],
+    tiles: List["_Tile"],
+    mask: "np.ndarray",
+    patch: int,
+) -> "np.ndarray":
+    """Pool a full-image mask's prototype from per-tile dense features.
+
+    Pooling every proposal against a **whole-plate** patch grid is a silent
+    no-op: at ``patch=14`` a 4000x3000 plate fed to the ViT at its 224-px
+    classification preset yields a 16x16 grid, i.e. ~250x187 native px per
+    patch, so a 30 px colony spans 0.16 x 0.12 patches. It rounds to empty in
+    :func:`resize_mask_to_grid`, :func:`pool_prototype` hits its zero-vector
+    fail-safe, and *every* proposal gets the same zero prototype — the cosine
+    scores become constant and the DINO half of the recipe does no work.
+
+    Tiling restores sub-patch resolution. The mask is assigned to the tile whose
+    core contains its centroid
+    (:func:`~phenotypic.detect.nn._tiling.owning_tile_index`), cropped to that
+    tile, and pooled against that tile's feature grid, where the colony now
+    spans ``30 / patch`` patches.
+
+    Args:
+        dense_by_tile: One ``(Hp, Wp, D)`` feature grid per tile, aligned with
+            *tiles*.
+        tiles: Crop rectangles in full-image coordinates (from
+            :func:`~phenotypic.detect.nn._tiling._plan_tiles`). A single
+            full-extent tile is fine — the un-tiled path.
+        mask: ``(H, W)`` boolean mask in full-image coordinates.
+        patch: ``model.config.patch_size`` (14 for DINOv2, 16 for DINOv3).
+
+    Returns:
+        ``(D,)`` mean-pooled prototype (zero vector if *mask* is empty).
+    """
+    import numpy as np
+
+    from phenotypic.detect.nn._tiling import owning_tile_index
+
+    ys, xs = np.nonzero(np.asarray(mask, dtype=bool))
+    if ys.size == 0:
+        return np.zeros(dense_by_tile[0].shape[-1], dtype=np.float32)
+    idx = owning_tile_index(tiles, (float(ys.mean()), float(xs.mean())))
+    tile = tiles[idx]
+    local = np.asarray(mask)[tile.y0:tile.y1, tile.x0:tile.x1]
+    return pool_prototype(dense_by_tile[idx], local, patch=patch)
 
 
 def cosine_similarity_map(
