@@ -2489,7 +2489,27 @@ These reproduce the paper's own stated ordering (CMPCM > VPMM > MPC > PC > Log >
 4. **Manifest completeness:** every row of the table above exists in the sandbox. A silently-missing `plan/plan.md` is the most likely failure, and it is the file F most needs.
 5. The stripped `verify_claims.py` runs standalone and prints `21/21 checks passed.` **and** `check_19`'s line contains `max|dpc|` — the same two-part assertion S0 established. It must also exit `0`.
 6. The stripped kernels reproduce `tests/fixtures/phasecongmono_golden.npz` to `rtol=1e-6` — proving the transform preserved the logic and not merely the prose.
-7. `diff` of each stripped source against its repo original shows **changes confined to docstrings, comments and identifiers** — no expression, constant, or control-flow edit. Mechanise it: strip comments/docstrings from both sides with `ast` and compare `ast.dump()` of the results. Identical dumps, or the transform touched logic.
+7. Each stripped source is **structurally identical** to its repo original — changes confined to docstrings, comments and identifiers, with no expression, constant, or control-flow edit.
+
+   Do not eyeball a `diff`. The tool exists and is tested:
+
+   ```
+   uv run python docs/superpowers/logic_validation_scripts/2026-07-09-focus-edge-monogenic-phase/ast_structural_equivalence.py \
+       src/phenotypic/enhance/_monogenic_kernels.py <scratchpad>/math-review/kernels/_monogenic_kernels.py
+   ```
+
+   It strips docstrings, normalises every local identifier to a positional slot (so a rename is invisible but a *reordered binding* is not), and compares `ast.dump()`. Comments never reach the AST. Exit `0` means identical; exit `1` prints the first divergence.
+
+   Proven able to fail, four ways (2026-07-09):
+
+   | Input | Result |
+   |---|---|
+   | file vs itself | `IDENTICAL` |
+   | comments stripped + docstrings gutted + `riesz_multiplier` → `odd_channel_transfer` | `IDENTICAL` — a legitimate E transform passes |
+   | the same, plus the Riesz `h2` sign flipped | `DIVERGES`, `op=Sub()` → `op=Add()`, exit 1 |
+   | the same, plus `EPSILON_MONOGENIC` `1e-4` → `1e-5` | `DIVERGES`, `Constant(value=0.0001)` → `Constant(value=1e-05)`, exit 1 |
+
+   The third case is the one that matters: it is a logic edit *hidden inside an otherwise legitimate rename*, which is precisely what a careless strip pass produces and what a prose diff would wave through.
 
 Gates 6 and 7 are the ones that matter. Without them, "keeping the actual code logic intact" is an assertion; with them, it is a measurement. Gate 7 catches what gate 6 cannot — a logic edit on a path the fixture never exercises.
 
