@@ -1047,6 +1047,24 @@ Apply the same shape at each of the eight sites.
 
 6. `prefab/_heavy_round_peaks_pipeline.py:241` — the local `bm3d_clip` variable feeding `clip=bm3d_clip` becomes `norm=bm3d_norm`, typed `NormOut`. Trace the variable to its definition and update its type and default (`True → "clip"`).
 
+- [ ] **Step 3b: Guard the auto-derived field descriptions**
+
+`apply_docstring_descriptions` parses only `cls.__doc__` and fills fields whose description
+is unset. Descriptions **do** inherit down a subclass chain, but a class that mixes in
+`NormalizedOutputMixin` and omits `norm:` from its own `Args:` block silently gets
+`description=None` — losing it from `model_json_schema()`, the machine-readable contract
+downstream tooling reads. Eight classes are being migrated and nothing gates this.
+
+Add to `tests/unit/sdk_/test_norm_migration.py`:
+
+```python
+@pytest.mark.parametrize("cls", MIGRATED, ids=lambda c: c.__name__)
+def test_norm_field_carries_a_description(cls):
+    """A missing `norm:` line in the Args: block silently empties the JSON schema."""
+    desc = cls.model_fields["norm"].description
+    assert desc, f"{cls.__name__} omits `norm:` from its docstring Args: block"
+```
+
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
@@ -2790,6 +2808,31 @@ untouched by the migration), so they may run concurrently once D clears.
 `tests/unit/sdk_/mixin/test_input_layer_mixin.py` writes a file that cluster **A** owns.
 That is the only overlap between the two parallel arms. **Move that step into cluster G**,
 which runs after both. Cluster C must not touch `tests/unit/sdk_/`.
+
+### Carried findings from the cluster A review gate
+
+Three blocking defects were found and fixed in `e616d2f6e` (degenerate `(0,3)` array on a
+grayscale image; NaN defeating `_guard_input_range`; asymmetric writeability). Three
+non-blocking findings ride along with later clusters:
+
+1. **Cluster D — `_disable_clipping` fails open, silently.** It gates on
+   `hasattr(operation, "clip")`. The moment cluster E migrates the eight classes to `norm`,
+   that check goes `False` and the method **returns the operation unchanged** — no error,
+   clipping still active inside the GAT domain. This is why D must land before E, and why
+   D's test must assert a migrated op comes back with `norm=None` (Task 2.1 Step 1).
+
+2. **Cluster E — `norm` descriptions.** See Task 2.3 Step 3b.
+
+3. **Cluster D — forward-dated xref.** `_normalized_output_mixin.py:36` already writes
+   ``:class:`NormControlMixin` ``. Correct once D lands; broken until then.
+
+Also noted, **out of scope, route to the final simplify pass**: `XyzAccessor` mutates the
+module-level shared `sRGB_D50.whitepoint` on every XYZ access, in both D50 arms. Verified
+inert — that arm passes `illuminant=sRGB_D50.whitepoint`, so the chromatic adaptation runs
+from a whitepoint to itself (identity for any value), and `sRGB_D50` carries an explicit
+`matrix_RGB_to_XYZ` constant. `max|D50arm(D50) − D50arm(D65)| = 0.0`, bit-identical. It is
+a global side effect on a shared object that changes nothing. Do not touch it on this
+branch (cluster B was under a strict no-logic-changes constraint).
 
 ### Decouple-then-flip for the breaking rename (cluster D)
 
