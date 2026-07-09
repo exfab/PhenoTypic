@@ -1207,6 +1207,16 @@ def test_unknown_illuminant_raises():
 `assert_array_equal` (not `allclose`) is correct here: a pure code move that produces
 *any* different bit is a bug, not a rounding artifact.
 
+> **CORRECTION (found during execution).** `test_matches_accessor_exactly` is a **wiring
+> test, not a correctness guard.** Once `XyzAccessor._subject_arr` delegates to
+> `rgb_to_xyz`, both sides of the assertion route through identical code, so mutating a
+> `match` arm mutates both sides equally and the assertion can never catch it. Verified:
+> flipping `apply_cctf_decoding` still passed. It remains worth keeping — it proves the
+> accessor forwards the right `normed rgb` / `gamma` / `illuminant` / `observer` — but it
+> must be paired with the **golden-value oracle** below, whose literals were captured from
+> the pre-refactor accessor at `92f15359a` and therefore move independently of the code
+> under test.
+
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
@@ -1318,9 +1328,29 @@ uv run pytest tests/unit/core/test_xyz_conversion.py -v && uv run pytest tests/u
 ```
 Expected: PASS
 
-- [ ] **Step 5: Prove the equality test can fail**
+- [ ] **Step 5: Add the golden-value oracle, then prove it can fail**
 
-Temporarily flip `apply_cctf_decoding=True → False` in the `(SRGB, "D65")` arm. Re-run `test_matches_accessor_exactly`; it must FAIL. Restore.
+Capture golden XYZ from the **pre-refactor** accessor (run this on a checkout that still
+has the inline `match` block) for a small deterministic RGB patch, across all four
+`(gamma, illuminant)` arms. Embed the literals in
+`tests/unit/core/test_xyz_conversion.py` with a `@pytest.mark.parametrize` over the four
+keys, plus a `test_golden_arms_are_mutually_distinct` guard proving no two arms produce
+identical values (which would make the fixture vacuous).
+
+Tolerance: `rtol=1e-12`. Mechanism — `colour` does a 3×3 matmul plus (for sRGB) a
+per-channel CCTF power law in float64; float64 eps is `2.2e-16`, and ~10 chained ops bound
+the relative error near `1e-15`. `rtol=1e-12` sits three orders above that, so it survives
+BLAS reassociation across platforms, while the smallest defect it must catch — a D65→D50
+whitepoint swap — moves values by ~`5e-2`.
+
+**Two mutation checks, both must FAIL:**
+1. Flip `apply_cctf_decoding=True → False` in the `(SRGB, "D65")` arm →
+   `pytest -k "golden and SRGB_D65"` must fail. Restore.
+2. Change the `(SRGB, "D50")` arm's whitepoint lookup from `["D50"]` to `["D65"]` →
+   `pytest -k "golden and SRGB_D50"` must fail. Restore.
+
+Do **not** use `test_matches_accessor_exactly` as the mutation target — see the correction
+above; it cannot fail.
 
 - [ ] **Step 6: Commit**
 
