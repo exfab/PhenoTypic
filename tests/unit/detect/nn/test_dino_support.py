@@ -400,3 +400,38 @@ class TestCoveredExtentMapping:
         # Grid block centre (21.5, 28.5) patches → ~(301, 399) px, not stretched.
         assert abs(ys.mean() - 21.5 * 14) < 14
         assert abs(xs.mean() - 28.5 * 14) < 14
+
+
+class TestCoveredExtentIsRequiredOnBothDirections:
+    """F6: omitting `patch` is a silent scale error, not a crash.
+
+    The bundled exemplar is 220x300 -- a multiple of neither patch size -- so a
+    grid built from it covers only 208x288 (patch 16) or 210x294 (patch 14).
+    Mapping the exemplar mask over the full 220x300 selects foreground patches
+    the ViT never saw, corrupting the prototype that defines "colony".
+    """
+
+    def test_omitting_patch_selects_different_foreground_patches(self):
+        import numpy as np
+
+        from phenotypic.detect.nn._dino_support import align_mask_to_grid
+
+        mask = np.zeros((220, 300), dtype=bool)
+        mask[190:215, 20:60] = True  # a colony low in the frame
+
+        without = align_mask_to_grid(mask, (220, 300), (13, 18))
+        with_patch = align_mask_to_grid(mask, (220, 300), (13, 18), 16)
+        assert not np.array_equal(without, with_patch), (
+            "omitting patch must change which patches are foreground; if this "
+            "passes, the covered-extent crop is not being applied"
+        )
+
+    def test_covered_extent_excludes_the_truncated_remainder(self):
+        import numpy as np
+
+        from phenotypic.detect.nn._dino_support import align_mask_to_grid
+
+        # Rows 208..220 are outside the (13, 18) grid's covered extent at patch 16.
+        mask = np.zeros((220, 300), dtype=bool)
+        mask[208:220, :] = True
+        assert not align_mask_to_grid(mask, (220, 300), (13, 18), 16).any()

@@ -374,7 +374,15 @@ class Insid3Detector(GpuDetector):
         # then debias before pooling the in-context prototype.
         self._basis = positional_basis(ref_feats, self.svd_components)
         ref_deb = debias_features(ref_feats, self._basis)
-        proto = pool_prototype(ref_deb, ref_mask, proc_hw=ref_proc_hw)
+        # `patch` is required: the grid covers (hp*patch, wp*patch), not the
+        # reference image. The bundled exemplar is 220x300, so at patch 16 the
+        # grid describes only 208x288 -- omitting `patch` stretches the reference
+        # mask over 12 rows the ViT never saw (a 5.5% scale error on the very
+        # mask that defines the prototype).
+        ref_patch = int(getattr(self._model.config, "patch_size", 16))
+        proto = pool_prototype(
+            ref_deb, ref_mask, proc_hw=ref_proc_hw, patch=ref_patch
+        )
         # L2-normalise the prototype (INSID3 normalises the prototype too).
         nrm = float(np.linalg.norm(proto))
         if nrm > 0:

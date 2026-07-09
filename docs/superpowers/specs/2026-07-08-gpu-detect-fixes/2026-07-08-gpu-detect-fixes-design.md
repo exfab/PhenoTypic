@@ -208,6 +208,50 @@ plate's median colony is 39 px: every median-or-larger colony on a seam would be
 deleted. Sam3's shipped `1008 / 0.15` is safer (111 px) but still fails on sparse
 plates with large colonies.
 
+### F6 — the reference/support path also needed the covered extent (found in review)
+
+F2 said the reference/support path "is already correct" because it threads `proc_hw`.
+That was true **only while the processor resized to 224**. Once `do_resize=False`
+lands, the grid floors and the same truncation appears on the exemplar side. F2 said as
+much — "this applies to **both** directions of the map" — but the implementation
+threaded `patch` through the query path only.
+
+Two call sites omitted it (`patch` is an optional kwarg, so this is a silent scale
+error, not a crash):
+
+- `_fssdino_detector.py:487` — `align_mask_to_grid(mask, proc_hw, (hp, wp))`
+- `_insid3_detector.py:377` — `pool_prototype(ref_deb, ref_mask, proc_hw=ref_proc_hw)`
+
+The bundled exemplar `colony_reference_rgb.png` is **220×300**, a multiple of neither
+patch size:
+
+```
+patch 14: 220 -> 15 patches covering 210 rows (10 dropped, 4.5%)
+patch 16: 220 -> 13 patches covering 208 rows (12 dropped, 5.5%)
+```
+
+So the exemplar mask was stretched over rows the ViT never saw — corrupting **the very
+mask that defines the prototype**. Measured effect on the DINOv3 prototype:
+
+```
+reference grid (13, 18) covers 208x288 of a 220x300 exemplar
+prototype cosine(old_buggy, new_fixed) = 0.4436     (1.0 would mean a no-op)
+```
+
+The two prototypes are nearly unrelated. Effect on the gate plate:
+
+| Arm | buggy reference path | fixed |
+|---|---|---|
+| FssDino 1:1 native | IoU 0.5877, 942 objects | **IoU 0.5947, 962 objects** |
+| Insid3 1:1 native | IoU 0.0043, 103 objects | IoU 0.0000, 9 objects |
+
+FssDino improves on both metrics. Insid3 goes from 103 spurious blobs to 9; both arms
+are noise (IoU ≈ 0), so this is a more specific prototype, not a regression — Insid3's
+`similarity_thresh` problem is unchanged and remains out of scope.
+
+**Pre-existing, out of scope:** `_checkpoint_manager.py:358,528` fail `mypy` standalone
+(`list(cls.MODELS)` against a `Literal` key type). Untouched by this work.
+
 ## Non-goals
 
 - `MicroSamDetector`. `micro_sam` is conda-only and absent from this venv; its

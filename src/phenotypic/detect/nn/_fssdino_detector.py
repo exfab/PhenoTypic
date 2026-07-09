@@ -484,7 +484,13 @@ class FssDinoDetector(GpuDetector):
                 layer=self.feature_layer,
             )
             hp, wp, _d = dense.shape
-            grid_mask = align_mask_to_grid(mask, proc_hw, (hp, wp))
+            # `patch` is required: the grid covers (hp*patch, wp*patch), not the
+            # support image. The bundled exemplar is 220x300, so at patch 14 the
+            # grid describes only 210x294 -- omitting `patch` stretches the
+            # support mask over 10 rows the ViT never saw (a 4.5% scale error on
+            # the very mask that defines the prototype).
+            patch = int(getattr(self._model.config, "patch_size", 14))
+            grid_mask = align_mask_to_grid(mask, proc_hw, (hp, wp), patch)
             flat = dense.reshape(hp * wp, dense.shape[-1])
             fg_idx = grid_mask.reshape(-1)
             fg_feats.append(flat[fg_idx])
