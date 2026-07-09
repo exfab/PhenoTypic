@@ -218,6 +218,7 @@ from .mixin import (
     ClipControlMixin,
     FootprintMixin,
     GridInferenceMixin,
+    InputLayerMixin,
     LazyWidgetMixin,
     NormalizedOutputMixin,
 )
@@ -232,6 +233,7 @@ __all__ = [
     "FootprintMixin",
     "GridInferenceMixin",
     "HDF",
+    "InputLayerMixin",
     "LazyWidgetMixin",
     "NormalizedOutputMixin",
     "atomic_write_bytes",
