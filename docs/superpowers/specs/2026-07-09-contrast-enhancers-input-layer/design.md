@@ -7,7 +7,10 @@
   `adjust_gamma` / `adjust_log` / `adjust_sigmoid`; a reusable `InputLayerMixin`
   that **appends** an `input_layer` field to a pydantic operation; retrofitting
   `ContrastStretching` with the same capability; a `compute_from_rgb` path on
-  `DetectionMode`; and closing the one remaining `detect_mat ∈ [0,1]` violation.
+  `DetectionMode`; retiring `clip: bool` in favour of `norm: NormOut` repo-wide;
+  and closing the one remaining `detect_mat ∈ [0,1]` violation.
+- **Breaking:** `clip` → `norm` (serialization + kwargs), `ClipControlMixin` →
+  `NormControlMixin`, `FocusEdgeLaplace` output range. See §5.2, §10.
 
 ---
 
@@ -37,10 +40,13 @@ by inheritance.
 | New op | `ContrastLog` (`gain`, `inv`) |
 | New op | `ContrastSigmoid` (`cutoff`, `gain`, `inv`) |
 | New mixin | `InputLayerMixin` → appends `input_layer: InputLayer` |
+| New mixin | `NormalizedOutputMixin` → appends `norm: NormOut` |
 | Retrofit | `ContrastStretching` gains `input_layer` + `per_channel` |
+| Refactor | `clip: bool` → `norm: NormOut` across 8 classes; `ClipControlMixin` → `NormControlMixin`; `_GAT_DEFER_ATTRS` → `_GAT_DEFER_VALUES` |
 | New core API | `DetectionMode.compute_from_rgb(rgb, *, image)` on all 11 modes |
 | Extraction | `rgb_to_xyz(...)` free function, lifted out of `XYZAccessor` |
 | Invariant | `FocusEdgeLaplace` normalized; CI gate pins `detect_mat ∈ [0,1]` |
+| Convention | `adding-an-operation` skill documents the `norm` + append-mixin rules |
 
 ---
 
@@ -75,9 +81,21 @@ search would burn trials on it. See §5.
 
 Across `src/phenotypic/enhance/`: **9 modules call `np.clip`, 1 calls
 `rescale_intensity`** — and that one is `ContrastStretching`, where rescaling between
-percentiles *is* the algorithm. Five enhancers already expose the guard as a field
-(`clip: bool = True`): `BayesShrinkEnhancer`, `EnhanceBlockMatch`, `LocalEdgeDenoise`,
-`VisuShrinkEnhancer`, and `CompositeEnhance` (which defaults it to `False`).
+percentiles *is* the algorithm.
+
+**Eight classes expose the guard as a `clip: bool` field** — five enhancers
+(`BayesShrinkEnhancer`, `EnhanceBlockMatch`, `LocalEdgeDenoise`, `VisuShrinkEnhancer`,
+and `CompositeEnhance`, which alone defaults it to `False`) and three correctors
+(`_color_denoise`, `_visushrink_corrector`, `_bayesshrink_corrector`). In **every** case
+the flag is consumed by us as `if self.clip: np.clip(...)` and is **never forwarded to
+skimage** — which is what makes folding them into a single `norm` field (§5)
+behavior-preserving.
+
+`rescale_sigma: bool` is **not** one of these. It is forwarded to skimage's
+`denoise_wavelet(rescale_sigma=)` and governs whether skimage rescales the *noise sigma*
+when it internally converts integer dtypes to float. Its own docstring notes it *"has no
+observable effect on the float32 `detect_mat` used in this project."* It is unrelated to
+output range and is left alone.
 
 Semantically the two differ in kind. Clip is the identity on in-range pixels and only
 touches the tails, preserving absolute intensity. Rescale preserves ordering but
@@ -90,10 +108,10 @@ rather than between min and max.
 
 `_GATSupportMixin._GAT_DEFER_ATTRS` is documented as *"Boolean attributes that must be
 `False` inside the GAT region … any knob that would corrupt the stabilized
-round-trip."* Seven classes list `"clip"` there: `VisuShrinkEnhancer`,
-`BayesShrinkEnhancer`, `LocalEdgeDenoise`, `EnhanceBlockMatch`, plus
-`_visushrink_corrector` and `_bayesshrink_corrector`. `ClipControlMixin._disable_clipping`
-sets the same flag, and **duck-types on any op exposing a `.clip` attribute.**
+round-trip."* **Six classes list `"clip"` there:** `VisuShrinkEnhancer`,
+`BayesShrinkEnhancer`, `LocalEdgeDenoise`, `EnhanceBlockMatch`, `_visushrink_corrector`,
+and `_bayesshrink_corrector`. `ClipControlMixin._disable_clipping` sets the same flag, and
+**duck-types on any op exposing a `.clip` attribute.**
 
 Measured on the synth plate: `detect_mat ∈ [0.5451, 0.9548]` maps into the GAT-stabilized
 domain at `[1.9185, 2.3065]`. Rescaling that stabilized signal to `[0,1]` before the
@@ -162,7 +180,7 @@ pydantic 2.12.5 and probed:
 ## 3. `InputLayerMixin`
 
 **Location:** `src/phenotypic/sdk_/mixin/_input_layer_mixin.py`, exported from
-`phenotypic.sdk_` alongside `FootprintMixin` / `ClipControlMixin`. Reusable by design.
+`phenotypic.sdk_` alongside `FootprintMixin` / `NormControlMixin`. Reusable by design.
 
 **Type alias** (`sdk_/typing_.py`, per the closed-value-set convention — `Literal`-only,
 no `Enum` partner, since there is no separate documentation surface, mirroring
@@ -287,45 +305,110 @@ trips.
 
 ---
 
-## 5. Output range policy: `out_range`
+## 5. Output normalization: the `norm` field (repo-wide)
 
-Because §2.3 shows `clip` is a poisoned identifier (`_disable_clipping` duck-types on it),
-the new ops use a **closed value set** instead of a bool:
+`clip: bool` conflates two questions — *should the output be normalized?* and *how?* —
+and it cannot express "rescale". §2.3 also shows the identifier is spoken for:
+`_disable_clipping` duck-types on `.clip`. Both problems are solved by one closed value
+set, and the `clip: bool` flag is **retired repo-wide**.
 
 ```python
-OutRange = Literal["clip", "rescale", "passthrough"]   # sdk_/typing_.py
+# sdk_/typing_.py — Literal alias, no Enum partner (no separate documentation
+# surface), mirroring DetectMode / ExecutionMode.
+NormOut: TypeAlias = Optional[Literal["clip", "rescale"]]
 ```
 
-| Value | Behavior | When |
+| `norm` | Behavior | When |
 |---|---|---|
-| `"clip"` *(default)* | `np.clip(out, 0.0, 1.0)` | Normal use. `gain` is meaningful (§2.1). Preserves absolute intensity, so `detect_mat` stays comparable across a batch. |
+| `"clip"` *(default)* | `np.clip(out, 0.0, 1.0)` | Normal use. `gain` stays meaningful (§2.1). Preserves absolute intensity, so `detect_mat` is comparable across a batch. |
 | `"rescale"` | `rescale_intensity(out, out_range=(0,1))` | Full-histogram normalization. Absorbs `gain` on gamma/log — documented, not hidden. |
-| `"passthrough"` | `out` unchanged | GAT regions and `CompositeEnhance` on non-normalized maps. |
+| `None` | `out` unchanged | GAT regions and `CompositeEnhance` on non-normalized maps. |
 
-Both `"clip"` and `"rescale"` uphold the `detect_mat ∈ [0,1]` contract; they differ only in
-saturate-versus-compress. `"passthrough"` is the explicit, named escape hatch.
+Both `"clip"` and `"rescale"` uphold `detect_mat ∈ [0,1]`; they differ only in
+saturate-versus-compress. `None` is the explicit pass-through.
 
-Being a `Literal`, `out_range` is excluded from the tune coverage gate
-(`is_numeric_tunable` skips `Literal`, `Enum`, and `bool`).
+`NormOut` is `Optional[Literal[...]]`, so it is excluded from the tune coverage gate
+(`is_numeric_tunable` returns `False` for `MULTI_UNION`, `Literal`, `Enum`, and `bool`).
 
-**Required follow-through:** `ClipControlMixin._disable_clipping` must learn to map
-`out_range → "passthrough"` on ops that expose it. Without this, nesting a `ContrastGamma`
-inside `CompositeEnhance` silently keeps clipping. This is a real behavior change to a
-shared mixin and needs its own test.
+### 5.1 `NormalizedOutputMixin`
 
-### 5.1 Defensive input normalization
+The eight `if self.clip: np.clip(...)` sites collapse into one helper. A second field-append
+mixin, alongside `InputLayerMixin` in `sdk_/mixin/`:
+
+```python
+class NormalizedOutputMixin(BaseModel):
+    norm: NormOut = "clip"
+
+    def _apply_norm(self, arr: np.ndarray) -> np.ndarray: ...
+```
+
+`CompositeEnhance` overrides the default to `None`, preserving today's `clip: bool = False`.
+
+**Field order with two append-mixins is deterministic.** Each mixin's
+`__pydantic_init_subclass__` calls `super()` *first*, then pops its own field to the end.
+With MRO `ContrastGamma → InputLayerMixin → NormalizedOutputMixin → ContrastAdjustment`,
+`NormalizedOutputMixin`'s pop runs inside the `super()` call and therefore **first**,
+leaving the final order `[…op params…, norm, input_layer]`. This ordering is pinned by a
+test, not left to inference.
+
+### 5.2 Migration (8 classes) — hard break with an explicit error
+
+`enhance/`: `LocalEdgeDenoise`, `BayesShrinkEnhancer`, `EnhanceBlockMatch`,
+`VisuShrinkEnhancer`, `CompositeEnhance`.
+`correction/`: `_color_denoise`, `_visushrink_corrector`, `_bayesshrink_corrector`.
+
+Mapping: `clip=True → norm="clip"`, `clip=False → norm=None`. `rescale_sigma` untouched.
+
+Because `BaseOperation.model_config` sets `extra="forbid"`, a bare rename makes
+`from_json` on any saved pipeline fail with an opaque *"Extra inputs are not permitted"*
+naming `clip`. Verified against `tests/fixtures/tune/back_compat_pipelines/`, which pins
+deserialization of old configs and contains `"clip": true`.
+
+So the mixin carries a before-validator that turns the schema complaint into a migration
+message:
+
+```python
+@model_validator(mode="before")
+@classmethod
+def _reject_legacy_clip(cls, data):
+    if isinstance(data, dict) and "clip" in data:
+        raise ValueError(
+            f"{cls.__name__}: `clip` was replaced by `norm` in <version>. "
+            f"Use norm='clip' (was clip=True) or norm=None (was clip=False)."
+        )
+    return data
+```
+
+Both `back_compat_pipelines` fixtures are regenerated with `norm`, and a test asserts the
+legacy key raises the migration message rather than a schema error.
+
+### 5.3 Two dependent mechanisms
+
+**`_GATSupportMixin`.** `_GAT_DEFER_ATTRS: tuple[str, ...]` becomes
+`_GAT_DEFER_VALUES: ClassVar[dict[str, Any]]` mapping each attribute to its inert value —
+`{"norm": None, "rescale_sigma": False}`. The tuple form cannot express this, since `norm`'s
+inert value is `None` while `rescale_sigma`'s is `False`. The docstring stops saying
+"Boolean attributes". Six classes update; `NonLocalMeansDenoiser`'s empty tuple becomes `{}`.
+
+**`ClipControlMixin` → `NormControlMixin`.** `_disable_clipping` → `_disable_normalization`,
+setting `norm=None`. This is a **public API rename** (both are exported from
+`phenotypic.sdk_`), requiring updates to `sdk_/__init__.py`, `sdk_/mixin/__init__.py`, and
+`sdk_/CLAUDE.md`. Without it, nesting a `ContrastGamma` inside `CompositeEnhance` would
+silently keep normalizing.
+
+### 5.4 Defensive input normalization
 
 The three skimage functions raise `ValueError` on negative input (§2.4), which
 `FocusEdgeLaplace` can produce. When the input array falls outside `[0,1]`, the op
 **rescales it to `[0,1]` before applying the curve**.
 
-Two constraints on this rule:
+Two constraints:
 
-- It is **skipped when `out_range="passthrough"`.** Otherwise a GAT-stabilized input at
-  `[1.92, 2.31]` would be silently normalized on the way *in*, reintroducing the exact
-  corruption §2.3 exists to prevent.
-- It is **conditional**, triggering only on an actual out-of-range input, so the common
-  path costs one `min()`/`max()` and nothing else.
+- **Skipped when `norm is None`.** Otherwise a GAT-stabilized input at `[1.92, 2.31]` would
+  be silently normalized on the way *in*, reintroducing the exact corruption §2.3 exists to
+  prevent.
+- **Conditional**, triggering only on genuinely out-of-range input, so the common path costs
+  one `min()`/`max()` and nothing else.
 
 The docstrings must state plainly that the curve is then applied to a *shifted* signal, so
 results downstream of a signed filter depend on that filter's output range.
@@ -339,37 +422,35 @@ directly), per `enhance/CLAUDE.md`. Mixin goes first in the bases, matching the
 `class MaskDilation(FootprintMixin, ObjectRefiner)` house style.
 
 ```python
-class ContrastGamma(InputLayerMixin, ContrastAdjustment):
+class ContrastGamma(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
     gamma:  Annotated[float, TuneSpec(0.1, 5.0, log=True)] = 1.0
     gain:   Annotated[float, TuneSpec(0.5, 2.0)]           = 1.0
-    out_range: OutRange = "clip"
-    # input_layer: InputLayer = "detect_mat"   <- appended by the mixin
+    # norm: NormOut = "clip"                   <- appended by NormalizedOutputMixin
+    # input_layer: InputLayer = "detect_mat"   <- appended by InputLayerMixin (last)
 
-class ContrastLog(InputLayerMixin, ContrastAdjustment):
+class ContrastLog(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
     gain:   Annotated[float, TuneSpec(0.5, 2.0)] = 1.0
     inv:    bool                                 = False
-    out_range: OutRange = "clip"
 
-class ContrastSigmoid(InputLayerMixin, ContrastAdjustment):
+class ContrastSigmoid(InputLayerMixin, NormalizedOutputMixin, ContrastAdjustment):
     cutoff: Annotated[float, TuneSpec(0.0, 1.0)]  = 0.5
     gain:   Annotated[float, TuneSpec(1.0, 20.0)] = 10.0
     inv:    bool                                  = False
-    out_range: OutRange = "clip"
 ```
 
-`cutoff=0.5` / `gain=10.0` are skimage's own defaults. `inv` and `out_range` are `bool` /
-`Literal` and therefore outside the tune coverage gate; `gamma`, `gain`, and `cutoff` carry
-`TuneSpec` windows and satisfy it.
+`cutoff=0.5` / `gain=10.0` are skimage's own defaults. `inv` and `norm` are `bool` /
+`Optional[Literal]` and therefore outside the tune coverage gate; `gamma`, `gain`, and
+`cutoff` carry `TuneSpec` windows and satisfy it.
 
 Canonical `_operate`, identical in shape across the three:
 
 ```python
 def _operate(self, image: Image) -> Image:
     src = self._read_input_layer(image)             # 2-D detect_mat or 3-D rgb
-    src = self._guard_input_range(src)              # §5.1
+    src = self._guard_input_range(src)              # §5.4
     adj = adjust_gamma(src, gamma=self.gamma, gain=self.gain)
     out = self._project_to_detect_mat(image, adj)   # 3-D -> 2-D via detect_mode
-    image.detect_mat[:] = self._apply_out_range(out).astype(np.float32)
+    image.detect_mat[:] = self._apply_norm(out).astype(np.float32)
     return image
 ```
 
@@ -383,8 +464,10 @@ class ContrastStretching(InputLayerMixin, ContrastAdjustment):
     # input_layer appended by the mixin
 ```
 
-`ContrastStretching` keeps `rescale_intensity` and gains **no** `out_range` — rescaling
+`ContrastStretching` keeps `rescale_intensity` and gains **no** `norm` field — rescaling
 between percentiles *is* its algorithm (§2.2), and its output is `[0,1]` by construction.
+A `norm` here would be a knob whose only non-default values are "do it twice" or "undo the
+op", which is why it is deliberately absent rather than accepted for symmetry.
 
 `per_channel` (§2.5) is meaningful only when `input_layer="rgb"`; it is documented as
 ignored for 2-D input.
@@ -434,34 +517,58 @@ lint-grade message.
 **New**
 
 - `src/phenotypic/sdk_/mixin/_input_layer_mixin.py`
+- `src/phenotypic/sdk_/mixin/_normalized_output_mixin.py`
 - `src/phenotypic/enhance/_contrast_gamma.py`
 - `src/phenotypic/enhance/_contrast_log.py`
 - `src/phenotypic/enhance/_contrast_sigmoid.py`
 - `src/phenotypic/_core/_image_parts/color_space_accessors/_xyz_conversion.py`
 
-**Modified**
+**Modified — new capability**
 
-- `sdk_/typing_.py` — `InputLayer`, `OutRange` aliases
-- `sdk_/mixin/__init__.py`, `sdk_/__init__.py` — export `InputLayerMixin`
-- `sdk_/mixin/_clip_control_mixin.py` — honor `out_range` (§5)
+- `sdk_/typing_.py` — `InputLayer`, `NormOut` aliases
+- `sdk_/mixin/__init__.py`, `sdk_/__init__.py` — export both mixins
 - `_core/_image_parts/detection_modes/_detection_mode.py` — `+compute_from_rgb`
 - `detection_modes/{_gray,_color_channel,_min_rgb,_lab_channel,_hsv_channel,_inv_saturation}*.py`
 - `color_space_accessors/_xyz_accessor.py` — thin caller
 - `enhance/_contrast_streching.py` — `input_layer` + `per_channel`
-- `enhance/_focus_edge_laplace.py` — invariant fix
+- `enhance/_focus_edge_laplace.py` — invariant fix (§7)
 - `enhance/__init__.py` — three new exports
-- `enhance/CLAUDE.md`, `sdk_/CLAUDE.md` — mixin + `out_range` conventions
+
+**Modified — `clip` → `norm` migration (§5.2)**
+
+- `sdk_/mixin/_clip_control_mixin.py` → `_norm_control_mixin.py` (public rename)
+- `sdk_/mixin/_gat_support_mixin.py` — `_GAT_DEFER_ATTRS` → `_GAT_DEFER_VALUES`
+- `enhance/{_local_edge_denoise,_bayesshrink_enhancer,_enhance_block_match,`
+  `_visushrink_enhancer,_composite_enhance}.py`
+- `correction/{_color_denoise,_visushrink_corrector,_bayesshrink_corrector}.py`
+- `prefab/_heavy_round_peaks_pipeline.py` — passes `clip=bm3d_clip`
+- `tests/fixtures/tune/back_compat_pipelines/*.json` — regenerate with `norm`
+
+**Modified — conventions**
+
+- `enhance/CLAUDE.md`, `sdk_/CLAUDE.md` — mixins + `norm` convention
+- `.claude/skills/adding-an-operation/SKILL.md` — `norm: NormOut` for any op with an
+  output-range guard; the append-mixin pattern for cross-cutting fields
 
 **Tests**
 
 - `tests/unit/abc_/test_enhancer_taxonomy.py` — roster `+3` under `ContrastAdjustment`
 - `tests/unit/tune/test_enhance_annotations.py` — new `TuneSpec` windows
 - `tests/unit/sdk_/test_input_layer_mixin.py` — field appended last across
-  `model_fields` / schema / `to_json`; `TuneSpec` survives rebuild; no leak
+  `model_fields` / schema / `to_json`; `TuneSpec` survives rebuild; no leak; **and the
+  two-mixin order `[…, norm, input_layer]`** (§5.1)
+- `tests/unit/sdk_/test_norm_migration.py` — legacy `clip` key raises the migration
+  message; `norm=None` round-trips; `_disable_normalization` sets `norm=None`
+- `tests/unit/sdk_/mixin/test_gat_support_mixin.py` — update for `_GAT_DEFER_VALUES`;
+  assert the GAT round-trip still holds with `norm=None` deferred
 - `tests/unit/core/test_detection_modes_from_rgb.py` — the §4.3 golden equivalence, ×11
 - `tests/unit/enhance/test_contrast_ops.py` — curve correctness, both input layers,
-  all three `out_range` values, negative-input guard, `per_channel` joint-vs-split
+  all three `norm` values, negative-input guard, `per_channel` joint-vs-split
 - `tests/unit/enhance/test_detect_mat_invariant.py` — the §7 gate
+
+Existing call sites passing `clip=` (`tests/unit/correction/test_color_denoise.py`,
+`tests/unit/enhance/test_composite_enhance.py`, `tests/unit/sdk_/mixin/test_gat_support_mixin.py`)
+must be updated to `norm=`.
 
 GUI builder registry and Sphinx `autosummary` both walk `phenotypic.enhance`
 automatically; no manual registration or API-doc edit is required.
@@ -474,7 +581,10 @@ automatically; no manual registration or API-doc edit is required.
 |---|---|
 | The `rgb_to_xyz` lift silently changes color output | Pure extraction, no logic edit; pinned by the §4.3 golden test across all 11 modes, mutation-checked by reintroducing a dropped CCTF decode. |
 | `model_rebuild(force=True)` drops `TuneSpec` metadata | **Already disproved** (§2.6) — metadata survives. Re-asserted in `test_input_layer_mixin.py`. |
-| `_disable_clipping` silently no-ops on the new ops | §5 makes updating it a required deliverable with its own test. |
+| **`clip` → `norm` breaks users' saved pipelines** | Unavoidable by choice (hard break). The §5.2 before-validator converts the opaque `extra="forbid"` schema error into a message naming the rename and the replacement value. Needs a changelog entry and a version bump note. |
+| `_GAT_DEFER_VALUES` migration corrupts a GAT round-trip | The stabilized-domain round-trip is asserted directly in `test_gat_support_mixin.py`; §2.3 shows the failure mode is loud (output collapses to zeros), not subtle. |
+| `NormControlMixin` rename breaks a downstream import | Public API rename, exported from `phenotypic.sdk_`. Same changelog entry; no deprecation shim, per the hard-break decision. |
+| `_disable_normalization` silently no-ops on the new ops | §5.3 makes retargeting it to `.norm` a required deliverable with its own test. |
 | `FocusEdgeLaplace` output change breaks a downstream pipeline | Called out in the changelog; the §7 gate makes the new contract explicit. |
 | `rgb` path doubles peak memory on large plates | float32 cast in `_read_input_layer` (§3); the 3-D intermediate is transient and freed before the `detect_mat` write. |
 
@@ -485,8 +595,10 @@ automatically; no manual registration or API-doc edit is required.
 1. `per_channel` on `ContrastStretching` was **derived** from the "if both methods apply
    then use the flag" rule plus the §2.5 research, not chosen explicitly. Confirm the name
    (`per_channel=False`) over GIMP's inverted `keep_colors=True`.
-2. `out_range` is a third field on each op. If `"passthrough"` is judged unnecessary — the
-   `Contrast*` ops are not GAT participants — it can collapse to `Literal["clip","rescale"]`
-   and `_disable_clipping` needs no change.
-3. §7's `FocusEdgeLaplace` normalization changes existing behavior. Confirm that is
+2. §7's `FocusEdgeLaplace` normalization changes existing behavior. Confirm that is
    acceptable on this branch rather than a separate one.
+3. The `clip` → `norm` migration is a **breaking change to public serialization** and to
+   the `phenotypic.sdk_` namespace (`ClipControlMixin`). It wants a version bump and a
+   changelog entry; confirm which release it targets.
+4. `ContrastStretching` deliberately has no `norm` field (§6.1). Confirm that asymmetry is
+   intended rather than a gap.
