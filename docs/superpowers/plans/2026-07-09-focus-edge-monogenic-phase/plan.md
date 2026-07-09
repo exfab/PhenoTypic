@@ -183,19 +183,30 @@ class TestRieszMultiplier:
         riesz = riesz_multiplier(fx, fy, radius)
         assert np.allclose(np.abs(riesz)[1:, 1:], 1.0)
 
-    def test_it_divides_once_as_the_references_do(self):
-        """`(1j*fx - fy)/radius`, not `1j*(fx/radius) - (fy/radius)`.
+    def test_it_divides_componentwise_as_kovesi_does_not_as_numpy_would(self):
+        """`(fx/radius)*1j - (fy/radius)`, NOT numpy's `(1j*fx - fy)/radius`.
 
-        phasecongmono.m:183 and frequencyfilt.jl:234-241 both divide once. The
-        reassociated form differs by ~1 ulp per bin and moves golden agreement from
-        3.52e-14 to 5.32e-14. Harmless; still a shortcut, and this is a port.
+        The three references print the same glyphs; the languages differ beneath them.
+        MATLAB's `./` and Julia's `/(z::Complex, x::Real)` (base/complex.jl:348 ->
+        `Complex(real(z)/x, imag(z)/x)`) divide each component -- a true division.
+        numpy promotes the real denominator and runs `nc_quot`, which with a zero
+        imaginary part reduces to `scl = 1/r` then a *multiply*. Not the same rounding:
+        42.8% of elements differ, by up to 1.41 ulp.
+
+        So the numpy expression is bit-faithful to `phasepack:156` -- an untested
+        transcription with a known odd-grid bug -- and not to Kovesi. Settled by running
+        frequencyfilt.jl:238 in Julia and diffing IEEE-754 bit patterns. Drift M8.
+
+        Cost: the fixture is phasepack's, so agreement loosens 3.52e-14 -> 5.32e-14,
+        still 7.27 orders inside rtol=1e-6.
         """
         radius, sintheta, costheta, _, fx, fy = construct_filter_grids(64, 64)
-        faithful = riesz_multiplier(fx, fy, radius)
-        reassociated = 1j * sintheta - costheta
-        assert not np.array_equal(faithful, reassociated)
-        assert np.abs(faithful - reassociated).max() < 1e-15  # ~1 ulp, so it is only style
-        assert np.array_equal(faithful, (1j * fx - fy) / radius)
+        shipped = riesz_multiplier(fx, fy, radius)
+
+        assert np.array_equal(shipped, 1j * sintheta - costheta)  # Kovesi: bit-exact
+        numpy_form = (1j * fx - fy) / radius
+        assert not np.array_equal(shipped, numpy_form)            # phasepack: rejected
+        assert np.abs(shipped - numpy_form).max() < 2 * np.spacing(1.0)
 
 
 class TestPeriodicFft2:
@@ -461,11 +472,20 @@ def riesz_multiplier(fx: np.ndarray, fy: np.ndarray, radius: np.ndarray) -> np.n
     Packs both odd (Riesz) channels into one complex array, so a single ``ifft2``
     yields ``h1`` in the real part and ``h2`` in the imaginary part.
 
-    **One division, exactly as the references.** ``phasecongmono.m`` l.183 is
-    ``H = (1i*u1 - u2)./radius`` and ``frequencyfilt.jl`` l.234-241 is
-    ``H = (im.*fx .- fy)./f``. Writing ``1j*sintheta - costheta`` instead divides *twice*
-    and reassociates, which differs by ~1 ulp per bin and moves golden agreement from
-    ``3.52e-14`` to ``5.32e-14``. Harmless, but it is a shortcut, and this is a port.
+    **Divide each component, because that is what the references compute.** The three
+    source texts print the same glyphs -- ``phasecongmono.m`` l.183 ``H = (1i*u1 - u2)./radius``,
+    ``frequencyfilt.jl`` l.238 ``H = (im.*fx .- fy)./f``, ``phasepack`` l.156
+    ``H = (1j*u1 - u2)/radius`` -- but the languages disagree beneath them. MATLAB's ``./``
+    and Julia's ``/(z::Complex, x::Real)`` (``base/complex.jl`` l.348,
+    ``Complex(real(z)/x, imag(z)/x)``) do a true division per component. numpy promotes the
+    real denominator and runs ``nc_quot``, which with a zero imaginary part reduces to
+    ``scl = 1/r`` then a **multiply** -- 42.8% of elements differ, by up to 1.41 ulp.
+
+    So ``(1j*fx - fy)/radius`` is bit-faithful to ``phasepack``, not to Kovesi. Settled by
+    executing ``frequencyfilt.jl`` l.238 in Julia and diffing IEEE-754 bit patterns.
+    Golden agreement loosens ``3.52e-14 -> 5.32e-14``, still 7.27 orders inside
+    ``rtol = 1e-6``. Drift ``M8``.
+
     ``radius`` carries the ``[0, 0] = 1`` fudge, so the DC bin comes out ``0`` on its own.
 
     **Axis convention.** Swapping ``fx`` and ``fy`` rotates every orientation by 90
@@ -482,7 +502,9 @@ def riesz_multiplier(fx: np.ndarray, fy: np.ndarray, radius: np.ndarray) -> np.n
     Returns:
         Complex transfer function with a zero DC bin.
     """
-    return (1j * fx - fy) / radius
+    # Componentwise, NOT `(1j * fx - fy) / radius`. numpy would turn that into a
+    # reciprocal-multiply and drift up to 1.41 ulp from Kovesi. See above.
+    return (fx / radius) * 1j - (fy / radius)
 
 
 def periodic_fft2(img: np.ndarray) -> np.ndarray:
@@ -631,7 +653,8 @@ Also fixes the latent `n_scale=1` bug: `_phasecong3` divides by `n_scale - 1` (l
 > lock immediately." We are consciously accepting the trip, because the config it locks in is one
 > that already produces nothing. The fixture moves to the new tightest legal edge, `n_scale=2`
 > (Step 6), and the old bound is pinned shut by `test_n_scale_one_is_rejected` (Step 7) so a future
-> revert to `ge=1` cannot silently restore the all-zero path. Recorded as drift **M8**.
+> revert to `ge=1` cannot silently restore the all-zero path. Recorded by **updating drift `M3`**,
+> which already covers this change — do **not** open a new row. (`M8` is the Riesz division.)
 >
 > There is no `CHANGELOG` in this repository; the breaking change is recorded in
 > `drift-register.md` and pinned by the test, not by prose.
@@ -847,7 +870,7 @@ Append to `tests/unit/enhance/test_phase_congruency.py`, inside `TestPhaseCongru
     def test_n_scale_one_is_rejected(self):
         """n_scale=1 divides by (n_scale - 1) and returns an all-zero detect_mat
         (max=0 versus 0.971004 at n_scale=4). Rejected at construction rather
-        than producing garbage. See drift-register M8."""
+        than producing garbage. See drift-register M3."""
         with pytest.raises(ValidationError):
             FocusEdgePhase(n_scale=1)
 
@@ -864,9 +887,11 @@ The existing `test_n_scale_less_than_one_raises_error` (line 24) only asserts `n
 Run: `uv run pytest tests/unit/enhance/test_phase_congruency.py tests/unit/tune/test_annotation_back_compat.py -q && uv run ruff check --fix src/phenotypic/enhance/_focus_edge_phase.py && uv run mypy src/phenotypic`
 Expected: pass, clean.
 
-- [ ] **Step 9: Record drift M8**
+- [ ] **Step 9: Update drift `M3` (do not open a new row)**
 
-Add a row to `docs/superpowers/specs/2026-07-08-alt-phase-detection/drift-register.md`: `n_scale` narrowed `ge=1` → `ge=2`; deviates from `phasecong3.m`, which also divides by `nscale-1` and is equally undefined at `nscale=1` — we raise where Kovesi would emit a warning and zeros. Evidence: `max=0` vs `max=0.971004`; back-compat fixture moved from `1` to `2`.
+`drift-register.md` **already has** `M3` for `n_scale ≥ 2`. Update it in place with the evidence: deviates from `phasecong3.m`, which also divides by `nscale-1` and is equally undefined at `nscale=1` — we raise where Kovesi would emit a warning and zeros. Evidence: `max=0` vs `max=0.971004`; the back-compat corpus fired (`1 failed, 14 passed`) and its fixture moved from `1` to `2`; `test_n_scale_one_is_rejected` replaces the guardrail. There is no `CHANGELOG` in this repository — the test is the record.
+
+(`M8` is taken: it is the Riesz componentwise-division correction. Numbering a second `M8` would break every `file:line` reference into the register.)
 
 - [ ] **Step 10: Commit**
 
@@ -882,7 +907,7 @@ Bit-identical on load_synth_yeast_plate across all six _phasecong3 outputs.
 BREAKING: tightens n_scale to ge=2. _phasecong3 divides by (n_scale - 1), so
 n_scale=1 returned an all-zero detect_mat (max=0 vs 0.971004 at n_scale=4).
 The back-compat fixture enhance_features_edges.json moves to the new tightest
-legal edge; test_n_scale_one_is_rejected pins the old bound shut. Drift M8."
+legal edge; test_n_scale_one_is_rejected pins the old bound shut. Drift M3."
 ```
 
 ---

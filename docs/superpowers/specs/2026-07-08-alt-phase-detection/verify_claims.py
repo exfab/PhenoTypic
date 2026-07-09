@@ -67,6 +67,7 @@ Notation follows ``references.md`` §0 and §4::
 
 from __future__ import annotations
 
+import math
 import sys
 from dataclasses import dataclass
 from typing import Callable
@@ -441,7 +442,13 @@ def monogenic_phase_congruency(
     radius[0, 0] = 1.0
     if swap_axes:
         FX, FY = FY, FX
-    riesz = (1j * FX - FY) / radius
+    # Componentwise, as MATLAB's `./` and Julia's `/(z::Complex, x::Real)` compute it
+    # (base/complex.jl:348). NOT `(1j*FX - FY) / radius`: numpy promotes the real
+    # denominator and runs nc_quot, which reduces to `scl = 1/radius` and a multiply --
+    # bit-faithful to phasepack (which generated the golden fixture) but up to 1.41 ulp
+    # away from Kovesi. Verified by running frequencyfilt.jl:238 in Julia and comparing
+    # IEEE-754 bit patterns. Drift M8.
+    riesz = (FX / radius) * 1j - (FY / radius)
     riesz[0, 0] = 0.0
     lowpass = 1.0 / (1.0 + (radius / 0.45) ** 30)
     spectrum = periodic_fft2(img) if periodic else np.fft.fft2(img)
@@ -1561,7 +1568,11 @@ def check_19_golden_fixture_agrees_with_phasepack() -> Result:
         "19 golden fixture agrees with phasepack (rtol=1e-6)",
         ok,
         f"5 images, 64x64: max|dpc| {worst_pc:.2e}, max|dft| {worst_ft:.2e}, max|dT| {worst_t:.2e}, "
-        f"max|dorientation| {worst_or:.0f} deg (exact). pc clears rtol=1e-6 by 7.5 orders. "
+        # Computed, not written down: a hardcoded "7.5 orders" silently went stale the
+        # moment the Riesz multiplier changed (drift M8). Numbers in a check's own detail
+        # line must be derived from what the check just measured.
+        f"max|dorientation| {worst_or:.0f} deg (exact). "
+        f"pc clears rtol=1e-6 by {math.log10(1e-6 / worst_pc):.2f} orders. "
         f"phasepack ships no tests of its own (references.md §10)",
     )
 
