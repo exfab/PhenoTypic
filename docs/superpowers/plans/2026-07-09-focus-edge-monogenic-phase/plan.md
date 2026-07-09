@@ -2479,7 +2479,11 @@ These reproduce the paper's own stated ordering (CMPCM > VPMM > MPC > PC > Log >
 
 **Gate (mechanical, then human).** Every check runs over the **whole** sandbox — code, tests, spec, plan, references — not just the kernels:
 
-1. `grep -rniE '<ban-list>' <scratchpad>/math-review/ --exclude-dir=refs --exclude-dir=papers` returns nothing. `refs/` and `papers/` are excluded because they are third-party and read-only; nothing else is.
+1. `grep -rniE '<ban-list>' <scratchpad>/math-review/ --exclude-dir=papers` returns nothing.
+
+   Only `papers/` is excluded, and only because it is third-party text we may not alter. Measured 2026-07-09: the two hits in there are the single word `Biolog`, from the journal name *Biological Cybernetics* in a reference list of `felsberg2004` and `shi2019` — citations, not framing.
+
+   **`refs/` is NOT excluded**, contrary to an earlier draft of this plan. Measured: `refs/` contains **zero** hits on every ban term (`plate`, `culture`, `organism`, `biolog`, `phenotyp`, and the rest) across all 11 files. Including it in the grep therefore costs nothing and buys a real guarantee — that nobody edited a reference implementation on the way into the sandbox. An exclusion that is never exercised is an exclusion that hides a defect.
 2. `grep -rn 'import phenotypic' <scratchpad>/math-review/` returns nothing.
 3. `grep -rn 'phenotypic\|PhenoTypic' <scratchpad>/math-review/ --exclude-dir=refs --exclude-dir=papers` returns nothing — no repo name, no import path, no URL. Gate 1's `phenotyp` pattern already covers this; run it separately anyway, because a reviewer who learns the project name can search for it.
 4. **Manifest completeness:** every row of the table above exists in the sandbox. A silently-missing `plan/plan.md` is the most likely failure, and it is the file F most needs.
