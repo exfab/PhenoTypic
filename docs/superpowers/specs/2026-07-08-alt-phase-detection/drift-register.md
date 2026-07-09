@@ -47,7 +47,7 @@ it.** The golden fixture enforces this at `rtol=1e-6`.
 | C1c | `σ` = pixels per sphere diameter | no source states it | **FORCED (P3)** | `S⁻¹` is not scale-invariant (the `1 + \|x\|²`), so the sphere fixes a unit. A structural parameter, not a curvature knob. |
 | C2 | Reads `image.rgb`, not `detect_mat` | every other `FocusEdge` subclass | FORCED | CMPCM is defined on colour; `rgb` is not a supported `detect_mat` layer. Legal under `@validate_operation_integrity`. Recorded in the class docstring, `enhance/CLAUDE.md`, and the ABC. |
 | C3 | `l2` output clipped at the write site | paper leaves it in `[0, √3]` | CONTRACT | The internal helper returns the un-clipped value, and the PFOM regression uses that helper. |
-| C4 | `output="curvature"` emits `ϕ/(π/2)`, masked by odd energy; **`κ` is not shipped** | JMIV Eq. (97) defines `κ` | **CONTRACT + FORCED** | `κ` is unbounded, singular on ridges, and — measured — **not scale-free**: at fixed `σ` it spreads `2.04×` over `r ∈ [2,16]`. Unbiased only at `σ ∝ r`, which is circular. The plane-wave approximation is valid only for `r/σ ≲ 0.35`. `ϕ` is bounded but **undefined where the odd energy vanishes** (a straight wave's crest reads `0.0000` unmasked). The 2019 paper's Eq. (12) never consumes `ϕ` or `κ` either. |
+| C4 | `output="curvature"` emits `ϕ/(π/2)`, masked by odd energy; **`κ` is not shipped** | JMIV Eq. (97) defines `κ` | **CONTRACT + FORCED** | **`κ` is not curvature.** Three radial profiles with identical isophote curvature `1/r` give `κ·r = 1.256 / 2.077 / 3.136` (`f = r, r², r³`); the estimator tracks `f''/f' + 1/r`, agreeing with curvature only when `f'' = 0` — the cone, which is JMIV's own test signal. On JMIV's oscillatory circular signal it varies `3×` with wavelength at fixed `r`. `κ` **is** scale-covariant; an earlier revision descoped it for the wrong reason ("not scale-free", measured at `R/σ ≈ 0.5`, a mask too small to contain the isophote). `ϕ` is bounded but **undefined where the odd energy vanishes**. The 2019 paper's Eq. (12) never consumes `ϕ` or `κ` either. `verify_claims.py::check_09`. |
 | C14 | Corrected `ω₃` sign | JMIV Eqs. (41)/(67)/(89) | FORCED | The lifted isophote satisfies `u₃ = 2⟨u₁₂, m⟩`, so the plane normal is `(2m₁, 2m₂, −1)`, not `(2m₁, 2m₂, +1)`. `\|κ\|` unaffected; `κ`'s sign flips and `θ` rotates by π. |
 | C5 | Noise threshold uses the kernel-norm ratio, not `(1/mult)ʲ` | Kovesi's `phasecongmono` | **FORCED, and *more* faithful** | Kovesi states the *principle* ("according to their relative bandwidths") and flags his sum as "a simplistic overestimate" whose correction "will depend on the filter bank being used." `(1/mult)ʲ` is the log-Gabor instantiation. For a planar DoP bank the exact law is `τⱼ/τ₀ = s₀/sⱼ` (closed form, from `‖p_{ts} − p_s‖₂ ∝ 1/s`). **The reason is that this is Kovesi's stated principle — not that some percentage is large.** An earlier revision argued "13–28% is fatal", which proves too much: Kovesi's *own* bank has a 50% per-scale error at the anchor step (`0.7149` vs `0.4762`) and we port it verbatim regardless. |
 | C6 | `color_space="lab"` default | paper uses HSV | CAPABILITY | Hue is circular and ill-conditioned at low saturation: at `S = 0.01` an RGB perturbation of `0.00036` swings hue by `0.01`. Bare agar is low-chroma. `("hsv","l2")` remains reachable and is the PFOM-regression configuration. |
@@ -102,6 +102,14 @@ and assumes an isotropy that holds at one point. Weeks of the `κ` failure trace
 The lesson is not "distrust papers" but: **when an invariant is load-bearing, test the invariant, not
 just the thing built on it.** Had we measured `Qⁱ/ωᵢ` directly on a synthetic plane wave, this would
 have surfaced in an hour.
+
+**S4 — asserting in prose what was never asserted in code.** Four separate claims in this spec were
+measured once, written down, and then drifted from what the number actually showed: the `2.04×` spread
+(measured in an invalid regime), the "kernel-norm rule reduces to Kovesi's" (it does not; the cumulative
+offset is a persistent `1.551×`), the `f_z` correlation figures (config-dependent), and "both
+corrections are necessary" (true, but shown at a point where the two errors cancelled). One of the
+tests even **cherry-picked its own slice** to pass. `verify_claims.py` exists so that every number in
+these documents is re-derived on demand, and so that a claim which stops being true fails loudly.
 
 **The lesson, in one line:** copying a reference's *constants* is not faithfulness. Copying its
 *principle*, correctly instantiated, is — and verifying the principle is part of copying it.

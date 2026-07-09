@@ -307,14 +307,18 @@ DC-removed only `0.2657`; gain only `2.1868`; **both `0.9015`**. Tuned (`s₀ = 
 `S⁻¹` is not scale-invariant (the `1 + |x|²`), so the sphere fixes a unit. Introduce **`σ` = pixels per
 sphere diameter**, and lift `ŷ = y/σ`. No source states this.
 
-Theorem 2's plane-wave approximation carries an error bound growing like `8r̂⁴`, so it is only good for
+**`κ` is scale-covariant but is not curvature.** `κ·r` depends only on `(r/σ, R/σ)` — verified to 4
+digits by scaling `(r,σ,R)` together. An earlier revision claimed `κ` "is not scale-free", citing a
+`2.04×` spread; that was measured at `R/σ ≈ 0.5`, a mask too small to contain the isophote.
 
-```
-r̂ = r/σ  ≲  0.35
-```
+The genuine defect: three radial profiles with **identical** isophote curvature `1/r` give
+`κ·r = 1.256 / 2.077 / 3.136` for `f = r, r², r³`. Isophote curvature predicts `1,1,1`;
+`Laplacian/|∇f| = f''/f' + 1/r` predicts `1,2,3`. The estimator tracks the latter, agreeing with
+curvature only when `f'' = 0` — the cone, which is JMIV's own Fig. 13 test signal. And on JMIV's
+oscillatory circular signal, where Eq. (89) implies the radial frequency cancels, `κ·r` varies **3×**
+with wavelength at fixed `r`.
 
-Measured consequence: `κ` is unbiased only at **matched scale** (`σ ∝ r`). At fixed `σ`, `κ·r` spreads
-`2.04×` over `r ∈ [2,16]`. **`κ` is not a scale-free feature.**
+Reproduce: `verify_claims.py::check_09`.
 
 ### 4.4.1 The fold — a shortcut this document introduced, and must not
 
@@ -408,9 +412,17 @@ filter with kernel `M` yields response variance `σ²‖M‖₂²`, so
 τⱼ / τ₀  =  √( Σᵢ ‖Mᵢ,ⱼ‖₂²  /  Σᵢ ‖Mᵢ,₀‖₂² )
 ```
 
-That *is* "according to their relative bandwidths," made computable, and it **reduces to Kovesi's
-formula on Kovesi's bank**: the consecutive log-Gabor kernel-norm ratios come out
-`0.4918, 0.4763, 0.4762`, converging to `1/mult = 0.47619` exactly. It is a strict generalization.
+That *is* "according to their relative bandwidths," made computable.
+
+> **It does NOT reduce to Kovesi's factor.** An earlier revision claimed it did. The *consecutive*
+> norm ratios converge to `1/mult` from `j = 3` (`0.4763, 0.4762, 0.4762`), but the *cumulative*
+> `τⱼ/τ₀` is a persistent **`1.551×`** Kovesi's `(1/mult)ʲ`, because the two already disagree at the
+> anchor step (`0.7149` vs `0.4762`). `totalTau` therefore differs by a constant `1.25×` — which is
+> exactly the sort of per-bank constant Kovesi says `k` absorbs.
+>
+> So the *recommendation* (use the kernel-norm rule for a new bank) survives, and its *justification*
+> does not. Use it because it is Kovesi's stated principle, not because it reproduces his numbers.
+> Reproduce: `verify_claims.py::check_14`.
 
 It also exposes a wrinkle in his own code: the `s=0 → s=1` ratio is `0.715`, not `0.476`. **The
 lowpass is not the cause** — with the lowpass removed the ratio is still `0.589`. The finest log-Gabor
@@ -715,10 +727,14 @@ Treat it as evidence about geometry, and as a warning about everything else.
 Measured on band-passed structured signals, with the corrected construction:
 
 ```
-corr(c_bp, f_x_bp) = -0.0000      proper quadrature: even vs odd, uncorrelated
-corr(c_bp, f_z_bp) = -0.9679      f_z is EVEN, not odd
-corr(f_z, ∇²f)     = +0.8904      f_z is, to leading order, a LAPLACIAN
+|corr(c_bp, f_x_bp)| = 0.0008      proper quadrature: even vs odd, uncorrelated
+|corr(c_bp, f_z_bp)| = 0.8928      f_z is EVEN, not odd  (1175x larger)
+|corr(f_z, ∇²f)|     = 0.8994      f_z is, to leading order, a LAPLACIAN
 ```
+
+> The magnitude of `|corr(c, f_z)|` is configuration-dependent — `0.65` at `s₀ = 0.5`, up to `0.92` at
+> `s₀*` — so the *structure* is the claim, not the number. `f_z` is three orders of magnitude more
+> correlated with `c` than `f_x` is. Reproduce: `verify_claims.py::check_10`.
 
 **Mechanism.** `Q̃³` is a positive, radially symmetric kernel, so `f ⋆ Q̃³` is a smoothing. The P1
 value-removal makes it `(blur − identity)·f`, a Laplacian. Within a band the Laplacian acts as
@@ -747,3 +763,45 @@ multiplication by `−|ω|²`, roughly constant, so `f_z_bp` is nearly a scalar 
 crossing is **two superimposed lines** — out of model. For that, see Wietzke, L.; Sommer, G. "The
 Signal Multi-Vector." *J. Math. Imaging Vis.* **37**, 132–150 (2010), which models superimposed i1D
 signals.
+
+---
+
+## 10. The validation landscape: nobody numerically tests this algorithm
+
+Surveyed 2026-07-09, across every public implementation of monogenic phase congruency:
+
+| Implementation | Licence | Test suite |
+|---|---|---|
+| [ImagePhaseCongruency.jl](https://github.com/peterkovesi/ImagePhaseCongruency.jl) (Kovesi) | MIT | `test/test_phasecongruency.jl` — **0 assertions.** Header: *"Hard to test these functions other than visually. This script simply runs then all to make sure that they at least run."* |
+| [phasepack](https://github.com/alimuldal/phasepack) | MIT (in-file; no `LICENSE`) | none |
+| [CPBridge/monogenic](https://github.com/CPBridge/monogenic) | — | `example/python/monogenicImageTest.py` — **0 assertions**, a demo |
+| [CPBridge/monogenic_signal_matlab](https://github.com/CPBridge/monogenic_signal_matlab) | — | none |
+| [pinga-lab/paper-monogenic-signal](https://github.com/pinga-lab/paper-monogenic-signal) | — | none |
+| [Vivianyuwei/…-Conformal-Phase](https://github.com/Vivianyuwei/Image-Edge-Detection-Based-on-Conformal-Phase) | **none** | none |
+
+**Consequence.** The golden fixture proposed in `monogenic-phase-congruency.md` §7 — numeric agreement
+with `phasepack` at `rtol=1e-6` — would be **stronger validation than the reference implementation
+itself carries.** That raises the fixture's value and lowers the confidence one may place in "it
+matches the reference" as an argument. It also explains how errors like JMIV Eq. (89) survive: nothing
+downstream would catch them.
+
+### 10.1 What IS reusable: Kovesi's synthetic test images (MIT)
+
+`src/syntheticimages.jl` exports four generators, all under MIT and portable with attribution. They
+supply ground-truth controls this spec currently lacks:
+
+| Generator | What it guarantees | Use for |
+|---|---|---|
+| `step2line(sze; ampexponent, phasecycles)` | A **phase-congruent** image whose feature type sweeps step → line down the page, at constant congruency | Positive control: `pc` must stay high and roughly constant while `feature_type` sweeps `0 → π/2`. We have **no** positive control today. |
+| `circsine(sze; wavelength, ampexponent, offset)` | A phase-congruent **concentric** sine grating | An independent `κ` oracle, written by the algorithm's own author. `ampexponent` varies the radial frequency content — precisely the axis on which `κ` fails (§4.3.3). |
+| `starsine(sze; ncycles)` | A phase-congruent radial grating | Orientation and angular-response checks |
+| `noiseonf(sze, p)` | `1/f^p` noise, no congruent structure | Negative control for the Rayleigh noise threshold `T`, which is currently untested |
+
+`ampexponent = -1` yields step features; `-2` with `offset = π/2` yields line features. That is the
+one knob that separates "is this a step or a line" from "is this congruent", and it is exactly what a
+`feature_type` test needs.
+
+**Recommended adoption.** Port the four generators into a test helper (MIT header retained), then use
+them for: the monogenic port's behavioural tests (positive + negative controls, alongside the golden
+fixture); a three-channel congruent/incongruent pair for `color-phase-congruency.md` §7's fusion
+sanity; and `circsine` as a second, author-provided oracle in `verify_claims.py::check_09`.

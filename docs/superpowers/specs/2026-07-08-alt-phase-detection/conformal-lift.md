@@ -43,10 +43,13 @@ and the third Riesz channel — which ought to be odd like the other two — com
 Measured (`references.md` §9):
 
 ```
-corr(c_bp, f_x_bp) = -0.0000      proper quadrature: even vs odd, uncorrelated
-corr(c_bp, f_z_bp) = -0.9679      f_z is EVEN
-corr(f_z, ∇²f)     = +0.8904      f_z is, to leading order, a LAPLACIAN
+|corr(c_bp, f_x_bp)| = 0.0008     proper quadrature: even vs odd, uncorrelated
+|corr(c_bp, f_z_bp)| = 0.8928     f_z is EVEN  (1175x larger than f_x's)
+|corr(f_z, ∇²f)|     = 0.8994     f_z is, to leading order, a LAPLACIAN
 ```
+
+> The magnitude is configuration-dependent (`0.65` at `s₀ = 0.5`, `0.92` at `s₀*`). The *structure* is
+> the claim. Reproduce: `verify_claims.py::check_10`.
 
 `Q̃³` is a positive radially symmetric kernel, so `f ⋆ Q̃³` is a smoothing; the P1 value-removal makes it
 `(blur − identity)·f`, i.e. a Laplacian. Within a band the Laplacian is multiplication by `−|ω|²`,
@@ -61,8 +64,8 @@ over uninteresting pixels.
 **`φ` is not a phase.** `φ = atan2(‖(f_x,f_y,f_z)‖, c)` folds an even channel into the odd magnitude.
 The i2D content lives only in the ratio `f_z / √(f_x²+f_y²)` — smoothed Laplacian over gradient
 magnitude, the classical isophote-curvature estimator. "Curvature without derivatives" is a derivative
-ratio with the derivatives hidden inside the kernel. That is why it needs a length scale `σ` and is
-not scale-free.
+ratio with the derivatives hidden inside the kernel. That is why it needs a length scale `σ`, and why
+it measures the radial profile rather than the isophote (§5).
 
 ## 3. Three problems with `φ`, in order of severity
 
@@ -134,8 +137,31 @@ Feature               tan ϕ = (B/A)·√(f_x²+f_y²)/|f_z|               ← P
 Length scale          σ = pixels per sphere diameter                 ← P3, forced, no source states it
 ```
 
-**Do not ship `κ = (2/σ)/tan ϕ` as a curvature.** It is unbiased only at matched scale (`σ ∝ r`); at
-fixed `σ` it spreads `2.04×` over `r ∈ [2,16]`. That is circular when curvature is the unknown.
+**Do not ship `κ = (2/σ)/tan ϕ` as a curvature — it is not curvature.**
+
+An earlier revision descoped `κ` for the wrong reason ("not scale-free"). `κ` **is** scale-covariant:
+`κ·r` depends only on `(r/σ, R/σ)`, verified to 4 digits. The `2.04×` spread that revision cited was
+measured at `R/σ ≈ 0.5`, a mask too small to contain the isophote — the regime this spec itself calls
+invalid.
+
+The real problem is worse. Three radial profiles have **identical** isophote curvature `1/r`
+(concentric circles), yet:
+
+| profile | `κ·r` | ratio |
+|---|---|---|
+| `f = r` (cone) | 1.256 | 1.00 |
+| `f = r²` | 2.077 | 1.65 |
+| `f = r³` | 3.136 | 2.50 |
+
+Isophote curvature predicts `1, 1, 1`. `Laplacian/|∇f| = f''/f' + 1/r` predicts `1, 2, 3`. The
+estimator tracks the latter, and coincides with curvature only when `f'' = 0` — i.e. for a **cone**,
+which is exactly JMIV's Fig. 13 test signal.
+
+Even inside JMIV's own signal class (an oscillatory circular signal, where Eq. (89) implies the
+frequency cancels), `κ·r` varies **3×** with wavelength at fixed `r`, converging to the cone constant
+only as `λ → ∞`. That is a third, independent failure of Eq. (89).
+
+Reproduce: `verify_claims.py::check_09`.
 
 **JMIV Eq. (89) is wrong** and must not be used as printed: it omits a DC term `g(0)·μ₃` and assumes an
 isotropy `A = B` that holds only at `s₀* = 0.19269068`. `references.md` §4.3.1.
