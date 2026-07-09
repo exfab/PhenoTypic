@@ -408,6 +408,12 @@ def riesz_multiplier(sintheta: np.ndarray, costheta: np.ndarray) -> np.ndarray:
     orientation about the x-axis, which axis-aligned test edges cannot see. Both
     bugs are covered by the ``starsine`` test.
 
+    **Not bit-identical to ``(1j*fx - fy)/radius``.** Dividing first and combining
+    second rounds differently from combining first and dividing second: the two forms
+    differ by ~1 ulp (``1.6e-16``) per bin. That propagates through four ``ifft2`` calls
+    to ``5.3e-14`` in ``pc`` -- eleven orders inside the ``rtol=1e-6`` fixture target, but
+    do not assert bit-equality against the prototype in ``verify_claims.py``.
+
     Args:
         sintheta: ``fx / freq`` grid from :func:`construct_filter_grids`.
         costheta: ``fy / freq`` grid from :func:`construct_filter_grids`.
@@ -629,6 +635,19 @@ And replace the inline `width`/`weight` block:
 ```
 
 `_compute_angular_spread` stays exactly where it is.
+
+> **Pre-validated.** Each of the four helpers was transcribed from Task 1 and diffed against the method it replaces, before this plan was dispatched:
+>
+> | Helper | vs | Result |
+> |---|---|---|
+> | `construct_filter_grids` | `_construct_filter_grids` | **bit-identical**, all 4 outputs, at 64², 255², 600×800, 63×64 |
+> | `log_gabor_radial` | `_construct_log_gabor_filters` | **bit-identical**, 4 scales @ 600×800; DC zeroed at every scale |
+> | `spread_weight(…, 1e-5)` | the inline block at `:320-321` | **bit-identical** |
+> | `rayleigh_mode` | `_rayleigh_mode` | **bit-identical** |
+>
+> Bit-identical helpers ⟹ bit-identical `_phasecong3`, by substitution. Step 4 still runs — it guards against a *transcription* slip, which is a different failure from a *design* slip.
+>
+> **The epsilon is the trap.** Passing `1e-4` instead of `1e-5` into `spread_weight` shifts the weight by `max|Δ| = 0.094` — a 9.4% error, silent, and nothing else in `_phasecong3` would notice.
 
 - [ ] **Step 4: Verify bit-identity against the baseline**
 
@@ -1193,7 +1212,11 @@ def monogenic_phase_congruency(
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `uv run pytest tests/unit/enhance/test_monogenic_kernels.py -q`
-Expected: all pass. The golden-fixture assertions should clear `rtol=1e-6` by eight orders (actual `max|Δpc| = 3.5e-14`).
+Expected: all pass.
+
+**This code was executed against the fixture before the plan was dispatched.** Transcribed verbatim from the steps above and run standalone, it gives `max|Δpc|` of `1.8e-15` (step), `5.4e-15` (step2line), `5.3e-14` (starsine), `2.4e-15` (circsine), `2.0e-15` (noiseonf) — worst case **`5.3e-14`**, eleven orders inside `rtol=1e-6`. If your run differs materially from those five numbers, you have transcribed something wrong; do not adjust the tolerance.
+
+Note `5.3e-14`, not the `3.5e-14` that `verify_claims.py::check_19` reports. The prototype there uses `(1j*FX - FY)/radius`; this module uses `riesz_multiplier(sintheta, costheta)`, which rounds 1 ulp differently. Both clear the target by eleven orders.
 
 - [ ] **Step 7: Confirm the fixture is load-bearing, not decorative**
 
