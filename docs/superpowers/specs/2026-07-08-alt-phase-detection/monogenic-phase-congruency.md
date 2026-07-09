@@ -124,7 +124,10 @@ Pure functions, no `Image` dependency, unit-testable without fixtures:
 
 - `construct_filter_grids(rows, cols)` — quadrant-shifted frequency grids.
 - `log_gabor_radial(radius, n_scale, min_wavelength, mult, sigma_onf)` — isotropic radial bandpass.
-- `riesz_multiplier(sintheta, costheta)` → `1j*sintheta - costheta`.
+- `riesz_multiplier(fx, fy, radius)` → `(1j*fx - fy)/radius`. **One division**, as
+  `phasecongmono.m:183` and `frequencyfilt.jl:234-241` both do. An earlier revision specified
+  `1j*sintheta - costheta`, which divides twice and reassociates: ~1 ulp per bin, moving golden
+  agreement from `3.52e-14` to `5.32e-14`. Harmless, but a shortcut, and this is a port.
 - `rayleigh_mode(amplitude)` — Rayleigh σ from the amplitude histogram.
 - `spread_weight(sum_amplitude, max_amplitude, n_scale, cutoff, g)` — Kovesi's `W`.
 

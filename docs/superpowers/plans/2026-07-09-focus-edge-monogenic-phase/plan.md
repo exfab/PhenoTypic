@@ -67,13 +67,13 @@ Extract the four helpers `FocusEdgePhase` already owns, and add the three new pu
 - Consumes: nothing.
 - Produces:
   - `EPSILON_MONOGENIC: float = 1e-4`
-  - `construct_filter_grids(rows: int, cols: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]` → `(radius, sintheta, costheta, freq)`
+  - `construct_filter_grids(rows: int, cols: int) -> tuple[np.ndarray, ...]` → `(radius, sintheta, costheta, freq, fx, fy)` — **six** values
   - `lowpass_filter(radius: np.ndarray, cutoff: float = 0.45, order: int = 15) -> np.ndarray`
   - `log_gabor_scale(radius: np.ndarray, lowpass: np.ndarray, wavelength: float, sigma_onf: float) -> np.ndarray`
   - `log_gabor_radial(radius: np.ndarray, n_scale: int, min_wavelength: float, mult: float, sigma_onf: float) -> list[np.ndarray]`
-  - `riesz_multiplier(sintheta: np.ndarray, costheta: np.ndarray) -> np.ndarray`
+  - `riesz_multiplier(fx: np.ndarray, fy: np.ndarray, radius: np.ndarray) -> np.ndarray`
   - `periodic_fft2(img: np.ndarray) -> np.ndarray`
-  - `rayleigh_mode(amplitude: np.ndarray) -> float`
+  - `rayleigh_mode(amplitude: np.ndarray, n_bins: int = 50) -> float`
   - `spread_weight(sum_amplitude, max_amplitude, n_scale: int, cutoff: float, g: float, epsilon: float) -> np.ndarray`
 
 - [ ] **Step 1: Write the failing tests**
@@ -115,14 +115,14 @@ def test_epsilon_is_kovesis_phasecongmono_value_not_phasecong3s():
 
 class TestConstructFilterGrids:
     def test_dc_is_at_the_corner_and_radius_is_fudged_to_one(self):
-        radius, sintheta, costheta, freq = construct_filter_grids(8, 8)
+        radius, sintheta, costheta, freq, fx, fy = construct_filter_grids(8, 8)
         assert freq[0, 0] == 0.0
         assert radius[0, 0] == 1.0  # so log(radius) never sees zero
         assert sintheta[0, 0] == 0.0
         assert costheta[0, 0] == 0.0
 
     def test_even_axis_spans_minus_half_to_just_under_half(self):
-        _, _, _, freq = construct_filter_grids(1, 8)
+        freq = construct_filter_grids(1, 8)[3]
         # ifftshift puts DC first; the raw axis was -4/8 .. 3/8
         assert freq.max() == pytest.approx(0.5)
 
@@ -130,27 +130,27 @@ class TestConstructFilterGrids:
         """Both of Kovesi's implementations divide an odd axis by N (frequencyfilt.jl:73,
         filtergrid.m:49). phasepack divides by N-1, in filtergrid AND lowpassfilter -- a
         phasepack bug. k/N is the true DFT bin frequency. All three agree at even sizes."""
-        _, _, _, freq = construct_filter_grids(1, 5)
+        freq = construct_filter_grids(1, 5)[3]
         assert freq.max() == pytest.approx(2.0 / 5.0)  # not 0.5, which is k/(N-1)
 
     def test_sintheta_and_costheta_are_a_unit_vector_off_dc(self):
-        _, sintheta, costheta, _ = construct_filter_grids(16, 16)
+        _, sintheta, costheta, _, _, _ = construct_filter_grids(16, 16)
         norm = np.hypot(sintheta, costheta)
         assert np.allclose(norm[1:, 1:], 1.0)
 
 
 class TestLogGabor:
     def test_dc_is_zeroed_at_every_scale(self):
-        radius, _, _, _ = construct_filter_grids(32, 32)
+        radius = construct_filter_grids(32, 32)[0]
         for filt in log_gabor_radial(radius, 4, 3.0, 2.1, 0.55):
             assert filt[0, 0] == 0.0
 
     def test_returns_one_filter_per_scale(self):
-        radius, _, _, _ = construct_filter_grids(32, 32)
+        radius = construct_filter_grids(32, 32)[0]
         assert len(log_gabor_radial(radius, 5, 3.0, 2.1, 0.55)) == 5
 
     def test_each_scale_peaks_at_its_own_centre_frequency(self):
-        radius, _, _, _ = construct_filter_grids(256, 256)
+        radius = construct_filter_grids(256, 256)[0]
         filters = log_gabor_radial(radius, 4, 3.0, 2.1, 0.55)
         for s, filt in enumerate(filters):
             f0 = 1.0 / (3.0 * 2.1**s)
@@ -158,7 +158,7 @@ class TestLogGabor:
             assert peak_radius == pytest.approx(f0, rel=0.05)
 
     def test_log_gabor_radial_is_log_gabor_scale_per_scale(self):
-        radius, _, _, _ = construct_filter_grids(32, 32)
+        radius = construct_filter_grids(32, 32)[0]
         lp = lowpass_filter(radius)
         expected = [log_gabor_scale(radius, lp, 3.0 * 2.1**s, 0.55) for s in range(3)]
         actual = log_gabor_radial(radius, 3, 3.0, 2.1, 0.55)
@@ -168,19 +168,34 @@ class TestLogGabor:
 
 class TestRieszMultiplier:
     def test_packs_the_two_odd_channels_into_one_complex_array(self):
-        _, sintheta, costheta, _ = construct_filter_grids(16, 16)
-        riesz = riesz_multiplier(sintheta, costheta)
-        assert np.array_equal(riesz.real, -costheta)
-        assert np.array_equal(riesz.imag, sintheta)
+        radius, _, _, _, fx, fy = construct_filter_grids(16, 16)
+        riesz = riesz_multiplier(fx, fy, radius)
+        assert np.array_equal(riesz.real, -fy / radius)
+        assert np.array_equal(riesz.imag, fx / radius)
 
-    def test_dc_bin_is_zero(self):
-        _, sintheta, costheta, _ = construct_filter_grids(16, 16)
-        assert riesz_multiplier(sintheta, costheta)[0, 0] == 0
+    def test_dc_bin_is_zero_without_being_forced(self):
+        """fx[0,0] = fy[0,0] = 0 and radius[0,0] = 1, so the DC bin falls out as 0."""
+        radius, _, _, _, fx, fy = construct_filter_grids(16, 16)
+        assert riesz_multiplier(fx, fy, radius)[0, 0] == 0
 
     def test_magnitude_is_one_off_dc(self):
-        _, sintheta, costheta, _ = construct_filter_grids(16, 16)
-        riesz = riesz_multiplier(sintheta, costheta)
+        radius, _, _, _, fx, fy = construct_filter_grids(16, 16)
+        riesz = riesz_multiplier(fx, fy, radius)
         assert np.allclose(np.abs(riesz)[1:, 1:], 1.0)
+
+    def test_it_divides_once_as_the_references_do(self):
+        """`(1j*fx - fy)/radius`, not `1j*(fx/radius) - (fy/radius)`.
+
+        phasecongmono.m:183 and frequencyfilt.jl:234-241 both divide once. The
+        reassociated form differs by ~1 ulp per bin and moves golden agreement from
+        3.52e-14 to 5.32e-14. Harmless; still a shortcut, and this is a port.
+        """
+        radius, sintheta, costheta, _, fx, fy = construct_filter_grids(64, 64)
+        faithful = riesz_multiplier(fx, fy, radius)
+        reassociated = 1j * sintheta - costheta
+        assert not np.array_equal(faithful, reassociated)
+        assert np.abs(faithful - reassociated).max() < 1e-15  # ~1 ulp, so it is only style
+        assert np.array_equal(faithful, (1j * fx - fy) / radius)
 
 
 class TestPeriodicFft2:
@@ -195,19 +210,34 @@ class TestPeriodicFft2:
         assert np.allclose(periodic_fft2(img), fft2(img))
 
     def test_it_removes_the_border_discontinuity_of_a_step_edge(self):
-        """A step edge tiles badly: fft2 sees a second, spurious edge at the wrap."""
+        """A step edge tiles badly: fft2 sees a second, spurious edge at the wrap.
+
+        Assert the thing perfft2 exists for -- that the PERIODIC component's
+        opposite-border jump is far smaller than the input's, while still reconstructing
+        the image.
+
+        An earlier version asserted ``|periodic + smooth - img| < 1e-12`` after defining
+        ``smooth = img - periodic``, which is ``|img - img|``. It passed for
+        ``return np.zeros_like(img)``. The three assertions below were each checked to
+        kill a distinct stub: a zeros stub (fails on the mean and the reconstruction),
+        plain ``fft2`` (fails on the jump), and ``0.5 * perfft2`` (fails on the
+        reconstruction).
+        """
         img = np.zeros((32, 32))
         img[:, 16:] = 1.0
         periodic = np.real(ifft2(periodic_fft2(img)))
-        smooth = img - periodic
-        assert np.abs(smooth).max() > 0.1  # the wrap jump lives in `smooth`
-        assert np.abs(periodic + smooth - img).max() < 1e-12
+
+        input_jump = np.abs(img[:, 0] - img[:, -1]).max()
+        periodic_jump = np.abs(periodic[:, 0] - periodic[:, -1]).max()
+
+        assert periodic_jump < 0.25 * input_jump  # measured 0.031x; fft2 gives 1.0x
+        assert periodic.mean() == pytest.approx(img.mean())  # S[0,0] = 0 keeps the DC
+        assert np.abs(periodic - img).max() < 0.6  # measured 0.4844; it IS still the image
 
 
 class TestRayleighMode:
     def test_recovers_the_scale_of_a_rayleigh_sample(self):
-        """A 50-bin histogram mode is biased low against Rayleigh's long tail. Measured
-        relative error across seeds 0-5: 0.015 to 0.092. The tolerance has headroom."""
+        """A 50-bin histogram mode is biased low against Rayleigh's long tail."""
         rng = np.random.default_rng(3)
         sigma = 2.0
         sample = sigma * np.sqrt(rng.normal(size=200_000) ** 2 + rng.normal(size=200_000) ** 2)
@@ -215,6 +245,29 @@ class TestRayleighMode:
 
     def test_all_zero_input_returns_zero(self):
         assert rayleigh_mode(np.zeros((4, 4))) == 0.0
+
+    def test_bins_are_anchored_at_zero_and_zeros_are_retained(self):
+        """Kovesi: `edges = 0:mx/nbins:mx; n = histc(data, edges)` (phasecongmono.m:465).
+
+        A port that drops zeros and lets numpy place edges at `data.min()` gives a
+        different answer. This test pins the VALUE, not merely that it is positive --
+        the mutation audit showed a doubled `rayleigh_mode` is otherwise invisible to
+        every test in this suite, because the golden fixture is noiseMethod=-1 only.
+        """
+        # Zeros must count, and the bins must start at 0. mx = 10, n_bins = 10, so the
+        # first bin is [0, 1) and holds all 1000 zeros -> centre 0.5.
+        data = np.concatenate([np.zeros(1000), np.full(10, 10.0)])
+        assert rayleigh_mode(data, n_bins=10) == pytest.approx(0.5)
+
+        # The rejected port -- drop zeros, let numpy place edges at data.min() -- returns
+        # 10.05 on the same input. This assertion is what distinguishes the two.
+        assert rayleigh_mode(data, n_bins=10) < 1.0
+
+    def test_a_doubled_mode_is_detectable(self):
+        """Guard the guard: this suite must be able to see a wrong rayleigh_mode."""
+        rng = np.random.default_rng(3)
+        sample = 2.0 * np.sqrt(rng.normal(size=50_000) ** 2 + rng.normal(size=50_000) ** 2)
+        assert rayleigh_mode(sample) != pytest.approx(2 * rayleigh_mode(sample), rel=0.15)
 
 
 class TestSpreadWeight:
@@ -272,7 +325,7 @@ EPSILON_MONOGENIC = 1e-4
 
 def construct_filter_grids(
         rows: int, cols: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Construct frequency domain grids for filter construction.
 
     Grids are quadrant-shifted so the DC component is at ``[0, 0]``. Every axis is
@@ -290,12 +343,18 @@ def construct_filter_grids(
         cols: Number of columns in image.
 
     Returns:
-        Tuple of ``(radius, sintheta, costheta, freq)`` where:
+        Tuple of ``(radius, sintheta, costheta, freq, fx, fy)`` where:
 
         - ``radius``: radial frequency with ``DC = 1`` so ``log(radius)`` is safe
         - ``sintheta``: ``fx / freq``, the angular filter's sine grid
         - ``costheta``: ``fy / freq``, the angular filter's cosine grid
         - ``freq``: radial frequency with ``DC = 0``
+        - ``fx``, ``fy``: the raw signed frequency grids, for :func:`riesz_multiplier`
+
+    Note:
+        ``radius`` is bit-equal to the ``freq_safe`` used to build ``sintheta``/``costheta``
+        -- both are ``freq`` with ``[0, 0]`` set to 1. So ``sintheta == fx / radius``
+        exactly, and :func:`riesz_multiplier` can take ``(fx, fy, radius)`` and divide once.
     """
     if cols % 2 == 1:  # odd
         fx_range = np.arange(-(cols - 1) / 2, (cols - 1) / 2 + 1) / cols
@@ -325,7 +384,7 @@ def construct_filter_grids(
     sintheta[0, 0] = 0.0
     costheta[0, 0] = 0.0
 
-    return radius, sintheta, costheta, freq
+    return radius, sintheta, costheta, freq, fx, fy
 
 
 def lowpass_filter(radius: np.ndarray, cutoff: float = 0.45, order: int = 15) -> np.ndarray:
@@ -396,32 +455,34 @@ def log_gabor_radial(
     ]
 
 
-def riesz_multiplier(sintheta: np.ndarray, costheta: np.ndarray) -> np.ndarray:
-    """Kovesi's ``packedmonogenicfilters``: ``H = (i*fx - fy)/freq``.
+def riesz_multiplier(fx: np.ndarray, fy: np.ndarray, radius: np.ndarray) -> np.ndarray:
+    """Kovesi's ``packedmonogenicfilters``: ``H = (i*fx - fy)/radius``.
 
     Packs both odd (Riesz) channels into one complex array, so a single ``ifft2``
     yields ``h1`` in the real part and ``h2`` in the imaginary part.
 
-    **Axis convention.** Swapping ``sintheta`` and ``costheta`` rotates every
-    orientation by 90 degrees while leaving ``pc`` unchanged to ``1.5e-17``. The
-    sign on ``costheta`` encodes a y-up convention; flipping it mirrors every
-    orientation about the x-axis, which axis-aligned test edges cannot see. Both
-    bugs are covered by the ``starsine`` test.
+    **One division, exactly as the references.** ``phasecongmono.m`` l.183 is
+    ``H = (1i*u1 - u2)./radius`` and ``frequencyfilt.jl`` l.234-241 is
+    ``H = (im.*fx .- fy)./f``. Writing ``1j*sintheta - costheta`` instead divides *twice*
+    and reassociates, which differs by ~1 ulp per bin and moves golden agreement from
+    ``3.52e-14`` to ``5.32e-14``. Harmless, but it is a shortcut, and this is a port.
+    ``radius`` carries the ``[0, 0] = 1`` fudge, so the DC bin comes out ``0`` on its own.
 
-    **Not bit-identical to ``(1j*fx - fy)/radius``.** Dividing first and combining
-    second rounds differently from combining first and dividing second: the two forms
-    differ by ~1 ulp (``1.6e-16``) per bin. That propagates through four ``ifft2`` calls
-    to ``5.3e-14`` in ``pc`` -- eleven orders inside the ``rtol=1e-6`` fixture target, but
-    do not assert bit-equality against the prototype in ``verify_claims.py``.
+    **Axis convention.** Swapping ``fx`` and ``fy`` rotates every orientation by 90
+    degrees while leaving ``pc`` unchanged to ``1.5e-17``. The sign on ``fy`` encodes a
+    y-up convention; flipping it mirrors every orientation about the x-axis, which
+    axis-aligned test edges cannot see. Both bugs are caught by ``starsine`` and, since
+    the fixture now stores ``orientation``, by the golden fixture.
 
     Args:
-        sintheta: ``fx / freq`` grid from :func:`construct_filter_grids`.
-        costheta: ``fy / freq`` grid from :func:`construct_filter_grids`.
+        fx: Signed horizontal frequency grid from :func:`construct_filter_grids`.
+        fy: Signed vertical frequency grid from :func:`construct_filter_grids`.
+        radius: Radial frequency with ``DC = 1``.
 
     Returns:
         Complex transfer function with a zero DC bin.
     """
-    return 1j * sintheta - costheta
+    return (1j * fx - fy) / radius
 
 
 def periodic_fft2(img: np.ndarray) -> np.ndarray:
@@ -463,30 +524,45 @@ def periodic_fft2(img: np.ndarray) -> np.ndarray:
     return fft2(img) - smooth_fft
 
 
-def rayleigh_mode(amplitude: np.ndarray) -> float:
+def rayleigh_mode(amplitude: np.ndarray, n_bins: int = 50) -> float:
     """Estimate the Rayleigh distribution parameter from amplitude data.
 
-    For filter responses to Gaussian noise, amplitudes follow a Rayleigh
-    distribution whose mode equals sigma.
+    For filter responses to Gaussian noise, amplitudes follow a Rayleigh distribution
+    whose mode equals sigma.
+
+    **Histogram bins are anchored at zero and zeros are retained**, matching Kovesi::
+
+        % phasecongmono.m:465-471
+        mx = max(data(:));
+        edges = 0:mx/nbins:mx;
+        n = histc(data(:),edges);
+
+    An earlier version of this port dropped zeros and let ``np.histogram`` place its
+    edges at ``data.min()``. That is an undeclared deviation from all three references
+    (``phasepack``'s ``tools.py`` l.86 does not drop zeros either), and it shifts ``T`` by
+    ``0.0130%`` on ``load_synth_yeast_plate``. Neither form is measurably more accurate on
+    synthetic Rayleigh samples -- the reason to prefer this one is faithfulness. See
+    ``drift-register.md`` M6; this changes shipped ``FocusEdgePhase`` output at
+    ``noise_method = -2``.
 
     Args:
         amplitude: Array of amplitude values.
+        n_bins: Number of histogram bins. Kovesi's default is 50.
 
     Returns:
-        Estimated Rayleigh sigma, or ``0.0`` if every value is non-positive.
+        Estimated Rayleigh sigma, or ``0.0`` if the maximum is non-positive.
     """
-    amp_flat = amplitude.flatten()
-    amp_flat = amp_flat[amp_flat > 0]
+    data = amplitude.flatten()
+    maximum = float(data.max()) if data.size else 0.0
 
-    if len(amp_flat) == 0:
+    if maximum <= 0.0:
         return 0.0
 
-    n_bins = 50  # matches Julia
-    hist, bin_edges = np.histogram(amp_flat, bins=n_bins)
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    edges = np.arange(n_bins + 1) * (maximum / n_bins)
+    hist, _ = np.histogram(data, bins=edges)
 
-    mode_idx = np.argmax(hist)
-    return float(bin_centers[mode_idx])
+    mode_idx = int(np.argmax(hist))
+    return float((edges[mode_idx] + edges[mode_idx + 1]) / 2)
 
 
 def spread_weight(
@@ -521,7 +597,7 @@ def spread_weight(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest tests/unit/enhance/test_monogenic_kernels.py -q`
-Expected: all pass (26 tests).
+Expected: all pass (24 tests).
 
 - [ ] **Step 5: Lint and type-check**
 
@@ -555,19 +631,26 @@ Also fixes the latent `n_scale=1` bug: `_phasecong3` divides by `n_scale - 1` (l
 
 The existing test file asserts properties, not exact arrays. Capture the actual numbers first, or the refactor is unverified.
 
+Capture **both** noise methods. `-1` (median) must stay bit-identical; `-2` is the only caller of `rayleigh_mode` and must change by a bounded amount. Write to the session scratchpad, not `/tmp`.
+
 ```bash
 uv run python - <<'PY'
 import numpy as np
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import FocusEdgePhase
+
 img = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
-r = FocusEdgePhase()._phasecong3(img)
-np.savez("/tmp/phasecong3_baseline.npz", M=r.M, m=r.m, orientation=r.orientation,
-         feature_type=r.feature_type, T=np.array(r.T), pc_sum=r.pc_sum)
-print("baseline saved; pc_sum.max =", r.pc_sum.max())
+out = {}
+for noise_method, tag in ((-1.0, "m1"), (-2.0, "m2")):
+    r = FocusEdgePhase(noise_method=noise_method)._phasecong3(img)
+    out |= {f"{tag}_M": r.M, f"{tag}_m": r.m, f"{tag}_orientation": r.orientation,
+            f"{tag}_feature_type": r.feature_type, f"{tag}_T": np.array(r.T),
+            f"{tag}_pc_sum": r.pc_sum}
+np.savez(f"{SCRATCH}/phasecong3_baseline.npz", **out)
+print("baseline saved; pc_sum.max =", out["m1_pc_sum"].max())
 PY
 ```
-Expected: `baseline saved; pc_sum.max = ...` (a float around 0.33).
+Expected: `baseline saved; pc_sum.max = 0.805410725745`. Substitute your session scratchpad path for `{SCRATCH}`. Anything materially different means the tree is not clean.
 
 - [ ] **Step 2: Run the existing test file to confirm it is green before you touch anything**
 
@@ -600,7 +683,7 @@ from ..abc_ import FocusEdge
 from ..sdk_.typing_ import TuneSpec
 ```
 
-(`ifftshift` and `List` are no longer used here — remove them.)
+**Keep `List`.** Only `ifftshift` becomes dead. `_compute_angular_spread` survives this refactor and its return annotation at line 473 is `List[np.ndarray]`. `from __future__ import annotations` defers the name, so pytest passes — but Step 7's `mypy` reports `Name "List" is not defined [name-defined]` and `ruff` reports `F821`, which is **not auto-fixable**. Removing `List` makes Step 7 fail.
 
 Tighten the field:
 
@@ -610,10 +693,21 @@ Tighten the field:
     n_scale: Annotated[int, TuneSpec(3, 6)] = Field(4, ge=2)
 ```
 
-**Delete** the methods `_construct_filter_grids`, `_construct_log_gabor_filters`, `_rayleigh_mode` (they run from roughly line 379 to the end of the class), and replace their three call sites inside `_phasecong3`:
+**Delete exactly three methods**, at these spans. Do **not** use a "to the end of the class" range — `_compute_angular_spread` sits between them and must survive:
+
+| Method | Lines | Fate |
+|---|---|---|
+| `_construct_filter_grids` | 379–433 | delete |
+| `_construct_log_gabor_filters` | 435–469 | delete |
+| **`_compute_angular_spread`** | **471–510** | **KEEP — do not touch** |
+| `_rayleigh_mode` | 512–542 | delete |
+
+Deleting `_compute_angular_spread` breaks `_phasecong3:218` and `detect/_filamentous_fungi_detector.py:424`.
+
+Then replace their three call sites inside `_phasecong3`. Note `construct_filter_grids` now returns **six** values — the last two are `fx`/`fy`, which `_phasecong3` does not need:
 
 ```python
-        radius, sintheta, costheta, freq = construct_filter_grids(rows, cols)
+        radius, sintheta, costheta, freq, _, _ = construct_filter_grids(rows, cols)
 
         log_gabor_list = log_gabor_radial(
                 radius, self.n_scale, self.min_wavelength, self.mult, self.sigma_onf
@@ -636,18 +730,25 @@ And replace the inline `width`/`weight` block:
 
 `_compute_angular_spread` stays exactly where it is.
 
-> **Pre-validated.** Each of the four helpers was transcribed from Task 1 and diffed against the method it replaces, before this plan was dispatched:
+> **Pre-validated.** Each helper was transcribed from Task 1 and diffed against the method it replaces, before this plan was dispatched:
 >
 > | Helper | vs | Result |
 > |---|---|---|
-> | `construct_filter_grids` | `_construct_filter_grids` | **bit-identical**, all 4 outputs, at 64², 255², 600×800, 63×64 |
+> | `construct_filter_grids` | `_construct_filter_grids` | **bit-identical** on the first four outputs, at 64², 255², 600×800, 63×64 (it now returns two more, `fx`/`fy`) |
 > | `log_gabor_radial` | `_construct_log_gabor_filters` | **bit-identical**, 4 scales @ 600×800; DC zeroed at every scale |
 > | `spread_weight(…, 1e-5)` | the inline block at `:320-321` | **bit-identical** |
-> | `rayleigh_mode` | `_rayleigh_mode` | **bit-identical** |
->
-> Bit-identical helpers ⟹ bit-identical `_phasecong3`, by substitution. Step 4 still runs — it guards against a *transcription* slip, which is a different failure from a *design* slip.
+> | `rayleigh_mode` | `_rayleigh_mode` | **DELIBERATELY DIFFERENT** — drift `M6`. Kovesi anchors bins at 0 and retains zeros; the shipped port does neither |
 >
 > **The epsilon is the trap.** Passing `1e-4` instead of `1e-5` into `spread_weight` shifts the weight by `max|Δ| = 0.094` — a 9.4% error, silent, and nothing else in `_phasecong3` would notice.
+>
+> **`rayleigh_mode` changes shipped behaviour, but only on one path.** `_phasecong3` calls it *only* when `noise_method = -2`; at the default `-1` it uses the median. So the bit-identity baseline is untouched. Measured on `load_synth_yeast_plate`:
+>
+> | `noise_method` | `T` before | `T` after | max abs Δ`pc_sum` | pixels changed |
+> |---|---|---|---|---|
+> | `-1` (default) | `0.00085782` | `0.00085782` | `0.0` | 0 |
+> | `-2` | `0.00392685` | `0.00392681` | `5.578e-06` | 414 182 / 480 000 |
+>
+> The gate must therefore capture **both** settings: bit-identity at `-1`, and a *bounded, deliberate* change at `-2`. A gate that checks only `-1` would let an accidental `rayleigh_mode` regression through. A gate that demands bit-identity at `-2` would reject the correction we intend.
 
 - [ ] **Step 4: Verify bit-identity against the baseline**
 
@@ -656,17 +757,36 @@ uv run python - <<'PY'
 import numpy as np
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.enhance import FocusEdgePhase
-base = np.load("/tmp/phasecong3_baseline.npz")
+
+base = np.load(f"{SCRATCH}/phasecong3_baseline.npz")
 img = np.asarray(load_synth_yeast_plate().detect_mat[:], dtype=np.float64)
-r = FocusEdgePhase()._phasecong3(img)
-now = {"M": r.M, "m": r.m, "orientation": r.orientation,
-       "feature_type": r.feature_type, "T": np.array(r.T), "pc_sum": r.pc_sum}
-for key, want in base.items():
-    assert np.array_equal(want, now[key]), f"{key} changed: max|d| = {np.abs(want-now[key]).max():.3e}"
-print("BIT-IDENTICAL across all six outputs")
+KEYS = ("M", "m", "orientation", "feature_type", "T", "pc_sum")
+
+# noise_method = -1: the median path. rayleigh_mode is never called. MUST be bit-identical.
+r1 = FocusEdgePhase(noise_method=-1.0)._phasecong3(img)
+now1 = dict(zip(KEYS, (r1.M, r1.m, r1.orientation, r1.feature_type, np.array(r1.T), r1.pc_sum)))
+for key in KEYS:
+    want = base[f"m1_{key}"]
+    assert np.array_equal(want, now1[key]), f"-1 {key} changed: max|d| = {np.abs(want - now1[key]).max():.3e}"
+print("noise_method=-1: BIT-IDENTICAL across all six outputs")
+
+# noise_method = -2: the rayleigh_mode path. MUST change, by a bounded amount (drift M6).
+r2 = FocusEdgePhase(noise_method=-2.0)._phasecong3(img)
+delta_t = abs(float(r2.T) - float(base["m2_T"])) / float(base["m2_T"])
+delta_pc = float(np.abs(r2.pc_sum - base["m2_pc_sum"]).max())
+assert 0.0 < delta_t < 1e-4, f"-2 T moved {delta_t:.2e}; expected ~9.2e-06 (drift M6)"
+assert 0.0 < delta_pc < 1e-4, f"-2 pc_sum moved {delta_pc:.2e}; expected ~5.6e-06"
+print(f"noise_method=-2: changed as intended -- dT = {delta_t:.2e}, max|d pc_sum| = {delta_pc:.2e}")
 PY
 ```
-Expected: `BIT-IDENTICAL across all six outputs`. Anything else means the refactor changed the algorithm — fix it, do not adjust the check.
+Expected:
+
+```
+noise_method=-1: BIT-IDENTICAL across all six outputs
+noise_method=-2: changed as intended -- dT = 8.64e-06, max|d pc_sum| = 5.58e-06
+```
+
+The `-1` assertion is a hard gate: anything else means the refactor changed the algorithm — fix it, do not adjust the check. The `-2` assertion is its mirror image — it *must* change, because drift `M6` corrects `rayleigh_mode` to Kovesi's zero-anchored bins. If `-2` comes out bit-identical, `rayleigh_mode` was not actually corrected.
 
 - [ ] **Step 5: Run the existing test file, the taxonomy test, and the filamentous detector's tests**
 
@@ -968,11 +1088,39 @@ class TestGoldenFixture:
         result = monogenic_phase_congruency(img, periodic=True, **_GOLDEN_PARAMS)
         assert result.threshold == pytest.approx(float(golden[f"{name}__T"]), rel=1e-6)
 
+    @pytest.mark.parametrize("name", ["step", "step2line", "starsine", "circsine", "noiseonf"])
+    def test_orientation_matches_phasepack(self, name):
+        """Without this the fixture is blind to BOTH axis bugs.
+
+        `flip_h2_sign` leaves pc, ft and T untouched and passes the vertical/horizontal
+        pair (0 and 90 deg are self-mirrored mod pi). Measured with orientation checked:
+        flip_h2_sign is off by 5 deg, swap_axes by 90 deg, and both now die here.
+
+        phasepack stores `ori` as np.fix((atan(-h2/h1) % pi)/pi*180) -- integer degrees
+        in [0, 180). Ours is already mod pi, so the same quantisation applies. Agreement
+        is EXACT: 100% of 4096 px on all five images, max|d| = 0 deg.
+        """
+        golden = np.load(_FIXTURE, allow_pickle=False)
+        img = _golden_cases()[name]
+        result = monogenic_phase_congruency(img, periodic=True, **_GOLDEN_PARAMS)
+
+        expected = golden[f"{name}__or"]
+        finite = np.isfinite(expected)  # phasepack yields NaN where sumh1 == 0
+
+        # `% np.pi` FIRST. Our orientation is folded to (-pi/2, pi/2], so it can be
+        # negative, and np.fix truncates toward zero: -0.5 deg would become -0, not 179.
+        # Omitting the modulo yields a spurious 1-degree disagreement everywhere.
+        ours = np.fix((result.orientation % np.pi) / np.pi * 180.0)
+        delta = np.abs(ours[finite] - expected[finite])
+        delta = np.minimum(delta, 180.0 - delta)  # circular, mod 180
+        assert delta.max() == 0.0
+
     def test_the_fixture_is_load_bearing(self):
         """A fixture that cannot fail proves nothing.
 
         Regressing to the ``fft2`` branch — which no behavioural test in this repo
-        detects — must break this fixture. Measured drift: 0.67 absolute.
+        detects — must break this fixture. Measured drift at n=64: 0.5342 absolute.
+        (check_18 reports 0.67; that is measured at n=256.)
         """
         golden = np.load(_FIXTURE, allow_pickle=False)
         img = _golden_cases()["step2line"]
@@ -994,9 +1142,63 @@ class TestNoiseThreshold:
         result = monogenic_phase_congruency(np.full((64, 64), 0.5))
         assert result.threshold == EPSILON_MONOGENIC
 
-    def test_rayleigh_mode_path_is_reachable(self):
+    def test_rayleigh_mode_path_produces_the_rayleigh_mode_threshold(self):
+        """`threshold > 0` would pass for any transcription error. Pin the value.
+
+        The -2 branch is NOT covered by the golden fixture (its `_params` record
+        noiseMethod = -1), and the mutation audit showed a doubled `rayleigh_mode` is
+        otherwise invisible to every test here.
+        """
         img = unit_variance(noiseonf(64, 1.5, seed=1))
-        assert monogenic_phase_congruency(img, noise_method=-2.0).threshold > 0.0
+        result = monogenic_phase_congruency(img, noise_method=-2.0)
+
+        # Recompute T from rayleigh_mode by hand, exactly as the kernel must.
+        radius, _, _, _, fx, fy = construct_filter_grids(64, 64)
+        riesz = riesz_multiplier(fx, fy, radius)
+        band = np.fft.fft2(img) * log_gabor_scale(radius, lowpass_filter(radius), 3.0, 0.55)
+        even = np.real(np.fft.ifft2(band))
+        odd = np.fft.ifft2(band * riesz)
+        amplitude = np.sqrt(even**2 + odd.real**2 + odd.imag**2)
+
+        tau = rayleigh_mode(amplitude)
+        total_tau = tau * (1 - (1 / 2.1) ** 4) / (1 - 1 / 2.1)
+        expected = max(total_tau * np.sqrt(np.pi / 2) + 3.0 * total_tau * np.sqrt((4 - np.pi) / 2),
+                       EPSILON_MONOGENIC)
+        assert result.threshold == pytest.approx(expected, rel=1e-12)
+
+    @pytest.mark.parametrize("bad", [-1.5, -3.0, -0.5, -2.5])
+    def test_out_of_range_noise_method_raises(self, bad):
+        """-1.5 matches neither branch, leaves tau = 0, and silently reduces T to epsilon.
+
+        Kovesi's MATLAB errors on the undefined tau. Fail loudly rather than degrade.
+        """
+        with pytest.raises(ValueError, match="noise_method"):
+            monogenic_phase_congruency(np.zeros((32, 32)), noise_method=bad)
+
+
+class TestThePeriodicDefaultIsPinned:
+    """Nothing else pins it, and flipping it changes what the operation computes.
+
+    TestGoldenFixture passes `periodic=True` explicitly; `test_the_fixture_is_load_bearing`
+    passes `False` explicitly; every behavioural control uses the default. Measured: flip
+    the kernel default to True and step2line, noiseonf, axis_pair, starsine and affine ALL
+    still pass. Without this test, a one-character change to the signature silently moves
+    the shipped operation onto the MATLAB branch -- 0.67 absolute in pc -- with a green
+    suite. That is drift-register S6, in the feature that taught us S6.
+    """
+
+    def test_the_kernel_defaults_to_fft2_not_perfft2(self):
+        img = unit_variance(step2line(64))
+        default = monogenic_phase_congruency(img)
+        explicit_fft2 = monogenic_phase_congruency(img, periodic=False)
+        explicit_perfft2 = monogenic_phase_congruency(img, periodic=True)
+
+        assert np.array_equal(default.pc, explicit_fft2.pc)
+        assert np.abs(default.pc - explicit_perfft2.pc).max() > 0.1
+
+    # The operation-level half of this test does NOT belong here. This file is Task A's
+    # and must stay green on its own; FocusEdgeMonogenicPhase does not exist until Task C.
+    # See test_focus_edge_monogenic_phase.py::test_the_operation_uses_the_fft2_branch.
 
 
 class TestAcosClampIsInert:
@@ -1142,8 +1344,17 @@ def monogenic_phase_congruency(
     rows, cols = img.shape
     epsilon = EPSILON_MONOGENIC
 
-    radius, sintheta, costheta, _ = construct_filter_grids(rows, cols)
-    riesz = riesz_multiplier(sintheta, costheta)
+    if noise_method < 0 and not (
+            abs(noise_method + 1.0) < epsilon or abs(noise_method + 2.0) < epsilon
+    ):
+        raise ValueError(
+                f"noise_method must be -1 (median), -2 (Rayleigh mode), or >= 0 "
+                f"(a literal threshold); got {noise_method!r}. A value like -1.5 would "
+                f"silently leave tau = 0 and reduce T to epsilon."
+        )
+
+    radius, _, _, _, fx, fy = construct_filter_grids(rows, cols)
+    riesz = riesz_multiplier(fx, fy, radius)
     lowpass = lowpass_filter(radius)
 
     spectrum = periodic_fft2(img) if periodic else fft2(img)
@@ -1171,9 +1382,11 @@ def monogenic_phase_congruency(
 
         if s == 0:
             # sum_amplitude == amplitude here; Kovesi reads the accumulator.
-            if abs(noise_method + 1.0) < 1e-9:
+            # The dispatch compares against `epsilon`, as phasecongruency.jl:512 and
+            # phasecongmono.m:224 do. Out-of-range values already raised above.
+            if abs(noise_method + 1.0) < epsilon:
                 tau = float(np.median(sum_amplitude)) / np.sqrt(np.log(4.0))
-            elif abs(noise_method + 2.0) < 1e-9:
+            elif abs(noise_method + 2.0) < epsilon:
                 tau = rayleigh_mode(sum_amplitude)
             max_amplitude = amplitude.copy()
         else:
@@ -1214,9 +1427,9 @@ def monogenic_phase_congruency(
 Run: `uv run pytest tests/unit/enhance/test_monogenic_kernels.py -q`
 Expected: all pass.
 
-**This code was executed against the fixture before the plan was dispatched.** Transcribed verbatim from the steps above and run standalone, it gives `max|Δpc|` of `1.8e-15` (step), `5.4e-15` (step2line), `5.3e-14` (starsine), `2.4e-15` (circsine), `2.0e-15` (noiseonf) — worst case **`5.3e-14`**, eleven orders inside `rtol=1e-6`. If your run differs materially from those five numbers, you have transcribed something wrong; do not adjust the tolerance.
+**This code was executed against the fixture before the plan was dispatched.** Transcribed verbatim from the steps above and run standalone, it gives `max|Δpc|` of `1.8e-15` (step), `5.4e-15` (step2line), **`3.5e-14`** (starsine), `2.1e-15` (circsine), `2.0e-15` (noiseonf), and `max|Δorientation| = 0` degrees on all five. Worst case `3.525e-14`, which is `log10(1e-6 / 3.525e-14) = 7.45` orders inside `rtol=1e-6`. If your run differs materially from those numbers, you have transcribed something wrong; do not adjust the tolerance.
 
-Note `5.3e-14`, not the `3.5e-14` that `verify_claims.py::check_19` reports. The prototype there uses `(1j*FX - FY)/radius`; this module uses `riesz_multiplier(sintheta, costheta)`, which rounds 1 ulp differently. Both clear the target by eleven orders.
+This matches `verify_claims.py::check_19` exactly, because `riesz_multiplier` now divides once, as the references do. An earlier revision of this plan specified `1j*sintheta - costheta`, which reassociates into two divisions and gave `5.324e-14` — harmless, but a shortcut. See `drift-register.md` and `TestRieszMultiplier::test_it_divides_once_as_the_references_do`.
 
 - [ ] **Step 7: Confirm the fixture is load-bearing, not decorative**
 
@@ -1225,7 +1438,7 @@ through pytest rather than as a standalone script.
 
 Run: `uv run pytest tests/unit/enhance/test_monogenic_kernels.py -q -k "load_bearing" -v`
 Expected: `test_the_fixture_is_load_bearing PASSED` — reintroducing the `fft2` branch shifts
-`pc` by `0.67`, far past the `0.1` guard, so a silent regression cannot slip through.
+`pc` by `0.5342` at `n=64`, far past the `0.1` guard, so a silent regression cannot slip through.
 
 - [ ] **Step 8: Lint, type-check, and re-run the spec's own suite**
 
@@ -1361,6 +1574,28 @@ class TestOperationContract:
         restored = ImagePipeline.from_json(pipeline.to_json())
         assert isinstance(restored.ops[0], FocusEdgeMonogenicPhase)
 
+    def test_the_operation_uses_the_fft2_branch(self):
+        """The operation must not quietly pass periodic=True.
+
+        `_operate` never passes `periodic`, so the shipped branch is enforced solely by
+        the kernel's signature default. Flipping that default changes what this operation
+        computes by up to 0.67 absolute, and every behavioural test in this suite is blind
+        to it. This is the only assertion standing between us and that regression.
+        """
+        from phenotypic.enhance._monogenic_kernels import monogenic_phase_congruency
+
+        arr = np.zeros((64, 64), dtype=np.float32)
+        arr[:, 32:] = 1.0
+        image = _image_from(arr)
+
+        produced = np.asarray(FocusEdgeMonogenicPhase().apply(image).detect_mat[:], dtype=np.float64)
+        mat = np.asarray(_image_from(arr).detect_mat[:], dtype=np.float64)
+        expected = np.clip(monogenic_phase_congruency(mat, periodic=False).pc, 0.0, 1.0)
+        wrong = np.clip(monogenic_phase_congruency(mat, periodic=True).pc, 0.0, 1.0)
+
+        np.testing.assert_allclose(produced, expected, rtol=1e-5, atol=1e-6)
+        assert np.abs(produced - wrong).max() > 0.05  # and the two branches really differ
+
     def test_pc_is_equivariant_under_90_degree_rotation(self):
         """Measured: 6.7e-16. The filter bank is isotropic; nothing prefers an axis."""
         arr = np.zeros((96, 96), dtype=np.float32)
@@ -1404,8 +1639,10 @@ class TestAxisConvention:
         assert self._orientation_at_peak(arr) == pytest.approx(90.0, abs=0.01)
 
     def test_diagonal_edge_reads_forty_five_degrees(self):
+        """Measured 45.0075 deg. An earlier revision anchored on 45.18 with abs=0.5,
+        so the tolerance was carrying the assertion rather than the anchor."""
         arr = np.fromfunction(lambda i, j: (j - i > 0).astype(float), (128, 128))
-        assert self._orientation_at_peak(arr) == pytest.approx(45.18, abs=0.5)
+        assert self._orientation_at_peak(arr) == pytest.approx(45.01, abs=0.1)
 
     def test_starsine_orientation_matches_the_generators_own_theta(self):
         """The only test that catches the -sum_h2 sign flip. Measured: 0.98 deg median."""
@@ -1721,17 +1958,20 @@ Expected: all pass. `tests/unit/tune/test_annotation_subset_invariant.py` and `t
 
 - [ ] **Step 8: Verify the GUI dropdown lists it**
 
+Query the registry. Asserting only that the name is in `enhance.__all__` tests the export, not the discovery — acceptance criterion 6 is about the dropdown.
+
+`get_by_category` returns `OperationInfo` objects, not strings, so extract `.name`. There are **29** enhancers before this task, across every enhancer family (not just `FocusEdge*`).
+
 ```bash
 uv run python -c "
 from phenotypic.gui import OperationRegistry
 reg = OperationRegistry(); reg.discover()
-names = [n for n in dir(reg)]
-import phenotypic.enhance as e
-assert 'FocusEdgeMonogenicPhase' in e.__all__
-print('exported:', 'FocusEdgeMonogenicPhase' in e.__all__)
+names = [op.name for op in reg.get_by_category('Enhancer')]
+assert 'FocusEdgeMonogenicPhase' in names, f'not in the dropdown: {sorted(names)}'
+print('dropdown lists it; Enhancer count =', len(names))
 "
 ```
-Expected: `exported: True`
+Expected: `dropdown lists it; Enhancer count = 30`
 
 - [ ] **Step 9: Run the doctests**
 
